@@ -73,8 +73,8 @@ cd aidis
 
 # Start database
 docker run -d --name fb_postgres \
-  -e POSTGRES_USER=ridgetop \
-  -e POSTGRES_PASSWORD=bandy \
+  -e POSTGRES_USER=usern_name \
+  -e POSTGRES_PASSWORD=user_pw \
   -e POSTGRES_DB=aidis_development \
   -p 5432:5432 \
   postgres:16
