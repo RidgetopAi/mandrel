@@ -1,0 +1,498 @@
+{
+  "timestamp": "2025-08-17T20:33:58.023Z",
+  "summary": {
+    "totalTests": 47,
+    "passed": 45,
+    "failed": 2,
+    "passRate": "95.7"
+  },
+  "categories": {
+    "Backend API": [
+      {
+        "name": "Backend Health Check",
+        "status": "PASS",
+        "details": ""
+      },
+      {
+        "name": "API Version Info",
+        "status": "PASS",
+        "details": ""
+      },
+      {
+        "name": "Embedding API /api/embedding/list (Auth Required)",
+        "status": "PASS",
+        "details": ""
+      },
+      {
+        "name": "Embedding API /api/embedding/similarity (Auth Required)",
+        "status": "PASS",
+        "details": ""
+      },
+      {
+        "name": "Embedding API /api/embedding/projection (Auth Required)",
+        "status": "PASS",
+        "details": ""
+      },
+      {
+        "name": "Embedding API /api/embedding/cluster (Auth Required)",
+        "status": "PASS",
+        "details": ""
+      },
+      {
+        "name": "Embedding API /api/embedding/metrics (Auth Required)",
+        "status": "PASS",
+        "details": ""
+      },
+      {
+        "name": "Backend Dependency: express",
+        "status": "PASS",
+        "details": ""
+      },
+      {
+        "name": "Backend Dependency: cors",
+        "status": "PASS",
+        "details": ""
+      },
+      {
+        "name": "Backend Dependency: helmet",
+        "status": "PASS",
+        "details": ""
+      },
+      {
+        "name": "Backend Dependency: bcrypt",
+        "status": "PASS",
+        "details": ""
+      },
+      {
+        "name": "Backend Dependency: jsonwebtoken",
+        "status": "PASS",
+        "details": ""
+      },
+      {
+        "name": "Backend Dependency: pg",
+        "status": "PASS",
+        "details": ""
+      },
+      {
+        "name": "API Response Time (<1s)",
+        "status": "PASS",
+        "details": ""
+      }
+    ],
+    "File Structure": [
+      {
+        "name": "File Structure: embedding.ts",
+        "status": "PASS",
+        "details": ""
+      },
+      {
+        "name": "File Structure: EmbeddingService.ts",
+        "status": "PASS",
+        "details": ""
+      },
+      {
+        "name": "File Structure: Embedding.tsx",
+        "status": "PASS",
+        "details": ""
+      },
+      {
+        "name": "File Structure: SimilarityHeatmap.tsx",
+        "status": "PASS",
+        "details": ""
+      },
+      {
+        "name": "File Structure: embeddingStore.ts",
+        "status": "PASS",
+        "details": ""
+      },
+      {
+        "name": "File Structure: embeddingService.ts",
+        "status": "PASS",
+        "details": ""
+      }
+    ],
+    "Frontend": [
+      {
+        "name": "Frontend: React Component Export",
+        "status": "PASS",
+        "details": ""
+      },
+      {
+        "name": "Frontend: Ant Design Tabs",
+        "status": "PASS",
+        "details": ""
+      },
+      {
+        "name": "Frontend: Six Tab Structure",
+        "status": "PASS",
+        "details": ""
+      },
+      {
+        "name": "Frontend: Zustand Store Usage",
+        "status": "PASS",
+        "details": ""
+      },
+      {
+        "name": "Frontend: SimilarityHeatmap Component",
+        "status": "PASS",
+        "details": ""
+      },
+      {
+        "name": "SimilarityHeatmap: Ant Design Plots Import",
+        "status": "PASS",
+        "details": ""
+      },
+      {
+        "name": "SimilarityHeatmap: Heatmap Component",
+        "status": "PASS",
+        "details": ""
+      },
+      {
+        "name": "SimilarityHeatmap: Loading State",
+        "status": "FAIL",
+        "details": "Feature not found"
+      },
+      {
+        "name": "SimilarityHeatmap: Error Handling",
+        "status": "PASS",
+        "details": ""
+      },
+      {
+        "name": "SimilarityHeatmap: Settings Panel",
+        "status": "PASS",
+        "details": ""
+      },
+      {
+        "name": "Frontend Dependency: react",
+        "status": "PASS",
+        "details": ""
+      },
+      {
+        "name": "Frontend Dependency: antd",
+        "status": "PASS",
+        "details": ""
+      },
+      {
+        "name": "Frontend Dependency: @ant-design/plots",
+        "status": "PASS",
+        "details": ""
+      },
+      {
+        "name": "Frontend Dependency: zustand",
+        "status": "PASS",
+        "details": ""
+      },
+      {
+        "name": "Frontend Dependency: axios",
+        "status": "PASS",
+        "details": ""
+      }
+    ],
+    "Dependencies": [
+      {
+        "name": "ML Dependency: ml-pca",
+        "status": "PASS",
+        "details": ""
+      },
+      {
+        "name": "ML Dependency: ml-kmeans",
+        "status": "PASS",
+        "details": ""
+      },
+      {
+        "name": "ML Dependency: react-plotly.js",
+        "status": "PASS",
+        "details": ""
+      }
+    ],
+    "Security": [
+      {
+        "name": "CORS Headers Present",
+        "status": "PASS",
+        "details": ""
+      },
+      {
+        "name": "Security Header: content-security-policy",
+        "status": "PASS",
+        "details": ""
+      },
+      {
+        "name": "Security Header: x-content-type-options",
+        "status": "PASS",
+        "details": ""
+      },
+      {
+        "name": "Security Header: x-frame-options",
+        "status": "PASS",
+        "details": ""
+      },
+      {
+        "name": "Security Header: strict-transport-security",
+        "status": "PASS",
+        "details": ""
+      }
+    ],
+    "Performance": [],
+    "Integration": [
+      {
+        "name": "MCP Embedding Service",
+        "status": "PASS",
+        "details": ""
+      },
+      {
+        "name": "MCP Embedding Functions",
+        "status": "PASS",
+        "details": ""
+      }
+    ],
+    "Other": [
+      {
+        "name": "Database Connection",
+        "status": "PASS",
+        "details": ""
+      },
+      {
+        "name": "Rate Limiting Configured",
+        "status": "FAIL",
+        "details": "Rate limit headers missing"
+      }
+    ]
+  },
+  "details": [
+    {
+      "name": "Backend Health Check",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "name": "Database Connection",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "name": "API Version Info",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "name": "Embedding API /api/embedding/list (Auth Required)",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "name": "Embedding API /api/embedding/similarity (Auth Required)",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "name": "Embedding API /api/embedding/projection (Auth Required)",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "name": "Embedding API /api/embedding/cluster (Auth Required)",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "name": "Embedding API /api/embedding/metrics (Auth Required)",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "name": "File Structure: embedding.ts",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "name": "File Structure: EmbeddingService.ts",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "name": "File Structure: Embedding.tsx",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "name": "File Structure: SimilarityHeatmap.tsx",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "name": "File Structure: embeddingStore.ts",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "name": "File Structure: embeddingService.ts",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "name": "Frontend: React Component Export",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "name": "Frontend: Ant Design Tabs",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "name": "Frontend: Six Tab Structure",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "name": "Frontend: Zustand Store Usage",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "name": "Frontend: SimilarityHeatmap Component",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "name": "SimilarityHeatmap: Ant Design Plots Import",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "name": "SimilarityHeatmap: Heatmap Component",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "name": "SimilarityHeatmap: Loading State",
+      "status": "FAIL",
+      "details": "Feature not found"
+    },
+    {
+      "name": "SimilarityHeatmap: Error Handling",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "name": "SimilarityHeatmap: Settings Panel",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "name": "Backend Dependency: express",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "name": "Backend Dependency: cors",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "name": "Backend Dependency: helmet",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "name": "Backend Dependency: bcrypt",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "name": "Backend Dependency: jsonwebtoken",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "name": "Backend Dependency: pg",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "name": "Frontend Dependency: react",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "name": "Frontend Dependency: antd",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "name": "Frontend Dependency: @ant-design/plots",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "name": "Frontend Dependency: zustand",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "name": "Frontend Dependency: axios",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "name": "ML Dependency: ml-pca",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "name": "ML Dependency: ml-kmeans",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "name": "ML Dependency: react-plotly.js",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "name": "MCP Embedding Service",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "name": "MCP Embedding Functions",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "name": "CORS Headers Present",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "name": "Security Header: content-security-policy",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "name": "Security Header: x-content-type-options",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "name": "Security Header: x-frame-options",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "name": "Security Header: strict-transport-security",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "name": "Rate Limiting Configured",
+      "status": "FAIL",
+      "details": "Rate limit headers missing"
+    },
+    {
+      "name": "API Response Time (<1s)",
+      "status": "PASS",
+      "details": ""
+    }
+  ]
+}
