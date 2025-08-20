@@ -146,10 +146,10 @@ aidis_ping, aidis_status
 // Context Management (3 tools)
 context_store, context_search, context_stats
 
-// Project Management (5 tools)
+// Project Management (6 tools) - 100% COMPLETE ✅
 project_list, project_create, project_switch, project_current, project_info, project_insights
 
-// Naming Registry (4 tools)
+// Naming Registry (4 tools) - 100% COMPLETE ✅
 naming_register, naming_check, naming_suggest, naming_stats
 
 // Technical Decisions (4 tools)
@@ -165,6 +165,61 @@ code_analyze, code_components, code_dependencies, code_impact, code_stats
 // Smart Search & AI Recommendations (3 tools) ✨ NEW
 smart_search, get_recommendations, project_insights
 ```
+
+### 🔧 CRITICAL: MCP Tool Parameter Reference
+**Source of Truth:** `/home/ridgetop/aidis/mcp-server/src/server.ts` (lines ~650-1400)
+**Parameter Guide:** `/home/ridgetop/aidis/TOOL_PARAMETER_GUIDE.md`
+
+**✅ CONFIRMED WORKING - Exact Parameters:**
+```typescript
+// System Health
+aidis_ping(message?: string)
+aidis_status()
+
+// Context Management  
+context_search(query: string)
+context_stats()
+context_store(content: string, type: 'code'|'decision'|'error'|'discussion'|'planning'|'completion', tags?: string[])
+
+// Project Management ✅ 100% COMPLETE
+project_current()
+project_list(includeStats?: boolean)
+project_create(name: string, description?: string)
+project_insights()
+project_info(project: string) // name or ID
+project_switch(project: string) // name or ID
+
+// Naming Registry ✅ 100% COMPLETE  
+naming_stats()
+naming_check(proposedName: string, entityType: string)
+naming_register(canonicalName: string, entityType: string, description?: string)
+naming_suggest(description: string, entityType: string)
+
+// Technical Decisions
+decision_search(query: string)
+decision_stats()
+decision_record(title: string, description: string, rationale: string, decisionType: string, impactLevel: string)
+decision_update(decisionId: string, outcomeStatus?: string, outcomeNotes?: string, lessonsLearned?: string)
+
+// Multi-Agent Coordination
+agent_list()
+agent_register(name: string, type?: string)
+agent_status(agentId?: string)
+agent_message(fromAgentId: string, content: string, toAgentId?: string)
+task_create(title: string, description?: string)
+task_list(status?: string)
+
+// Code Analysis
+code_analyze(filePath: string) // NOT file_path!
+code_components()
+code_dependencies()
+code_stats()
+
+// Smart Search
+smart_search(query: string)
+```
+
+**🚨 ALWAYS use these exact parameter names - error messages can be misleading!**
 
 ### Agent Workflow (CRITICAL!)
 When working with "agents" in AIDIS, there are TWO layers:
