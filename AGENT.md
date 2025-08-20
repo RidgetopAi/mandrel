@@ -58,7 +58,22 @@ aidis/
 ├── docs/                    # Documentation
 └── scripts/                 # Setup/maintenance scripts
 
-### Core Database Tables (IMPLEMENTED & WORKING)
+### 🎯 CURRENT STATUS (Updated 2025-08-20)
+**SUCCESS RATE: 30/37 tools = 81% operational** ⬆️ *Up from 59%*
+
+**✅ COMPLETE CATEGORIES (4/8):**
+- System Health: 2/2 = 100% ✅
+- Context Management: 3/3 = 100% ✅ **(milestone fix resolved!)**
+- Project Management: 6/6 = 100% ✅
+- Naming Registry: 4/4 = 100% ✅
+
+**🔧 IN PROGRESS:**
+- Technical Decisions: 3/4 = 75% (decision_update needs fix)
+- Multi-Agent Coordination: 5/11 = 45% (6 tools untested)
+- Code Analysis: 4/5 = 80% (code_impact parameter fix needed)
+- Smart Search & AI: 1/2 = 50% (get_recommendations enum fix needed)
+
+**🎯 TARGET: Push to 90%+ in next session**
 - projects: Project management and metadata ✅
 - sessions: AI agent session tracking ✅
 - contexts: Context storage with vector embeddings ✅
@@ -166,6 +181,19 @@ code_analyze, code_components, code_dependencies, code_impact, code_stats
 smart_search, get_recommendations, project_insights
 ```
 
+### 🚨 CRITICAL: Database Configuration 
+**LESSON LEARNED:** Always verify PostgreSQL port and database connection!
+
+**AIDIS Database Setup:**
+- PostgreSQL Port: 5432 (NOT 5434!)
+- Database: aidis_production  
+- Connection String: postgresql://ridgetop@localhost:5432/aidis_production
+- Test Connection: `psql -h localhost -p 5432 -d aidis_production -c "SELECT current_database();"`
+
+**Common Issues Fixed:**
+- Multiple PostgreSQL instances running on different ports
+- MCP server connecting to different database than manual tests
+- Always verify: logs show connection, but test data flow end-to-end!
 ### 🔧 CRITICAL: MCP Tool Parameter Reference
 **Source of Truth:** `/home/ridgetop/aidis/mcp-server/src/server.ts` (lines ~650-1400)
 **Parameter Guide:** `/home/ridgetop/aidis/TOOL_PARAMETER_GUIDE.md`
@@ -176,10 +204,10 @@ smart_search, get_recommendations, project_insights
 aidis_ping(message?: string)
 aidis_status()
 
-// Context Management  
+// Context Management ✅ 100% COMPLETE
 context_search(query: string)
 context_stats()
-context_store(content: string, type: 'code'|'decision'|'error'|'discussion'|'planning'|'completion', tags?: string[])
+context_store(content: string, type: 'code'|'decision'|'error'|'discussion'|'planning'|'completion'|'milestone', tags?: string[])
 
 // Project Management ✅ 100% COMPLETE
 project_current()
@@ -220,6 +248,7 @@ smart_search(query: string)
 ```
 
 **🚨 ALWAYS use these exact parameter names - error messages can be misleading!**
+**💡 DEBUGGING TIP:** If tools fail, verify database connection and parameter names first!
 
 ### Agent Workflow (CRITICAL!)
 When working with "agents" in AIDIS, there are TWO layers:

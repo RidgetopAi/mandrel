@@ -1,47 +1,47 @@
 {
-  "timestamp": "2025-08-17T20:33:58.023Z",
+  "timestamp": "2025-08-19T20:33:34.312Z",
   "summary": {
     "totalTests": 47,
-    "passed": 45,
-    "failed": 2,
-    "passRate": "95.7"
+    "passed": 30,
+    "failed": 17,
+    "passRate": "63.8"
   },
   "categories": {
     "Backend API": [
       {
         "name": "Backend Health Check",
-        "status": "PASS",
-        "details": ""
+        "status": "FAIL",
+        "details": "Status: 500"
       },
       {
         "name": "API Version Info",
-        "status": "PASS",
-        "details": ""
+        "status": "FAIL",
+        "details": "Status: 500"
       },
       {
         "name": "Embedding API /api/embedding/list (Auth Required)",
-        "status": "PASS",
-        "details": ""
+        "status": "FAIL",
+        "details": "Expected 401, got 500"
       },
       {
         "name": "Embedding API /api/embedding/similarity (Auth Required)",
-        "status": "PASS",
-        "details": ""
+        "status": "FAIL",
+        "details": "Expected 401, got 500"
       },
       {
         "name": "Embedding API /api/embedding/projection (Auth Required)",
-        "status": "PASS",
-        "details": ""
+        "status": "FAIL",
+        "details": "Expected 401, got 500"
       },
       {
         "name": "Embedding API /api/embedding/cluster (Auth Required)",
-        "status": "PASS",
-        "details": ""
+        "status": "FAIL",
+        "details": "Expected 401, got 500"
       },
       {
         "name": "Embedding API /api/embedding/metrics (Auth Required)",
-        "status": "PASS",
-        "details": ""
+        "status": "FAIL",
+        "details": "Expected 401, got 500"
       },
       {
         "name": "Backend Dependency: express",
@@ -191,18 +191,18 @@
     "Dependencies": [
       {
         "name": "ML Dependency: ml-pca",
-        "status": "PASS",
-        "details": ""
+        "status": "FAIL",
+        "details": "Not found - Phase 2+ dependency"
       },
       {
         "name": "ML Dependency: ml-kmeans",
-        "status": "PASS",
-        "details": ""
+        "status": "FAIL",
+        "details": "Not found - Phase 2+ dependency"
       },
       {
         "name": "ML Dependency: react-plotly.js",
-        "status": "PASS",
-        "details": ""
+        "status": "FAIL",
+        "details": "Not found - Phase 2+ dependency"
       }
     ],
     "Security": [
@@ -213,23 +213,23 @@
       },
       {
         "name": "Security Header: content-security-policy",
-        "status": "PASS",
-        "details": ""
+        "status": "FAIL",
+        "details": "Header missing"
       },
       {
         "name": "Security Header: x-content-type-options",
-        "status": "PASS",
-        "details": ""
+        "status": "FAIL",
+        "details": "Header missing"
       },
       {
         "name": "Security Header: x-frame-options",
-        "status": "PASS",
-        "details": ""
+        "status": "FAIL",
+        "details": "Header missing"
       },
       {
         "name": "Security Header: strict-transport-security",
-        "status": "PASS",
-        "details": ""
+        "status": "FAIL",
+        "details": "Header missing"
       }
     ],
     "Performance": [],
@@ -248,8 +248,8 @@
     "Other": [
       {
         "name": "Database Connection",
-        "status": "PASS",
-        "details": ""
+        "status": "FAIL",
+        "details": "Status: 500"
       },
       {
         "name": "Rate Limiting Configured",
@@ -261,43 +261,43 @@
   "details": [
     {
       "name": "Backend Health Check",
-      "status": "PASS",
-      "details": ""
+      "status": "FAIL",
+      "details": "Status: 500"
     },
     {
       "name": "Database Connection",
-      "status": "PASS",
-      "details": ""
+      "status": "FAIL",
+      "details": "Status: 500"
     },
     {
       "name": "API Version Info",
-      "status": "PASS",
-      "details": ""
+      "status": "FAIL",
+      "details": "Status: 500"
     },
     {
       "name": "Embedding API /api/embedding/list (Auth Required)",
-      "status": "PASS",
-      "details": ""
+      "status": "FAIL",
+      "details": "Expected 401, got 500"
     },
     {
       "name": "Embedding API /api/embedding/similarity (Auth Required)",
-      "status": "PASS",
-      "details": ""
+      "status": "FAIL",
+      "details": "Expected 401, got 500"
     },
     {
       "name": "Embedding API /api/embedding/projection (Auth Required)",
-      "status": "PASS",
-      "details": ""
+      "status": "FAIL",
+      "details": "Expected 401, got 500"
     },
     {
       "name": "Embedding API /api/embedding/cluster (Auth Required)",
-      "status": "PASS",
-      "details": ""
+      "status": "FAIL",
+      "details": "Expected 401, got 500"
     },
     {
       "name": "Embedding API /api/embedding/metrics (Auth Required)",
-      "status": "PASS",
-      "details": ""
+      "status": "FAIL",
+      "details": "Expected 401, got 500"
     },
     {
       "name": "File Structure: embedding.ts",
@@ -436,18 +436,18 @@
     },
     {
       "name": "ML Dependency: ml-pca",
-      "status": "PASS",
-      "details": ""
+      "status": "FAIL",
+      "details": "Not found - Phase 2+ dependency"
     },
     {
       "name": "ML Dependency: ml-kmeans",
-      "status": "PASS",
-      "details": ""
+      "status": "FAIL",
+      "details": "Not found - Phase 2+ dependency"
     },
     {
       "name": "ML Dependency: react-plotly.js",
-      "status": "PASS",
-      "details": ""
+      "status": "FAIL",
+      "details": "Not found - Phase 2+ dependency"
     },
     {
       "name": "MCP Embedding Service",
@@ -466,23 +466,23 @@
     },
     {
       "name": "Security Header: content-security-policy",
-      "status": "PASS",
-      "details": ""
+      "status": "FAIL",
+      "details": "Header missing"
     },
     {
       "name": "Security Header: x-content-type-options",
-      "status": "PASS",
-      "details": ""
+      "status": "FAIL",
+      "details": "Header missing"
     },
     {
       "name": "Security Header: x-frame-options",
-      "status": "PASS",
-      "details": ""
+      "status": "FAIL",
+      "details": "Header missing"
     },
     {
       "name": "Security Header: strict-transport-security",
-      "status": "PASS",
-      "details": ""
+      "status": "FAIL",
+      "details": "Header missing"
     },
     {
       "name": "Rate Limiting Configured",

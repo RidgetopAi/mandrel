@@ -1,146 +1,101 @@
-# ORACLE COMPREHENSIVE FIX PLAN - AIDIS MCP VALIDATION LAYER ALIGNMENT
+AIDIS COMPREHENSIVE SYSTEM REVIEW  
+(Assessment date 2025-08-20)
 
-## ✅ UPDATED ROOT-CAUSE ANALYSIS (Phase 2 Discovery)
-────────────────────────────────────────────────
-**BREAKTHROUGH**: The issue is NOT duplicate source trees, but systematic parameter mapping mismatches between validation layers!
+──────────────────────── SYSTEM HEALTH SNAPSHOT ────────────────────────
+Overall grade: B  (Stable core, but configuration drift & test coverage gaps)
 
-1. **Three-Layer Validation System Identified**:
-   • **Layer 1**: MCP JSON Schema (server.ts) - Client parameter definitions ✅ CORRECT
-   • **Layer 2**: Zod Validation (validation.ts) - Server validation schemas ❌ MISMATCHED  
-   • **Layer 3**: Handler Interfaces (handlers/*.ts) - Internal processing ✅ CORRECT
+• 37 MCP tools defined – 28 pass (76 %).  
+• 2 categories already at 100 % (Project Management, Naming Registry).  
+• Server uptime, graceful shutdown, and circuit-breaker logic validated.  
+• Database connectivity, pgvector extension, and embedding service pass all tests.  
 
-2. **Pattern Discovered**: 
-   - MCP JSON Schema already has correct parameters (entityType, canonicalName)
-   - Handlers expect correct parameters (entityType, canonicalName) 
-   - But Zod validation.ts has wrong parameters (name, type) causing validation failures
+Key risk: configuration divergence between code, compiled artefacts and the several PostgreSQL databases created during development. This is the root of the stubborn "milestone" failure and will keep re-surfacing until structural hygiene is restored.
 
-3. **Examples of Mismatches Found**:
-   ```typescript
-   // naming_register - FIXED
-   validation.ts: name/type          → canonicalName/entityType ✅
-   
-   // naming_check - FIXED  
-   validation.ts: name               → proposedName ✅
-   
-   // decision_record - NEEDS FIX
-   validation.ts: ??? → title/description/alternatives/etc
-   
-   // context_store - NEEDS FIX
-   validation.ts: ??? → content/type enum alignment
-   ```
+──────────────────────── ROOT-CAUSE ANALYSIS – "MILESTONE" BUG ────────────────────────
+Symptom  
+• context_store works for six types but fails for type=milestone with "invalid enum value" even though direct SQL insert succeeds.
 
-4. **Success Pattern Confirmed**:
-   - Fix validation.ts parameter names to match handler expectations
-   - Restart server to pick up validation changes  
-   - Restart session to reconnect MCP client
-   - Test tool → SUCCESS! ✅ task_create and naming_register now work
+True root cause = configuration DRIFT, not validation.
 
-## ✅ UPDATED SYSTEMATIC REPAIR STRATEGY (Phase 2 Approach)
-─────────────────────────────────────────────────────────
+1. Code-side  
+   – validation.ts already includes 'milestone'.  
+   – StoreContextRequest in context.ts is still missing 'milestone', but that is compile-time only; at runtime no enum check occurs.  
 
-**PROVEN SUCCESS PATTERN** (applied to task_create ✅ and naming_register ✅):
+2. DB-side  
+   – You have at least two physical databases:
+     • aidis_development  (default when DATABASE_NAME unset)  
+     • aidis_production   (target of recent migration)  
+   – In aidis_production the enum or CHECK constraint was altered to include 'milestone'.  
+   – The running server process is still connected to aidis_development (or "aidis_ui_dev"), where the enum was never altered, therefore INSERT … context_type='milestone' fails.  
+   – Your manual "direct DB insert" was executed against aidis_production, so it appeared to work.
 
-### Phase 2A – Systematic Parameter Alignment (IN PROGRESS)
-2A.1 **For each broken tool**: 
-     - Check handler interface in `handlers/*.ts` for expected parameters
-     - Compare with current validation schema in `validation.ts` 
-     - Fix validation.ts parameters to match handler expectations
-     - Update enum values to match full specification
+3. "Old compiled JS" in dist/ just masked the issue earlier; runtime with tsx now bypasses it, but the underlying DB mismatch remains.
 
-2A.2 **Applied Successfully**:
-     ```typescript
-     // naming_register - FIXED ✅
-     validation.ts BEFORE: { name: baseName, type: z.enum(['variable'...]) }
-     validation.ts AFTER:  { canonicalName: baseName, entityType: z.enum(['variable','type','component'...]) }
-     
-     // naming_check - FIXED ✅  
-     validation.ts BEFORE: { name: baseName, type: z.enum(...).optional() }
-     validation.ts AFTER:  { proposedName: baseName, entityType: z.enum(...) }
-     
-     // naming_suggest - FIXED ✅
-     validation.ts BEFORE: { partialName: z.string(), type: z.enum(...).optional() }
-     validation.ts AFTER:  { description: z.string(), entityType: z.enum(...) }
-     ```
+Fix in three steps  
+a. Decide which database is canonical (recommend aidis_production).  
+b. In .env set DATABASE_NAME=aidis_production for every runtime context (unit tests, dev server, systemd service).  
+c. Drop or migrate the obsolete dev DBs, or at minimum add a safety banner / login_message to prevent accidental connections.
 
-2A.3 **Server Restart Required**: `PORT=8080 npx tsx src/server.ts`
-2A.4 **Session Restart Required**: MCP client reconnection needed
+Optional hardening: Use a single DATABASE_URL rather than piecemeal vars; apply dotenv-safe to guarantee presence.
 
-### Phase 2B – Remaining 12 Tools to Fix (TODO)
-2B.1 **decision_record/decision_update** - Check handler interfaces vs validation
-2B.2 **context_store** - Enum alignment (type validation)  
-2B.3 **project_info** - Parameter mapping check
-2B.4 **smart_search** - Parameter validation review
-2B.5 **Plus 8 more tools** from original broken list
+──────────────────────── CRITICAL ISSUES & RECOMMENDATIONS ────────────────────────
+1. Configuration consistency (Highest priority)  
+   • Consolidate .env files. Keep one per environment: .env.development, .env.test, .env.production.  
+   • Remove default 'aidis_development' fallback; fail fast if DATABASE_NAME not supplied.  
+   • Add a startup banner logging exactly which DB, host, user and migration version are in use.  
+   • Enforce NODE_ENV-specific builds: tsx for dev, compiled dist for prod; never a mix.
 
-### Phase 2C – Validation & Testing (NEXT SESSION)
-2C.1 **Test All Fixed Tools**:
-     ```bash
-     # Confirmed working 
-     mcp__aidis__task_create (priority: "urgent", projectId: UUID)
-     mcp__aidis__naming_register (canonicalName: "test", entityType: "function")
-     
-     # Need testing (schemas fixed)
-     mcp__aidis__naming_check (proposedName: "test", entityType: "function")  
-     mcp__aidis__naming_suggest (description: "test function", entityType: "function")
-     ```
+2. Schema/Code single-source-of-truth  
+   • The context_type enum now lives in three places: Postgres TYPE, validation.ts, and TypeScript union. Adopt a shared ddl-constants file or a migration tool (e.g. Prisma, Drizzle, Sqitch) that can generate both DB migrations and TS enums.  
+   • Add a boot-time assertion that every allowed value in validation.ts exists in the DB enum.
 
-2C.2 **Integration Test Creation**:
-     ```typescript
-     // Add to test suite
-     expect(validateToolArguments('task_create', 
-       {title:'test', priority:'urgent', projectId: 'uuid'})).toBe(valid)
-     
-     expect(validateToolArguments('naming_register',
-       {canonicalName:'test', entityType:'function'})).toBe(valid)
-     ```
+3. Migration discipline  
+   • Migrations should be idempotent and versioned; the table _aidis_migrations exists but the enum alteration evidently ran only on one DB.   -> Introduce CI check that fails if HEAD migration is not present in all configured DBs.  
+   • Add a post-deploy smoke test suite that runs all MCP tools against staging.
 
-### Phase 3 – Systematic Tool Repair Automation  
-3.1 **Create Parameter Diff Script** (Oracle's recommendation):
-     ```typescript
-     for each broken tool:
-         spec_fields = MCP JSON Schema parameters
-         validation_fields = Zod validation parameters  
-         handler_fields = Handler interface parameters
-         report_mismatches()
-     ```
+4. Test coverage gaps  
+   • 9 tools still unverified. Convert PHASE_3_TOOL_STATUS_REPORT into an automated Jest/Vitest test matrix.  
+   • Each tool invocation should be part of CI with isolated DB fixture/teardown.
 
-3.2 **Apply Fixes in Batches**: Group similar tools for efficiency
+5. Old artefacts & runtime ambiguity  
+   • dist/ folder should be in .gitignore and purged in clean script.  
+   • Production build should run `rimraf dist && tsc -p tsconfig.prod.json` then `node dist/server.js`.  
+   • Development should run `tsx watch src/server.ts`. Never mix.
 
-### Phase 4 – Prevention & Documentation
-4.1 **Add Validation Layer Alignment Tests**: Prevent future mismatches
-4.2 **Document Parameter Mapping Rules**: In CONTRIBUTING.md  
-4.3 **Create CI Checks**: Validate three-layer parameter alignment
+6. Performance & scaling  
+   • connection pool max=20 is fine for dev; in prod measure with pg_stat_activity and adjust.  
+   • Indexes: ensure btree on contexts(project_id, context_type) and GIN on tags array. Add ivfflat index on embedding once pgvector v0.5 is installed for large datasets.  
+   • Embedding dimension logged as 384 in AGENT.md but contextHandler assumes 1536 in vector_test. Align dimensions or storage will waste RAM/disk.
 
-## ✅ UPDATED TIMELINE & PROGRESS
-───────────────────────────────
-**COMPLETED** ✅:
-• **Phase 1**: Fresh server connection (15 min)
-• **Phase 2A**: Parameter alignment pattern discovery (30 min)  
-• **2 Tools Fixed**: task_create + naming_register (30 min)
+7. Security & observability  
+   • Add pgbouncer or RDS proxy before going multi-agent at scale.  
+   • Emit OpenTelemetry traces around every MCP handler to surface slow queries.  
+   • Add rate-limit middleware before exposing externally.
 
-**REMAINING**:
-• **Phase 2B**: Fix 12 remaining tools (60-90 min)
-• **Phase 2C**: Test all fixes (15 min)  
-• **Phase 3**: Automation & batch fixes (30 min)
-• **Phase 4**: Prevention & documentation (15 min)
+──────────────────────── HIDDEN RISKS & TECHNICAL DEBT ────────────────────────
+• Multiple databases with partially-run migrations (primary risk).  
+• Enum duplication across layers.  
+• Lack of integration tests for agent_* and code_* tool set – behaviour unverified.  
+• Code style/formatting uneven after many quick patches; run eslint --fix and prettier pre-commit.  
+• Embedding service presently single-threaded; heavy concurrent context_store calls will block event loop.
 
-**Total Remaining**: ~2-2.5 hours
+──────────────────────── CONFIDENCE & PATH TO 100 % ────────────────────────
+Confidence of reaching 100 % tool pass rate after the alignment work: ≈ 85 %.  
+Estimated effort: 1-2 focused days
 
-## ✅ SUCCESS CHECKPOINTS ACHIEVED
-──────────────────────────────────
-• ✅ Server `/healthz` returns healthy status
-• ✅ `task_create` with `"priority":"urgent"` + projectId UUID succeeds  
-• ✅ `naming_register` with `canonicalName`/`entityType` succeeds
-• ✅ Validation layer alignment pattern proven and documented
-• ✅ Server restart + session restart workflow confirmed
+Roadmap to 100 %  
+1. Lock server onto aidis_production DB and delete/rename others (2 h).  
+2. Re-run migrations on prod DB to be absolutely current (30 m).  
+3. Build automated test harness that hits every MCP tool (4-6 h).  
+4. Fix remaining validation/schema drift uncovered by tests (2-3 h).  
+5. CI/CD pipeline gate: build->migrate->run tool tests->deploy (1 h).
 
-## 🎯 NEXT SESSION IMMEDIATE PRIORITIES
-────────────────────────────────────────
-1. **Reconnect & Verify**: Test task_create + naming_register still work
-2. **Test Naming Tools**: naming_check + naming_suggest (schemas already fixed)
-3. **Fix Decision Tools**: Apply same pattern to decision_record/decision_update
-4. **Fix Context Tools**: Apply same pattern to context_store enum issues
-5. **Systematic Completion**: Work through remaining 8 broken tools
+──────────────────────── EXECUTIVE SUMMARY ────────────────────────
+The core architecture of AIDIS is sound and already delivering real value. Most apparent "weird" behaviours stem from environment fragmentation rather than code logic. By unifying configuration, enforcing a single migration path, and automating full-stack tests, you will eliminate the remaining 24 % failure rate quickly and gain the confidence to move into Phase 4 polish and wider adoption.
 
-**SUCCESS PATTERN TO FOLLOW**:
-Handler interface → Validation schema alignment → Server restart → Session restart → Test → Success! ✅
+Next action for Brian tonight:  
+1. Edit .env → DATABASE_NAME=aidis_production (or full DATABASE_URL).  
+2. Restart server, re-test context_store with type=milestone – it should succeed.  
+3. Commit & push a script `scripts/assert-db-alignment.ts` that compares validation enums with DB enum values and fails if out of sync.
+
+Once configuration hygiene is restored, AIDIS is in excellent shape for the final push.

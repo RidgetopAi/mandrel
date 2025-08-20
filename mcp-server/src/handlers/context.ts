@@ -90,14 +90,20 @@ export class ContextHandler {
         metadata: JSON.stringify(request.metadata || {})
       };
 
+      console.log(`🔍 DEBUG: About to insert context_type = "${contextData.context_type}" (type: ${typeof contextData.context_type})`);
+      console.log(`🔍 DEBUG: context_type length = ${contextData.context_type.length}`);
+      console.log(`🔍 DEBUG: context_type char codes = [${Array.from(contextData.context_type).map(c => c.charCodeAt(0)).join(',')}]`);
+
       // Insert into database
-      const result = await db.query(`
+      const sqlQuery = `
         INSERT INTO contexts (
           project_id, session_id, context_type, content, 
           embedding, relevance_score, tags, metadata
         ) VALUES ($1, $2, $3, $4, $5::vector, $6, $7, $8)
         RETURNING id, created_at
-      `, [
+      `;
+      
+      const sqlParams = [
         contextData.project_id,
         contextData.session_id,
         contextData.context_type,
@@ -106,7 +112,13 @@ export class ContextHandler {
         contextData.relevance_score,
         contextData.tags,
         contextData.metadata
-      ]);
+      ];
+
+      console.log(`🔍 DEBUG: Executing SQL query with parameters:`);
+      console.log(`🔍 DEBUG: SQL: ${sqlQuery.replace(/\s+/g, ' ').trim()}`);
+      console.log(`🔍 DEBUG: Param $3 (context_type): "${sqlParams[2]}" (${typeof sqlParams[2]})`);
+      
+      const result = await db.query(sqlQuery, sqlParams);
 
       const storedContext: ContextEntry = {
         id: result.rows[0].id,

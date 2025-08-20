@@ -15,7 +15,9 @@ dotenv.config();
 const dbConfig: PoolConfig = {
   user: process.env.DATABASE_USER || 'ridgetop',
   host: process.env.DATABASE_HOST || 'localhost',
-  database: process.env.DATABASE_NAME || 'aidis_development',
+  database: process.env.DATABASE_NAME || (() => {
+    throw new Error('DATABASE_NAME environment variable is required! No fallback allowed.');
+  })(),
   password: process.env.DATABASE_PASSWORD || '',
   port: parseInt(process.env.DATABASE_PORT || '5432'),
   
@@ -30,6 +32,13 @@ const dbConfig: PoolConfig = {
 
 // Create the connection pool
 export const db = new Pool(dbConfig);
+
+// Log database connection details on startup
+console.log(`🗄️  Database Configuration:`);
+console.log(`   📊 Database: ${dbConfig.database}`);
+console.log(`   🏠 Host: ${dbConfig.host}:${dbConfig.port}`);
+console.log(`   👤 User: ${dbConfig.user}`);
+console.log(`   📦 Pool Size: ${dbConfig.max} connections`);
 
 /**
  * Initialize database connection and verify pgvector extension

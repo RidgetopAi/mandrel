@@ -1,0 +1,18 @@
+AIDIS Backup Information
+========================
+Timestamp: 20250819_161654
+Created: Tue Aug 19 16:16:56 EDT 2025
+Host: Ridgetop
+User: ridgetop
+
+Contents:
+- aidis_dev_20250819_161654.backup (PostgreSQL custom format)
+- aidis_ui_20250819_161654.backup (PostgreSQL custom format)
+- aidis_dev_schema.sql (Schema only)
+- aidis_ui_schema.sql (Schema only)
+- aidis_code.tar.gz (Application code)
+- amp_config/ (Amp configuration)
+- restore.sh (Restoration script)
+
+Database Stats:
+Could not get stats
