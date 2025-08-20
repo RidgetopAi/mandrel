@@ -29,7 +29,7 @@ export const aidisSystemSchemas = {
 export const contextSchemas = {
   store: z.object({
     content: z.string().min(1).max(10000),
-    type: z.enum(['code', 'decision', 'error', 'discussion', 'planning', 'completion']),
+    type: z.enum(['code', 'decision', 'error', 'discussion', 'planning', 'completion', 'milestone']),
     tags: baseTags,
     relevanceScore: baseRelevanceScore,
     metadata: baseMetadata,
@@ -39,7 +39,7 @@ export const contextSchemas = {
   
   search: z.object({
     query: baseQuery,
-    type: z.enum(['code', 'decision', 'error', 'discussion', 'planning', 'completion']).optional(),
+    type: z.enum(['code', 'decision', 'error', 'discussion', 'planning', 'completion', 'milestone']).optional(),
     tags: baseTags,
     limit: baseLimit,
     minSimilarity: z.number().min(0).max(100).optional(),

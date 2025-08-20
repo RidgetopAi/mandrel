@@ -1,0 +1,37 @@
+[Unit]
+Description=AIDIS - AI Development Intelligence System (User Service)
+Documentation=https://github.com/ridgetopai/aidis
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/aidis/mcp-server
+Environment=NODE_ENV=production
+Environment=PORT=8080
+EnvironmentFile=%h/aidis/mcp-server/.env
+
+# Process management - User service compatible
+ExecStartPre=/bin/bash -c 'curl -f http://localhost:8080/healthz || exit 0'
+ExecStart=%h/.nvm/versions/node/v22.18.0/bin/node %h/aidis/mcp-server/node_modules/.bin/tsx src/server.ts
+ExecReload=/bin/kill -HUP $MAINPID
+KillMode=mixed
+KillSignal=SIGTERM
+TimeoutStopSec=10
+
+# Restart policy - Production hardening
+Restart=on-failure
+RestartSec=5
+StartLimitBurst=3
+StartLimitInterval=300
+
+# Resource limits (user service)
+LimitNOFILE=65536
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=aidis-user
+
+[Install]
+WantedBy=default.target

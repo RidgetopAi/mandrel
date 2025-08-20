@@ -523,7 +523,7 @@ class AIDISServer {
                 },
                 type: {
                   type: 'string',
-                  enum: ['code', 'decision', 'error', 'discussion', 'planning', 'completion'],
+                  enum: ['code', 'decision', 'error', 'discussion', 'planning', 'completion', 'milestone'],
                   description: 'Type of context being stored'
                 },
                 tags: {
