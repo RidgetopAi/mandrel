@@ -29,19 +29,23 @@ export const aidisSystemSchemas = {
 export const contextSchemas = {
   store: z.object({
     content: z.string().min(1).max(10000),
-    type: z.enum(['code', 'decision', 'error', 'planning', 'completion']),
+    type: z.enum(['code', 'decision', 'error', 'discussion', 'planning', 'completion']),
     tags: baseTags,
     relevanceScore: baseRelevanceScore,
-    metadata: baseMetadata
+    metadata: baseMetadata,
+    projectId: z.string().optional(),
+    sessionId: z.string().optional()
   }),
   
   search: z.object({
     query: baseQuery,
-    type: z.enum(['code', 'decision', 'error', 'planning', 'completion']).optional(),
+    type: z.enum(['code', 'decision', 'error', 'discussion', 'planning', 'completion']).optional(),
     tags: baseTags,
     limit: baseLimit,
     minSimilarity: z.number().min(0).max(100).optional(),
-    offset: z.number().int().min(0).optional()
+    offset: z.number().int().min(0).optional(),
+    projectId: z.string().optional(),
+    sessionId: z.string().optional()
   }),
   
   stats: z.object({})
@@ -52,6 +56,8 @@ export const projectSchemas = {
   create: z.object({
     name: baseName,
     description: baseDescription,
+    gitRepoUrl: z.string().optional(),
+    rootDirectory: z.string().optional(),
     metadata: baseMetadata
   }),
   
@@ -63,10 +69,12 @@ export const projectSchemas = {
   }),
   
   info: z.object({
-    project: z.string().min(1).max(255).optional()
+    project: z.string().min(1).max(255)
   }),
   
-  list: z.object({}),
+  list: z.object({
+    includeStats: z.union([z.boolean(), z.string().transform(val => val === 'true')]).optional().default(false)
+  }),
   
   current: z.object({}),
   
@@ -76,21 +84,32 @@ export const projectSchemas = {
 // Naming Registry Schemas
 export const namingSchemas = {
   register: z.object({
-    name: baseName,
-    type: z.enum(['variable', 'function', 'class', 'interface', 'component', 'file', 'directory']),
-    context: z.string().max(1000).optional(),
-    metadata: baseMetadata
+    canonicalName: baseName,
+    entityType: z.enum(['variable', 'function', 'class', 'interface', 'type', 'component', 
+                        'file', 'directory', 'module', 'service', 'endpoint', 'database_table', 
+                        'database_column', 'config_key', 'environment_var', 'css_class', 'html_id']),
+    description: z.string().max(1000).optional(),
+    aliases: z.array(z.string().max(255)).max(10).optional(),
+    contextTags: z.array(z.string().max(50)).max(20).optional(),
+    projectId: z.string().optional()
   }),
   
   check: z.object({
-    name: baseName,
-    type: z.enum(['variable', 'function', 'class', 'interface', 'component', 'file', 'directory']).optional()
+    proposedName: baseName,
+    entityType: z.enum(['variable', 'function', 'class', 'interface', 'type', 'component', 
+                        'file', 'directory', 'module', 'service', 'endpoint', 'database_table', 
+                        'database_column', 'config_key', 'environment_var', 'css_class', 'html_id']),
+    contextTags: z.array(z.string().max(50)).max(20).optional(),
+    projectId: z.string().optional()
   }),
   
   suggest: z.object({
-    partialName: z.string().min(1).max(100),
-    type: z.enum(['variable', 'function', 'class', 'interface', 'component', 'file', 'directory']).optional(),
-    limit: baseLimit
+    description: z.string().min(1).max(1000),
+    entityType: z.enum(['variable', 'function', 'class', 'interface', 'type', 'component', 
+                        'file', 'directory', 'module', 'service', 'endpoint', 'database_table', 
+                        'database_column', 'config_key', 'environment_var', 'css_class', 'html_id']),
+    contextTags: z.array(z.string().max(50)).max(20).optional(),
+    projectId: z.string().optional()
   }),
   
   stats: z.object({})
@@ -99,14 +118,22 @@ export const namingSchemas = {
 // Technical Decision Schemas
 export const decisionSchemas = {
   record: z.object({
+    decisionType: z.enum(['architecture', 'library', 'framework', 'pattern', 'api_design', 'database', 'deployment', 'security', 'performance', 'ui_ux', 'testing', 'tooling', 'process', 'naming_convention', 'code_style']),
     title: z.string().min(1).max(255),
     description: z.string().min(1).max(5000),
-    alternatives: z.array(z.string().max(1000)).min(1).max(10),
-    chosenAlternative: z.string().max(1000),
-    reasoning: z.string().max(2000).optional(),
-    impact: z.enum(['low', 'medium', 'high']).optional(),
-    tags: baseTags,
-    metadata: baseMetadata
+    rationale: z.string().max(2000),
+    impactLevel: z.enum(['low', 'medium', 'high', 'critical']),
+    alternativesConsidered: z.array(z.object({
+      name: z.string(),
+      pros: z.array(z.string()).optional(),
+      cons: z.array(z.string()).optional(),
+      reasonRejected: z.string()
+    })).optional(),
+    problemStatement: z.string().max(2000).optional(),
+    affectedComponents: z.array(z.string()).optional(),
+    tags: baseTags.optional(),
+    projectId: z.string().optional(),
+    metadata: baseMetadata.optional()
   }),
   
   search: z.object({
@@ -128,9 +155,10 @@ export const decisionSchemas = {
 // Multi-Agent Coordination Schemas
 export const agentSchemas = {
   register: z.object({
-    agentType: z.string().min(1).max(100),
-    capabilities: z.array(z.string().max(100)).max(20),
-    metadata: baseMetadata
+    name: z.string().min(1).max(100),
+    type: z.string().min(1).max(100).optional(),
+    capabilities: z.array(z.string().max(100)).max(20).optional(),
+    metadata: baseMetadata.optional()
   }),
   
   list: z.object({}),
@@ -154,10 +182,15 @@ export const agentSchemas = {
   }),
   
   message: z.object({
-    from: z.string().uuid(),
-    to: z.string().uuid().optional(),
-    message: z.string().min(1).max(5000),
-    type: z.enum(['info', 'request', 'response', 'error']).optional()
+    fromAgentId: z.string().min(1).max(100),
+    content: z.string().min(1).max(5000),
+    toAgentId: z.string().min(1).max(100).optional(),
+    messageType: z.string().optional(),
+    title: z.string().optional(),
+    contextRefs: z.array(z.string()).optional(),
+    taskRefs: z.array(z.string()).optional(),
+    projectId: z.string().optional(),
+    metadata: baseMetadata.optional()
   }),
   
   messages: z.object({
@@ -172,18 +205,19 @@ export const taskSchemas = {
   create: z.object({
     title: z.string().min(1).max(255),
     description: z.string().max(2000).optional(),
-    type: z.enum(['feature', 'bug', 'refactor', 'test', 'docs', 'devops']),
-    priority: z.enum(['low', 'medium', 'high', 'critical']),
+    type: z.enum(['feature', 'bug', 'bugfix', 'refactor', 'test', 'review', 'docs', 'documentation', 'devops', 'general']).optional().default('general'),
+    priority: z.enum(['low', 'medium', 'high', 'urgent']).optional().default('medium'),
     status: z.enum(['todo', 'in_progress', 'completed', 'blocked']).optional(),
-    assignedAgent: z.string().uuid().optional(),
-    dependencies: z.array(z.string().uuid()).max(10).optional(),
+    assignedTo: z.string().optional(),
+    dependencies: z.array(z.string()).max(10).optional(),
     tags: baseTags,
+    projectId: z.string().optional(),
     metadata: baseMetadata
   }),
   
   list: z.object({
     status: z.enum(['todo', 'in_progress', 'completed', 'blocked']).optional(),
-    priority: z.enum(['low', 'medium', 'high', 'critical']).optional(),
+    priority: z.enum(['low', 'medium', 'high', 'urgent']).optional(),
     assignedAgent: z.string().uuid().optional(),
     limit: baseLimit
   }),
@@ -191,7 +225,7 @@ export const taskSchemas = {
   update: z.object({
     taskId: z.string().uuid(),
     status: z.enum(['todo', 'in_progress', 'completed', 'blocked']).optional(),
-    priority: z.enum(['low', 'medium', 'high', 'critical']).optional(),
+    priority: z.enum(['low', 'medium', 'high', 'urgent']).optional(),
     assignedAgent: z.string().uuid().optional(),
     progress: z.number().min(0).max(100).optional(),
     notes: z.string().max(2000).optional()
