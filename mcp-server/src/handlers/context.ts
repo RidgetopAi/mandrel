@@ -162,12 +162,12 @@ export class ContextHandler {
         SELECT 
           id, project_id, session_id, context_type, content,
           created_at, relevance_score, tags, metadata,
-          embedding <-> $1::vector as distance
+          1 - (embedding <=> $1::vector) as similarity
         FROM contexts 
         WHERE 1=1
       `;
       
-      const params: any[] = [`[${queryEmbedding.embedding.join(',')}]`];
+      const params: any[] = [JSON.stringify(queryEmbedding.embedding)];
       let paramIndex = 2;
 
       // Add filters
@@ -189,8 +189,8 @@ export class ContextHandler {
         paramIndex++;
       }
 
-      // Order by similarity (distance) and limit results
-      sql += ` ORDER BY distance ASC LIMIT $${paramIndex}`;
+      // Order by similarity (highest first) and limit results
+      sql += ` ORDER BY similarity DESC LIMIT $${paramIndex}`;
       params.push(request.limit || 10);
 
       console.log('🔍 Executing vector similarity search...');
@@ -198,8 +198,7 @@ export class ContextHandler {
 
       // Convert results and calculate similarities
       const results: SearchResult[] = result.rows.map(row => {
-        const distance = parseFloat(row.distance);
-        const similarity = Math.max(0, (1 - distance)) * 100; // Convert distance to similarity percentage
+        const similarity = Math.max(0, parseFloat(row.similarity)) * 100; // Convert to percentage
         
         return {
           id: row.id,
