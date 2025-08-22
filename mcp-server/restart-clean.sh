@@ -2,9 +2,11 @@
 
 echo "🧹 Cleaning up AIDIS processes..."
 
-# Kill all AIDIS-related processes
+# Stop systemd service first if running
+systemctl --user stop aidis 2>/dev/null || true
+
+# Kill any manual processes
 pkill -f "src/server.ts" 2>/dev/null || true
-pkill -f "aidis" 2>/dev/null || true  
 pkill -f "tsx.*server" 2>/dev/null || true
 
 # Wait for processes to terminate
@@ -18,15 +20,14 @@ pkill -9 -f "tsx.*server" 2>/dev/null || true
 lsof -ti:8080 | xargs kill -9 2>/dev/null || true
 
 echo "✅ All AIDIS processes terminated"
-echo "🚀 Starting fresh AIDIS server..."
+echo "🚀 Starting AIDIS via systemd service..."
 
-# Start the server in the background
-cd /home/ridgetop/aidis/mcp-server
-npx tsx src/server.ts &
+# Start via systemd (your original setup)
+systemctl --user start aidis
 
 # Wait a moment for startup
-sleep 3
+sleep 5
 
-echo "📊 Current AIDIS processes:"
-ps aux | grep -E "(aidis|tsx.*server)" | grep -v grep
+echo "📊 AIDIS systemd status:"
+systemctl --user status aidis --no-pager -l
 echo "✅ AIDIS restart complete!"

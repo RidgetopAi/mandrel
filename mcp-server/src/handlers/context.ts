@@ -198,7 +198,9 @@ export class ContextHandler {
 
       // Convert results and calculate similarities
       const results: SearchResult[] = result.rows.map(row => {
-        const similarity = Math.max(0, parseFloat(row.similarity)) * 100; // Convert to percentage
+        // Handle potential null/undefined similarity values to prevent NaN
+        const rawSimilarity = row.similarity;
+        const similarity = Math.max(0, (rawSimilarity && !isNaN(parseFloat(rawSimilarity))) ? parseFloat(rawSimilarity) : 0) * 100;
         
         return {
           id: row.id,

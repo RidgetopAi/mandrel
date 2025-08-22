@@ -248,7 +248,7 @@ export const codeSchemas = {
   }),
   
   impact: z.object({
-    filePath: z.string().min(1).max(1000),
+    componentId: z.string().min(1).max(1000),
     changeType: z.enum(['modify', 'delete', 'rename']).optional()
   }),
   
@@ -265,7 +265,7 @@ export const smartSearchSchemas = {
   
   recommendations: z.object({
     context: z.string().max(2000),
-    type: z.enum(['naming', 'architecture', 'testing', 'refactoring']).optional()
+    type: z.enum(['naming', 'implementation', 'architecture', 'testing']).optional()
   })
 };
 
