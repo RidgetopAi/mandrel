@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import process from 'process';
 
-const LOCK_FILE = path.join(process.cwd(), 'aidis.pid');
+const LOCK_FILE = process.env.AIDIS_LOCK_FILE || path.join(process.cwd(), 'aidis.pid');
 
 export class ProcessLock {
   private static instance: ProcessLock;

@@ -1,6 +1,18 @@
 # AIDIS - AI Development Intelligence System
 ## Agent Configuration & Project Guide
 
+### 🚨 **CRITICAL: READ THIS FIRST**
+**For immediate AIDIS productivity, READ:** `AGENT_AIDIS_READY.md`
+- ✅ Current system status (37/37 tools = 100% operational)
+- ✅ Essential startup workflow for every session  
+- ✅ Tool prioritization and common patterns
+- ✅ Troubleshooting and partnership guidelines
+
+**This file (AGENT.md) contains historical/technical details.**
+**AGENT_AIDIS_READY.md contains what you need for daily AIDIS work.**
+
+---
+
 ### Project Overview
 AIDIS is a comprehensive context management platform that enables AI coding agents to maintain consistency, track decisions, and collaborate effectively across multi-week software development projects. This system uses MCP (Model Context Protocol) and PostgreSQL to create a persistent memory layer for AI agents.
 
