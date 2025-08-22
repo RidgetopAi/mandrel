@@ -483,14 +483,39 @@ export class NamingHandler {
   }
 
   private extractKeywords(description: string): string[] {
-    // Simple keyword extraction - could be enhanced with NLP
+    // Enhanced semantic name generation from description
     const words = description
       .toLowerCase()
       .replace(/[^a-zA-Z0-9\s]/g, ' ')
       .split(/\s+/)
       .filter(word => word.length > 2 && !this.isStopWord(word));
     
-    return words.slice(0, 3); // Take first 3 meaningful words
+    // Generate meaningful compound names from the description
+    const suggestions: string[] = [];
+    
+    if (words.length >= 2) {
+      // Create compound names from meaningful word combinations
+      suggestions.push(words.slice(0, 2).join('')); // First two words
+      if (words.length >= 3) {
+        suggestions.push(words.slice(0, 3).join('')); // First three words
+        suggestions.push(words[0] + words[2]); // First and third word
+      }
+      
+      // Add single meaningful words with common patterns
+      const mainWord = words[0];
+      suggestions.push(mainWord + 'Service');
+      suggestions.push(mainWord + 'Handler');
+      suggestions.push(mainWord + 'Manager');
+      suggestions.push(mainWord + 'Validator');
+    } else if (words.length === 1) {
+      const word = words[0];
+      suggestions.push(word);
+      suggestions.push(word + 'Service');
+      suggestions.push(word + 'Handler');
+    }
+    
+    // Remove duplicates and return reasonable number of suggestions
+    return Array.from(new Set(suggestions)).slice(0, 5);
   }
 
   private isStopWord(word: string): boolean {
