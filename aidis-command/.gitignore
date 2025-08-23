@@ -85,3 +85,16 @@ jspm_packages/
 
 # TypeScript cache
 *.tsbuildinfo
+
+# Debug and test files
+debug-reports/
+debug-images/
+*-test.js
+*-debug.js
+qa-*.js
+test-*.js
+debug-*.js
+verify-*.js
+
+# WSL path references
+\\wsl.localhost\Ubuntu\home\ridgetop\aidis\aidis-command\.env.example
