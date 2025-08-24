@@ -281,6 +281,57 @@ export class ContextHandler {
   }
 
   /**
+   * Get recent contexts in chronological order (newest first)
+   */
+  async getRecentContext(projectId?: string, limit: number = 5): Promise<SearchResult[]> {
+    console.log(`📋 Getting ${limit} most recent contexts`);
+
+    try {
+      // Ensure we have a valid project
+      const actualProjectId = await this.ensureProjectId(projectId);
+
+      // Build query to get recent contexts
+      const sql = `
+        SELECT 
+          id, project_id, session_id, context_type, content,
+          created_at, relevance_score, tags, metadata
+        FROM contexts 
+        WHERE project_id = $1
+        ORDER BY created_at DESC 
+        LIMIT $2
+      `;
+      
+      console.log('🔍 Executing recent contexts query...');
+      const result = await db.query(sql, [actualProjectId, limit]);
+
+      // Convert results to SearchResult format (same as searchContext)
+      const results: SearchResult[] = result.rows.map(row => ({
+        id: row.id,
+        projectId: row.project_id,
+        sessionId: row.session_id,
+        contextType: row.context_type,
+        content: row.content,
+        createdAt: row.created_at,
+        relevanceScore: row.relevance_score,
+        tags: row.tags || [],
+        metadata: typeof row.metadata === 'string' ? JSON.parse(row.metadata) : row.metadata,
+        searchReason: 'Recent context (chronological order)'
+      }));
+
+      console.log(`✅ Found ${results.length} recent contexts`);
+      if (results.length > 0) {
+        console.log(`📅 Most recent: ${results[0].createdAt} - "${results[0].content.substring(0, 60)}..."`);
+      }
+
+      return results;
+
+    } catch (error) {
+      console.error('❌ Failed to get recent contexts:', error);
+      throw new Error(`Recent context retrieval failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  /**
    * Get context statistics for a project
    */
   async getContextStats(projectId?: string): Promise<{

@@ -48,6 +48,11 @@ export const contextSchemas = {
     sessionId: z.string().optional()
   }),
   
+  get_recent: z.object({
+    limit: z.number().int().min(1).max(20).default(5),
+    projectId: z.string().optional()
+  }),
+  
   stats: z.object({})
 };
 
@@ -278,6 +283,7 @@ export const validationSchemas = {
   // Context Management
   context_store: contextSchemas.store,
   context_search: contextSchemas.search,
+  context_get_recent: contextSchemas.get_recent,
   context_stats: contextSchemas.stats,
   
   // Project Management

@@ -374,6 +374,9 @@ class AIDISServer {
       case 'context_search':
         return await this.handleContextSearch(validatedArgs as any);
         
+      case 'context_get_recent':
+        return await this.handleContextGetRecent(validatedArgs as any);
+        
       case 'context_stats':
         return await this.handleContextStats(validatedArgs as any);
 
@@ -591,6 +594,26 @@ class AIDISServer {
                 }
               },
               required: ['query']
+            },
+          },
+          {
+            name: 'context_get_recent',
+            description: 'Get recent contexts in chronological order (newest first)',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                limit: {
+                  type: 'number',
+                  minimum: 1,
+                  maximum: 20,
+                  description: 'Maximum number of results (default: 5)'
+                },
+                projectId: {
+                  type: 'string',
+                  description: 'Optional project ID (uses current if not specified)'
+                }
+              },
+              required: []
             },
           },
           {
@@ -1573,6 +1596,69 @@ class AIDISServer {
         {
           type: 'text',
           text: searchSummary + resultDetails
+        },
+      ],
+    };
+  }
+
+  /**
+   * Format time difference in human readable format
+   */
+  private getTimeAgo(date: Date): string {
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return 'just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return date.toLocaleDateString();
+  }
+
+  /**
+   * Handle context get recent requests
+   */
+  private async handleContextGetRecent(args: any) {
+    console.log(`📋 Context get recent request (limit: ${args.limit || 5})`);
+    
+    const results = await contextHandler.getRecentContext(args.projectId, args.limit);
+
+    if (results.length === 0) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `📋 No recent contexts found\n\n` +
+                  `This usually means:\n` +
+                  `• No contexts have been stored yet\n` +
+                  `• Wrong project selected\n` +
+                  `• Database connectivity issues`
+          },
+        ],
+      };
+    }
+
+    // Format results for display
+    const contextList = results.map((ctx, index) => {
+      const timeAgo = this.getTimeAgo(ctx.createdAt);
+      const truncatedContent = ctx.content.length > 100 
+        ? ctx.content.substring(0, 100) + '...'
+        : ctx.content;
+
+      return `${index + 1}. **${ctx.contextType}** (${timeAgo})\n` +
+             `   Content: ${truncatedContent}\n` +
+             `   Tags: [${ctx.tags.join(', ')}]\n` +
+             `   ID: ${ctx.id}`;
+    }).join('\n\n');
+
+    return {
+      content: [
+        {
+          type: 'text',
+          text: `📋 Recent Contexts (${results.length} found)\n\n${contextList}`
         },
       ],
     };
@@ -3047,7 +3133,7 @@ class AIDISServer {
       
       console.log('🎯 Available tools:');
       console.log('   📊 System: aidis_ping, aidis_status');
-      console.log('   📝 Context: context_store, context_search, context_stats');
+      console.log('   📝 Context: context_store, context_search, context_get_recent, context_stats');
       console.log('   📋 Projects: project_list, project_create, project_switch, project_current, project_info');
       console.log('   🏷️  Naming: naming_register, naming_check, naming_suggest, naming_stats');
       console.log('   📋 Decisions: decision_record, decision_search, decision_update, decision_stats');
@@ -3131,52 +3217,26 @@ process.on('SIGTERM', () => shutdown('SIGTERM'));
 // Start the server if this file is run directly
 if (import.meta.url === `file://${process.argv[1]}`) {
   
-  // DUAL MODE OPERATION: Check if SystemD service is already running
-  isSystemDServiceRunning().then(async (serviceRunning) => {
+  // DIRECT MODE OPERATION: Always start in Full Server Mode (SystemD removed)
+  (async () => {
     try {
-      if (serviceRunning) {
-        // SystemD service is running - start MCP Proxy Mode
-        console.log('🔄 SystemD service detected - starting MCP Proxy Mode');
-        console.log('🎯 This will allow MCP clients to connect to the SystemD service');
-        
-        const proxy = new AIDISMCPProxy();
-        await proxy.start();
-        
-        // Setup proxy shutdown handling
-        const shutdownProxy = async (signal: string) => {
-          console.log(`\n📴 Received ${signal}, shutting down MCP proxy...`);
-          await proxy.shutdown();
-          process.exit(0);
-        };
-        
-        process.on('SIGINT', () => shutdownProxy('SIGINT'));
-        process.on('SIGTERM', () => shutdownProxy('SIGTERM'));
-        
-      } else {
-        // No SystemD service - start Full Server Mode
-        console.log('🚀 No SystemD service detected - starting Full Server Mode');
-        
-        serverInstance = new AIDISServer();
-        
-        // Start with enhanced error handling
-        serverInstance.start().catch((error) => {
-          console.error('❌ Unhandled startup error:', error);
-          
-          // Attempt graceful cleanup even on startup failure
-          if (serverInstance) {
-            serverInstance.gracefulShutdown('STARTUP_ERROR').finally(() => {
-              process.exit(1);
-            });
-          } else {
-            process.exit(1);
-          }
-        });
-      }
+      console.log('🚀 Starting AIDIS in Direct Mode (SystemD dependency removed)');
+      
+      serverInstance = new AIDISServer();
+      
+      // Start with enhanced error handling
+      await serverInstance.start();
+      
     } catch (error) {
-      console.error('❌ Failed to determine startup mode:', error);
+      console.error('❌ Unhandled startup error:', error);
+      
+      // Attempt graceful cleanup even on startup failure
+      if (serverInstance) {
+        await serverInstance.gracefulShutdown('STARTUP_ERROR');
+      }
       process.exit(1);
     }
-  });
+  })();
 }
 
 export { AIDISServer };
