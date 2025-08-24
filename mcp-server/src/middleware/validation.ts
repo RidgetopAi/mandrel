@@ -22,7 +22,13 @@ export const aidisSystemSchemas = {
     message: z.string().max(500).optional()
   }),
   
-  status: z.object({})
+  status: z.object({}),
+  
+  help: z.object({}),
+  
+  explain: z.object({
+    toolName: z.string().min(1).max(100)
+  })
 };
 
 // Context Management Schemas
@@ -279,6 +285,9 @@ export const validationSchemas = {
   // System Health
   aidis_ping: aidisSystemSchemas.ping,
   aidis_status: aidisSystemSchemas.status,
+  aidis_help: aidisSystemSchemas.help,
+  aidis_explain: aidisSystemSchemas.explain,
+  aidis_examples: aidisSystemSchemas.explain, // Same schema as explain - takes toolName parameter
   
   // Context Management
   context_store: contextSchemas.store,

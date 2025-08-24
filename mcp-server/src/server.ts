@@ -43,6 +43,7 @@ import { decisionsHandler } from './handlers/decisions.js';
 import { agentsHandler } from './handlers/agents.js';
 import { codeAnalysisHandler } from './handlers/codeAnalysis.js';
 import { smartSearchHandler } from './handlers/smartSearch.js';
+import { navigationHandler } from './handlers/navigation.js';
 import { validationMiddleware } from './middleware/validation.js';
 import { AIDISMCPProxy } from './utils/mcpProxy.js';
 
@@ -367,6 +368,15 @@ class AIDISServer {
         
       case 'aidis_status':
         return await this.handleStatus();
+        
+      case 'aidis_help':
+        return await this.handleHelp();
+
+      case 'aidis_explain':
+        return await this.handleExplain(validatedArgs as any);
+
+      case 'aidis_examples':
+        return await this.handleExamples(validatedArgs as any);
 
       case 'context_store':
         return await this.handleContextStore(validatedArgs as any);
@@ -512,6 +522,36 @@ class AIDISServer {
             inputSchema: {
               type: 'object',
               properties: {},
+            },
+          },
+          {
+            name: 'aidis_help',
+            description: 'Display categorized list of all AIDIS tools',
+            inputSchema: {
+              type: 'object',
+              properties: {},
+            },
+          },
+          {
+            name: 'aidis_explain',
+            description: 'Get detailed help for a specific AIDIS tool',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                toolName: { type: 'string', description: 'Name of the tool to explain (e.g., "context_search", "project_list")' }
+              },
+              required: ['toolName']
+            },
+          },
+          {
+            name: 'aidis_examples',
+            description: 'Get usage examples and patterns for a specific AIDIS tool',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                toolName: { type: 'string', description: 'Name of the tool to get examples for (e.g., "context_search", "project_create")' }
+              },
+              required: ['toolName']
             },
           },
           {
@@ -1515,6 +1555,24 @@ class AIDISServer {
         },
       ],
     };
+  }
+
+  /**
+   * Handle help tool - display categorized list of all AIDIS tools
+   */
+  private async handleHelp() {
+    console.log('🔧 AIDIS help request received');
+    return await navigationHandler.getHelp();
+  }
+
+  private async handleExplain(args: { toolName: string }) {
+    console.log('🔧 AIDIS explain request received for tool:', args.toolName);
+    return await navigationHandler.explainTool(args);
+  }
+
+  private async handleExamples(args: { toolName: string }) {
+    console.log('🔧 AIDIS examples request received for tool:', args.toolName);
+    return await navigationHandler.getExamples(args);
   }
 
   /**
