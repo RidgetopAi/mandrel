@@ -1643,7 +1643,7 @@ class AIDISServer {
     
     const resultDetails = results.map((result, index) => {
       return `${index + 1}. **${result.contextType.toUpperCase()}** (${result.similarity}% match)\n` +
-             `   📝 "${result.content.length > 80 ? result.content.substring(0, 80) + '...' : result.content}"\n` +
+             `   📝 "${result.content}"\n` +
              `   🏷️  Tags: [${result.tags.join(', ')}]\n` +
              `   ⏰ ${result.createdAt.toISOString()}\n` +
              `   💡 ${result.searchReason}\n`;
@@ -1702,12 +1702,9 @@ class AIDISServer {
     // Format results for display
     const contextList = results.map((ctx, index) => {
       const timeAgo = this.getTimeAgo(ctx.createdAt);
-      const truncatedContent = ctx.content.length > 100 
-        ? ctx.content.substring(0, 100) + '...'
-        : ctx.content;
 
       return `${index + 1}. **${ctx.contextType}** (${timeAgo})\n` +
-             `   Content: ${truncatedContent}\n` +
+             `   Content: ${ctx.content}\n` +
              `   Tags: [${ctx.tags.join(', ')}]\n` +
              `   ID: ${ctx.id}`;
     }).join('\n\n');

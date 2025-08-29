@@ -124,7 +124,19 @@ export class AgentsHandler {
         
         const client = await this.pool.connect();
         try {
-            const updateData: any[] = [status, agentId];
+            // Resolve agent name to UUID if needed
+            let agentUuid = agentId;
+            if (!this.isUUID(agentId)) {
+                const agentResult = await client.query('SELECT id FROM agents WHERE name = $1', [agentId]);
+                if (agentResult.rows.length > 0) {
+                    agentUuid = agentResult.rows[0].id;
+                    console.log(`🔍 Resolved agent "${agentId}" to ID: ${agentUuid}`);
+                } else {
+                    throw new Error(`Agent "${agentId}" not found`);
+                }
+            }
+
+            const updateData: any[] = [status, agentUuid];
             let query = `UPDATE agents 
                         SET status = $1, last_seen = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP`;
             
