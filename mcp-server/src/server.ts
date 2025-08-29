@@ -2416,6 +2416,8 @@ class AIDISServer {
    * Handle task creation requests
    */
   private async handleTaskCreate(args: any) {
+    // Ensure session is initialized before getting project ID
+    await projectHandler.initializeSession('default-session');
     const projectId = args.projectId || await projectHandler.getCurrentProjectId('default-session');
     
     const task = await agentsHandler.createTask(
@@ -2543,6 +2545,8 @@ class AIDISServer {
    * Handle agent message requests
    */
   private async handleAgentMessage(args: any) {
+    // Ensure session is initialized before getting project ID
+    await projectHandler.initializeSession('default-session');
     const projectId = args.projectId || await projectHandler.getCurrentProjectId('default-session');
     
     const message = await agentsHandler.sendMessage(
@@ -2638,6 +2642,8 @@ class AIDISServer {
    * Handle agent join project requests
    */
   private async handleAgentJoin(args: any) {
+    // Ensure session is initialized before getting project ID
+    await projectHandler.initializeSession('default-session');
     const projectId = args.projectId || await projectHandler.getCurrentProjectId('default-session');
     const sessionId = args.sessionId || 'default-session';
     

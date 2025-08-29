@@ -417,6 +417,66 @@ export class NavigationHandler {
 })`
       }
     ],
+    // Multi-Agent Coordination - NOW WITH AGENT NAME SUPPORT!
+    'agent_status': [
+      {
+        title: 'Update agent status using agent name',
+        example: `agent_status({
+  agentId: "CodeAgent",
+  status: "active"
+})`
+      },
+      {
+        title: 'Set agent to busy with UUID',
+        example: `agent_status({
+  agentId: "02a6745c-a361-41bb-b76f-86e16a4aea8e",
+  status: "busy"
+})`
+      }
+    ],
+    'agent_message': [
+      {
+        title: 'Send message between agents using names',
+        example: `agent_message({
+  fromAgentId: "CodeAgent",
+  toAgentId: "QaAgent",
+  title: "Code review request",
+  content: "Please review the new authentication module"
+})`
+      },
+      {
+        title: 'Broadcast message to all agents',
+        example: `agent_message({
+  fromAgentId: "ProjectManager",
+  title: "System maintenance",
+  content: "Database migration scheduled for tonight",
+  messageType: "alert"
+})`
+      }
+    ],
+    'agent_join': [
+      {
+        title: 'Join agent to project using name',
+        example: `agent_join({
+  agentId: "QaAgent"
+})`
+      },
+      {
+        title: 'Join with specific session',
+        example: `agent_join({
+  agentId: "CodeAgent",
+  sessionId: "sprint-3-session"
+})`
+      }
+    ],
+    'agent_leave': [
+      {
+        title: 'Remove agent from project',
+        example: `agent_leave({
+  agentId: "TestAgent"
+})`
+      }
+    ],
     'task_create': [
       {
         title: 'Create implementation task',
@@ -425,6 +485,34 @@ export class NavigationHandler {
   description: "Add JWT-based auth with login/logout",
   priority: "high",
   assignedTo: "CodeAgent"
+})`
+      },
+      {
+        title: 'Create bug fix task',
+        example: `task_create({
+  title: "Fix login redirect issue",
+  description: "Users not redirected after successful login",
+  type: "bugfix",
+  priority: "urgent",
+  assignedTo: "QaAgent",
+  tags: ["bug", "authentication", "frontend"]
+})`
+      }
+    ],
+    'task_update': [
+      {
+        title: 'Mark task as completed',
+        example: `task_update({
+  taskId: "59823126-9442-45dd-87e7-3dfae691e41f",
+  status: "completed"
+})`
+      },
+      {
+        title: 'Reassign task to different agent',
+        example: `task_update({
+  taskId: "59823126-9442-45dd-87e7-3dfae691e41f",
+  status: "in_progress",
+  assignedTo: "CodeReviewGuru"
 })`
       }
     ]
