@@ -45,13 +45,30 @@ class ApiClient {
       },
     });
 
-    // Request interceptor to add auth token
+    // Request interceptor to add auth token and project ID
     this._instance.interceptors.request.use(
       (config) => {
+        // Add auth token
         const token = localStorage.getItem('aidis_token');
         if (token) {
           config.headers.Authorization = `Bearer ${token}`;
         }
+
+        // Add X-Project-ID header if currentProject exists and not already specified
+        if (!config.headers['X-Project-ID']) {
+          try {
+            const currentProjectData = localStorage.getItem('aidis_current_project');
+            if (currentProjectData) {
+              const currentProject = JSON.parse(currentProjectData);
+              if (currentProject?.id) {
+                config.headers['X-Project-ID'] = currentProject.id;
+              }
+            }
+          } catch (error) {
+            // Ignore localStorage parsing errors silently
+          }
+        }
+        
         return config;
       },
       (error) => {

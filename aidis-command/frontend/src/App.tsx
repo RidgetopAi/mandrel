@@ -10,6 +10,8 @@ import Dashboard from './pages/Dashboard';
 import Contexts from './pages/Contexts';
 import Agents from './pages/Agents';
 import Tasks from './pages/Tasks';
+import Decisions from './pages/Decisions';
+import Naming from './pages/Naming';
 import Projects from './pages/Projects';
 import ProjectDetail from './pages/ProjectDetail';
 import SessionDetail from './pages/SessionDetail';
@@ -56,6 +58,8 @@ const App: React.FC = () => {
                 <Route path="contexts" element={<Contexts />} />
                 <Route path="agents" element={<Agents />} />
                 <Route path="tasks" element={<Tasks />} />
+                <Route path="decisions" element={<Decisions />} />
+                <Route path="naming" element={<Naming />} />
                 <Route path="projects" element={<Projects />} />
                 <Route path="projects/:id" element={<ProjectDetail />} />
                 <Route path="sessions/:id" element={<SessionDetail />} />
