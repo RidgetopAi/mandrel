@@ -125,6 +125,12 @@ class WebSocketManager {
       if (listener.onOpen) connection.openListeners.delete(listener.onOpen);
       if (listener.onClose) connection.closeListeners.delete(listener.onClose);
       if (listener.onError) connection.errorListeners.delete(listener.onError);
+    } else {
+      // If no specific listener provided, remove all listeners (for complete disconnection)
+      connection.listeners.clear();
+      connection.openListeners.clear();
+      connection.closeListeners.clear();
+      connection.errorListeners.clear();
     }
 
     // If no more listeners, close the connection
@@ -183,10 +189,13 @@ const useWebSocketSingleton = (
 
     setConnectionState('CONNECTING');
     
-    const ws = manager.connect(url, {
+    // Declare ws variable first, then initialize
+    let ws: WebSocket | null = null;
+    
+    ws = manager.connect(url, {
       onOpen: (event) => {
         setConnectionState('OPEN');
-        setSocket(ws);
+        if (ws) setSocket(ws);
         reconnectAttemptsRef.current = 0;
         listenersRef.current.onOpen?.(event);
       },
@@ -215,7 +224,7 @@ const useWebSocketSingleton = (
       }
     });
 
-    setSocket(ws);
+    if (ws) setSocket(ws);
   }, [url, reconnectInterval, maxReconnectAttempts]);
 
   const sendMessage = useCallback((message: any) => {
@@ -262,6 +271,7 @@ const useWebSocketSingleton = (
         clearTimeout(reconnectTimeoutRef.current);
       }
       if (url) {
+        // Force complete cleanup of listeners for this component
         manager.disconnect(url, listenersRef.current);
       }
     };

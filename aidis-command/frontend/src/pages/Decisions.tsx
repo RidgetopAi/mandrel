@@ -9,6 +9,7 @@ import {
   PlusOutlined
 } from '@ant-design/icons';
 import { useDecisionStore, useDecisionSearch, useDecisionSelection } from '../stores/decisionStore';
+import { useProjectContext } from '../contexts/ProjectContext';
 import { DecisionApi } from '../services/decisionApi';
 import DecisionCard from '../components/decisions/DecisionCard';
 import DecisionFilters from '../components/decisions/DecisionFilters';
@@ -41,6 +42,8 @@ const Decisions: React.FC = () => {
     clearSelection
   } = useDecisionStore();
 
+  const { currentProject } = useProjectContext();
+  
   const { 
     searchParams, 
     updateSearchParam, 
@@ -50,18 +53,23 @@ const Decisions: React.FC = () => {
   const decisionSelection = useDecisionSelection();
   const [showStatsModal, setShowStatsModal] = useState(false);
 
-  // Load decisions on component mount and when search params change
+  // Load decisions on component mount and when search params or project change
   useEffect(() => {
     loadDecisions();
     loadStats();
-  }, []);
+  }, [currentProject]); // Added currentProject dependency
 
   const loadDecisions = useCallback(async () => {
     setSearching(true);
     setError(null);
     
     try {
-      const result = await DecisionApi.searchDecisions(searchParams);
+      // Include current project in search params
+      const searchParamsWithProject = {
+        ...searchParams,
+        project_id: currentProject?.id
+      };
+      const result = await DecisionApi.searchDecisions(searchParamsWithProject);
       setSearchResults(result);
     } catch (err) {
       console.error('Failed to load decisions:', err);
@@ -70,7 +78,7 @@ const Decisions: React.FC = () => {
     } finally {
       setSearching(false);
     }
-  }, [searchParams, setSearchResults, setSearching, setError]);
+  }, [searchParams, currentProject, setSearchResults, setSearching, setError]);
 
   const loadStats = async () => {
     try {
@@ -78,6 +86,20 @@ const Decisions: React.FC = () => {
       setStats(decisionStats);
     } catch (err) {
       console.error('Failed to load decision stats:', err);
+      // Set default stats to prevent undefined errors
+      setStats({
+        total_decisions: 0,
+        by_status: {
+          proposed: 0,
+          accepted: 0,
+          rejected: 0,
+          superseded: 0,
+          deprecated: 0
+        },
+        by_project: {},
+        recent_decisions: 0,
+        total_projects: 0
+      });
     }
   };
 
@@ -382,59 +404,60 @@ const Decisions: React.FC = () => {
         footer={null}
         width={800}
       >
-        {stats && (
-          <Space direction="vertical" style={{ width: '100%' }}>
-            <Card title="Overview">
-              <Row gutter={16}>
-                <Col span={6}>
-                  <div style={{ textAlign: 'center' }}>
-                    <Text type="secondary">Total Decisions</Text>
-                    <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#1890ff' }}>
-                      {stats.total_decisions}
-                    </div>
+        <Space direction="vertical" style={{ width: '100%' }}>
+          <Card title="Overview">
+            <Row gutter={16}>
+              <Col span={6}>
+                <div style={{ textAlign: 'center' }}>
+                  <Text type="secondary">Total Decisions</Text>
+                  <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#1890ff' }}>
+                    {stats?.total_decisions || 0}
                   </div>
-                </Col>
-                <Col span={6}>
-                  <div style={{ textAlign: 'center' }}>
-                    <Text type="secondary">Recent (30 days)</Text>
-                    <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#52c41a' }}>
-                      {stats.recent_decisions}
-                    </div>
+                </div>
+              </Col>
+              <Col span={6}>
+                <div style={{ textAlign: 'center' }}>
+                  <Text type="secondary">Recent (30 days)</Text>
+                  <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#52c41a' }}>
+                    {stats?.recent_decisions || 0}
                   </div>
-                </Col>
-                <Col span={6}>
-                  <div style={{ textAlign: 'center' }}>
-                    <Text type="secondary">Projects</Text>
-                    <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#fa8c16' }}>
-                      {stats.total_projects}
-                    </div>
+                </div>
+              </Col>
+              <Col span={6}>
+                <div style={{ textAlign: 'center' }}>
+                  <Text type="secondary">Projects</Text>
+                  <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#fa8c16' }}>
+                    {stats?.total_projects || 0}
                   </div>
-                </Col>
-              </Row>
-            </Card>
+                </div>
+              </Col>
+            </Row>
+          </Card>
 
-            <Card title="By Status">
-              <Space direction="vertical" style={{ width: '100%' }}>
-                {Object.entries(stats.by_status).map(([status, count]) => (
-                  <div key={status} style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <Space>
-                      <div 
-                        style={{ 
-                          width: 8, 
-                          height: 8, 
-                          borderRadius: '50%', 
-                          backgroundColor: DecisionApi.getStatusColor(status)
-                        }} 
-                      />
-                      <Text>{DecisionApi.getStatusDisplayName(status)}</Text>
-                    </Space>
-                    <Text strong>{count}</Text>
-                  </div>
-                ))}
-              </Space>
-            </Card>
-          </Space>
-        )}
+          <Card title="By Status">
+            <Space direction="vertical" style={{ width: '100%' }}>
+              {stats?.by_status && Object.entries(stats.by_status).map(([status, count]) => (
+                <div key={status} style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <Space>
+                    <div 
+                      style={{ 
+                        width: 8, 
+                        height: 8, 
+                        borderRadius: '50%', 
+                        backgroundColor: DecisionApi.getStatusColor(status)
+                      }} 
+                    />
+                    <Text>{DecisionApi.getStatusDisplayName(status)}</Text>
+                  </Space>
+                  <Text strong>{count}</Text>
+                </div>
+              ))}
+              {!stats?.by_status && (
+                <Text type="secondary">No status data available</Text>
+              )}
+            </Space>
+          </Card>
+        </Space>
       </Modal>
     </Space>
   );

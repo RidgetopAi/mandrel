@@ -81,14 +81,11 @@ const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({
       size={size}
       loading={loading}
       placeholder="Select a project..."
-      showSearch
-      filterOption={(input, option) =>
-        (option?.children as unknown as string)?.toLowerCase().includes(input.toLowerCase())
-      }
       notFoundContent={loading ? <Spin size="small" /> : 'No projects found'}
+      optionLabelProp="label"
     >
       {projects.map(project => (
-        <Option key={project.id} value={project.id}>
+        <Option key={project.id} value={project.id} label={project.name}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <Space size="small">
               <Avatar 

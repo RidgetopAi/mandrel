@@ -8,6 +8,7 @@ import {
   EyeOutlined, FilterOutlined, BarChartOutlined
 } from '@ant-design/icons';
 import { useContextStore, useContextSearch, useContextSelection } from '../stores/contextStore';
+import { useProjectContext } from '../contexts/ProjectContext';
 import { ContextApi } from '../services/contextApi';
 import ContextCard from '../components/contexts/ContextCard';
 import ContextFilters from '../components/contexts/ContextFilters';
@@ -45,6 +46,8 @@ const Contexts: React.FC = () => {
     isFiltered 
   } = useContextSearch();
 
+  const { currentProject } = useProjectContext();
+
   const contextSelection = useContextSelection();
   const {
     addSelectedContext,
@@ -54,12 +57,6 @@ const Contexts: React.FC = () => {
   } = useContextStore();
 
   const [showStatsModal, setShowStatsModal] = useState(false);
-
-  // Load contexts on component mount and when search params change
-  useEffect(() => {
-    loadContexts();
-    loadStats();
-  }, []);
 
   const loadContexts = useCallback(async () => {
     setSearching(true);
@@ -85,6 +82,19 @@ const Contexts: React.FC = () => {
       console.error('Failed to load context stats:', err);
     }
   };
+
+  // Load contexts on component mount and when search params change
+  useEffect(() => {
+    loadContexts();
+    loadStats();
+  }, []);
+
+  // Oracle Phase 1: Removed manual project sync - handled by API interceptor
+  
+  // Auto-refresh contexts when searchParams change
+  useEffect(() => {
+    loadContexts();
+  }, [searchParams, loadContexts]);
 
   const handleSearch = useCallback(() => {
     loadContexts();
@@ -342,6 +352,7 @@ const Contexts: React.FC = () => {
                             updateSearchParam('query', undefined);
                             updateSearchParam('type', undefined);
                             updateSearchParam('tags', undefined);
+                            // Oracle Phase 1: Removed manual project_id manipulation - handled by API interceptor
                             handleSearch();
                           }}
                         >

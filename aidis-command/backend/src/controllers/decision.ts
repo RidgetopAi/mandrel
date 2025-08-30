@@ -1,12 +1,62 @@
-import { Response } from 'express';
-import { AuthenticatedRequest } from '../types/auth';
+import { Request, Response } from 'express';
 import { McpService } from '../services/mcp';
 
 export class DecisionController {
   /**
+   * POST /api/decisions - Record new technical decision
+   */
+  static async recordDecision(req: Request, res: Response): Promise<void> {
+    try {
+      const { title, problem, decision, rationale, alternatives } = req.body;
+
+      // Validate required fields
+      if (!title || !problem || !decision) {
+        res.status(400).json({
+          success: false,
+          message: 'Title, problem, and decision are required fields'
+        });
+        return;
+      }
+
+      // Call AIDIS MCP decision_record
+      const result = await McpService.callTool('decision_record', {
+        title,
+        problem,
+        decision,
+        ...(rationale && { rationale }),
+        ...(alternatives && { alternatives })
+      });
+      
+      if (!result.success) {
+        console.error('AIDIS decision_record failed:', result.error);
+        res.status(500).json({
+          success: false,
+          message: 'Failed to record decision',
+          error: result.error
+        });
+        return;
+      }
+
+      res.status(201).json({
+        success: true,
+        data: result.data,
+        message: 'Decision recorded successfully'
+      });
+
+    } catch (error) {
+      console.error('Record decision error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to record decision',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  }
+
+  /**
    * GET /api/decisions - Search technical decisions
    */
-  static async searchDecisions(req: AuthenticatedRequest, res: Response): Promise<void> {
+  static async searchDecisions(req: Request, res: Response): Promise<void> {
     try {
       const {
       query = '',
@@ -19,21 +69,48 @@ export class DecisionController {
       offset = 0
       } = req.query;
 
-      // Build search parameters for AIDIS MCP
+      console.log('[Decision Search] Request params:', {
+        query, project_id, status, created_by, date_from, date_to, limit, offset
+      });
+
+      // Switch to the correct project context if project_id is provided
+      if (project_id) {
+        console.log(`[Decision Search] Switching to project: ${project_id}`);
+        const switchResult = await McpService.callTool('project_switch', { project: project_id as string });
+        if (!switchResult.success) {
+          console.error('Failed to switch project:', switchResult.error);
+          res.status(500).json({
+            success: false,
+            message: 'Failed to switch project context',
+            error: switchResult.error
+          });
+          return;
+        }
+        console.log('[Decision Search] Project switch successful');
+      }
+
+      // Build search parameters for AIDIS MCP  
       const searchParams: any = {
-      query: query || undefined,
-      limit: parseInt(limit as string) || 20
+        query: query || "system", // Use a broad search term instead of "*"
+        limit: parseInt(limit as string) || 20
       };
 
+      // Don't include project_id in MCP params since we switched context above
       if (status) searchParams.status = status;
-    if (project_id) searchParams.project_id = project_id;
-    if (created_by) searchParams.created_by = created_by;
-    if (date_from) searchParams.date_from = date_from;
-    if (date_to) searchParams.date_to = date_to;
+      if (created_by) searchParams.created_by = created_by;
+      if (date_from) searchParams.date_from = date_from;
+      if (date_to) searchParams.date_to = date_to;
+
+      console.log('[Decision Search] MCP search params:', searchParams);
 
       // Call AIDIS MCP decision_search
       const result = await McpService.callTool('decision_search', searchParams);
       
+      console.log('[Decision Search] MCP result success:', result.success);
+      if (result.success) {
+        console.log('[Decision Search] MCP data keys:', Object.keys(result.data || {}));
+      }
+
       if (!result.success) {
         console.error('AIDIS decision_search failed:', result.error);
         res.status(500).json({
@@ -54,6 +131,12 @@ export class DecisionController {
         limit: parseInt(limit as string)
       };
 
+      console.log('[Decision Search] Transformed result:', {
+        totalDecisions: transformedResult.decisions.length,
+        totalFound: transformedResult.total,
+        page: transformedResult.page
+      });
+
       res.json({
         success: true,
         data: transformedResult,
@@ -73,7 +156,7 @@ export class DecisionController {
   /**
    * GET /api/decisions/stats - Get decision statistics
    */
-  static async getDecisionStats(req: AuthenticatedRequest, res: Response): Promise<void> {
+  static async getDecisionStats(req: Request, res: Response): Promise<void> {
     try {
       const { project_id } = req.query;
 
@@ -111,7 +194,7 @@ export class DecisionController {
   /**
    * GET /api/decisions/:id - Get single decision
    */
-  static async getDecision(req: AuthenticatedRequest, res: Response): Promise<void> {
+  static async getDecision(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
 
@@ -161,7 +244,7 @@ export class DecisionController {
   /**
    * PUT /api/decisions/:id - Update decision
    */
-  static async updateDecision(req: AuthenticatedRequest, res: Response): Promise<void> {
+  static async updateDecision(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
       const { outcome, lessons, status } = req.body;
@@ -212,7 +295,7 @@ export class DecisionController {
   /**
    * DELETE /api/decisions/:id - Delete decision
    */
-  static async deleteDecision(_req: AuthenticatedRequest, res: Response): Promise<void> {
+  static async deleteDecision(_req: Request, res: Response): Promise<void> {
     try {
       // Note: AIDIS doesn't currently have a delete_decision MCP tool
       // For now, return not implemented

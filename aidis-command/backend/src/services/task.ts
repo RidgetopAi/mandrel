@@ -74,6 +74,31 @@ export interface TaskDependency {
 
 export class TaskService {
   /**
+   * Count active tasks (Oracle Phase 2 dashboard requirement)
+   * Active = NOT completed (todo, in_progress, blocked)
+   */
+  static async countActive(projectId?: string): Promise<number> {
+    try {
+      let query = "SELECT COUNT(*) FROM tasks WHERE status != 'completed' AND status != 'cancelled'";
+      const params: any[] = [];
+      
+      if (projectId) {
+        query += " AND project_id = $1";
+        params.push(projectId);
+      }
+      
+      const result = await pool.query(query, params);
+      const count = parseInt(result.rows[0].count);
+      
+      console.log(`📊 TaskService.countActive - Project: ${projectId || 'ALL'}, Count: ${count}`);
+      return count;
+    } catch (error) {
+      console.error('Task count active error:', error);
+      throw new Error('Failed to get active task count');
+    }
+  }
+
+  /**
    * Get all tasks with optional filtering
    */
   static async getTasks(filter: TaskFilter = {}): Promise<Task[]> {

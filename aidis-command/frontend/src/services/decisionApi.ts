@@ -3,6 +3,28 @@ import { TechnicalDecision, DecisionSearchParams, DecisionStats, DecisionSearchR
 
 export class DecisionApi {
   /**
+   * Record a new technical decision
+   */
+  static async recordDecision(decision: {
+    title: string;
+    problem: string;
+    decision: string;
+    rationale?: string;
+    alternatives?: string[];
+  }): Promise<TechnicalDecision> {
+    const response = await apiClient.post<{ success: boolean; data: TechnicalDecision }>(
+      '/decisions',
+      decision
+    );
+
+    if (!response.success) {
+      throw new Error('Failed to record decision');
+    }
+
+    return response.data;
+  }
+
+  /**
    * Search decisions with filters and pagination
    */
   static async searchDecisions(params: DecisionSearchParams): Promise<DecisionSearchResult> {

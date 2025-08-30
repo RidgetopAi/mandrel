@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Row, Col, Tabs, Button, notification } from 'antd';
+import { Card, Row, Col, Tabs, Button, notification, Select } from 'antd';
 import { PlusOutlined, BarChartOutlined, ProjectOutlined } from '@ant-design/icons';
 import useWebSocketSingleton from '../hooks/useWebSocketSingleton';
 import { apiService } from '../services/api';
-// TODO: Import actual components once they're fixed
+// TODO: Import remaining components once they're fixed
 // import TaskKanbanBoard from '../components/tasks/TaskKanbanBoard';
 import TaskList from '../components/tasks/TaskList';
+import TaskCardList from '../components/tasks/TaskCardList';
 import TaskForm from '../components/tasks/TaskForm';
 // import TaskStats from '../components/tasks/TaskStats';
 // import TaskDependencyGraph from '../components/tasks/TaskDependencyGraph';
@@ -59,7 +60,7 @@ const Tasks: React.FC = () => {
 
   // WebSocket for real-time updates  
   const token = localStorage.getItem('aidis_token');
-  const backendPort = process.env.REACT_APP_BACKEND_PORT || '5000';
+  const backendPort = process.env.REACT_APP_BACKEND_PORT || '5001';
   const wsUrl = token ? `ws://localhost:${backendPort}/ws?token=${encodeURIComponent(token)}` : null;
   
   const { isConnected } = useWebSocketSingleton(wsUrl, {
@@ -126,14 +127,25 @@ const Tasks: React.FC = () => {
     if (projects.length > 0) {
       loadTasks();
     }
-  }, [selectedProject]);
+  }, [selectedProject, projects.length]);
+
+  // Cleanup effect for component unmounting
+  useEffect(() => {
+    return () => {
+      // Reset state on unmount to prevent stale state on revisit
+      setTasks([]);
+      setLoading(false);
+      setCreating(false);
+      setShowCreateForm(false);
+    };
+  }, []);
 
   const loadInitialData = async () => {
     setLoading(true);
     try {
       const [projectsRes, agentsRes] = await Promise.all([
-        apiService.get<{data: {projects: Project[]}}> ('/projects'),
-        apiService.get<{data: {agents: Agent[]}}>('/agents')
+        apiService.get<{success: boolean; data: {projects: Project[]}}>('/projects'),
+        apiService.get<{success: boolean; data: {agents: Agent[]}}>('/agents')
       ]);
 
       setProjects(projectsRes.data.projects || []);
@@ -159,7 +171,7 @@ const Tasks: React.FC = () => {
     
     setLoading(true);
     try {
-      const response = await apiService.get<{data: {tasks: Task[]}}>('/tasks', {
+      const response = await apiService.get<{success: boolean; data: {tasks: Task[]}}>('/tasks', {
         params: { project_id: selectedProject }
       });
       setTasks(response.data.tasks || []);
@@ -177,7 +189,7 @@ const Tasks: React.FC = () => {
   const handleCreateTask = async (taskData: any) => {
     setCreating(true);
     try {
-      const response = await apiService.post<{data: {task: Task}}>('/tasks', {
+      const response = await apiService.post<{success: boolean; data: {task: Task}}>('/tasks', {
         ...taskData,
         project_id: selectedProject
       });
@@ -274,18 +286,19 @@ const Tasks: React.FC = () => {
             {/* Project Selection */}
             <div style={{ marginBottom: '16px' }}>
               <label style={{ marginRight: '8px' }}>Project:</label>
-              <select 
-                value={selectedProject} 
-                onChange={(e) => setSelectedProject(e.target.value)}
-                style={{ padding: '4px 8px', borderRadius: '4px', border: '1px solid #d9d9d9' }}
+              <Select
+                value={selectedProject || undefined}
+                placeholder="All Projects"
+                onChange={(value) => setSelectedProject(value || '')}
+                style={{ minWidth: '200px' }}
+                allowClear
               >
-                <option value="">All Projects</option>
                 {projects.map(project => (
-                  <option key={project.id} value={project.id}>
+                  <Select.Option key={project.id} value={project.id}>
                     {project.name}
-                  </option>
+                  </Select.Option>
                 ))}
-              </select>
+              </Select>
             </div>
           </Card>
         </Col>
@@ -297,7 +310,18 @@ const Tasks: React.FC = () => {
               onChange={setActiveTab}
               type="card"
             >
-              <TabPane tab="Task List" key="list">
+              <TabPane tab="Card View" key="list">
+                <TaskCardList
+                  tasks={tasks}
+                  loading={loading}
+                  onUpdateTask={handleUpdateTask}
+                  onDeleteTask={handleDeleteTask}
+                  projects={projects}
+                  agents={agents}
+                />
+              </TabPane>
+
+              <TabPane tab="Table View" key="table">
                 <TaskList
                   tasks={tasks}
                   loading={loading}

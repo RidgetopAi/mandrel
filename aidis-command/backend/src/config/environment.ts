@@ -11,7 +11,7 @@ export const config = {
   database: {
     user: process.env.DATABASE_USER || 'ridgetop',
     host: process.env.DATABASE_HOST || 'localhost',
-    database: process.env.DATABASE_NAME || 'aidis_production', 
+    database: process.env.DATABASE_NAME || 'aidis_ui_dev', 
     password: process.env.DATABASE_PASSWORD || 'bandy',
     port: parseInt(process.env.DATABASE_PORT || '5432'),
   },

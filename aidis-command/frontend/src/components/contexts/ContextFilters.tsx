@@ -8,6 +8,7 @@ import {
   CalendarOutlined, TagsOutlined, ProjectOutlined
 } from '@ant-design/icons';
 import { useContextSearch } from '../../stores/contextStore';
+// Oracle Phase 1: Removed useProjectContext - project scoping handled by API interceptor
 import { ContextApi } from '../../services/contextApi';
 import dayjs, { Dayjs } from 'dayjs';
 
@@ -38,8 +39,16 @@ const SORT_OPTIONS = [
 
 const ContextFilters: React.FC<ContextFiltersProps> = ({ onSearch, loading }) => {
   const { searchParams, updateSearchParam, clearFilters, isFiltered } = useContextSearch();
+  // Oracle Phase 1: Removed currentProject - project scoping handled by API interceptor
   const [localQuery, setLocalQuery] = useState(searchParams.query || '');
   const [searchTimeout, setSearchTimeout] = useState<NodeJS.Timeout | null>(null);
+
+  // Sync local query with global state when query is cleared externally
+  useEffect(() => {
+    if (!searchParams.query && localQuery) {
+      setLocalQuery('');
+    }
+  }, [searchParams.query, localQuery]);
 
   // Debounced search
   useEffect(() => {
@@ -83,6 +92,7 @@ const ContextFilters: React.FC<ContextFiltersProps> = ({ onSearch, loading }) =>
   const handleClearFilters = () => {
     setLocalQuery('');
     clearFilters();
+    // Oracle Phase 1: Removed manual project_id manipulation - handled by API interceptor
     onSearch?.();
   };
 
@@ -107,7 +117,7 @@ const ContextFilters: React.FC<ContextFiltersProps> = ({ onSearch, loading }) =>
     let count = 0;
     if (searchParams.query) count++;
     if (searchParams.type) count++;
-    if (searchParams.project_id) count++;
+    // Oracle Phase 1: Removed project_id from filter count - handled by API interceptor
     if (searchParams.tags?.length) count++;
     if (searchParams.date_from || searchParams.date_to) count++;
     if (searchParams.min_similarity && searchParams.min_similarity !== 0.3) count++;
@@ -152,10 +162,10 @@ const ContextFilters: React.FC<ContextFiltersProps> = ({ onSearch, loading }) =>
 
         {/* Quick Filters Row */}
         <Row gutter={16}>
-          <Col span={8}>
+          <Col span={12} xs={24} sm={12} md={8} lg={8}>
             <Select
               placeholder="Filter by type"
-              style={{ width: '100%' }}
+              style={{ width: '100%', minWidth: '200px' }}
               value={searchParams.type}
               onChange={(value) => {
                 updateSearchParam('type', value);
@@ -163,6 +173,7 @@ const ContextFilters: React.FC<ContextFiltersProps> = ({ onSearch, loading }) =>
                 onSearch?.();
               }}
               allowClear
+              dropdownMatchSelectWidth={false}
             >
               {CONTEXT_TYPES.map(type => (
                 <Option key={type.value} value={type.value}>
@@ -174,12 +185,13 @@ const ContextFilters: React.FC<ContextFiltersProps> = ({ onSearch, loading }) =>
             </Select>
           </Col>
           
-          <Col span={8}>
+          <Col span={12} xs={24} sm={12} md={8} lg={8}>
             <Select
               placeholder="Sort by"
-              style={{ width: '100%' }}
+              style={{ width: '100%', minWidth: '220px' }}
               value={getSortValue()}
               onChange={handleSortChange}
+              dropdownMatchSelectWidth={false}
             >
               {SORT_OPTIONS.map(option => (
                 <React.Fragment key={option.value}>
@@ -194,9 +206,9 @@ const ContextFilters: React.FC<ContextFiltersProps> = ({ onSearch, loading }) =>
             </Select>
           </Col>
 
-          <Col span={8}>
+          <Col span={12} xs={24} sm={24} md={8} lg={8}>
             <RangePicker
-              style={{ width: '100%' }}
+              style={{ width: '100%', minWidth: '240px' }}
               placeholder={['From Date', 'To Date']}
               value={[
                 searchParams.date_from ? dayjs(searchParams.date_from) : null,
@@ -219,12 +231,13 @@ const ContextFilters: React.FC<ContextFiltersProps> = ({ onSearch, loading }) =>
                 </Text>
                 <Select
                   mode="tags"
-                  style={{ width: '100%' }}
+                  style={{ width: '100%', minWidth: '300px' }}
                   placeholder="Enter or select tags..."
                   value={searchParams.tags}
                   onChange={handleTagsChange}
                   tokenSeparators={[',']}
                   maxTagCount="responsive"
+                  dropdownMatchSelectWidth={false}
                 >
                   {/* Common tags could be loaded from API */}
                   <Option value="important">important</Option>
@@ -266,13 +279,14 @@ const ContextFilters: React.FC<ContextFiltersProps> = ({ onSearch, loading }) =>
                   Results per Page
                 </Text>
                 <Select
-                  style={{ width: 120 }}
+                  style={{ width: 120, minWidth: '120px' }}
                   value={searchParams.limit}
                   onChange={(value) => {
                     updateSearchParam('limit', value);
                     updateSearchParam('offset', 0);
                     onSearch?.();
                   }}
+                  dropdownMatchSelectWidth={false}
                 >
                   <Option value={10}>10</Option>
                   <Option value={20}>20</Option>

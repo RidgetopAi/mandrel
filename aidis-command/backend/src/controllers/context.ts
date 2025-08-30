@@ -1,15 +1,17 @@
-import { Request, Response } from 'express';
+import { Response } from 'express';
+import { AuthenticatedRequest } from '../types/auth';
 import { ContextService, ContextSearchParams } from '../services/context';
 
 export class ContextController {
   /**
    * GET /api/contexts - List contexts with filtering and pagination
+   * Oracle Phase 1: Use req.projectId from middleware instead of query params
    */
-  static async searchContexts(req: Request, res: Response): Promise<void> {
+  static async searchContexts(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
       const params: ContextSearchParams = {
         ...(req.query.query && { query: req.query.query as string }),
-        ...(req.query.project_id && { project_id: req.query.project_id as string }),
+        ...(req.projectId && { project_id: req.projectId }),
         ...(req.query.type && { type: req.query.type as string }),
         ...(req.query.tags && { tags: (req.query.tags as string).split(',') }),
         ...(req.query.min_similarity && { min_similarity: parseFloat(req.query.min_similarity as string) }),
@@ -41,7 +43,7 @@ export class ContextController {
   /**
    * GET /api/contexts/:id - Get single context
    */
-  static async getContext(req: Request, res: Response): Promise<void> {
+  static async getContext(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
       const { id } = req.params;
       const context = await ContextService.getContextById(id);
@@ -71,7 +73,7 @@ export class ContextController {
   /**
    * PUT /api/contexts/:id - Update context
    */
-  static async updateContext(req: Request, res: Response): Promise<void> {
+  static async updateContext(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
       const { id } = req.params;
       const updates = req.body;
@@ -121,7 +123,7 @@ export class ContextController {
   /**
    * DELETE /api/contexts/:id - Delete single context
    */
-  static async deleteContext(req: Request, res: Response): Promise<void> {
+  static async deleteContext(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
       const { id } = req.params;
       const deleted = await ContextService.deleteContext(id);
@@ -151,7 +153,7 @@ export class ContextController {
   /**
    * DELETE /api/contexts/bulk - Bulk delete contexts
    */
-  static async bulkDeleteContexts(req: Request, res: Response): Promise<void> {
+  static async bulkDeleteContexts(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
       const { ids } = req.body;
 
@@ -182,11 +184,11 @@ export class ContextController {
 
   /**
    * GET /api/contexts/stats - Get context statistics
+   * Oracle Phase 1: Use req.projectId from middleware
    */
-  static async getContextStats(req: Request, res: Response): Promise<void> {
+  static async getContextStats(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
-      const project_id = req.query.project_id as string;
-      const stats = await ContextService.getContextStats(project_id);
+      const stats = await ContextService.getContextStats(req.projectId);
 
       res.json({
         success: true,
@@ -204,12 +206,13 @@ export class ContextController {
 
   /**
    * GET /api/contexts/export - Export contexts
+   * Oracle Phase 1: Use req.projectId from middleware
    */
-  static async exportContexts(req: Request, res: Response): Promise<void> {
+  static async exportContexts(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
       const params: ContextSearchParams = {
         ...(req.query.query && { query: req.query.query as string }),
-        ...(req.query.project_id && { project_id: req.query.project_id as string }),
+        ...(req.projectId && { project_id: req.projectId }),
         ...(req.query.type && { type: req.query.type as string }),
         ...(req.query.tags && { tags: (req.query.tags as string).split(',') }),
         ...(req.query.date_from && { date_from: req.query.date_from as string }),
@@ -237,7 +240,7 @@ export class ContextController {
   /**
    * GET /api/contexts/:id/related - Get related contexts
    */
-  static async getRelatedContexts(req: Request, res: Response): Promise<void> {
+  static async getRelatedContexts(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
       const { id } = req.params;
       const limit = req.query.limit ? parseInt(req.query.limit as string) : 5;
@@ -261,11 +264,13 @@ export class ContextController {
 
   /**
    * POST /api/contexts/search - Advanced semantic search
+   * Oracle Phase 1: Use req.projectId from middleware (override body if present)
    */
-  static async semanticSearch(req: Request, res: Response): Promise<void> {
+  static async semanticSearch(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
       const params: ContextSearchParams = {
         ...req.body,
+        ...(req.projectId && { project_id: req.projectId }), // Override with middleware projectId
         limit: req.body.limit || 20,
         offset: req.body.offset || 0
       };

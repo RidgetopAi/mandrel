@@ -52,4 +52,5 @@ export interface JWTPayload {
 export interface AuthenticatedRequest extends Request {
   user?: User;
   tokenId?: string;
+  projectId?: string; // Added for Oracle Phase 1: Project Context Middleware
 }

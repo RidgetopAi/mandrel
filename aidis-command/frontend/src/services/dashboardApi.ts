@@ -5,6 +5,7 @@ export interface DashboardStats {
   agents: number;
   projects: number;
   activeTasks: number;
+  totalTasks?: number;      // Oracle Phase 2: Include total tasks
   recentActivity?: {
     contextsThisWeek: number;
     sessionsThisWeek: number;
@@ -34,40 +35,54 @@ export interface ContextStats {
 class DashboardApi {
   /**
    * Get comprehensive dashboard statistics
+   * Oracle Phase 2: Use new /dashboard/stats endpoint with real counts
    */
   async getDashboardStats(): Promise<DashboardStats> {
     try {
-      // Fetch project stats and context stats in parallel
-      const [projectStatsResponse, contextStatsResponse] = await Promise.all([
-        apiClient.get<{ success: boolean; data: { stats: ProjectStats } }>('/projects/stats'),
-        apiClient.get<{ success: boolean; data: ContextStats }>('/contexts/stats')
-      ]);
+      // Oracle Phase 2: Use real dashboard endpoint for aggregated counts
+      const response = await apiClient.get<{ 
+        success: boolean; 
+        data: {
+          contexts: number;
+          activeTasks: number;
+          totalTasks: number;
+          projects: number;
+          agents: number;
+          recentActivity: {
+            contextsThisWeek: number;
+            tasksCompletedThisWeek: number;
+          };
+        }
+      }>('/dashboard/stats');
 
-      const projectStats = projectStatsResponse.data.stats;
-      const contextStats = contextStatsResponse.data;
+      // Extract data from API response
+      // Backend returns: { success: true, data: { contexts, activeTasks, ... } }
+      // API client returns the whole response, so we need response.data
+      const apiData = response.data;
       
-      console.log('📊 Dashboard API Debug:');
-      console.log('- Project stats response:', projectStatsResponse);
-      console.log('- Context stats response:', contextStatsResponse);
-      console.log('- Extracted project stats:', projectStats);
-      console.log('- Extracted context stats:', contextStats);
+      console.log('📊 Oracle Phase 2 Dashboard - API Response:', {
+        response: response,
+        extractedData: apiData,
+        endpoint: '/dashboard/stats'
+      });
 
-      // Combine data into dashboard format
-      const dashboardStats = {
-        contexts: contextStats.total_contexts,
-        agents: 0, // TODO: Add agents endpoint when available
-        projects: projectStats.total_projects,
-        activeTasks: 0, // TODO: Add tasks endpoint when available  
+      // Transform to frontend DashboardStats format (no hardcoded zeros!)
+      const dashboardStats: DashboardStats = {
+        contexts: apiData.contexts,
+        agents: apiData.agents,
+        projects: apiData.projects,
+        activeTasks: apiData.activeTasks,
         recentActivity: {
-          contextsThisWeek: projectStats.recent_activity.contexts_last_week,
-          sessionsThisWeek: projectStats.recent_activity.sessions_last_week
+          contextsThisWeek: apiData.recentActivity.contextsThisWeek,
+          sessionsThisWeek: apiData.recentActivity.tasksCompletedThisWeek
         }
       };
       
-      console.log('✅ Final dashboard stats:', dashboardStats);
+      console.log('✅ Oracle Phase 2 Dashboard - Final Stats:', dashboardStats);
       return dashboardStats;
+      
     } catch (error) {
-      console.error('Dashboard stats fetch error:', error);
+      console.error('❌ Oracle Phase 2 Dashboard API Error:', error);
       throw error;
     }
   }

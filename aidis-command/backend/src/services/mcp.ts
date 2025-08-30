@@ -47,7 +47,7 @@ export class McpService {
       
       const options = {
         hostname: 'localhost',
-        port: 8080,
+        port: process.env.AIDIS_MCP_PORT || 8081,
         path: `/mcp/tools/${toolName}`,
         method: 'POST',
         headers: {
@@ -86,6 +86,10 @@ export class McpService {
                     result = this.parseNamingCheck(textResult);
                   } else if (toolName === 'naming_suggest') {
                     result = this.parseNamingSuggest(textResult);
+                  } else if (toolName === 'decision_search') {
+                    result = this.parseDecisionSearch(textResult);
+                  } else if (toolName === 'decision_stats') {
+                    result = this.parseDecisionStats(textResult);
                   } else {
                     // For other tools, return the text as-is for now
                     result = textResult;
@@ -183,6 +187,158 @@ export class McpService {
       suggestions: [],
       message: text
     };
+  }
+
+  /**
+   * Parse decision search from AIDIS text response
+   */
+  private static parseDecisionSearch(text: string): any {
+    const result = {
+      results: [] as any[],
+      total: 0,
+      page: 1,
+      limit: 20
+    };
+
+    if (text.includes('No decisions found')) {
+      return result;
+    }
+
+    // Parse the decisions from the text response
+    // Format: "Found X technical decisions:"
+    const totalMatch = text.match(/Found (\d+) technical decisions?:/);
+    if (totalMatch) {
+      result.total = parseInt(totalMatch[1]);
+    }
+
+    // Parse individual decisions
+    const decisionBlocks = text.split(/\d+\.\s+\*\*/).slice(1);
+    
+    for (const block of decisionBlocks) {
+      const decision = this.parseDecisionBlock(block.trim());
+      if (decision) {
+        result.results.push(decision);
+      }
+    }
+
+    return result;
+  }
+
+  /**
+   * Parse individual decision block from AIDIS text
+   */
+  private static parseDecisionBlock(block: string): any | null {
+    try {
+      // Extract decision type from first line (e.g., "ARCHITECTURE** - critical impact")
+      const typeMatch = block.match(/^([A-Z]+)\*\*\s*-\s*([a-z]+)\s+impact/);
+      if (!typeMatch) return null;
+
+      const type = typeMatch[1];
+      const impact = typeMatch[2];
+
+      // Extract title (next line after emoji)
+      const titleMatch = block.match(/📝\s+(.+)/);
+      const title = titleMatch ? titleMatch[1].trim() : 'Untitled Decision';
+
+      // Extract rationale/description
+      const rationaleMatch = block.match(/💡\s+(.+)/);
+      const rationale = rationaleMatch ? rationaleMatch[1].trim() : '';
+
+      // Extract date and status
+      const dateStatusMatch = block.match(/📅\s+(\d{4}-\d{2}-\d{2})\s+\|\s+Status:\s+([a-z]+)/);
+      const date = dateStatusMatch ? dateStatusMatch[1] : new Date().toISOString().split('T')[0];
+      const status = dateStatusMatch ? dateStatusMatch[2] : 'active';
+
+      // Extract tags
+      const tagsMatch = block.match(/🏷️\s+\[([^\]]*)\]/);
+      const tags = tagsMatch && tagsMatch[1] ? tagsMatch[1].split(', ').filter(t => t.trim()) : [];
+
+      // Extract alternatives info
+      const alternativesMatch = block.match(/\((\d+)\s+alternatives?\s+considered\)/);
+      const alternativesCount = alternativesMatch ? parseInt(alternativesMatch[1]) : 0;
+
+      return {
+        id: Date.now() + Math.random(), // Generate a temporary ID
+        title,
+        decision_type: type.toLowerCase(),
+        impact_level: impact,
+        rationale,
+        status,
+        created_at: `${date}T00:00:00.000Z`,
+        updated_at: `${date}T00:00:00.000Z`,
+        tags,
+        alternatives: alternativesCount > 0 ? [`${alternativesCount} alternatives considered`] : [],
+        problem: rationale, // Use rationale as problem description
+        decision: title // Use title as the decision
+      };
+    } catch (error) {
+      console.error('Error parsing decision block:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Parse decision statistics from AIDIS text response
+   */
+  private static parseDecisionStats(text: string): any {
+    const stats: any = {
+      total_decisions: 0,
+      by_status: {},
+      by_type: {},
+      by_impact: {},
+      recent_decisions: 0,
+      success_rate: 0
+    };
+
+    // Extract total decisions
+    const totalMatch = text.match(/📈 Total Decisions:\s*(\d+)/);
+    if (totalMatch) stats.total_decisions = parseInt(totalMatch[1]);
+
+    // Extract success rate
+    const successMatch = text.match(/✅ Success Rate:\s*(\d+)%/);
+    if (successMatch) stats.success_rate = parseInt(successMatch[1]);
+
+    // Extract recent activity
+    const activityMatch = text.match(/🕐 Recent Activity:\s*(\d+)/);
+    if (activityMatch) stats.recent_decisions = parseInt(activityMatch[1]);
+
+    // Extract by type
+    const typeSection = text.match(/📋 By Type:([\s\S]*?)(?:\n\n|📊)/);
+    if (typeSection) {
+      const typeLines = typeSection[1].split('\n').filter(line => line.trim());
+      for (const line of typeLines) {
+        const typeMatch = line.match(/^\s*([^:]+):\s*(\d+)/);
+        if (typeMatch) {
+          stats.by_type[typeMatch[1].trim()] = parseInt(typeMatch[2]);
+        }
+      }
+    }
+
+    // Extract by status
+    const statusSection = text.match(/📊 By Status:([\s\S]*?)(?:\n\n|⚡)/);
+    if (statusSection) {
+      const statusLines = statusSection[1].split('\n').filter(line => line.trim());
+      for (const line of statusLines) {
+        const statusMatch = line.match(/^\s*([^:]+):\s*(\d+)/);
+        if (statusMatch) {
+          stats.by_status[statusMatch[1].trim()] = parseInt(statusMatch[2]);
+        }
+      }
+    }
+
+    // Extract by impact
+    const impactSection = text.match(/⚡ By Impact:([\s\S]*?)(?:\n\n|🎯|$)/);
+    if (impactSection) {
+      const impactLines = impactSection[1].split('\n').filter(line => line.trim());
+      for (const line of impactLines) {
+        const impactMatch = line.match(/^\s*([^:]+):\s*(\d+)/);
+        if (impactMatch) {
+          stats.by_impact[impactMatch[1].trim()] = parseInt(impactMatch[2]);
+        }
+      }
+    }
+
+    return stats;
   }
 
   /**

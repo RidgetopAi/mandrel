@@ -4,8 +4,8 @@ import {
   Select, Divider, Checkbox, Alert
 } from 'antd';
 import {
-  DeleteOutlined, ExportOutlined, TagOutlined, MoreOutlined,
-  CheckOutlined, CloseOutlined, DownloadOutlined
+  DeleteOutlined, ExportOutlined, MoreOutlined,
+  DownloadOutlined
 } from '@ant-design/icons';
 import { useContextSelection } from '../../stores/contextStore';
 import { ContextApi } from '../../services/contextApi';

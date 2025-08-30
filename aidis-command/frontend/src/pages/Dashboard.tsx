@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Typography,
@@ -10,6 +10,7 @@ import {
   Alert,
   Button,
   Spin,
+  Skeleton,
 } from 'antd';
 import {
   DatabaseOutlined,
@@ -20,8 +21,8 @@ import {
   ExclamationCircleOutlined,
 } from '@ant-design/icons';
 import { useAuthContext } from '../contexts/AuthContext';
-import { apiClient } from '../services/api';
-import dashboardApi from '../services/dashboardApi';
+import { useProjectContext } from '../contexts/ProjectContext';
+import { useDashboardStats } from '../hooks/useDashboardStats';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -34,48 +35,11 @@ interface SystemStats {
 
 const Dashboard: React.FC = () => {
   const { user } = useAuthContext();
+  const { currentProject } = useProjectContext();
   const navigate = useNavigate();
-  const [stats, setStats] = useState<SystemStats>({
-    contexts: 0,
-    agents: 0,
-    projects: 0,
-    activeTasks: 0,
-  });
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        setIsLoading(true);
-        setError(null);
-        
-        // Test API connectivity first
-        const health = await apiClient.ping();
-        console.log('API Health:', health);
-        
-        // Fetch real dashboard statistics
-        const dashboardStats = await dashboardApi.getDashboardStats();
-        setStats(dashboardStats);
-        
-      } catch (error: any) {
-        console.error('Failed to fetch dashboard stats:', error);
-        setError(error.message || 'Failed to load dashboard data');
-        
-        // Fallback to empty stats on error
-        setStats({
-          contexts: 0,
-          agents: 0,
-          projects: 0,
-          activeTasks: 0,
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchStats();
-  }, []);
+  
+  // Oracle Phase 2: Use dashboard stats hook with real data
+  const { stats, isLoading, error, refetch } = useDashboardStats();
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -84,11 +48,33 @@ const Dashboard: React.FC = () => {
     return 'Good evening';
   };
 
+  // Oracle Phase 2: Show loading skeleton until data arrives
   if (isLoading) {
     return (
-      <div style={{ textAlign: 'center', padding: '50px' }}>
-        <Spin size="large" tip="Loading dashboard..." />
-      </div>
+      <Space direction="vertical" size="large" style={{ width: '100%' }}>
+        <div>
+          <Title level={2} style={{ marginBottom: '8px' }}>
+            {getGreeting()}, {user?.firstName || user?.username}! 👋
+          </Title>
+          <Text type="secondary">
+            Welcome to AIDIS Command - Your AI Development Intelligence System
+          </Text>
+        </div>
+        
+        <Row gutter={[24, 24]}>
+          {[1, 2, 3, 4].map(i => (
+            <Col xs={24} sm={12} lg={6} key={i}>
+              <Card>
+                <Skeleton active title={false} paragraph={{ rows: 2 }} />
+              </Card>
+            </Col>
+          ))}
+        </Row>
+        
+        <div style={{ textAlign: 'center', padding: '20px' }}>
+          <Spin size="large" tip="Loading real-time dashboard data..." />
+        </div>
+      </Space>
     );
   }
 
@@ -115,7 +101,7 @@ const Dashboard: React.FC = () => {
             <Button
               size="small"
               type="primary"
-              onClick={() => window.location.reload()}
+              onClick={refetch}
             >
               Retry
             </Button>
@@ -124,18 +110,18 @@ const Dashboard: React.FC = () => {
         />
       )}
 
-      {/* Stats Cards */}
+      {/* Oracle Phase 2: Real Database Counts */}
       <Row gutter={[24, 24]}>
         <Col xs={24} sm={12} lg={6}>
           <Card>
             <Statistic
               title="Total Contexts"
-              value={stats.contexts}
+              value={stats?.contexts ?? 0}
               prefix={<DatabaseOutlined />}
               valueStyle={{ color: '#1890ff' }}
             />
             <Text type="secondary" style={{ fontSize: '12px' }}>
-              Development contexts stored
+              {currentProject ? `In ${currentProject.name}` : 'Development contexts stored'}
             </Text>
           </Card>
         </Col>
@@ -143,13 +129,13 @@ const Dashboard: React.FC = () => {
         <Col xs={24} sm={12} lg={6}>
           <Card>
             <Statistic
-              title="Active Agents"
-              value={stats.agents}
-              prefix={<TeamOutlined />}
-              valueStyle={{ color: '#52c41a' }}
+              title="Active Tasks"
+              value={stats?.activeTasks ?? 0}
+              prefix={<ClockCircleOutlined />}
+              valueStyle={{ color: '#fa8c16' }}
             />
             <Text type="secondary" style={{ fontSize: '12px' }}>
-              AI agents coordinating
+              {currentProject ? `In ${currentProject.name}` : 'Tasks in progress'}
             </Text>
           </Card>
         </Col>
@@ -158,7 +144,7 @@ const Dashboard: React.FC = () => {
           <Card>
             <Statistic
               title="Projects"
-              value={stats.projects}
+              value={stats?.projects ?? 0}
               prefix={<FolderOutlined />}
               valueStyle={{ color: '#722ed1' }}
             />
@@ -171,13 +157,13 @@ const Dashboard: React.FC = () => {
         <Col xs={24} sm={12} lg={6}>
           <Card>
             <Statistic
-              title="Active Tasks"
-              value={stats.activeTasks}
-              prefix={<ClockCircleOutlined />}
-              valueStyle={{ color: '#fa8c16' }}
+              title="Active Agents"
+              value={stats?.agents ?? 0}
+              prefix={<TeamOutlined />}
+              valueStyle={{ color: '#52c41a' }}
             />
             <Text type="secondary" style={{ fontSize: '12px' }}>
-              Tasks in progress
+              AI agents coordinating
             </Text>
           </Card>
         </Col>

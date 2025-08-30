@@ -8,6 +8,8 @@ import agentRoutes from './agents';
 import taskRoutes from './tasks';
 import decisionRoutes from './decisions';
 import namingRoutes from './naming';
+import dashboardRoutes from './dashboard';
+
 const router = Router();
 
 // Mount route modules
@@ -20,5 +22,6 @@ router.use('/agents', agentRoutes);
 router.use('/tasks', taskRoutes);
 router.use('/decisions', decisionRoutes);
 router.use('/naming', namingRoutes);
+router.use('/dashboard', dashboardRoutes);
 
 export default router;

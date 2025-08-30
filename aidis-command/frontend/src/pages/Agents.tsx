@@ -58,7 +58,7 @@ const Agents: React.FC = () => {
 
   // WebSocket connection for real-time updates
   const token = localStorage.getItem('aidis_token');
-  const backendPort = process.env.REACT_APP_BACKEND_PORT || '5000';
+  const backendPort = process.env.REACT_APP_BACKEND_PORT || '5001';
   const wsUrl = token ? `ws://localhost:${backendPort}/ws?token=${encodeURIComponent(token)}` : null;
   
   const { isConnected, sendMessage } = useWebSocket(wsUrl, {

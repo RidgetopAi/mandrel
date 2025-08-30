@@ -6,6 +6,7 @@ import morgan from 'morgan';
 import config from './config/environment';
 import { initializeDatabase } from './database/connection';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
+import { projectContextMiddleware } from './middleware/project';
 import { webSocketService } from './services/websocket';
 import apiRoutes from './routes';
 
@@ -32,6 +33,9 @@ if (config.nodeEnv === 'development') {
 } else {
   app.use(morgan('combined'));
 }
+
+// Oracle Phase 1: Project context middleware (applied to all API routes)
+app.use('/api', projectContextMiddleware);
 
 // API routes
 app.use('/api', apiRoutes);

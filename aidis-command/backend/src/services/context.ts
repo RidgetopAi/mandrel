@@ -40,6 +40,33 @@ export interface ContextStats {
 
 export class ContextService {
   /**
+   * Get context count for a project (Oracle Phase 2 dashboard requirement)
+   * This provides the core count used in dashboard aggregation
+   */
+  static async count(projectId?: string): Promise<number> {
+    try {
+      let query: string;
+      const params: any[] = [];
+      
+      if (projectId) {
+        query = 'SELECT COUNT(*) FROM contexts WHERE project_id = $1';
+        params.push(projectId);
+      } else {
+        query = 'SELECT COUNT(*) FROM contexts';
+      }
+      
+      const result = await pool.query(query, params);
+      const count = parseInt(result.rows[0].count);
+      
+      console.log(`📊 ContextService.count - Project: ${projectId || 'ALL'}, Count: ${count}`);
+      return count;
+    } catch (error) {
+      console.error('Context count error:', error);
+      throw new Error('Failed to get context count');
+    }
+  }
+
+  /**
    * Get contexts with filtering, search, and pagination
    */
   static async searchContexts(params: ContextSearchParams): Promise<{

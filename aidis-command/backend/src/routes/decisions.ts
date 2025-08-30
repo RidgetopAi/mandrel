@@ -9,6 +9,7 @@ router.use(authenticateToken);
 
 // Decision routes
 router.get('/', DecisionController.searchDecisions);
+router.post('/', DecisionController.recordDecision);
 router.get('/stats', DecisionController.getDecisionStats);
 router.get('/:id', DecisionController.getDecision);
 router.put('/:id', DecisionController.updateDecision);
