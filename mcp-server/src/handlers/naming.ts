@@ -74,6 +74,13 @@ export interface SuggestNameRequest {
   preferredPattern?: string;
 }
 
+export interface NamingSuggestion {
+  suggestedName: string;
+  explanation: string;
+  confidence: number;
+  similarExamples: string[];
+}
+
 export class NamingHandler {
 
   /**
@@ -223,7 +230,7 @@ export class NamingHandler {
   /**
    * Suggest names based on description and context
    */
-  async suggestNames(request: SuggestNameRequest): Promise<string[]> {
+  async suggestNames(request: SuggestNameRequest): Promise<NamingSuggestion[]> {
     console.log(`💡 Suggesting names for ${request.entityType}: "${request.description}"`);
 
     try {
@@ -263,31 +270,37 @@ export class NamingHandler {
       });
 
       // Generate suggestions based on description
-      const baseWords = this.extractKeywords(request.description);
-      const mostCommonPattern = this.getMostCommon(commonPatterns) || 'camelCase';
+      const expectedPattern = this.getExpectedPattern(request.entityType);
+      const baseWords = this.extractKeywords(request.description, expectedPattern);
 
       for (const word of baseWords) {
-        const baseSuggestion = this.applyNamingPattern(word, mostCommonPattern);
+        const baseSuggestion = this.applyNamingPattern(word, expectedPattern);
         
         // Add base suggestion
         suggestions.push(baseSuggestion);
 
-        // Add variations with prefixes/suffixes
+        // Only add prefix/suffix variations for meaningful, non-generic patterns
         const commonPrefix = this.getMostCommon(commonPrefixes);
         const commonSuffix = this.getMostCommon(commonSuffixes);
 
-        if (commonPrefix && request.entityType !== 'variable') {
-          suggestions.push(this.applyNamingPattern(`${commonPrefix}${word}`, mostCommonPattern));
+        // Filter out generic prefixes like "generate"
+        if (commonPrefix && 
+            request.entityType !== 'variable' && 
+            !this.isGenericPrefix(commonPrefix)) {
+          suggestions.push(this.applyNamingPattern(`${commonPrefix}${this.capitalize(word)}`, expectedPattern));
         }
-        if (commonSuffix && request.entityType !== 'variable') {
-          suggestions.push(this.applyNamingPattern(`${word}${commonSuffix}`, mostCommonPattern));
+        
+        if (commonSuffix && 
+            request.entityType !== 'variable' && 
+            !this.isGenericSuffix(commonSuffix)) {
+          suggestions.push(this.applyNamingPattern(`${word}${this.capitalize(commonSuffix)}`, expectedPattern));
         }
 
-        // Context-specific suggestions
+        // Context-specific suggestions (only if meaningful)
         if (request.contextTags) {
           for (const tag of request.contextTags) {
-            if (tag !== word.toLowerCase()) {
-              suggestions.push(this.applyNamingPattern(`${word}${tag}`, mostCommonPattern));
+            if (tag !== word.toLowerCase() && tag.length > 2) {
+              suggestions.push(this.applyNamingPattern(`${word}${this.capitalize(tag)}`, expectedPattern));
             }
           }
         }
@@ -295,7 +308,7 @@ export class NamingHandler {
 
       // Remove duplicates and check availability
       const uniqueSuggestions = Array.from(new Set(suggestions)).slice(0, 8);
-      const availableSuggestions: string[] = [];
+      const availableSuggestions: NamingSuggestion[] = [];
 
       for (const suggestion of uniqueSuggestions) {
         const conflicts = await this.checkNameConflicts({
@@ -305,7 +318,27 @@ export class NamingHandler {
         });
         
         if (conflicts.filter(c => c.severity === 'error').length === 0) {
-          availableSuggestions.push(suggestion);
+          // Find similar examples from patterns
+          const similarExamples = patterns.rows
+            .map(row => row.canonical_name)
+            .filter(name => name !== suggestion)
+            .slice(0, 3);
+
+          // Calculate confidence based on pattern match and conflicts
+          const warningCount = conflicts.filter(c => c.severity === 'warning').length;
+          const confidence = Math.max(0.3, Math.min(0.95, 
+            (similarExamples.length > 0 ? 0.8 : 0.6) - (warningCount * 0.1)
+          ));
+
+          // Generate explanation
+          const explanation = this.generateExplanation(suggestion, request.entityType, similarExamples, expectedPattern);
+
+          availableSuggestions.push({
+            suggestedName: suggestion,
+            explanation,
+            confidence,
+            similarExamples
+          });
         }
       }
 
@@ -482,7 +515,7 @@ export class NamingHandler {
     return conflicts;
   }
 
-  private extractKeywords(description: string): string[] {
+  private extractKeywords(description: string, pattern: string = 'camelCase'): string[] {
     // Enhanced semantic name generation from description
     const words = description
       .toLowerCase()
@@ -494,28 +527,96 @@ export class NamingHandler {
     const suggestions: string[] = [];
     
     if (words.length >= 2) {
-      // Create compound names from meaningful word combinations
-      suggestions.push(words.slice(0, 2).join('')); // First two words
+      // Create properly formatted compound names based on pattern
+      const twoWords = this.formatWords(words.slice(0, 2), pattern);
+      suggestions.push(twoWords);
+      
       if (words.length >= 3) {
-        suggestions.push(words.slice(0, 3).join('')); // First three words
-        suggestions.push(words[0] + words[2]); // First and third word
+        const threeWords = this.formatWords(words.slice(0, 3), pattern);
+        suggestions.push(threeWords);
+        
+        // Combine first and third word
+        const firstThirdCombo = this.formatWords([words[0], words[2]], pattern);
+        suggestions.push(firstThirdCombo);
       }
       
-      // Add single meaningful words with common patterns
-      const mainWord = words[0];
-      suggestions.push(mainWord + 'Service');
-      suggestions.push(mainWord + 'Handler');
-      suggestions.push(mainWord + 'Manager');
-      suggestions.push(mainWord + 'Validator');
+      // Add semantic variations
+      const mainVerb = words[0];
+      const mainNoun = words[1];
+      
+      // Create alternative verb + noun combinations
+      if (mainVerb === 'authenticate') {
+        suggestions.push(this.formatWords(['verify', mainNoun], pattern));
+        suggestions.push(this.formatWords(['validate', mainNoun], pattern));
+        if (mainNoun === 'user') {
+          suggestions.push(this.formatWords(['login', 'user'], pattern));
+          suggestions.push(this.formatWords(['check', 'credentials'], pattern));
+        }
+      }
+      
     } else if (words.length === 1) {
       const word = words[0];
-      suggestions.push(word);
-      suggestions.push(word + 'Service');
-      suggestions.push(word + 'Handler');
+      suggestions.push(this.applyNamingPattern(word, pattern));
     }
     
     // Remove duplicates and return reasonable number of suggestions
-    return Array.from(new Set(suggestions)).slice(0, 5);
+    return Array.from(new Set(suggestions)).slice(0, 6);
+  }
+
+  /**
+   * Convert array of words to proper camelCase
+   */
+  private toCamelCase(words: string[]): string {
+    if (words.length === 0) return '';
+    if (words.length === 1) return words[0];
+    
+    return words[0] + words.slice(1)
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join('');
+  }
+
+  /**
+   * Format words according to the specified pattern
+   */
+  private formatWords(words: string[], pattern: string): string {
+    if (words.length === 0) return '';
+    
+    switch (pattern) {
+      case 'PascalCase':
+        return words.map(word => this.capitalize(word)).join('');
+      case 'camelCase':
+        return this.toCamelCase(words);
+      case 'snake_case':
+        return words.join('_').toLowerCase();
+      case 'SCREAMING_SNAKE_CASE':
+        return words.join('_').toUpperCase();
+      default:
+        return this.toCamelCase(words);
+    }
+  }
+
+  /**
+   * Check if a prefix is too generic to be useful
+   */
+  private isGenericPrefix(prefix: string): boolean {
+    const genericPrefixes = ['generate', 'create', 'make', 'do', 'get', 'set', 'handle', 'process'];
+    return genericPrefixes.includes(prefix.toLowerCase());
+  }
+
+  /**
+   * Check if a suffix is too generic to be useful
+   */
+  private isGenericSuffix(suffix: string): boolean {
+    const genericSuffixes = ['thing', 'item', 'object', 'data', 'info'];
+    return genericSuffixes.includes(suffix.toLowerCase());
+  }
+
+  /**
+   * Capitalize first letter of a word
+   */
+  private capitalize(word: string): string {
+    if (!word) return word;
+    return word.charAt(0).toUpperCase() + word.slice(1);
   }
 
   private isStopWord(word: string): boolean {
@@ -550,6 +651,29 @@ export class NamingHandler {
     };
     
     return patterns[entityType] || 'camelCase';
+  }
+
+  private generateExplanation(suggestion: string, entityType: string, similarExamples: string[], expectedPattern: string): string {
+    const explanations: string[] = [];
+    
+    // Pattern-based explanation
+    explanations.push(`Follows ${expectedPattern} pattern for ${entityType} naming`);
+    
+    // Similar examples context
+    if (similarExamples.length > 0) {
+      explanations.push(`Consistent with existing names like: ${similarExamples.join(', ')}`);
+    }
+    
+    // Entity type specific guidance
+    if (entityType === 'function') {
+      explanations.push('Uses descriptive verb naming convention');
+    } else if (entityType === 'variable') {
+      explanations.push('Clear and concise variable naming');
+    } else if (entityType === 'class') {
+      explanations.push('Noun-based class naming convention');
+    }
+    
+    return explanations.join('. ');
   }
 
   private getMostCommon<T>(map: Map<T, number>): T | undefined {

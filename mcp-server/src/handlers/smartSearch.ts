@@ -214,7 +214,11 @@ export class SmartSearchHandler {
         try {
             if (type === 'naming' || type === 'implementation') {
                 // Naming recommendations based on existing patterns
-                const suggestedNames = await namingHandler.suggestNames(projectId, context, 'function');
+                const suggestedNames = await namingHandler.suggestNames({
+                    projectId,
+                    entityType: 'function',
+                    description: context
+                });
                 for (const suggestion of suggestedNames) {
                     recommendations.push({
                         type: 'naming',

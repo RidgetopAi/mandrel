@@ -175,21 +175,21 @@ export const agentSchemas = {
   list: z.object({}),
   
   status: z.object({
-    agentId: z.string().uuid().optional()
+    agentId: z.string().min(1).max(100)
   }),
   
   join: z.object({
-    agentId: z.string().uuid(),
+    agentId: z.string().min(1).max(100),
     sessionId: z.string().uuid().optional()
   }),
   
   leave: z.object({
-    agentId: z.string().uuid(),
+    agentId: z.string().min(1).max(100),
     sessionId: z.string().uuid().optional()
   }),
   
   sessions: z.object({
-    agentId: z.string().uuid().optional()
+    agentId: z.string().min(1).max(100).optional()
   }),
   
   message: z.object({
@@ -205,7 +205,7 @@ export const agentSchemas = {
   }),
   
   messages: z.object({
-    agentId: z.string().uuid().optional(),
+    agentId: z.string().min(1).max(100).optional(),
     limit: baseLimit,
     since: z.string().datetime().optional()
   })
@@ -237,7 +237,7 @@ export const taskSchemas = {
     taskId: z.string().uuid(),
     status: z.enum(['todo', 'in_progress', 'completed', 'blocked']).optional(),
     priority: z.enum(['low', 'medium', 'high', 'urgent']).optional(),
-    assignedAgent: z.string().uuid().optional(),
+    assignedTo: z.string().uuid().optional(),
     progress: z.number().min(0).max(100).optional(),
     notes: z.string().max(2000).optional()
   })
