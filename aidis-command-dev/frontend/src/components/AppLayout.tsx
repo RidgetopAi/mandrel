@@ -19,6 +19,7 @@ import {
   ProjectOutlined,
   FolderOutlined,
   BulbOutlined,
+  TagOutlined,
   SettingOutlined,
   UserOutlined,
   LogoutOutlined,
@@ -65,6 +66,11 @@ const AppLayout: React.FC = () => {
       key: '/decisions',
       icon: <BulbOutlined />,
       label: 'Decisions',
+    },
+    {
+      key: '/naming',
+      icon: <TagOutlined />,
+      label: 'Naming Registry',
     },
     {
       key: '/projects',
