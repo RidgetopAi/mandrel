@@ -313,7 +313,7 @@ export class DecisionsHandler {
         paramIndex++;
       }
 
-      if (request.query) {
+      if (request.query && request.query !== '*') {
         sql += ` AND (
           title ILIKE $${paramIndex} OR 
           description ILIKE $${paramIndex} OR 

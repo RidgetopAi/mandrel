@@ -324,7 +324,10 @@ class AIDISServer {
       });
 
       const requestData = body ? JSON.parse(body) : {};
-      const args = requestData.arguments || requestData.args || {};
+      const rawArgs = requestData.arguments || requestData.args || {};
+
+      // Fix array parameter deserialization for Claude Code compatibility
+      const args = this.deserializeParameters(rawArgs);
 
       // Execute the tool using the same logic as MCP handler
       const result = await this.executeMcpTool(toolName, args);
@@ -1467,11 +1470,14 @@ class AIDISServer {
 
     // Handle tool execution requests - actually runs the tools
     this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
-      const { name, arguments: args } = request.params;
+      const { name, arguments: rawArgs } = request.params;
 
       try {
+        // Fix array parameter deserialization for Claude Code compatibility
+        const args = this.deserializeParameters(rawArgs || {});
+
         // Use shared tool execution logic
-        return await this.executeMcpTool(name, args || {});
+        return await this.executeMcpTool(name, args);
       } catch (error) {
         console.error(`Error executing tool ${name}:`, error);
         throw new McpError(
@@ -1514,6 +1520,42 @@ class AIDISServer {
       
       throw new McpError(ErrorCode.InvalidRequest, `Unknown resource: ${uri}`);
     });
+  }
+
+  /**
+   * Deserialize parameters that may have been JSON-stringified by MCP transport layer
+   * This fixes the array parameter handling issue where Claude Code serializes arrays as strings
+   */
+  private deserializeParameters(args: any): any {
+    if (!args || typeof args !== 'object') {
+      return args;
+    }
+
+    const result = { ...args };
+
+    // Known array parameters that might be serialized as strings
+    const arrayParams = ['tags', 'aliases', 'contextTags', 'dependencies', 'capabilities', 
+                         'alternativesConsidered', 'affectedComponents', 'contextRefs', 
+                         'taskRefs', 'paths'];
+
+    for (const param of arrayParams) {
+      if (result[param] && typeof result[param] === 'string') {
+        try {
+          // Try to parse as JSON array
+          const parsed = JSON.parse(result[param]);
+          if (Array.isArray(parsed)) {
+            result[param] = parsed;
+            // Minimal logging for production
+            console.error(`✅ Deserialized ${param} array parameter (${parsed.length} items)`);
+          }
+        } catch (error) {
+          // If parsing fails, leave as string - might be intentional
+          // Silently continue - this is expected for non-array string parameters
+        }
+      }
+    }
+
+    return result;
   }
 
   /**
