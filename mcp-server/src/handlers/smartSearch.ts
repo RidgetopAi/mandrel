@@ -35,38 +35,63 @@ export class SmartSearchHandler {
         limit: number = 10
     ): Promise<SmartSearchResult[]> {
         console.log(`🔍 Smart search for: "${query}" in project ${projectId}`);
+        console.log(`📋 Include types: [${includeTypes.join(', ')}]`);
+        console.log(`🎯 Limit: ${limit}`);
         
         const results: SmartSearchResult[] = [];
 
         try {
             // Search contexts using semantic search
             if (includeTypes.includes('context')) {
-                const contextResults = await contextHandler.searchContext(projectId, query, Math.ceil(limit / 2));
+                console.log(`🔍 Searching contexts...`);
+                const contextLimit = Math.ceil(limit / 2);
+                console.log(`📊 Context search limit: ${contextLimit}`);
+                
+                const contextResults = await contextHandler.searchContext({
+                    projectId,
+                    query, 
+                    limit: contextLimit
+                });
+                
+                console.log(`📝 Context search returned ${contextResults.length} results`);
+                
                 for (const context of contextResults) {
+                    console.log(`   - Context ${context.id}: similarity=${context.similarity}%, type=${context.contextType}`);
                     results.push({
                         type: 'context',
                         id: context.id,
-                        title: `${context.type.toUpperCase()}: ${context.content.substring(0, 60)}...`,
+                        title: `${context.contextType.toUpperCase()}: ${context.content.substring(0, 60)}...`,
                         summary: context.content,
-                        relevanceScore: context.similarityScore || 0,
+                        relevanceScore: (context.similarity || 0) / 100, // Convert percentage to 0-1 scale
                         metadata: { 
                             tags: context.tags, 
-                            type: context.type,
+                            type: context.contextType,
                             createdAt: context.createdAt
                         },
                         source: 'semantic_search'
                     });
                 }
+                console.log(`✅ Added ${contextResults.length} context results to smart search`);
+            } else {
+                console.log(`⏭️  Skipping context search (not in includeTypes)`);
             }
 
             // Search technical decisions
             if (includeTypes.includes('decision')) {
+                console.log(`🎯 Searching decisions...`);
+                const decisionLimit = Math.ceil(limit / 4);
+                console.log(`📊 Decision search limit: ${decisionLimit}`);
+                
                 const decisions = await decisionsHandler.searchDecisions({
                     projectId,
                     query,
-                    limit: Math.ceil(limit / 4)
+                    limit: decisionLimit
                 });
+                
+                console.log(`🎯 Decision search returned ${decisions.length} results`);
+                
                 for (const decision of decisions) {
+                    console.log(`   - Decision ${decision.id}: ${decision.title}`);
                     results.push({
                         type: 'decision',
                         id: decision.id,
@@ -81,6 +106,9 @@ export class SmartSearchHandler {
                         source: 'decision_search'
                     });
                 }
+                console.log(`✅ Added ${decisions.length} decision results to smart search`);
+            } else {
+                console.log(`⏭️  Skipping decision search (not in includeTypes)`);
             }
 
             // Search naming registry
@@ -154,14 +182,23 @@ export class SmartSearchHandler {
                 }
             }
         } catch (error) {
-            console.error('Error in smart search:', error);
+            console.error('❌ Error in smart search:', error);
         }
+
+        console.log(`📊 Total results before sorting: ${results.length}`);
+        results.forEach((result, index) => {
+            console.log(`   ${index + 1}. [${result.type}] ${result.title.substring(0, 50)}... (score: ${result.relevanceScore})`);
+        });
 
         // Sort by relevance score and limit
         results.sort((a, b) => b.relevanceScore - a.relevanceScore);
         const limitedResults = results.slice(0, limit);
         
-        console.log(`✅ Smart search found ${limitedResults.length} results`);
+        console.log(`✅ Smart search found ${limitedResults.length} final results (after sorting and limiting)`);
+        limitedResults.forEach((result, index) => {
+            console.log(`   ${index + 1}. [${result.type}] ${result.title.substring(0, 50)}... (score: ${result.relevanceScore})`);
+        });
+        
         return limitedResults;
     }
 
@@ -196,18 +233,22 @@ export class SmartSearchHandler {
 
             if (type === 'implementation' || type === 'architecture') {
                 // Find similar implementations using semantic search
-                const similarContexts = await contextHandler.searchContext(projectId, context, 3);
+                const similarContexts = await contextHandler.searchContext({
+                    projectId,
+                    query: context, 
+                    limit: 3
+                });
                 for (const ctx of similarContexts) {
-                    if (ctx.type === 'code' && ctx.similarityScore && ctx.similarityScore > 0.7) {
+                    if (ctx.contextType === 'code' && ctx.similarity && ctx.similarity > 0.7) {
                         recommendations.push({
                             type: 'pattern',
                             title: `Consider similar implementation pattern`,
                             description: `Found similar code: ${ctx.content.substring(0, 100)}...`,
-                            confidence: ctx.similarityScore,
+                            confidence: ctx.similarity,
                             actionable: true,
                             references: [ctx.id],
                             metadata: {
-                                contextType: ctx.type,
+                                contextType: ctx.contextType,
                                 tags: ctx.tags
                             }
                         });
