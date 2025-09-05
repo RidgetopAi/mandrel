@@ -7,7 +7,13 @@ export interface TechnicalDecision {
   decision: string;
   rationale?: string;
   alternatives?: string[];
-  status: 'proposed' | 'accepted' | 'rejected' | 'superseded' | 'deprecated';
+  status: 'active' | 'superseded' | 'deprecated' | 'under_review';
+  outcomeStatus?: 'unknown' | 'successful' | 'failed' | 'mixed' | 'too_early';
+  outcomeNotes?: string;
+  lessonsLearned?: string;
+  supersededBy?: string;
+  supersededReason?: string;
+  // Deprecated fields for backward compatibility
   outcome?: string;
   lessons?: string;
   created_at: string;

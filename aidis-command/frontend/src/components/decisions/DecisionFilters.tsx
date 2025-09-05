@@ -77,9 +77,8 @@ const DecisionFilters: React.FC<DecisionFiltersProps> = ({
   };
 
   const statusOptions = [
-    { label: 'Proposed', value: 'proposed', color: '#1890ff' },
-    { label: 'Accepted', value: 'accepted', color: '#52c41a' },
-    { label: 'Rejected', value: 'rejected', color: '#ff4d4f' },
+    { label: 'Active', value: 'active', color: '#52c41a' },
+    { label: 'Under Review', value: 'under_review', color: '#1890ff' },
     { label: 'Superseded', value: 'superseded', color: '#fa8c16' },
     { label: 'Deprecated', value: 'deprecated', color: '#8c8c8c' },
   ];

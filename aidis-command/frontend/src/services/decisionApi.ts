@@ -138,9 +138,8 @@ export class DecisionApi {
    */
   static getStatusDisplayName(status: string): string {
     const statusMap: Record<string, string> = {
-      proposed: 'Proposed',
-      accepted: 'Accepted',
-      rejected: 'Rejected',
+      active: 'Active',
+      under_review: 'Under Review',
       superseded: 'Superseded',
       deprecated: 'Deprecated'
     };
@@ -152,9 +151,8 @@ export class DecisionApi {
    */
   static getStatusColor(status: string): string {
     const colorMap: Record<string, string> = {
-      proposed: '#1890ff',
-      accepted: '#52c41a',
-      rejected: '#ff4d4f',
+      active: '#52c41a',
+      under_review: '#1890ff',
       superseded: '#fa8c16',
       deprecated: '#8c8c8c'
     };
@@ -201,10 +199,10 @@ export class DecisionApi {
       (Date.now() - new Date(decision.created_at).getTime()) / (1000 * 60 * 60 * 24)
     );
 
-    if (decision.status === 'proposed' && daysSinceCreated > 30) {
+    if (decision.status === 'under_review' && daysSinceCreated > 30) {
       return 'high';
     }
-    if (decision.status === 'accepted' && !decision.outcome) {
+    if (decision.status === 'active' && !decision.outcomeNotes) {
       return 'medium';
     }
     return 'low';

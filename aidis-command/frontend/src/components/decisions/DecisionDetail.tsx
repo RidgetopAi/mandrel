@@ -6,7 +6,6 @@ import {
   Button,
   Card,
   Tag,
-  Divider,
   Form,
   Input,
   Select,
@@ -60,9 +59,11 @@ const DecisionDetail: React.FC<DecisionDetailProps> = ({
   useEffect(() => {
     if (decision && visible) {
       form.setFieldsValue({
-        outcome: decision.outcome || '',
-        lessons: decision.lessons || '',
-        status: decision.status
+        status: decision.status,
+        outcomeStatus: decision.outcomeStatus || 'unknown',
+        outcomeNotes: decision.outcomeNotes || '',
+        lessonsLearned: decision.lessonsLearned || '',
+        supersededReason: decision.supersededReason || ''
       });
       setEditMode(false);
     }
@@ -79,9 +80,11 @@ const DecisionDetail: React.FC<DecisionDetailProps> = ({
   const handleCancel = () => {
     setEditMode(false);
     form.setFieldsValue({
-      outcome: decision.outcome || '',
-      lessons: decision.lessons || '',
-      status: decision.status
+      status: decision.status,
+      outcomeStatus: decision.outcomeStatus || 'unknown',
+      outcomeNotes: decision.outcomeNotes || '',
+      lessonsLearned: decision.lessonsLearned || '',
+      supersededReason: decision.supersededReason || ''
     });
   };
 
@@ -134,11 +137,13 @@ const DecisionDetail: React.FC<DecisionDetailProps> = ({
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'accepted':
+      case 'active':
         return <CheckCircleOutlined style={{ color: '#52c41a' }} />;
-      case 'rejected':
+      case 'superseded':
         return <CloseCircleOutlined style={{ color: '#ff4d4f' }} />;
-      case 'proposed':
+      case 'deprecated':
+        return <ExclamationCircleOutlined style={{ color: '#fa8c16' }} />;
+      case 'under_review':
         return <ExclamationCircleOutlined style={{ color: '#1890ff' }} />;
       default:
         return <BulbOutlined style={{ color: '#fa8c16' }} />;
@@ -349,17 +354,30 @@ const DecisionDetail: React.FC<DecisionDetailProps> = ({
                   rules={[{ required: true, message: 'Please select a status' }]}
                 >
                   <Select>
-                    <Select.Option value="proposed">Proposed</Select.Option>
-                    <Select.Option value="accepted">Accepted</Select.Option>
-                    <Select.Option value="rejected">Rejected</Select.Option>
+                    <Select.Option value="active">Active</Select.Option>
                     <Select.Option value="superseded">Superseded</Select.Option>
                     <Select.Option value="deprecated">Deprecated</Select.Option>
+                    <Select.Option value="under_review">Under Review</Select.Option>
                   </Select>
                 </Form.Item>
 
                 <Form.Item 
-                  name="outcome" 
-                  label="Outcome"
+                  name="outcomeStatus" 
+                  label="Outcome Status"
+                  help="How did this decision turn out?"
+                >
+                  <Select>
+                    <Select.Option value="unknown">Unknown</Select.Option>
+                    <Select.Option value="successful">Successful</Select.Option>
+                    <Select.Option value="failed">Failed</Select.Option>
+                    <Select.Option value="mixed">Mixed Results</Select.Option>
+                    <Select.Option value="too_early">Too Early to Tell</Select.Option>
+                  </Select>
+                </Form.Item>
+
+                <Form.Item 
+                  name="outcomeNotes" 
+                  label="Outcome Notes"
                   help="Document the actual results of implementing this decision"
                 >
                   <TextArea
@@ -369,7 +387,7 @@ const DecisionDetail: React.FC<DecisionDetailProps> = ({
                 </Form.Item>
 
                 <Form.Item 
-                  name="lessons" 
+                  name="lessonsLearned" 
                   label="Lessons Learned"
                   help="What would you do differently next time?"
                 >
@@ -378,32 +396,72 @@ const DecisionDetail: React.FC<DecisionDetailProps> = ({
                     placeholder="Document key insights and lessons learned..."
                   />
                 </Form.Item>
+
+                <Form.Item 
+                  name="supersededReason" 
+                  label="Superseded Reason"
+                  help="If this decision was superseded, explain why"
+                >
+                  <TextArea
+                    rows={3}
+                    placeholder="Explain why this decision was superseded..."
+                  />
+                </Form.Item>
               </Card>
             </Form>
           ) : (
             <>
-              {/* Outcome */}
-              {decision.outcome ? (
+              {/* Outcome Status and Notes */}
+              {decision.outcomeStatus && decision.outcomeStatus !== 'unknown' && (
                 <Card title="Outcome" size="small">
-                  <Paragraph>
-                    {decision.outcome}
-                  </Paragraph>
+                  <div style={{ marginBottom: 12 }}>
+                    <Text strong>Status: </Text>
+                    <Tag color={
+                      decision.outcomeStatus === 'successful' ? 'green' :
+                      decision.outcomeStatus === 'failed' ? 'red' :
+                      decision.outcomeStatus === 'mixed' ? 'orange' : 'blue'
+                    }>
+                      {decision.outcomeStatus === 'too_early' ? 'Too Early to Tell' : 
+                       decision.outcomeStatus.charAt(0).toUpperCase() + decision.outcomeStatus.slice(1)}
+                    </Tag>
+                  </div>
+                  {decision.outcomeNotes && (
+                    <Paragraph>
+                      {decision.outcomeNotes}
+                    </Paragraph>
+                  )}
                 </Card>
-              ) : decision.status === 'accepted' && (
-                <Alert
-                  type="warning"
-                  message="Outcome Documentation Pending"
-                  description="This decision has been accepted but the outcome has not been documented yet. Consider adding the results of implementing this decision."
-                  showIcon
-                />
               )}
 
+              {!decision.outcomeStatus || decision.outcomeStatus === 'unknown' ? (
+                <Alert
+                  type="info"
+                  message="Outcome Documentation Pending"
+                  description="Consider documenting the results of implementing this decision."
+                  showIcon
+                />
+              ) : null}
+
               {/* Lessons Learned */}
-              {decision.lessons && (
+              {decision.lessonsLearned && (
                 <Card title="Lessons Learned" size="small">
                   <Paragraph>
-                    {decision.lessons}
+                    {decision.lessonsLearned}
                   </Paragraph>
+                </Card>
+              )}
+
+              {/* Superseded Information */}
+              {decision.status === 'superseded' && decision.supersededReason && (
+                <Card title="Superseded" size="small">
+                  <Paragraph>
+                    <strong>Reason: </strong>{decision.supersededReason}
+                  </Paragraph>
+                  {decision.supersededBy && (
+                    <Paragraph>
+                      <strong>Superseded by: </strong>{decision.supersededBy}
+                    </Paragraph>
+                  )}
                 </Card>
               )}
             </>

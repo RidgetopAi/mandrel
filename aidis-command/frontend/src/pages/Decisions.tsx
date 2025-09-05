@@ -90,9 +90,8 @@ const Decisions: React.FC = () => {
       setStats({
         total_decisions: 0,
         by_status: {
-          proposed: 0,
-          accepted: 0,
-          rejected: 0,
+          active: 0,
+          under_review: 0,
           superseded: 0,
           deprecated: 0
         },

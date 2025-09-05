@@ -52,11 +52,13 @@ const DecisionCard: React.FC<DecisionCardProps> = ({
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'accepted':
+      case 'active':
         return <CheckCircleOutlined style={{ color: '#52c41a' }} />;
-      case 'rejected':
+      case 'superseded':
         return <CloseCircleOutlined style={{ color: '#ff4d4f' }} />;
-      case 'proposed':
+      case 'deprecated':
+        return <ExclamationCircleOutlined style={{ color: '#fa8c16' }} />;
+      case 'under_review':
         return <ExclamationCircleOutlined style={{ color: '#1890ff' }} />;
       default:
         return <BulbOutlined style={{ color: '#fa8c16' }} />;
@@ -200,7 +202,7 @@ const DecisionCard: React.FC<DecisionCardProps> = ({
             )}
 
             {/* Outcome Status */}
-            {decision.status === 'accepted' && (
+            {decision.status === 'active' && (
               <Space>
                 {decision.outcome ? (
                   <>
