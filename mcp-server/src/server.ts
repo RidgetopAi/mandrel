@@ -432,15 +432,6 @@ class AIDISServer {
       case 'decision_stats':
         return await this.handleDecisionStats(args as any);
         
-      case 'agent_register':
-        return await this.handleAgentRegister(args as any);
-        
-      case 'agent_list':
-        return await this.handleAgentList(args as any);
-        
-      case 'agent_status':
-        return await this.handleAgentStatus(args as any);
-        
       case 'task_create':
         return await this.handleTaskCreate(args as any);
         
@@ -449,21 +440,6 @@ class AIDISServer {
         
       case 'task_update':
         return await this.handleTaskUpdate(args as any);
-        
-      case 'agent_message':
-        return await this.handleAgentMessage(args as any);
-        
-      case 'agent_messages':
-        return await this.handleAgentMessages(args as any);
-        
-      case 'agent_join':
-        return await this.handleAgentJoin(args as any);
-        
-      case 'agent_leave':
-        return await this.handleAgentLeave(args as any);
-        
-      case 'agent_sessions':
-        return await this.handleAgentSessions(args as any);
         
       case 'code_analyze':
         return await this.handleCodeAnalyze(args as any);
@@ -1003,71 +979,9 @@ class AIDISServer {
               }
             },
           },
-          {
-            name: 'agent_register',
-            description: 'Register an AI agent for multi-agent coordination',
-            inputSchema: {
-              type: 'object',
-              properties: {
-                name: {
-                  type: 'string',
-                  description: 'Unique agent name'
-                },
-                type: {
-                  type: 'string',
-                  description: 'Agent type (ai_assistant, code_reviewer, tester, etc.)',
-                  default: 'ai_assistant'
-                },
-                capabilities: {
-                  type: 'array',
-                  items: { type: 'string' },
-                  description: 'Agent capabilities (coding, testing, review, etc.)',
-                  default: ['coding']
-                },
-                metadata: {
-                  type: 'object',
-                  description: 'Additional agent metadata'
-                }
-              },
-              required: ['name']
-            },
-          },
-          {
-            name: 'agent_list',
-            description: 'List all registered agents, optionally filtered by project',
-            inputSchema: {
-              type: 'object',
-              properties: {
-                projectId: {
-                  type: 'string',
-                  description: 'Optional project ID to filter agents (uses current if not specified)'
-                }
-              }
-            },
-          },
-          {
-            name: 'agent_status',
-            description: 'Update agent status (active, busy, offline, error)',
-            inputSchema: {
-              type: 'object',
-              properties: {
-                agentId: {
-                  type: 'string',
-                  description: 'Agent ID'
-                },
-                status: {
-                  type: 'string',
-                  enum: ['active', 'busy', 'offline', 'error'],
-                  description: 'New agent status'
-                },
-                metadata: {
-                  type: 'object',
-                  description: 'Additional status metadata'
-                }
-              },
-              required: ['agentId', 'status']
-            },
-          },
+
+
+
           {
             name: 'task_create',
             description: 'Create a new task for agent coordination',
@@ -1172,140 +1086,10 @@ class AIDISServer {
               required: ['taskId', 'status']
             },
           },
-          {
-            name: 'agent_message',
-            description: 'Send a message between agents',
-            inputSchema: {
-              type: 'object',
-              properties: {
-                fromAgentId: {
-                  type: 'string',
-                  description: 'Sending agent ID'
-                },
-                content: {
-                  type: 'string',
-                  description: 'Message content'
-                },
-                toAgentId: {
-                  type: 'string',
-                  description: 'Receiving agent ID (omit for broadcast)'
-                },
-                messageType: {
-                  type: 'string',
-                  description: 'Message type (info, request, response, alert, coordination)',
-                  default: 'info'
-                },
-                title: {
-                  type: 'string',
-                  description: 'Message title'
-                },
-                contextRefs: {
-                  type: 'array',
-                  items: { type: 'string' },
-                  description: 'References to relevant context IDs'
-                },
-                taskRefs: {
-                  type: 'array',
-                  items: { type: 'string' },
-                  description: 'References to relevant task IDs'
-                },
-                projectId: {
-                  type: 'string',
-                  description: 'Optional project ID (uses current if not specified)'
-                },
-                metadata: {
-                  type: 'object',
-                  description: 'Additional message metadata'
-                }
-              },
-              required: ['fromAgentId', 'content']
-            },
-          },
-          {
-            name: 'agent_messages',
-            description: 'Get messages for an agent or project',
-            inputSchema: {
-              type: 'object',
-              properties: {
-                projectId: {
-                  type: 'string',
-                  description: 'Optional project ID (uses current if not specified)'
-                },
-                agentId: {
-                  type: 'string',
-                  description: 'Filter messages for specific agent'
-                },
-                messageType: {
-                  type: 'string',
-                  description: 'Filter by message type'
-                },
-                unreadOnly: {
-                  type: 'boolean',
-                  description: 'Only return unread messages',
-                  default: false
-                }
-              }
-            },
-          },
-          {
-            name: 'agent_join',
-            description: 'Join an agent to a project session',
-            inputSchema: {
-              type: 'object',
-              properties: {
-                agentId: {
-                  type: 'string',
-                  description: 'Agent ID or name to join'
-                },
-                sessionId: {
-                  type: 'string',
-                  description: 'Session identifier',
-                  default: 'default-session'
-                },
-                projectId: {
-                  type: 'string',
-                  description: 'Optional project ID (uses current if not specified)'
-                }
-              },
-              required: ['agentId']
-            },
-          },
-          {
-            name: 'agent_leave',
-            description: 'Remove an agent from a project session',
-            inputSchema: {
-              type: 'object',
-              properties: {
-                agentId: {
-                  type: 'string',
-                  description: 'Agent ID or name to remove'
-                },
-                sessionId: {
-                  type: 'string',
-                  description: 'Session identifier',
-                  default: 'default-session'
-                },
-                projectId: {
-                  type: 'string',
-                  description: 'Optional project ID (uses current if not specified)'
-                }
-              },
-              required: ['agentId']
-            },
-          },
-          {
-            name: 'agent_sessions',
-            description: 'List active agent sessions for a project',
-            inputSchema: {
-              type: 'object',
-              properties: {
-                projectId: {
-                  type: 'string',
-                  description: 'Optional project ID (uses current if not specified)'
-                }
-              }
-            },
-          },
+
+
+
+
           {
             name: 'code_analyze',
             description: 'Analyze code file structure and dependencies',
