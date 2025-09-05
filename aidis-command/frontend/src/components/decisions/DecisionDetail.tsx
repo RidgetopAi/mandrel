@@ -33,6 +33,11 @@ import {
 import { TechnicalDecision } from './types';
 import { DecisionApi } from '../../services/decisionApi';
 import dayjs from 'dayjs';
+import utc from 'dayjs/plugin/utc';
+import timezone from 'dayjs/plugin/timezone';
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 const { Title, Text, Paragraph } = Typography;
 const { TextArea } = Input;
@@ -158,7 +163,7 @@ const DecisionDetail: React.FC<DecisionDetailProps> = ({
         <div>
           <Text strong>Decision {statusDisplayName}</Text>
           <br />
-          <Text type="secondary">{dayjs(decision.created_at).format('MMMM D, YYYY [at] h:mm A')}</Text>
+          <Text type="secondary">{dayjs.utc(decision.created_at).local().format('MMMM D, YYYY [at] h:mm A')}</Text>
           {decision.created_by && (
             <>
               <br />
@@ -178,7 +183,7 @@ const DecisionDetail: React.FC<DecisionDetailProps> = ({
         <div>
           <Text strong>Decision Updated</Text>
           <br />
-          <Text type="secondary">{dayjs(decision.updated_at).format('MMMM D, YYYY [at] h:mm A')}</Text>
+          <Text type="secondary">{dayjs.utc(decision.updated_at).local().format('MMMM D, YYYY [at] h:mm A')}</Text>
           {decision.updated_by && (
             <>
               <br />

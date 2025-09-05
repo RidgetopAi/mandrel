@@ -9,8 +9,12 @@ import { TechnicalDecision } from './types';
 import { DecisionApi } from '../../services/decisionApi';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
+import utc from 'dayjs/plugin/utc';
+import timezone from 'dayjs/plugin/timezone';
 
 dayjs.extend(relativeTime);
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 const { Text, Paragraph } = Typography;
 
@@ -226,7 +230,7 @@ const DecisionCard: React.FC<DecisionCardProps> = ({
             <Space style={{ fontSize: '12px', color: '#8c8c8c' }}>
               <CalendarOutlined />
               <Text type="secondary">
-                {dayjs(decision.created_at).fromNow()}
+                {dayjs.utc(decision.created_at).local().fromNow()}
               </Text>
               {decision.created_by && (
                 <>
@@ -240,7 +244,7 @@ const DecisionCard: React.FC<DecisionCardProps> = ({
                 <>
                   <span>•</span>
                   <Text type="secondary">
-                    updated {dayjs(decision.updated_at).fromNow()}
+                    updated {dayjs.utc(decision.updated_at).local().fromNow()}
                   </Text>
                 </>
               )}

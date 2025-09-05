@@ -11,6 +11,11 @@ import {
 import { Context, useContextStore } from '../../stores/contextStore';
 import { ContextApi } from '../../services/contextApi';
 import dayjs from 'dayjs';
+import utc from 'dayjs/plugin/utc';
+import timezone from 'dayjs/plugin/timezone';
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 const { Title, Text, Paragraph } = Typography;
 const { TextArea } = Input;
@@ -220,11 +225,11 @@ const ContextDetail: React.FC<ContextDetailProps> = ({
               )}
               <Descriptions.Item label={<><CalendarOutlined /> Created</>}>
                 {dayjs(context.created_at).format('YYYY-MM-DD HH:mm:ss')}
-                <Text type="secondary"> ({dayjs(context.created_at).fromNow()})</Text>
+                <Text type="secondary"> ({dayjs.utc(context.created_at).local().fromNow()})</Text>
               </Descriptions.Item>
               <Descriptions.Item label="Last Updated">
                 {dayjs(context.updated_at).format('YYYY-MM-DD HH:mm:ss')}
-                <Text type="secondary"> ({dayjs(context.updated_at).fromNow()})</Text>
+                <Text type="secondary"> ({dayjs.utc(context.updated_at).local().fromNow()})</Text>
               </Descriptions.Item>
             </Descriptions>
 
@@ -338,7 +343,7 @@ const ContextDetail: React.FC<ContextDetailProps> = ({
                             {relatedContext.content}
                           </Paragraph>
                           <Text type="secondary" style={{ fontSize: '12px' }}>
-                            {dayjs(relatedContext.created_at).fromNow()}
+                            {dayjs.utc(relatedContext.created_at).local().fromNow()}
                           </Text>
                         </div>
                       }

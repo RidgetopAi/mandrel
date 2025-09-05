@@ -8,8 +8,12 @@ import { Context } from '../../stores/contextStore';
 import { ContextApi } from '../../services/contextApi';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
+import utc from 'dayjs/plugin/utc';
+import timezone from 'dayjs/plugin/timezone';
 
 dayjs.extend(relativeTime);
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 const { Text, Paragraph } = Typography;
 
@@ -149,7 +153,7 @@ const ContextCard: React.FC<ContextCardProps> = ({
           <Space style={{ fontSize: '12px', color: '#8c8c8c' }}>
             <CalendarOutlined />
             <Text type="secondary">
-              {dayjs(context.created_at).fromNow()}
+              {dayjs.utc(context.created_at).local().fromNow()}
             </Text>
             {context.session_id && (
               <>

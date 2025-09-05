@@ -8,6 +8,11 @@ import {
 import { NamingEntry } from './types';
 import { NamingApi } from '../../services/namingApi';
 import dayjs from 'dayjs';
+import utc from 'dayjs/plugin/utc';
+import timezone from 'dayjs/plugin/timezone';
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -187,7 +192,7 @@ const NamingDetail: React.FC<NamingDetailProps> = ({
                     <Text type="secondary" style={{ display: 'block' }}>Created</Text>
                     <Text strong>{dayjs(entry.created_at).format('MMM DD, YYYY')}</Text>
                     <Text type="secondary" style={{ display: 'block', fontSize: '12px' }}>
-                      {dayjs(entry.created_at).fromNow()}
+                      {dayjs.utc(entry.created_at).local().fromNow()}
                     </Text>
                   </div>
                 </Space>
@@ -199,7 +204,7 @@ const NamingDetail: React.FC<NamingDetailProps> = ({
                     <Text type="secondary" style={{ display: 'block' }}>Updated</Text>
                     <Text strong>{dayjs(entry.updated_at).format('MMM DD, YYYY')}</Text>
                     <Text type="secondary" style={{ display: 'block', fontSize: '12px' }}>
-                      {dayjs(entry.updated_at).fromNow()}
+                      {dayjs.utc(entry.updated_at).local().fromNow()}
                     </Text>
                   </div>
                 </Space>

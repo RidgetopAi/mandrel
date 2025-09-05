@@ -9,8 +9,12 @@ import { NamingEntry } from './types';
 import { NamingApi } from '../../services/namingApi';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
+import utc from 'dayjs/plugin/utc';
+import timezone from 'dayjs/plugin/timezone';
 
 dayjs.extend(relativeTime);
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 const { Text, Paragraph } = Typography;
 
@@ -245,7 +249,7 @@ const NamingCard: React.FC<NamingCardProps> = ({
             <Space style={{ fontSize: '12px', color: '#8c8c8c' }}>
               <CalendarOutlined />
               <Text type="secondary">
-                {dayjs(entry.created_at).fromNow()}
+                {dayjs.utc(entry.created_at).local().fromNow()}
               </Text>
               {entry.created_by && (
                 <>
@@ -259,7 +263,7 @@ const NamingCard: React.FC<NamingCardProps> = ({
                 <>
                   <span>•</span>
                   <Text type="secondary">
-                    updated {dayjs(entry.updated_at).fromNow()}
+                    updated {dayjs.utc(entry.updated_at).local().fromNow()}
                   </Text>
                 </>
               )}
