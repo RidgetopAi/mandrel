@@ -14,6 +14,7 @@
   transform: scale(1.02);
   z-index: 10;
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2) !important;
+  border: 2px solid #1890ff !important;
 }
 
 .task-card .ant-card-head {
@@ -110,6 +111,10 @@
 /* Card grid responsive styling */
 .task-cards-grid {
   min-height: 200px;
+}
+
+.task-cards-grid .ant-col {
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .task-card-container {

@@ -9,7 +9,6 @@ import {
   Input, 
   Row, 
   Col,
-  Divider,
   Badge,
   Typography,
   Tooltip
@@ -223,7 +222,13 @@ const TaskCardList: React.FC<TaskCardListProps> = ({
         {filteredTasks.map(task => {
           const isExpanded = expandedTasks.has(task.id);
           return (
-            <Col xs={24} sm={12} lg={8} xl={6} key={task.id}>
+            <Col 
+              xs={24} 
+              sm={isExpanded ? 24 : 12} 
+              lg={isExpanded ? 16 : 8} 
+              xl={isExpanded ? 16 : 8} 
+              key={task.id}
+            >
               <Badge.Ribbon 
                 text={task.priority.toUpperCase()} 
                 color={getPriorityColor(task.priority)}
@@ -243,7 +248,7 @@ const TaskCardList: React.FC<TaskCardListProps> = ({
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         {getStatusIcon(task.status)}
-                        <Text strong ellipsis style={{ maxWidth: 150 }}>
+                        <Text strong ellipsis style={{ maxWidth: 200 }}>
                           {task.title}
                         </Text>
                       </div>
@@ -258,15 +263,6 @@ const TaskCardList: React.FC<TaskCardListProps> = ({
                         </div>
                       </Tooltip>
                     </div>
-                  }
-                  extra={
-                    <Tag 
-                      className="task-status-tag"
-                      color={getStatusColor(task.status)} 
-                      icon={getStatusIcon(task.status)}
-                    >
-                      {task.status.replace('_', ' ')}
-                    </Tag>
                   }
                   actions={[
                     <Tooltip title="Quick Edit">
@@ -297,6 +293,17 @@ const TaskCardList: React.FC<TaskCardListProps> = ({
                   ]}
                 >
                   <div style={{ minHeight: isExpanded ? 'auto' : '120px' }}>
+                    {/* Status Tag */}
+                    <div style={{ marginBottom: 12 }}>
+                      <Tag 
+                        className="task-status-tag"
+                        color={getStatusColor(task.status)} 
+                        icon={getStatusIcon(task.status)}
+                      >
+                        {task.status.replace('_', ' ')}
+                      </Tag>
+                    </div>
+                    
                     {/* Basic Info */}
                     <div style={{ marginBottom: 12 }}>
                       <Paragraph 
