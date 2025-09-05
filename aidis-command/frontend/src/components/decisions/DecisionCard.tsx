@@ -230,7 +230,19 @@ const DecisionCard: React.FC<DecisionCardProps> = ({
             <Space style={{ fontSize: '12px', color: '#8c8c8c' }}>
               <CalendarOutlined />
               <Text type="secondary">
-                {dayjs.utc(decision.created_at).local().fromNow()}
+                {(() => {
+                  const now = new Date();
+                  const created = new Date(decision.created_at);
+                  const diffMs = now.getTime() - created.getTime();
+                  const diffMins = Math.floor(diffMs / (1000 * 60));
+                  
+                  if (diffMins < 1) return 'just now';
+                  if (diffMins < 60) return `${diffMins} minutes ago`;
+                  const diffHours = Math.floor(diffMins / 60);
+                  if (diffHours < 24) return `${diffHours} hours ago`;
+                  const diffDays = Math.floor(diffHours / 24);
+                  return `${diffDays} days ago`;
+                })()}
               </Text>
               {decision.created_by && (
                 <>
