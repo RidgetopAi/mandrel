@@ -1,101 +1,187 @@
-AIDIS COMPREHENSIVE SYSTEM REVIEW  
-(Assessment date 2025-08-20)
+───────────────────────────  AIDIS SESSION TRACKING – END-TO-END FIX PLAN  ───────────────────────────
 
-──────────────────────── SYSTEM HEALTH SNAPSHOT ────────────────────────
-Overall grade: B  (Stable core, but configuration drift & test coverage gaps)
+This plan is ordered so you can ship incremental value quickly while ending with a hardened, fully-tested solution.
 
-• 37 MCP tools defined – 28 pass (76 %).  
-• 2 categories already at 100 % (Project Management, Naming Registry).  
-• Server uptime, graceful shutdown, and circuit-breaker logic validated.  
-• Database connectivity, pgvector extension, and embedding service pass all tests.  
+======================================================================
+0. HIGH-LEVEL GOALS (acceptance criteria)
+======================================================================
+• Every newly-created session has a non-NULL project_id (or an intentional 'unassigned' UUID).
+• All 3 "session_*" MCP tools compile and pass schema validation.
+• Session→project JOINs work; UI displays real project names.
+• Analytics queries/statistics reflect the correct project mapping.
+• Historic NULL sessions are back-filled or clearly marked "orphaned".
+• A regression test catches any future break in the lifecycle.
 
-Key risk: configuration divergence between code, compiled artefacts and the several PostgreSQL databases created during development. This is the root of the stubborn "milestone" failure and will keep re-surfacing until structural hygiene is restored.
+======================================================================
+1. QUICK HOTFIX – unblock compilation & tool execution (15 min)
+======================================================================
+File: src/handlers/sessionAnalytics.ts  
+Add missing dependencies so the three failing tools at least load:
 
-──────────────────────── ROOT-CAUSE ANALYSIS – "MILESTONE" BUG ────────────────────────
-Symptom  
-• context_store works for six types but fails for type=milestone with "invalid enum value" even though direct SQL insert succeeds.
+```ts
+// Top of file – after existing imports
+import { db } from '../config/database.js';
+import { projectHandler } from './project.js';
+```
 
-True root cause = configuration DRIFT, not validation.
+Run `tsc --noEmit` → should now compile.  
+Run `npm run test:tools -- session_assign` → tool should initialise (still fails logic but no ImportError).
 
-1. Code-side  
-   – validation.ts already includes 'milestone'.  
-   – StoreContextRequest in context.ts is still missing 'milestone', but that is compile-time only; at runtime no enum check occurs.  
+======================================================================
+2. CORRECT SESSION LIFECYCLE IN SessionTracker (30 min)
+======================================================================
+Problem: `startSession(projectId)` is called but the implementation ignores projectId, so `sessions.project_id` stays NULL.
 
-2. DB-side  
-   – You have at least two physical databases:
-     • aidis_development  (default when DATABASE_NAME unset)  
-     • aidis_production   (target of recent migration)  
-   – In aidis_production the enum or CHECK constraint was altered to include 'milestone'.  
-   – The running server process is still connected to aidis_development (or "aidis_ui_dev"), where the enum was never altered, therefore INSERT … context_type='milestone' fails.  
-   – Your manual "direct DB insert" was executed against aidis_production, so it appeared to work.
+Action:
+a) Open src/services/sessionTracker.ts  
+b) Ensure `startSession` signature is `(projectId?: string | null)` and the INSERT uses that argument:
 
-3. "Old compiled JS" in dist/ just masked the issue earlier; runtime with tsx now bypasses it, but the underlying DB mismatch remains.
+```ts
+export async function startSession(projectId?: string | null): Promise<string> {
+  const result = await db.query(`
+      INSERT INTO sessions (agent_type, project_id, started_at)
+      VALUES ('ai', $1, NOW())
+      RETURNING id
+  `, [ projectId || null ]);
+  activeSession = result.rows[0].id;
+  return activeSession;
+}
+```
 
-Fix in three steps  
-a. Decide which database is canonical (recommend aidis_production).  
-b. In .env set DATABASE_NAME=aidis_production for every runtime context (unit tests, dev server, systemd service).  
-c. Drop or migrate the obsolete dev DBs, or at minimum add a safety banner / login_message to prevent accidental connections.
+c) Verify that `getSessionStats(projectId)` uses `WHERE project_id = $1` when projectId supplied.
 
-Optional hardening: Use a single DATABASE_URL rather than piecemeal vars; apply dotenv-safe to guarantee presence.
+======================================================================
+3. ADD DB CONSTRAINTS / TRIGGERS (20 min)
+======================================================================
+Migration `2025_09_09_enforce_session_project_fk.sql`:
 
-──────────────────────── CRITICAL ISSUES & RECOMMENDATIONS ────────────────────────
-1. Configuration consistency (Highest priority)  
-   • Consolidate .env files. Keep one per environment: .env.development, .env.test, .env.production.  
-   • Remove default 'aidis_development' fallback; fail fast if DATABASE_NAME not supplied.  
-   • Add a startup banner logging exactly which DB, host, user and migration version are in use.  
-   • Enforce NODE_ENV-specific builds: tsx for dev, compiled dist for prod; never a mix.
+```sql
+-- Require a project unless explicitly marked 'unassigned'
+ALTER TABLE sessions
+    ADD CONSTRAINT fk_sessions_project
+        FOREIGN KEY (project_id) REFERENCES projects(id);
 
-2. Schema/Code single-source-of-truth  
-   • The context_type enum now lives in three places: Postgres TYPE, validation.ts, and TypeScript union. Adopt a shared ddl-constants file or a migration tool (e.g. Prisma, Drizzle, Sqitch) that can generate both DB migrations and TS enums.  
-   • Add a boot-time assertion that every allowed value in validation.ts exists in the DB enum.
+-- Optional: default to a dedicated UNASSIGNED project row so
+--           analytics grouping still works.
+INSERT INTO projects (id, name) VALUES
+    ('00000000-0000-0000-0000-000000000000', '__unassigned__')
+ON CONFLICT DO NOTHING;
 
-3. Migration discipline  
-   • Migrations should be idempotent and versioned; the table _aidis_migrations exists but the enum alteration evidently ran only on one DB.   -> Introduce CI check that fails if HEAD migration is not present in all configured DBs.  
-   • Add a post-deploy smoke test suite that runs all MCP tools against staging.
+ALTER TABLE sessions
+    ALTER COLUMN project_id SET DEFAULT '00000000-0000-0000-0000-000000000000';
+```
 
-4. Test coverage gaps  
-   • 9 tools still unverified. Convert PHASE_3_TOOL_STATUS_REPORT into an automated Jest/Vitest test matrix.  
-   • Each tool invocation should be part of CI with isolated DB fixture/teardown.
+Run migration, re-start server, create a new session → check DB: project_id is no longer NULL.
 
-5. Old artefacts & runtime ambiguity  
-   • dist/ folder should be in .gitignore and purged in clean script.  
-   • Production build should run `rimraf dist && tsc -p tsconfig.prod.json` then `node dist/server.js`.  
-   • Development should run `tsx watch src/server.ts`. Never mix.
+======================================================================
+4. FIX MCP SCHEMA VALIDATION FOR TOOLS (25 min)
+======================================================================
+Root cause: session tool schemas weren't registered with `validationMiddleware`.
 
-6. Performance & scaling  
-   • connection pool max=20 is fine for dev; in prod measure with pg_stat_activity and adjust.  
-   • Indexes: ensure btree on contexts(project_id, context_type) and GIN on tags array. Add ivfflat index on embedding once pgvector v0.5 is installed for large datasets.  
-   • Embedding dimension logged as 384 in AGENT.md but contextHandler assumes 1536 in vector_test. Align dimensions or storage will waste RAM/disk.
+Solution:
+a) In `middleware/validation.ts` add:
 
-7. Security & observability  
-   • Add pgbouncer or RDS proxy before going multi-agent at scale.  
-   • Emit OpenTelemetry traces around every MCP handler to surface slow queries.  
-   • Add rate-limit middleware before exposing externally.
+```ts
+import { SessionAssignSchema, SessionStatusSchema, SessionNewSchema }
+  from '../schemas/sessionSchemas.js';
 
-──────────────────────── HIDDEN RISKS & TECHNICAL DEBT ────────────────────────
-• Multiple databases with partially-run migrations (primary risk).  
-• Enum duplication across layers.  
-• Lack of integration tests for agent_* and code_* tool set – behaviour unverified.  
-• Code style/formatting uneven after many quick patches; run eslint --fix and prettier pre-commit.  
-• Embedding service presently single-threaded; heavy concurrent context_store calls will block event loop.
+registerSchema('session_assign', SessionAssignSchema);
+registerSchema('session_status', SessionStatusSchema);
+registerSchema('session_new', SessionNewSchema);
+```
 
-──────────────────────── CONFIDENCE & PATH TO 100 % ────────────────────────
-Confidence of reaching 100 % tool pass rate after the alignment work: ≈ 85 %.  
-Estimated effort: 1-2 focused days
+b) Place the three JSON-Schema files under `src/schemas/` (copy pattern of existing ones).
 
-Roadmap to 100 %  
-1. Lock server onto aidis_production DB and delete/rename others (2 h).  
-2. Re-run migrations on prod DB to be absolutely current (30 m).  
-3. Build automated test harness that hits every MCP tool (4-6 h).  
-4. Fix remaining validation/schema drift uncovered by tests (2-3 h).  
-5. CI/CD pipeline gate: build->migrate->run tool tests->deploy (1 h).
+======================================================================
+5. BACKFILL EXISTING ORPHAN SESSIONS (45 min)
+======================================================================
+Create script `scripts/backfillSessions.ts`:
 
-──────────────────────── EXECUTIVE SUMMARY ────────────────────────
-The core architecture of AIDIS is sound and already delivering real value. Most apparent "weird" behaviours stem from environment fragmentation rather than code logic. By unifying configuration, enforcing a single migration path, and automating full-stack tests, you will eliminate the remaining 24 % failure rate quickly and gain the confidence to move into Phase 4 polish and wider adoption.
+```ts
+/**
+ * Attempt to infer project_id for sessions where it is NULL
+ * – If every analytics_event for that session has the same project_id, adopt it
+ * – else assign __unassigned__ sentinel
+ */
+import { db } from '../config/database.js';
 
-Next action for Brian tonight:  
-1. Edit .env → DATABASE_NAME=aidis_production (or full DATABASE_URL).  
-2. Restart server, re-test context_store with type=milestone – it should succeed.  
-3. Commit & push a script `scripts/assert-db-alignment.ts` that compares validation enums with DB enum values and fails if out of sync.
+const orphanRows = await db.query(`SELECT id FROM sessions WHERE project_id IS NULL`);
+for (const { id } of orphanRows.rows) {
+  const { rows } = await db.query(`
+      SELECT DISTINCT project_id FROM analytics_events WHERE session_id = $1
+  `,[id]);
+  if (rows.length === 1 && rows[0].project_id) {
+     await db.query(`UPDATE sessions SET project_id=$1 WHERE id=$2`, [rows[0].project_id, id]);
+     console.log(`✓ session ${id} back-filled`);
+  } else {
+     await db.query(`UPDATE sessions SET project_id='00000000-0000-0000-0000-000000000000' WHERE id=$1`,[id]);
+     console.log(`⚠ session ${id} marked unassigned`);
+  }
+}
+process.exit(0);
+```
 
-Once configuration hygiene is restored, AIDIS is in excellent shape for the final push.
+Run once (`tsx scripts/backfillSessions.ts`) then remove NULLs:
+
+```sql
+SELECT COUNT(*) FROM sessions WHERE project_id IS NULL;  -- should be 0
+```
+
+======================================================================
+6. FRONTEND/UI PATCH (20 min)
+======================================================================
+• Replace `'Unknown Project'` with:
+  `session.project_name === '__unassigned__' ? 'Unassigned' : session.project_name`
+
+• Add a filter chip "Unassigned" so PMs can triage.
+
+======================================================================
+7. TEST HARNESS & REGRESSION SUITE (60 min)
+======================================================================
+• New Jest test `session.e2e.test.ts`
+
+```ts
+test('new session is auto-assigned', async () => {
+  const pj = await projectHandler.createProject({ name: 'QA-Temp' });
+  const stats = await SessionAnalyticsHandler.startSession(pj.id);
+  expect(stats.success).toBeTruthy();
+
+  const activeId = await SessionTracker.getActiveSession();
+  const { rows } = await db.query('SELECT project_id FROM sessions WHERE id=$1', [activeId]);
+  expect(rows[0].project_id).toBe(pj.id);
+});
+```
+
+Add tests for:
+– `assignSessionToProject` happy- & sad-path  
+– `getSessionStatus` with and without project
+
+CI: `npm run test:tools && npm run test`
+
+======================================================================
+8. OBSERVABILITY HARDENING (optional but low-effort)
+======================================================================
+• Add `NOT NULL` constraint on `sessions.started_at`.  
+• Emit OpenTelemetry span in SessionTracker.startSession / assignSessionToProject for visibility.  
+• Grafana panel: Sessions per project per day.
+
+======================================================================
+9. ROLLOUT / DEPLOY SEQUENCE
+======================================================================
+1. Merge hotfix branch → run CI → tag `v1.9.0-sessions`.  
+2. Stop production AIDIS (`systemctl stop aidis`).  
+3. Apply SQL migration.  
+4. Deploy new code; run backfill script once.  
+5. Start AIDIS; hit `/healthz`.  
+6. Manually create a test session via MCP tool – confirm UI shows project.  
+7. Announce fix, monitor logs for 24 h; if stable, purge the old NULL data backups.
+
+======================================================================
+10. FUTURE-PROOFING CHECKLIST
+======================================================================
+☐ Add a DB CHECK or BEFORE INSERT trigger refusing NULL project_id in future.  
+☐ Document session lifecycle in `ORACLE.md` (diagram + sequence).  
+☐ Add `scripts/assert-session-integrity.ts` invoked nightly by cron.  
+☐ Refactor duplicate enum values (see ORACLE.md §4).
+
+───────────────────────────  END OF PLAN  ───────────────────────────

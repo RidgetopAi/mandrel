@@ -14,6 +14,8 @@
 
 import { SessionTracker, SessionData, SessionStats } from '../services/sessionTracker.js';
 import { logEvent } from '../middleware/eventLogger.js';
+import { db } from '../config/database.js';
+import { projectHandler } from './project.js';
 
 export interface SessionAnalyticsResult {
   success: boolean;
@@ -528,6 +530,220 @@ export async function startSessionTracking(projectId?: string): Promise<string |
 }
 
 /**
- * Export the main handler
+ * Session Management Handler - For session assignment and control
+ */
+export class SessionManagementHandler {
+  /**
+   * Assign current session to a project
+   */
+  static async assignSessionToProject(projectName: string): Promise<{
+    success: boolean;
+    sessionId?: string;
+    projectName?: string;
+    message: string;
+  }> {
+    try {
+      // Get current active session
+      const activeSessionId = await SessionTracker.getActiveSession();
+      if (!activeSessionId) {
+        return {
+          success: false,
+          message: 'No active session found. Start AIDIS to create a new session.'
+        };
+      }
+
+      // Find project by name
+      const projects = await projectHandler.listProjects();
+      const project = projects.find(p => 
+        p.name.toLowerCase() === projectName.toLowerCase() ||
+        p.name.toLowerCase().includes(projectName.toLowerCase())
+      );
+
+      if (!project) {
+        const availableProjects = projects.map(p => p.name).join(', ');
+        return {
+          success: false,
+          message: `Project '${projectName}' not found. Available projects: ${availableProjects}`
+        };
+      }
+
+      // Update session with project ID
+      await db.query(`
+        UPDATE sessions 
+        SET project_id = $1, 
+            metadata = COALESCE(metadata, '{}') || $2
+        WHERE id = $3
+      `, [
+        project.id,
+        JSON.stringify({ assigned_manually: true, assigned_at: new Date().toISOString() }),
+        activeSessionId
+      ]);
+
+      return {
+        success: true,
+        sessionId: activeSessionId,
+        projectName: project.name,
+        message: `✅ Session ${activeSessionId.substring(0, 8)}... assigned to project '${project.name}'`
+      };
+
+    } catch (error) {
+      console.error('❌ Session assignment error:', error);
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Failed to assign session to project'
+      };
+    }
+  }
+
+  /**
+   * Get current session status
+   */
+  static async getSessionStatus(): Promise<{
+    success: boolean;
+    session?: any;
+    message: string;
+  }> {
+    try {
+      // Get current active session
+      const activeSessionId = await SessionTracker.getActiveSession();
+      if (!activeSessionId) {
+        return {
+          success: false,
+          message: 'No active session found'
+        };
+      }
+
+      // Get session details with project info
+      const result = await db.query(`
+        SELECT 
+          s.id,
+          s.agent_type,
+          s.started_at,
+          s.ended_at,
+          s.project_id,
+          p.name as project_name,
+          s.metadata,
+          COALESCE((SELECT COUNT(*) FROM contexts c WHERE c.session_id = s.id), 0) as contexts_count,
+          COALESCE((SELECT COUNT(*) FROM technical_decisions td WHERE td.session_id = s.id), 0) as decisions_count
+        FROM sessions s
+        LEFT JOIN projects p ON s.project_id = p.id
+        WHERE s.id = $1
+      `, [activeSessionId]);
+
+      if (result.rows.length === 0) {
+        return {
+          success: false,
+          message: 'Session not found'
+        };
+      }
+
+      const session = result.rows[0];
+      const duration = session.ended_at 
+        ? new Date(session.ended_at).getTime() - new Date(session.started_at).getTime()
+        : Date.now() - new Date(session.started_at).getTime();
+
+      return {
+        success: true,
+        session: {
+          id: session.id,
+          type: session.agent_type,
+          started_at: session.started_at,
+          project_name: session.project_name || 'No project assigned',
+          duration_minutes: Math.round(duration / 60000),
+          contexts_created: parseInt(session.contexts_count),
+          decisions_created: parseInt(session.decisions_count),
+          metadata: session.metadata || {}
+        },
+        message: `Current session: ${session.id.substring(0, 8)}...`
+      };
+
+    } catch (error) {
+      console.error('❌ Session status error:', error);
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Failed to get session status'
+      };
+    }
+  }
+
+  /**
+   * Create new session with custom title and project
+   */
+  static async createNewSession(title?: string, projectName?: string): Promise<{
+    success: boolean;
+    sessionId?: string;
+    projectName?: string;
+    message: string;
+  }> {
+    try {
+      let projectId = null;
+
+      // Find project if specified
+      if (projectName) {
+        const projects = await projectHandler.listProjects();
+        const project = projects.find(p => 
+          p.name.toLowerCase() === projectName.toLowerCase() ||
+          p.name.toLowerCase().includes(projectName.toLowerCase())
+        );
+
+        if (!project) {
+          const availableProjects = projects.map(p => p.name).join(', ');
+          return {
+            success: false,
+            message: `Project '${projectName}' not found. Available projects: ${availableProjects}`
+          };
+        }
+        projectId = project.id;
+        projectName = project.name;
+      }
+
+      // End current session if exists
+      const currentSessionId = await SessionTracker.getActiveSession();
+      if (currentSessionId) {
+        await db.query(`
+          UPDATE sessions 
+          SET ended_at = NOW(),
+              metadata = COALESCE(metadata, '{}') || $1
+          WHERE id = $2 AND ended_at IS NULL
+        `, [
+          JSON.stringify({ ended_reason: 'new_session_started' }),
+          currentSessionId
+        ]);
+      }
+
+      // Create new session
+      const newSessionId = await SessionTracker.startSession(projectId);
+
+      // Update with custom title if provided
+      if (title) {
+        await db.query(`
+          UPDATE sessions 
+          SET metadata = COALESCE(metadata, '{}') || $1
+          WHERE id = $2
+        `, [
+          JSON.stringify({ title: title, custom_title: true }),
+          newSessionId
+        ]);
+      }
+
+      return {
+        success: true,
+        sessionId: newSessionId,
+        projectName: projectName || 'No project assigned',
+        message: `✅ New session created: ${newSessionId.substring(0, 8)}...${title ? ` ("${title}")` : ''}${projectName ? ` for project '${projectName}'` : ''}`
+      };
+
+    } catch (error) {
+      console.error('❌ New session error:', error);
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Failed to create new session'
+      };
+    }
+  }
+}
+
+/**
+ * Export the handlers
  */
 export default SessionAnalyticsHandler;

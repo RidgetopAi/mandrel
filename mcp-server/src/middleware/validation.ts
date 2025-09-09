@@ -280,6 +280,20 @@ export const smartSearchSchemas = {
   })
 };
 
+// Session Management Schemas
+export const sessionSchemas = {
+  assign: z.object({
+    projectName: z.string().min(1).max(255)
+  }),
+  
+  status: z.object({}),
+  
+  new: z.object({
+    title: z.string().max(500).optional(),
+    projectName: z.string().min(1).max(255).optional()
+  })
+};
+
 // Main validation schema registry
 export const validationSchemas = {
   // System Health
@@ -339,7 +353,12 @@ export const validationSchemas = {
   
   // Smart Search & AI Recommendations
   smart_search: smartSearchSchemas.search,
-  get_recommendations: smartSearchSchemas.recommendations
+  get_recommendations: smartSearchSchemas.recommendations,
+  
+  // Session Management
+  session_assign: sessionSchemas.assign,
+  session_status: sessionSchemas.status,
+  session_new: sessionSchemas.new
 };
 
 /**

@@ -28,7 +28,7 @@ const server = new Server(
   }
 );
 
-// All 40 AIDIS tools including new help system
+// All 41 AIDIS tools including session management
 const AIDIS_TOOLS = [
   // System Health (2 tools)
   { name: 'aidis_ping', description: 'Test connectivity to AIDIS server' },
@@ -52,6 +52,11 @@ const AIDIS_TOOLS = [
   { name: 'project_current', description: 'Get current project information' },
   { name: 'project_info', description: 'Get detailed project information' },
   { name: 'project_insights', description: 'Get project analytics and insights' },
+
+  // Session Management (3 tools)
+  { name: 'session_assign', description: 'Assign current session to a project' },
+  { name: 'session_status', description: 'Get current session status and details' },
+  { name: 'session_new', description: 'Create a new session with optional title and project assignment' },
   
   // Naming Registry (4 tools)
   { name: 'naming_register', description: 'Register name in naming system' },
