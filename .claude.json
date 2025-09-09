@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "aidis": {
+      "type": "stdio",
+      "command": "/home/ridgetop/.nvm/versions/node/v22.18.0/bin/node",
+      "args": [
+        "claude-http-mcp-bridge.js"
+      ],
+      "cwd": "/home/ridgetop/aidis",
+      "env": {
+        "PATH": "/home/ridgetop/.nvm/versions/node/v22.18.0/bin:/usr/local/bin:/usr/bin:/bin",
+        "AIDIS_HTTP_URL": "http://localhost:8080"
+      }
+    }
+  }
+}

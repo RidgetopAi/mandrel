@@ -12,6 +12,7 @@
 import { db } from '../config/database.js';
 import { embeddingService } from '../services/embedding.js';
 import { projectHandler } from './project.js';
+import { logContextEvent, logEvent } from '../middleware/eventLogger.js';
 
 export interface StoreContextRequest {
   projectId?: string;
@@ -137,6 +138,16 @@ export class ContextHandler {
       console.log(`🔍 Embedding: ${embeddingResult.dimensions}D vector (${embeddingResult.model})`);
       console.log(`🏷️  Tags: [${storedContext.tags.join(', ')}]`);
       
+      // Log the context creation event
+      await logContextEvent(storedContext.id, 'stored', {
+        context_type: storedContext.contextType,
+        content_length: storedContext.content.length,
+        tags: storedContext.tags,
+        relevance_score: storedContext.relevanceScore,
+        embedding_model: embeddingResult.model,
+        embedding_dimensions: embeddingResult.dimensions
+      });
+      
       return storedContext;
 
     } catch (error) {
@@ -228,6 +239,25 @@ export class ContextHandler {
       if (filtered.length > 0) {
         console.log(`🎯 Top match: ${filtered[0].similarity}% similarity - "${filtered[0].content.substring(0, 60)}..."`);
       }
+
+      // Log the search event
+      await logEvent({
+        actor: 'ai',
+        event_type: 'context_search',
+        payload: {
+          query: request.query,
+          filters: {
+            projectId: request.projectId,
+            type: request.type,
+            tags: request.tags,
+            minSimilarity: request.minSimilarity
+          },
+          results_count: filtered.length,
+          top_similarity: filtered.length > 0 ? filtered[0].similarity : 0
+        },
+        status: 'closed',
+        tags: ['context', 'search']
+      });
 
       return filtered;
 

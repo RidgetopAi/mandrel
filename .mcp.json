@@ -1,0 +1,17 @@
+{
+  "mcpServers": {
+    "aidis": {
+      "type": "stdio",
+      "command": "/home/ridgetop/.nvm/versions/node/v22.18.0/bin/node",
+      "args": [
+        "mcp-server/node_modules/.bin/tsx",
+        "mcp-server/src/server.ts"
+      ],
+      "cwd": "/home/ridgetop/aidis",
+      "env": {
+        "PATH": "/home/ridgetop/.nvm/versions/node/v22.18.0/bin:/usr/local/bin:/usr/bin:/bin",
+        "AIDIS_DEBUG": "true"
+      }
+    }
+  }
+}
