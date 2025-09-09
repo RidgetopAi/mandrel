@@ -3,6 +3,9 @@
  * Provides real-time system health and performance metrics
  */
 
+import { db } from '../database/connection';
+import os from 'os';
+
 interface SystemMetrics {
   timestamp: number;
   system: {
@@ -48,7 +51,6 @@ interface HealthCheck {
 }
 
 class MonitoringService {
-  private metrics: Map<string, any[]> = new Map();
   private healthChecks: Map<string, HealthCheck> = new Map();
   private requestCount = 0;
   private errorCount = 0;
@@ -86,10 +88,10 @@ class MonitoringService {
       ? this.responseTimes.reduce((a, b) => a + b, 0) / this.responseTimes.length 
       : 0;
 
-    // System memory (approximate)
-    const totalMemory = memUsage.rss * 4; // Rough estimate
-    const usedMemory = memUsage.rss;
-    const freeMemory = totalMemory - usedMemory;
+    // System memory (real system values)
+    const totalMemory = os.totalmem();
+    const freeMemory = os.freemem();
+    const usedMemory = totalMemory - freeMemory;
 
     return {
       timestamp: now,
@@ -129,7 +131,6 @@ class MonitoringService {
    */
   async getHealthSummary() {
     const metrics = await this.getSystemMetrics();
-    const checks = Array.from(this.healthChecks.values());
     
     // Overall health determination
     const dbHealthy = metrics.database.status === 'healthy';
@@ -192,14 +193,12 @@ class MonitoringService {
     const startTime = Date.now();
     
     try {
-      const { db: pool } = await import('../database/connection');
-      
       // Simple health check query
-      await pool.query('SELECT 1');
+      await db.query('SELECT 1');
       const responseTime = Date.now() - startTime;
       
       // Get connection info (approximate)
-      const connInfo = pool.totalCount || 0;
+      const connInfo = db.totalCount || 0;
       
       let status: 'healthy' | 'degraded' | 'unhealthy' = 'healthy';
       if (responseTime > 1000) {
@@ -240,7 +239,6 @@ class MonitoringService {
    */
   getPerformanceTrends(minutes: number = 5) {
     const now = Date.now();
-    const cutoff = now - (minutes * 60 * 1000);
     
     return {
       timestamp: now,

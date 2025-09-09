@@ -398,6 +398,41 @@ export class ContextService {
   }
 
   /**
+   * Get weekly context velocity analytics
+   */
+  static async getWeeklyVelocity(project_id?: string): Promise<Array<{ 
+    week: string; 
+    contexts: number; 
+    weekStart: string;
+  }>> {
+    try {
+      const projectFilter = project_id ? 'WHERE project_id = $1' : '';
+      const params = project_id ? [project_id] : [];
+
+      const result = await pool.query(`
+        SELECT 
+          DATE_TRUNC('week', created_at) as week_start,
+          TO_CHAR(DATE_TRUNC('week', created_at), 'YYYY-MM-DD') as week,
+          COUNT(*) as contexts
+        FROM contexts
+        ${projectFilter}
+        GROUP BY DATE_TRUNC('week', created_at)
+        ORDER BY week_start DESC
+        LIMIT 12
+      `, params);
+
+      return result.rows.map(row => ({
+        week: row.week,
+        contexts: parseInt(row.contexts),
+        weekStart: row.week
+      })).reverse(); // Reverse to show oldest first for chart display
+    } catch (error) {
+      console.error('Get weekly velocity error:', error);
+      throw new Error('Failed to get weekly context velocity');
+    }
+  }
+
+  /**
    * Export contexts
    */
   static async exportContexts(

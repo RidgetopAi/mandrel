@@ -222,6 +222,27 @@ export class TaskController {
   }
 
   /**
+   * GET /tasks/lead-time - Get lead time distribution analytics
+   */
+  static async getLeadTimeDistribution(req: Request, res: Response): Promise<void> {
+    try {
+      const projectId = req.query.project_id as string;
+      const leadTimeData = await TaskService.getLeadTimeDistribution(projectId);
+      
+      res.json({
+        success: true,
+        data: { leadTimeData }
+      });
+    } catch (error) {
+      console.error('Get lead time distribution error:', error);
+      res.status(500).json({
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to get lead time distribution'
+      });
+    }
+  }
+
+  /**
    * GET /tasks/:id/dependencies - Get task dependencies
    */
   static async getTaskDependencies(req: Request, res: Response): Promise<void> {

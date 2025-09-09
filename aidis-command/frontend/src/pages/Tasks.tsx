@@ -8,7 +8,7 @@ import { apiService } from '../services/api';
 import TaskList from '../components/tasks/TaskList';
 import TaskCardList from '../components/tasks/TaskCardList';
 import TaskForm from '../components/tasks/TaskForm';
-// import TaskStats from '../components/tasks/TaskStats';
+import TaskAnalytics from '../components/analytics/TaskAnalytics';
 // import TaskDependencyGraph from '../components/tasks/TaskDependencyGraph';
 // Define types locally for compatibility
 interface Task {
@@ -45,7 +45,19 @@ const Tasks: React.FC = () => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(false);
   const [creating, setCreating] = useState(false);
-  const [selectedProject, setSelectedProject] = useState<string>('');
+  const [selectedProject, setSelectedProject] = useState<string>(() => {
+    const saved = localStorage.getItem('aidis_selected_project');
+    return saved || '';
+  });
+
+  // Save selected project to localStorage when it changes
+  useEffect(() => {
+    if (selectedProject) {
+      localStorage.setItem('aidis_selected_project', selectedProject);
+    } else {
+      localStorage.removeItem('aidis_selected_project');
+    }
+  }, [selectedProject]);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [activeTab, setActiveTab] = useState('kanban');
 
@@ -275,10 +287,11 @@ const Tasks: React.FC = () => {
               <label style={{ marginRight: '8px' }}>Project:</label>
               <Select
                 value={selectedProject || undefined}
-                placeholder="All Projects"
+                placeholder={projects.length === 0 ? "Loading projects..." : "All Projects"}
                 onChange={(value) => setSelectedProject(value || '')}
                 style={{ minWidth: '200px' }}
                 allowClear
+                loading={projects.length === 0}
               >
                 {projects.map(project => (
                   <Select.Option key={project.id} value={project.id}>
@@ -325,10 +338,7 @@ const Tasks: React.FC = () => {
               </TabPane>
 
               <TabPane tab={<span><BarChartOutlined />Analytics</span>} key="analytics">
-                <div style={{ padding: '40px', textAlign: 'center' }}>
-                  <h3>Task Analytics</h3>
-                  <p>Coming soon - task statistics and progress reports</p>
-                </div>
+                <TaskAnalytics projectId={selectedProject} />
               </TabPane>
 
               <TabPane tab="Dependencies" key="dependencies">

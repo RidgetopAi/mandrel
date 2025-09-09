@@ -10,6 +10,7 @@ router.use(authenticateToken);
 // Context routes
 router.get('/', ContextController.searchContexts);
 router.get('/stats', ContextController.getContextStats);
+router.get('/weekly-velocity', ContextController.getWeeklyVelocity);
 router.get('/export', ContextController.exportContexts);
 router.post('/search', ContextController.semanticSearch);
 router.get('/:id', ContextController.getContext);

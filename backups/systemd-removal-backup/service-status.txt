@@ -1,0 +1,23 @@
+● aidis.service - AIDIS - AI Development Intelligence System (User Service)
+     Loaded: loaded (/home/ridgetop/.config/systemd/user/aidis.service; enabled; preset: enabled)
+     Active: active (running) since Sat 2025-08-23 21:47:38 EDT; 6h ago
+       Docs: https://github.com/ridgetopai/aidis
+    Process: 679085 ExecStartPre=/bin/bash -c curl -f http://localhost:8080/healthz || exit 0 (code=exited, status=0/SUCCESS)
+   Main PID: 679088 (node)
+      Tasks: 33 (limit: 18941)
+     Memory: 220.6M (peak: 235.5M)
+        CPU: 4.429s
+     CGroup: /user.slice/user-1000.slice/user@1000.service/app.slice/aidis.service
+             ├─679088 /home/ridgetop/.nvm/versions/node/v22.18.0/bin/node /home/ridgetop/aidis/mcp-server/node_modules/.bin/tsx src/server.ts
+             └─679100 /home/ridgetop/.nvm/versions/node/v22.18.0/bin/node --require /home/ridgetop/aidis/mcp-server/node_modules/tsx/dist/preflight.cjs --import file:///home/ridgetop/aidis/mcp-server/node_modules/tsx/dist/loader.mjs src/server.ts
+
+Aug 24 00:23:04 Ridgetop aidis-user[679100]: ✅ Generated LOCAL embedding (384 dimensions)
+Aug 24 00:23:04 Ridgetop aidis-user[679100]: 🔍 DEBUG: About to insert context_type = "completion" (type: string)
+Aug 24 00:23:04 Ridgetop aidis-user[679100]: 🔍 DEBUG: context_type length = 10
+Aug 24 00:23:04 Ridgetop aidis-user[679100]: 🔍 DEBUG: context_type char codes = [99,111,109,112,108,101,116,105,111,110]
+Aug 24 00:23:04 Ridgetop aidis-user[679100]: 🔍 DEBUG: Executing SQL query with parameters:
+Aug 24 00:23:04 Ridgetop aidis-user[679100]: 🔍 DEBUG: SQL: INSERT INTO contexts ( project_id, session_id, context_type, content, embedding, relevance_score, tags, metadata ) VALUES ($1, $2, $3, $4, $5::vector, $6, $7, $8) RETURNING id, created_at
+Aug 24 00:23:04 Ridgetop aidis-user[679100]: 🔍 DEBUG: Param $3 (context_type): "completion" (string)
+Aug 24 00:23:04 Ridgetop aidis-user[679100]: ✅ Context stored successfully! ID: 5e56bc47-c034-46b3-8a46-d763dcf3cc64
+Aug 24 00:23:04 Ridgetop aidis-user[679100]: 🔍 Embedding: 384D vector (Xenova/all-MiniLM-L6-v2-local)
+Aug 24 00:23:04 Ridgetop aidis-user[679100]: 🏷️  Tags: [system-cleanup-complete, process-audit, claude-code-prep, milestone]

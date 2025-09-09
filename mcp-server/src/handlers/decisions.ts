@@ -21,6 +21,7 @@
 
 import { db } from '../config/database.js';
 import { projectHandler } from './project.js';
+import { logDecisionEvent, logEvent } from '../middleware/eventLogger.js';
 
 export interface TechnicalDecision {
   id: string;
@@ -177,6 +178,18 @@ export class DecisionsHandler {
       console.log(`🎯 Impact: ${decision.impactLevel} | Type: ${decision.decisionType}`);
       console.log(`📊 Alternatives considered: ${decision.alternativesConsidered.length}`);
 
+      // Log the decision creation event
+      await logDecisionEvent(decision.id, 'recorded', {
+        decision_type: decision.decisionType,
+        title: decision.title,
+        impact_level: decision.impactLevel,
+        affected_components: decision.affectedComponents,
+        alternatives_count: decision.alternativesConsidered.length,
+        tags: decision.tags,
+        has_problem_statement: !!decision.problemStatement,
+        has_success_criteria: !!decision.successCriteria
+      });
+
       return decision;
 
     } catch (error) {
@@ -258,6 +271,18 @@ export class DecisionsHandler {
       const decision = this.mapDatabaseRowToDecision(result.rows[0]);
 
       console.log(`✅ Decision updated: ${decision.status} | Outcome: ${decision.outcomeStatus}`);
+      
+      // Log the decision update event
+      await logDecisionEvent(decision.id, 'updated', {
+        status: decision.status,
+        outcome_status: decision.outcomeStatus,
+        outcome_notes: decision.outcomeNotes,
+        lessons_learned: decision.lessonsLearned,
+        superseded_by: decision.supersededBy,
+        superseded_reason: decision.supersededReason,
+        update_fields: Object.keys(request).filter(k => k !== 'decisionId' && request[k as keyof typeof request] !== undefined)
+      });
+      
       return decision;
 
     } catch (error) {
@@ -343,6 +368,28 @@ export class DecisionsHandler {
       const decisions = result.rows.map(row => this.mapDatabaseRowToDecision(row));
 
       console.log(`✅ Found ${decisions.length} matching decisions`);
+      
+      // Log the search event
+      await logEvent({
+        actor: 'ai',
+        event_type: 'decision_search',
+        payload: {
+          filters: {
+            decisionType: request.decisionType,
+            status: request.status,
+            impactLevel: request.impactLevel,
+            component: request.component,
+            tags: request.tags,
+            query: request.query,
+            dateFrom: request.dateFrom,
+            dateTo: request.dateTo
+          },
+          results_count: decisions.length
+        },
+        status: 'closed',
+        tags: ['decision', 'search']
+      });
+      
       return decisions;
 
     } catch (error) {

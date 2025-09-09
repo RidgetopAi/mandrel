@@ -57,7 +57,7 @@ class ApiClient {
         // Add X-Project-ID header if currentProject exists and not already specified
         if (!config.headers['X-Project-ID']) {
           try {
-            const currentProjectData = localStorage.getItem('aidis_current_project');
+            const currentProjectData = localStorage.getItem('aidis_selected_project');
             if (currentProjectData) {
               const currentProject = JSON.parse(currentProjectData);
               if (currentProject?.id) {

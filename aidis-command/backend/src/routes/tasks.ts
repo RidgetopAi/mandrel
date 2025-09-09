@@ -15,6 +15,7 @@ router.use(authenticateToken);
 // Core CRUD operations
 router.get('/', TaskController.getTasks);               // GET /tasks - List tasks with filtering
 router.get('/stats', TaskController.getTaskStats);     // GET /tasks/stats - Get statistics
+router.get('/lead-time', TaskController.getLeadTimeDistribution); // GET /tasks/lead-time - Lead time analytics
 router.post('/', TaskController.createTask);           // POST /tasks - Create task
 router.post('/bulk-update', TaskController.bulkUpdateTasks); // POST /tasks/bulk-update - Bulk updates
 

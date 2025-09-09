@@ -453,6 +453,91 @@ export class TaskService {
   }
 
   /**
+   * Get lead time distribution analytics
+   */
+  static async getLeadTimeDistribution(projectId?: string): Promise<{ 
+    distribution: Array<{ leadTimeDays: number; count: number }>;
+    stats: { 
+      totalTasks: number; 
+      averageLeadTime: number; 
+      medianLeadTime: number;
+      p90LeadTime: number;
+    }
+  }> {
+    try {
+      let baseQuery = `
+        SELECT 
+          EXTRACT(EPOCH FROM (completed_at - created_at)) / 86400 as lead_time_days,
+          title,
+          type,
+          priority
+        FROM agent_tasks 
+        WHERE status = 'completed' 
+          AND completed_at IS NOT NULL 
+          AND created_at IS NOT NULL
+      `;
+      const params: any[] = [];
+      
+      if (projectId) {
+        baseQuery += ' AND project_id = $1';
+        params.push(projectId);
+      }
+      
+      baseQuery += ' ORDER BY lead_time_days';
+
+      const result = await pool.query(baseQuery, params);
+      const leadTimes = result.rows.map(row => parseFloat(row.lead_time_days));
+      
+      if (leadTimes.length === 0) {
+        return {
+          distribution: [],
+          stats: {
+            totalTasks: 0,
+            averageLeadTime: 0,
+            medianLeadTime: 0,
+            p90LeadTime: 0
+          }
+        };
+      }
+
+      // Create distribution buckets (0-1 day, 1-2 days, 2-7 days, 1-2 weeks, 2+ weeks)
+      const buckets = [
+        { range: [0, 1], label: '< 1 day' },
+        { range: [1, 2], label: '1-2 days' },
+        { range: [2, 7], label: '2-7 days' },
+        { range: [7, 14], label: '1-2 weeks' },
+        { range: [14, Infinity], label: '2+ weeks' }
+      ];
+
+      const distribution = buckets.map(bucket => ({
+        leadTimeDays: bucket.range[1] === Infinity ? 21 : bucket.range[1], // Use 21 for display of "2+ weeks"
+        count: leadTimes.filter(lt => lt >= bucket.range[0] && lt < bucket.range[1]).length,
+        label: bucket.label
+      }));
+
+      // Calculate statistics
+      const totalTasks = leadTimes.length;
+      const averageLeadTime = leadTimes.reduce((sum, lt) => sum + lt, 0) / totalTasks;
+      const medianLeadTime = leadTimes[Math.floor(totalTasks / 2)];
+      const p90Index = Math.floor(totalTasks * 0.9);
+      const p90LeadTime = leadTimes[p90Index];
+
+      return {
+        distribution,
+        stats: {
+          totalTasks,
+          averageLeadTime: Math.round(averageLeadTime * 10) / 10,
+          medianLeadTime: Math.round(medianLeadTime * 10) / 10,
+          p90LeadTime: Math.round(p90LeadTime * 10) / 10
+        }
+      };
+    } catch (error) {
+      console.error('Get lead time distribution error:', error);
+      throw new Error('Failed to get lead time distribution');
+    }
+  }
+
+  /**
    * Get task dependencies (what this task depends on and what depends on it)
    */
   static async getTaskDependencies(taskId: string): Promise<{

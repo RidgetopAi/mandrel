@@ -205,6 +205,28 @@ export class ContextController {
   }
 
   /**
+   * GET /api/contexts/weekly-velocity - Get weekly context velocity analytics
+   */
+  static async getWeeklyVelocity(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      const projectId = req.query.project_id as string || req.projectId;
+      const weeklyVelocity = await ContextService.getWeeklyVelocity(projectId);
+
+      res.json({
+        success: true,
+        data: { weeklyVelocity }
+      });
+    } catch (error) {
+      console.error('Get weekly velocity error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to get weekly velocity',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  }
+
+  /**
    * GET /api/contexts/export - Export contexts
    * Oracle Phase 1: Use req.projectId from middleware
    */

@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Boids Sphere - 3D Flocking Simulation</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #000;
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+        }
+        
+        #container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        #info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 14px;
+            line-height: 1.4;
+            min-width: 200px;
+        }
+        
+        #info h3 {
+            margin: 0 0 10px 0;
+            color: #4488ff;
+            font-size: 16px;
+        }
+        
+        #info p {
+            margin: 5px 0;
+        }
+        
+        #controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 100;
+        }
+        
+        /* dat.GUI styling */
+        .dg.ac {
+            z-index: 1000 !important;
+        }
+        
+        .dg.main {
+            background: rgba(0, 0, 0, 0.8) !important;
+            border: 1px solid #4488ff !important;
+        }
+        
+        .dg .cr.boolean {
+            border-left: 3px solid #4488ff !important;
+        }
+        
+        .dg .cr.number {
+            border-left: 3px solid #44ff88 !important;
+        }
+        
+        .dg .cr.function {
+            border-left: 3px solid #ff8844 !important;
+        }
+        
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 18px;
+            z-index: 200;
+        }
+        
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: #4488ff;
+            animation: spin 1s ease-in-out infinite;
+            margin-right: 10px;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        #instructions {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 12px;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 10px;
+            border-radius: 5px;
+            max-width: 300px;
+        }
+        
+        #instructions h4 {
+            margin: 0 0 8px 0;
+            color: #4488ff;
+        }
+        
+        #instructions ul {
+            margin: 0;
+            padding-left: 15px;
+        }
+        
+        #instructions li {
+            margin: 3px 0;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div id="loading">
+            <div class="loading-spinner"></div>
+            Loading 3D Visualization...
+        </div>
+        
+        <div id="info">
+            <h3>Boids Sphere Simulation</h3>
+            <p><strong>Phase 2:</strong> 3D Visualization</p>
+            <p>FPS: <span id="fps">0</span></p>
+            <p>Boids: <span id="boid-count">0</span></p>
+            <p>Render: <span id="render-time">0</span>ms</p>
+            <p>Update: <span id="update-time">0</span>ms</p>
+        </div>
+        
+        <div id="controls"></div>
+        
+        <div id="instructions">
+            <h4>Controls</h4>
+            <ul>
+                <li><strong>Mouse:</strong> Orbit camera</li>
+                <li><strong>Wheel:</strong> Zoom in/out</li>
+                <li><strong>Right click + drag:</strong> Pan</li>
+                <li><strong>WASD/Arrows:</strong> Navigate</li>
+                <li><strong>Q/E:</strong> Zoom</li>
+                <li><strong>R:</strong> Reset camera</li>
+            </ul>
+        </div>
+    </div>
+    
+    <!-- Load dat.GUI for controls -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.7.9/dat.gui.min.js"></script>
+    
+    <!-- Load our visualization system -->
+    <script type="module" src="src/visualization/main.js"></script>
+</body>
+</html>

@@ -23,6 +23,7 @@ import {
 import { useAuthContext } from '../contexts/AuthContext';
 import { useProjectContext } from '../contexts/ProjectContext';
 import { useDashboardStats } from '../hooks/useDashboardStats';
+import SessionAnalytics from '../components/analytics/SessionAnalytics';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -168,6 +169,11 @@ const Dashboard: React.FC = () => {
           </Card>
         </Col>
       </Row>
+
+      {/* Session Analytics */}
+      <Card title="Session Analytics">
+        <SessionAnalytics selectedProjectId={currentProject?.id} />
+      </Card>
 
       {/* Feature Cards */}
       <Row gutter={[24, 24]}>

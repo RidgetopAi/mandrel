@@ -36,6 +36,47 @@ export interface SessionDetail extends Session {
   metadata?: Record<string, any>;
 }
 
+export interface SessionAnalytics {
+  total_sessions: number;
+  total_duration_minutes: number;
+  average_duration_minutes: number;
+  total_contexts: number;
+  average_contexts_per_session: number;
+  total_tokens_used: number;
+  average_tokens_per_session: number;
+  active_sessions_today: number;
+  sessions_this_week: number;
+  sessions_this_month: number;
+}
+
+export interface SessionTrend {
+  date: string;
+  session_count: number;
+  total_duration_minutes: number;
+  total_contexts: number;
+  total_tokens_used: number;
+  average_duration_minutes: number;
+}
+
+export interface ProductiveSession {
+  id: string;
+  project_id: string;
+  project_name?: string;
+  created_at: string;
+  duration_minutes: number;
+  context_count: number;
+  tokens_used: number;
+  productivity_score: number;
+  context_summary?: string;
+}
+
+export interface TokenUsagePattern {
+  hour: number;
+  total_tokens: number;
+  session_count: number;
+  average_tokens_per_session: number;
+}
+
 export interface ProjectStats {
   total_projects: number;
   active_projects: number;
@@ -206,6 +247,80 @@ export class ProjectApi {
     }
     
     return response.data.stats;
+  }
+
+  /**
+   * Get session analytics
+   */
+  static async getSessionAnalytics(projectId?: string): Promise<SessionAnalytics> {
+    const params = projectId ? `?project_id=${projectId}` : '';
+    const response = await apiClient.get<{
+      success: boolean;
+      data: { analytics: SessionAnalytics };
+    }>(`/sessions/analytics${params}`);
+    
+    if (!response.success) {
+      throw new Error('Failed to fetch session analytics');
+    }
+    
+    return response.data.analytics;
+  }
+
+  /**
+   * Get session trends over time
+   */
+  static async getSessionTrends(days: number = 30, projectId?: string): Promise<SessionTrend[]> {
+    const params = new URLSearchParams();
+    params.append('days', days.toString());
+    if (projectId) params.append('project_id', projectId);
+    
+    const response = await apiClient.get<{
+      success: boolean;
+      data: { trends: SessionTrend[] };
+    }>(`/sessions/trends?${params}`);
+    
+    if (!response.success) {
+      throw new Error('Failed to fetch session trends');
+    }
+    
+    return response.data.trends;
+  }
+
+  /**
+   * Get most productive sessions
+   */
+  static async getProductiveSessions(limit: number = 10, projectId?: string): Promise<ProductiveSession[]> {
+    const params = new URLSearchParams();
+    params.append('limit', limit.toString());
+    if (projectId) params.append('project_id', projectId);
+    
+    const response = await apiClient.get<{
+      success: boolean;
+      data: { sessions: ProductiveSession[] };
+    }>(`/sessions/productive?${params}`);
+    
+    if (!response.success) {
+      throw new Error('Failed to fetch productive sessions');
+    }
+    
+    return response.data.sessions;
+  }
+
+  /**
+   * Get token usage patterns by hour
+   */
+  static async getTokenUsagePatterns(projectId?: string): Promise<TokenUsagePattern[]> {
+    const params = projectId ? `?project_id=${projectId}` : '';
+    const response = await apiClient.get<{
+      success: boolean;
+      data: { patterns: TokenUsagePattern[] };
+    }>(`/sessions/token-patterns${params}`);
+    
+    if (!response.success) {
+      throw new Error('Failed to fetch token usage patterns');
+    }
+    
+    return response.data.patterns;
   }
 }
 

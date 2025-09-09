@@ -1,0 +1,917 @@
+{
+  "amp.mcpServers": {
+    "aidis": {
+      "command": "bash",
+      "args": [
+        "-c",
+        "cd /home/ridgetop/aidis/mcp-server && npx tsx src/server.ts"
+      ],
+      "env": {
+        "NODE_ENV": "development"
+      }
+    },
+    "playwright": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@playwright/mcp@latest",
+        "--headless",
+        "--isolated"
+      ]
+    }
+  },
+  "amp.permissions": [
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "git commit -m \"Complete AIDIS AI usability transformation - Phase 1A success\n\nMajor accomplishments:\n- Fix project_id constraint errors with session initialization\n- Add comprehensive Multi-Agent examples for local LLM usage\n- Complete Phase 1A triage: 0 broken tools, major barriers eliminated\n- Enable agent name usage: agent_status(agentId='CodeAgent') vs UUIDs\n- Prepare AIDIS for cost-effective Qwen 2.5 7B integration\n\nResult: AIDIS transformed from 60% unusable to 95%+ AI-friendly\""
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "git add mcp-server/src/server.ts mcp-server/src/handlers/navigation.ts"
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "git push origin development"
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "git commit -m \"Fix major AI usability issue: Add name-to-UUID resolution for agent tools\n\n- Add name-to-UUID conversion in updateAgentStatus() handler\n- Fix content truncation in context search and get_recent functions  \n- Add amp-mode.sh script to prevent SystemD/Amp MCP conflicts\n- Phase 1A triage complete: agent_status now accepts 'QaAgent' vs UUIDs\""
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "git add mcp-server/src/handlers/agents.ts mcp-server/src/server.ts amp-mode.sh"
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "rm -f /home/ridgetop/aidis/mcp-server/aidis.pid /home/ridgetop/aidis/run/aidis*.pid"
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "kill -9 778181 778192 769249"
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "timeout 3s mcp-server/node_modules/.bin/tsx adapters/mcp-stdio-adapter.ts || echo \"EXIT_CODE: $?\"",
+        "cwd": "/home/ridgetop/aidis"
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "timeout 3s /home/ridgetop/.nvm/versions/node/v22.18.0/bin/node node_modules/.bin/tsx adapters/mcp-stdio-adapter.ts || echo \"EXIT_CODE: $?\"",
+        "cwd": "/home/ridgetop/aidis"
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "/home/ridgetop/.nvm/versions/node/v22.18.0/bin/node node_modules/.bin/tsx adapters/mcp-stdio-adapter.ts < /dev/null",
+        "cwd": "/home/ridgetop/aidis"
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "rm -f aidis-core.service aidis-user.service aidis.service"
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "./status-aidis.sh"
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "./start-aidis.sh"
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "./stop-aidis.sh"
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "./restart-aidis.sh"
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "./stop-aidis.sh && sleep 2",
+        "cwd": "/home/ridgetop/aidis"
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "kill 701790 && sleep 2 && ./start-aidis.sh",
+        "cwd": "/home/ridgetop/aidis"
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "kill 699608 && sleep 2 && ./start-aidis.sh",
+        "cwd": "/home/ridgetop/aidis"
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "psql -h localhost -p 5432 -d aidis_production -c \"SELECT LEFT(content, 30), 1 - (embedding <=> (SELECT embedding FROM contexts WHERE content LIKE '%backup system configuration%' LIMIT 1)) as similarity_calc FROM contexts WHERE content LIKE '%backup%' ORDER BY embedding <=> (SELECT embedding FROM contexts LIMIT 1) LIMIT 3;\""
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "psql -h localhost -p 5432 -d aidis_production -c \"SELECT id, LEFT(content, 50) as preview, embedding <=> (SELECT embedding FROM contexts WHERE content LIKE '%backup%' LIMIT 1) as cosine_distance FROM contexts WHERE content LIKE '%database%' ORDER BY cosine_distance LIMIT 3;\""
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "psql -h localhost -p 5432 -d aidis_production -c \"SELECT id, LEFT(content, 50) as content_preview, CASE WHEN embedding IS NULL THEN 'NULL' ELSE 'EXISTS' END as embedding_status FROM contexts ORDER BY created_at DESC LIMIT 5;\""
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "psql -h localhost -p 5432 -d aidis_production -c \"SELECT id, content[1:50], CASE WHEN embedding IS NULL THEN 'NULL' ELSE 'EXISTS' END as embedding_status FROM contexts ORDER BY created_at DESC LIMIT 5;\""
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "psql -d postgres -c \"DROP DATABASE IF EXISTS aidis;\" && psql -d postgres -c \"DROP DATABASE IF EXISTS aidis_dev;\" && echo \"✅ Database cleanup complete\""
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "rm -rf /home/ridgetop/aidis/mcp-server/dist/ && echo \"✅ Deleted old compiled JS - server will now use TypeScript directly\""
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "psql aidis_production < /home/ridgetop/aidis/backups/migration-20250819-204010/aidis_dev_complete_backup.sql"
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "BACKUP_DIR=\"/home/ridgetop/aidis/backups/migration-$(date +%Y%m%d-%H%M%S)\" && mkdir -p \"$BACKUP_DIR\" && echo \"Backup directory: $BACKUP_DIR\" && pg_dump aidis_dev > \"$BACKUP_DIR/aidis_dev_complete_backup.sql\" && echo \"✅ Backup completed: $(ls -lh $BACKUP_DIR)\""
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "/home/ridgetop/.nvm/versions/node/v22.18.0/bin/node /home/ridgetop/aidis/mcp-server/node_modules/.bin/tsx src/server.ts",
+        "cwd": "/home/ridgetop/aidis/mcp-server"
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "sudo journalctl -u aidis -n 100 --no-pager"
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "PORT=8080 npx tsx src/server.ts",
+        "cwd": "/home/ridgetop/aidis/mcp-server"
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "kill 611059"
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "kill 555323"
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "cd mcp-server && npm run dev",
+        "cwd": "/home/ridgetop/aidis/mcp-server"
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "mv mcp-server-dev mcp-server-archive"
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "kill 610253 610266"
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "cd mcp-server && nohup npm run dev > ../aidis.log 2>&1 &",
+        "cwd": "/home/ridgetop/aidis"
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "kill 609838"
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "kill 555310"
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "cd aidis-command && npm run build",
+        "cwd": "/home/ridgetop/aidis"
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "cd aidis-command && npm run install:all",
+        "cwd": "/home/ridgetop/aidis"
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "cd aidis-command/backend && npm install ml-pca",
+        "cwd": "/home/ridgetop/aidis"
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "cd aidis-command && npm start",
+        "cwd": "/home/ridgetop/aidis"
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "/home/ridgetop/aidis/scripts/backup-aidis.sh"
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "crontab -l > /tmp/current_cron"
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "crontab -l"
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "crontab /tmp/aidis_cron"
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "psql -U ridgetop -h localhost -d aidis_ui_dev -c \"SELECT id, title, status, created_at FROM tasks LIMIT 5;\""
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "psql -U ridgetop -h localhost -d aidis_ui_dev -c \"SELECT COUNT(*) FROM tasks;\""
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "cp /home/ridgetop/aidis/aidis-command/frontend/src/components/tasks/TaskList.tsx /home/ridgetop/aidis/aidis-command-dev/frontend/src/components/tasks/"
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "cd aidis-command-dev && nohup npm run dev:backend > ../dev-backend.log 2>&1 &",
+        "cwd": "/home/ridgetop/aidis"
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "psql -U ridgetop -h localhost -d aidis_ui_dev -c \"SELECT * FROM admin_users;\""
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "cd aidis-command-dev && timeout 10s npm run dev:frontend",
+        "cwd": "/home/ridgetop/aidis"
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "kill -9 557685 557686 557693"
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "kill 557685 557686 557693"
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "kill -9 557633 557634"
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "kill 557608 557634 557648"
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "cd aidis-command-dev && timeout 8s npm run dev:frontend",
+        "cwd": "/home/ridgetop/aidis"
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "cd aidis-command-dev && timeout 8s npm run dev:backend",
+        "cwd": "/home/ridgetop/aidis"
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "cd aidis-command-dev/backend && timeout 10s npm run dev",
+        "cwd": "/home/ridgetop/aidis"
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "psql -U ridgetop -h localhost -d postgres -c \"CREATE DATABASE aidis_ui_production OWNER ridgetop;\""
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "psql -U ridgetop -h localhost -d aidis_ui_dev -c \"SELECT count(*) FROM contexts;\""
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "psql -U ridgetop -h localhost -d postgres -c \"SELECT datname, datdba, pg_encoding_to_char(encoding) as encoding FROM pg_database WHERE datname LIKE '%aidis%' OR datname LIKE '%ui%' ORDER BY datname;\""
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "cd aidis-command-dev && npm run dev:backend",
+        "cwd": "/home/ridgetop/aidis"
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "cd mcp-server-dev && nohup npm run dev > ../aidis-dev.log 2>&1 &",
+        "cwd": "/home/ridgetop/aidis"
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "cd mcp-server-dev && timeout 5s npm run dev",
+        "cwd": "/home/ridgetop/aidis"
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "cd mcp-server-dev && npm run dev",
+        "cwd": "/home/ridgetop/aidis"
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "psql -U ridgetop -h localhost -d aidis_dev_clean -c \"SELECT count(*) FROM contexts;\""
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "psql -U ridgetop -h localhost -d aidis_dev_clean -c \"\\dt\""
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "cd mcp-server && npm run db:migrate",
+        "cwd": "/home/ridgetop/aidis"
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "psql -U ridgetop -h localhost -d postgres -c \"CREATE DATABASE aidis_dev_clean OWNER ridgetop;\""
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "psql -U ridgetop -h localhost -d postgres -c \"SELECT datname FROM pg_database WHERE datname LIKE '%aidis%';\""
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "psql -U ridgetop -h localhost -d aidis_development -c \"SELECT count(*) FROM projects;\""
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "psql -U ridgetop -h localhost -d aidis_development -c \"SELECT count(*) FROM contexts;\""
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "psql -U ridgetop -h localhost -d aidis_development -c \"\\dt\""
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "psql -U ridgetop -h localhost -d postgres -c \"\\l\""
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "psql -U ridgetop -h localhost -c \"\\l\""
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "sudo -u postgres psql -c \"\\l\""
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "cd aidis-command && npm run dev:frontend",
+        "cwd": "/home/ridgetop/aidis"
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "cd mcp-server && cp -r . ../mcp-server-backup-$(date +%Y%m%d-%H%M)",
+        "cwd": "/home/ridgetop/aidis"
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "psql -h localhost -U postgres -d aidis_ui_dev -c \"SELECT COUNT(*) FROM contexts;\""
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "cd mcp-server && npm run build --skip-type-check || npm run build:ignore-errors || npx tsc --noEmit false",
+        "cwd": "/home/ridgetop/aidis"
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "cd mcp-server && npm install @types/pg --save-dev",
+        "cwd": "/home/ridgetop/aidis"
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "cd mcp-server && npm run build",
+        "cwd": "/home/ridgetop/aidis"
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "cd mcp-server && npm start",
+        "cwd": "/home/ridgetop/aidis"
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "cd frontend && npm start",
+        "cwd": "/home/ridgetop/aidis/aidis-command"
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "cd backend && npm run dev",
+        "cwd": "/home/ridgetop/aidis/aidis-command"
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "cd backend && npm run build",
+        "cwd": "/home/ridgetop/aidis/aidis-command"
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "TOKEN=$(curl -s http://localhost:5000/api/auth/login -X POST -H \"Content-Type: application/json\" -d '{\"username\": \"admin\", \"password\": \"admin123\"}' | python3 -c \"import sys, json; print(json.load(sys.stdin)['token'])\") && curl -H \"Authorization: Bearer $TOKEN\" http://localhost:5000/api/naming/stats"
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "sudo systemctl status aidis"
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "sudo systemctl start aidis.service",
+        "cwd": "/home/ridgetop/aidis/mcp-server"
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "kill -9 517353"
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "kill 517352 517353"
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "/home/ridgetop/aidis/scripts/test-backup-restore.sh"
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "/home/ridgetop/aidis/scripts/quick-backup.sh"
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "cd /home/ridgetop/aidis*"
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "npm *",
+        "cwd": "/home/ridgetop/aidis*"
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "npx *",
+        "cwd": "/home/ridgetop/aidis*"
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "ls*"
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "cat *"
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "head *"
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "tail *"
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "grep *"
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "mkdir *",
+        "cwd": "/home/ridgetop/aidis*"
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "rm *",
+        "cwd": "/home/ridgetop/aidis*"
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "cp *",
+        "cwd": "/home/ridgetop/aidis*"
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "mv *",
+        "cwd": "/home/ridgetop/aidis*"
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "psql -d aidis* *"
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "docker exec fb_postgres *"
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "createdb aidis*"
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "pg_dump *"
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "curl *localhost*"
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "curl *127.0.0.1*"
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "ps *"
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "pkill *"
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "nohup *",
+        "cwd": "/home/ridgetop/aidis*"
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "sleep *"
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "echo *"
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "systemctl * aidis*"
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "git *",
+        "cwd": "/home/ridgetop/aidis*"
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "find *",
+        "cwd": "/home/ridgetop/aidis*"
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "chmod *",
+        "cwd": "/home/ridgetop/aidis*"
+      },
+      "action": "allow"
+    },
+    {
+      "tool": "Bash",
+      "matches": {
+        "cmd": "touch *",
+        "cwd": "/home/ridgetop/aidis*"
+      },
+      "action": "allow"
+    }
+  ]
+}
