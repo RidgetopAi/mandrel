@@ -46,6 +46,7 @@ import { smartSearchHandler } from './handlers/smartSearch.js';
 import { navigationHandler } from './handlers/navigation.js';
 import { validationMiddleware } from './middleware/validation.js';
 import { AIDISMCPProxy } from './utils/mcpProxy.js';
+import { SessionTracker } from './services/sessionTracker.js';
 
 // Enterprise hardening constants
 const PID_FILE = '/home/ridgetop/aidis/run/aidis.pid';
@@ -2994,6 +2995,17 @@ class AIDISServer {
         });
       });
       
+      // Initialize session tracking for this AIDIS instance
+      console.log('📋 Starting new session for this AIDIS instance...');
+      try {
+        const currentProject = await projectHandler.getCurrentProject();
+        const sessionId = await SessionTracker.startSession(currentProject?.id);
+        console.log(`✅ Session tracking initialized: ${sessionId.substring(0, 8)}...`);
+      } catch (error) {
+        console.warn('⚠️  Failed to initialize session tracking:', error);
+        console.warn('   Contexts will be stored without session association');
+      }
+      
       // ORACLE FIX #3: Start health check server
       console.log(`🏥 Starting health check server on port ${HEALTH_PORT}...`);
       this.healthServer?.listen(HEALTH_PORT, () => {
@@ -3055,6 +3067,20 @@ class AIDISServer {
     console.log(`\n📴 Received ${signal}, shutting down gracefully...`);
     
     try {
+      // End current session if active
+      console.log('📋 Ending active session...');
+      try {
+        const activeSessionId = await SessionTracker.getActiveSession();
+        if (activeSessionId) {
+          await SessionTracker.endSession(activeSessionId);
+          console.log('✅ Session ended gracefully');
+        } else {
+          console.log('ℹ️  No active session to end');
+        }
+      } catch (error) {
+        console.warn('⚠️  Failed to end session:', error);
+      }
+      
       // Close health check server
       if (this.healthServer) {
         console.log('🏥 Closing health check server...');

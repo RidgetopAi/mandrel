@@ -13,6 +13,7 @@ import { db } from '../config/database.js';
 import { embeddingService } from '../services/embedding.js';
 import { projectHandler } from './project.js';
 import { logContextEvent, logEvent } from '../middleware/eventLogger.js';
+import { SessionTracker, ensureActiveSession } from '../services/sessionTracker.js';
 
 export interface StoreContextRequest {
   projectId?: string;
@@ -305,9 +306,15 @@ export class ContextHandler {
       throw new Error(`Session ${sessionId} not found`);
     }
 
-    // For now, return null (context can exist without specific session)
-    // In the future, we might auto-create sessions or find active ones
-    return null;
+    // Get or create an active session using the SessionTracker
+    try {
+      const activeSessionId = await ensureActiveSession(projectId);
+      console.log(`📋 Using active session: ${activeSessionId.substring(0, 8)}... for context storage`);
+      return activeSessionId;
+    } catch (error) {
+      console.warn('⚠️  Failed to get/create session, storing context without session:', error);
+      return null; // Fallback to no session if session tracking fails
+    }
   }
 
   /**

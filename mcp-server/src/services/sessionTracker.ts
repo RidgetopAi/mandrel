@@ -53,15 +53,36 @@ export class SessionTracker {
       
       console.log(`🚀 Starting session: ${sessionId.substring(0, 8)}... for project: ${projectId || 'none'}`);
       
-      // Log session start event to analytics_events table
-      const sql = `
+      // Create actual session record in sessions table
+      const sessionSql = `
+        INSERT INTO sessions (
+          id, project_id, agent_type, started_at, metadata
+        ) VALUES ($1, $2, $3, $4, $5)
+        RETURNING id, started_at
+      `;
+      
+      const sessionParams = [
+        sessionId,
+        projectId || null,
+        'claude-code-agent', // Identify this as a Claude Code session
+        startTime,
+        JSON.stringify({ 
+          start_time: startTime.toISOString(),
+          created_by: 'aidis-session-tracker',
+          auto_created: true
+        })
+      ];
+      
+      await db.query(sessionSql, sessionParams);
+      
+      // Also log session start event to analytics_events table for tracking
+      const analyticsSql = `
         INSERT INTO analytics_events (
           actor, project_id, session_id, event_type, status, metadata, tags
         ) VALUES ($1, $2, $3, $4, $5, $6, $7)
-        RETURNING event_id, timestamp
       `;
       
-      const params = [
+      const analyticsParams = [
         'system',
         projectId || null,
         sessionId,
@@ -71,7 +92,7 @@ export class SessionTracker {
         ['session', 'lifecycle']
       ];
       
-      await db.query(sql, params);
+      await db.query(analyticsSql, analyticsParams);
       
       // Set as active session
       this.activeSessionId = sessionId;
@@ -104,14 +125,48 @@ export class SessionTracker {
       // Calculate duration
       const durationMs = endTime.getTime() - sessionData.start_time.getTime();
       
-      // Log session end event
-      const sql = `
+      // Count contexts created during this session
+      const contextCountResult = await db.query(
+        'SELECT COUNT(*) as count FROM contexts WHERE session_id = $1',
+        [sessionId]
+      );
+      const contextsCreated = parseInt(contextCountResult.rows[0].count) || 0;
+      
+      // Update the sessions table with end time and stats
+      const updateSessionSql = `
+        UPDATE sessions 
+        SET ended_at = $1, 
+            tokens_used = $2,
+            context_summary = $3,
+            metadata = metadata || $4::jsonb
+        WHERE id = $5
+      `;
+      
+      const sessionUpdateParams = [
+        endTime,
+        0, // TODO: Track actual tokens used if available
+        `Session completed with ${contextsCreated} contexts created`,
+        JSON.stringify({
+          end_time: endTime.toISOString(),
+          duration_ms: durationMs,
+          contexts_created: contextsCreated,
+          operations_count: sessionData.operations_count,
+          productivity_score: sessionData.productivity_score,
+          completed_by: 'aidis-session-tracker'
+        }),
+        sessionId
+      ];
+      
+      await db.query(updateSessionSql, sessionUpdateParams);
+      
+      // Also log session end event to analytics_events
+      const analyticsSql = `
         INSERT INTO analytics_events (
           actor, project_id, session_id, event_type, status, duration_ms, metadata, tags
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
       `;
       
-      const params = [
+      const analyticsParams = [
         'system',
         sessionData.project_id,
         sessionId,
@@ -120,7 +175,7 @@ export class SessionTracker {
         durationMs,
         JSON.stringify({
           end_time: endTime.toISOString(),
-          contexts_created: sessionData.contexts_created,
+          contexts_created: contextsCreated,
           decisions_created: sessionData.decisions_created,
           operations_count: sessionData.operations_count,
           productivity_score: sessionData.productivity_score
@@ -128,7 +183,7 @@ export class SessionTracker {
         ['session', 'lifecycle']
       ];
       
-      await db.query(sql, params);
+      await db.query(analyticsSql, analyticsParams);
       
       // Clear active session if this was it
       if (this.activeSessionId === sessionId) {
@@ -159,7 +214,7 @@ export class SessionTracker {
     try {
       // Check if we have an active session in memory
       if (this.activeSessionId) {
-        // Verify it still exists in database
+        // Verify it still exists in database and is active
         const exists = await this.sessionExists(this.activeSessionId);
         if (exists) {
           return this.activeSessionId;
@@ -168,24 +223,19 @@ export class SessionTracker {
         }
       }
       
-      // Look for the most recent active session in database
+      // Look for the most recent active session in sessions table (not ended)
       const sql = `
-        SELECT DISTINCT session_id 
-        FROM analytics_events 
-        WHERE event_type = 'session_start' 
-        AND session_id NOT IN (
-          SELECT session_id 
-          FROM analytics_events 
-          WHERE event_type = 'session_end'
-        )
-        ORDER BY timestamp DESC 
+        SELECT id 
+        FROM sessions 
+        WHERE ended_at IS NULL 
+        ORDER BY started_at DESC 
         LIMIT 1
       `;
       
       const result = await db.query(sql);
       
       if (result.rows.length > 0) {
-        this.activeSessionId = result.rows[0].session_id;
+        this.activeSessionId = result.rows[0].id;
         console.log(`🔄 Found active session: ${this.activeSessionId.substring(0, 8)}...`);
         return this.activeSessionId;
       }
@@ -364,8 +414,8 @@ export class SessionTracker {
   static async sessionExists(sessionId: string): Promise<boolean> {
     try {
       const sql = `
-        SELECT 1 FROM analytics_events 
-        WHERE session_id = $1 
+        SELECT 1 FROM sessions 
+        WHERE id = $1 AND ended_at IS NULL
         LIMIT 1
       `;
       
