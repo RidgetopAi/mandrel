@@ -31,6 +31,7 @@ interface SessionSummary {
   created_at: string;
   context_count?: number;
   last_context_at?: string;
+  ended_at?: string;
 }
 
 interface SessionDetailViewProps {
@@ -85,10 +86,18 @@ const SessionDetailView: React.FC<SessionDetailViewProps> = ({ session }) => {
   };
 
   const calculateDuration = () => {
-    if (!session.last_context_at) return 'Unknown';
-    
     const start = new Date(session.created_at);
-    const end = new Date(session.last_context_at);
+    
+    // For active sessions, use current time
+    // For completed sessions, use ended_at or last_context_at
+    let end: Date;
+    if (session.ended_at) {
+      end = new Date(session.ended_at);
+    } else {
+      // Active session - use current time for real-time duration
+      end = new Date();
+    }
+    
     const diffMs = end.getTime() - start.getTime();
     const diffMins = Math.round(diffMs / (1000 * 60));
     

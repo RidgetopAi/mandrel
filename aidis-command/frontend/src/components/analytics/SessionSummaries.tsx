@@ -35,6 +35,7 @@ interface SessionSummary {
   project_id: string;
   project_name?: string;
   created_at: string;
+  ended_at?: string;
   context_count?: number;
   last_context_at?: string;
   // Optional fields for enhanced display
@@ -64,6 +65,23 @@ const SessionSummaries: React.FC<SessionSummariesProps> = ({
   useEffect(() => {
     fetchSummaries();
   }, [projectId, limit]);
+
+  // Add periodic refresh for active sessions
+  useEffect(() => {
+    // Check if there are any active sessions
+    const hasActiveSessions = summaries.some(session => !session.ended_at);
+    
+    if (!hasActiveSessions) return;
+    
+    // Set up periodic refresh every 30 seconds for active sessions
+    const interval = setInterval(() => {
+      if (!loading) {
+        fetchSummaries(); // Refresh session data
+      }
+    }, 30000); // 30 seconds
+    
+    return () => clearInterval(interval);
+  }, [summaries, loading]);
 
   const fetchSummaries = async () => {
     try {
@@ -148,6 +166,39 @@ const SessionSummaries: React.FC<SessionSummariesProps> = ({
         );
       },
       sorter: (a, b) => (a.context_count || 0) - (b.context_count || 0)
+    },
+    {
+      title: 'Duration',
+      key: 'duration',
+      align: 'center',
+      render: (_, record: SessionSummary) => {
+        const start = new Date(record.created_at);
+        let end: Date;
+        
+        if (record.ended_at) {
+          end = new Date(record.ended_at);
+        } else {
+          end = new Date(); // Active session
+        }
+        
+        const diffMs = end.getTime() - start.getTime();
+        const diffMins = Math.round(diffMs / (1000 * 60));
+        
+        return (
+          <Tag icon={<ClockCircleOutlined />} color="blue">
+            {formatDuration(diffMins)}
+          </Tag>
+        );
+      },
+      sorter: (a, b) => {
+        const aDuration = a.ended_at ? 
+          new Date(a.ended_at).getTime() - new Date(a.created_at).getTime() :
+          Date.now() - new Date(a.created_at).getTime();
+        const bDuration = b.ended_at ? 
+          new Date(b.ended_at).getTime() - new Date(b.created_at).getTime() :
+          Date.now() - new Date(b.created_at).getTime();
+        return aDuration - bDuration;
+      }
     },
     {
       title: 'Last Activity',
