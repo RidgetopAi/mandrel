@@ -13,6 +13,7 @@ import Decisions from './pages/Decisions';
 import Naming from './pages/Naming';
 import Projects from './pages/Projects';
 import ProjectDetail from './pages/ProjectDetail';
+import Sessions from './pages/Sessions';
 import SessionDetail from './pages/SessionDetail';
 import Settings from './pages/Settings';
 import './App.css';
@@ -60,6 +61,7 @@ const App: React.FC = () => {
                 <Route path="naming" element={<Naming />} />
                 <Route path="projects" element={<Projects />} />
                 <Route path="projects/:id" element={<ProjectDetail />} />
+                <Route path="sessions" element={<Sessions />} />
                 <Route path="sessions/:id" element={<SessionDetail />} />
                 <Route path="settings" element={<Settings />} />
                 

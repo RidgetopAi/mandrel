@@ -19,6 +19,8 @@ export interface Session {
   id: string;
   project_id: string;
   project_name?: string;
+  title?: string;
+  description?: string;
   created_at: string;
   context_count?: number;
   last_context_at?: string;
@@ -69,6 +71,11 @@ export interface UpdateProjectRequest {
   git_repo_url?: string;
   root_directory?: string;
   metadata?: Record<string, any>;
+}
+
+export interface UpdateSessionRequest {
+  title?: string;
+  description?: string;
 }
 
 export class ProjectApi {
@@ -225,6 +232,67 @@ export class ProjectApi {
     
     if (!response.success) {
       throw new Error('Failed to fetch project insights');
+    }
+    
+    return response.data;
+  }
+
+  /**
+   * Update session title and description
+   */
+  static async updateSession(sessionId: string, updates: UpdateSessionRequest): Promise<Session> {
+    const response = await apiClient.put<{
+      success: boolean;
+      data: { session: Session };
+    }>(`/sessions/${sessionId}`, updates);
+    
+    if (!response.success) {
+      throw new Error('Failed to update session');
+    }
+    
+    return response.data.session;
+  }
+
+  /**
+   * Get current active session
+   */
+  static async getCurrentSession(): Promise<Session | null> {
+    try {
+      const response = await apiClient.get<{
+        success: boolean;
+        data: { session: Session };
+      }>('/sessions/current');
+      
+      if (!response.success) {
+        return null;
+      }
+      
+      return response.data.session;
+    } catch (error) {
+      console.warn('Failed to fetch current session:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Assign current session to a project
+   */
+  static async assignCurrentSession(projectName: string): Promise<{
+    sessionId: string;
+    projectName: string;
+    message: string;
+  }> {
+    const response = await apiClient.post<{
+      success: boolean;
+      data: {
+        sessionId: string;
+        projectName: string;
+        message: string;
+      };
+    }>('/sessions/assign', { projectName });
+    
+    if (!response.success) {
+      throw new Error('Failed to assign session to project');
     }
     
     return response.data;

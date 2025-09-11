@@ -24,6 +24,7 @@ import {
   ThunderboltOutlined
 } from '@ant-design/icons';
 import { apiService } from '../../services/api';
+import SessionInlineEdit from '../sessions/SessionInlineEdit';
 
 const { Title, Text } = Typography;
 const { TabPane } = Tabs;
@@ -36,10 +37,15 @@ interface SessionDetail {
   id: string;
   project_id: string;
   project_name?: string;
+  title?: string;
+  description?: string;
   session_type?: string;
+  created_at: string;
   started_at: string;
   ended_at?: string;
   duration_minutes: number;
+  context_count?: number;
+  last_context_at?: string;
   
   total_tokens: number;
   prompt_tokens: number;
@@ -120,6 +126,10 @@ const SessionDetail: React.FC<SessionDetailProps> = ({ sessionId }) => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSessionUpdate = (updatedSession: any) => {
+    setSession(prevSession => prevSession ? { ...prevSession, ...updatedSession } : null);
   };
 
   const formatDate = (dateString: string) => {
@@ -203,13 +213,20 @@ const SessionDetail: React.FC<SessionDetailProps> = ({ sessionId }) => {
       <Card style={{ marginBottom: 24 }}>
         <Row gutter={[16, 16]} align="middle">
           <Col xs={24} md={12}>
-            <Title level={4}>Session Details</Title>
+            <div style={{ marginBottom: 16 }}>
+              <SessionInlineEdit
+                session={session}
+                field="title"
+                onUpdate={handleSessionUpdate}
+                placeholder="Click to add session title..."
+              />
+            </div>
             {session.project_name && (
               <Text type="secondary">Project: {session.project_name}</Text>
             )}
             <br />
             <Text type="secondary">
-              {formatDate(session.started_at)}
+              {formatDate(session.created_at || session.started_at)}
               {session.ended_at && ` - ${formatDate(session.ended_at)}`}
             </Text>
           </Col>
@@ -257,6 +274,19 @@ const SessionDetail: React.FC<SessionDetailProps> = ({ sessionId }) => {
             />
           </Col>
         </Row>
+
+        {/* Session Description */}
+        <div style={{ marginTop: 24 }}>
+          <Text strong style={{ display: 'block', marginBottom: 8 }}>
+            Description:
+          </Text>
+          <SessionInlineEdit
+            session={session}
+            field="description"
+            onUpdate={handleSessionUpdate}
+            placeholder="Click to add session description..."
+          />
+        </div>
 
         {session.context_summary && (
           <div style={{ 

@@ -6,21 +6,22 @@
 ## IMMEDIATE ESSENTIALS
 
 ### System Status
-**AIDIS: 41 MCP Tools - 100% Operational**
+**AIDIS: 44 MCP Tools - 100% Operational**
 - System Health: 2 tools
 - Context Management: 4 tools (includes context_get_recent)
 - Project Management: 6 tools  
+- **Session Management: 3 tools (NEW!)**
 - Naming Registry: 4 tools
 - Technical Decisions: 4 tools
 - Multi-Agent Coordination: 11 tools
 - Code Analysis: 5 tools
 - Smart Search & AI: 2 tools
-- **Navigation Tools: 3 tools (NEW!)**
+- **Navigation Tools: 3 tools**
 
 ### Navigation Tools - START HERE
 Essential tools for discovering AIDIS capabilities:
 
-- **`aidis_help`** - Show all 41 tools organized by category
+- **`aidis_help`** - Show all 44 tools organized by category
 - **`aidis_explain <toolname>`** - Get detailed help for any specific tool  
 - **`aidis_examples <toolname>`** - See usage examples and patterns
 
@@ -46,6 +47,11 @@ Essential tools for discovering AIDIS capabilities:
 - **Current project**: `project_current` 
 - **List projects**: `project_list`
 
+### Session Management
+- **Assign session to project**: `session_assign <projectName>`
+- **Check session status**: `session_status`
+- **Create new session**: `session_new [title] [projectName]`
+
 ### Context Management  
 - **Store context**: `context_store(content, type, tags?)`
 - **Search contexts**: `context_search(query)`
@@ -55,6 +61,7 @@ Essential tools for discovering AIDIS capabilities:
 - **System**: aidis_ping, aidis_status
 - **Context**: context_store, context_search, context_get_recent, context_stats
 - **Projects**: project_list, project_create, project_switch, project_current, project_info, project_insights
+- **Sessions**: session_assign, session_status, session_new
 - **Naming**: naming_register, naming_check, naming_suggest, naming_stats
 - **Decisions**: decision_record, decision_search, decision_update, decision_stats
 
@@ -156,6 +163,6 @@ project_list(includeStats?: boolean)
   - **Array parameters**: Must be actual JSON arrays, not quoted strings
 ---
 
-**Last Updated**: 2025-08-24  
-**Tools**: 41 total (38 core + 3 navigation)  
-**Status**: Production ready with dual AI collaboration support
+**Last Updated**: 2025-09-09  
+**Tools**: 44 total (41 core + 3 navigation)  
+**Status**: Production ready with dual AI collaboration support and session management

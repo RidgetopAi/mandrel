@@ -175,4 +175,98 @@ export class SessionController {
       });
     }
   }
+
+  /**
+   * GET /sessions/current - Get current active session
+   */
+  static async getCurrentSession(_req: Request, res: Response): Promise<void> {
+    try {
+      // For now, return null as there's no active session tracking
+      // This will be enhanced when MCP integration is properly set up
+      res.json({
+        success: true,
+        data: { session: null }
+      });
+    } catch (error) {
+      console.error('Get current session error:', error);
+      res.status(500).json({
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to get current session'
+      });
+    }
+  }
+
+  /**
+   * POST /sessions/assign - Assign current session to a project
+   */
+  static async assignCurrentSession(_req: Request, res: Response): Promise<void> {
+    // Temporarily disabled for task investigation
+    res.status(501).json({
+      success: false,
+      error: 'Session assignment endpoint temporarily disabled'
+    });
+  }
+
+  /**
+   * GET /sessions - Get sessions list with filtering
+   */
+  static async getSessionsList(req: Request, res: Response): Promise<void> {
+    try {
+      const { project_id, status, limit, offset } = req.query;
+      
+      const params: {
+        projectId?: string;
+        status?: string;
+        limit?: number;
+        offset?: number;
+      } = {
+        limit: typeof limit === 'string' ? parseInt(limit) : 50,
+        offset: typeof offset === 'string' ? parseInt(offset) : 0,
+      };
+      
+      if (typeof project_id === 'string') {
+        params.projectId = project_id;
+      }
+      
+      if (typeof status === 'string') {
+        params.status = status;
+      }
+      
+      const sessions = await SessionAnalyticsService.getSessionsList(params);
+
+      res.json({
+        success: true,
+        data: sessions
+      });
+    } catch (error) {
+      console.error('Get sessions list error:', error);
+      res.status(500).json({
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to get sessions list'
+      });
+    }
+  }
+
+  /**
+   * GET /sessions/stats - Get session statistics for dashboard
+   */
+  static async getSessionStats(req: Request, res: Response): Promise<void> {
+    try {
+      const { project_id } = req.query;
+      const projectId = typeof project_id === 'string' ? project_id : undefined;
+      
+      const stats = await SessionAnalyticsService.getSessionStats(projectId);
+
+      res.json({
+        success: true,
+        data: stats
+      });
+    } catch (error) {
+      console.error('Get session stats error:', error);
+      res.status(500).json({
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to get session stats'
+      });
+    }
+  }
 }

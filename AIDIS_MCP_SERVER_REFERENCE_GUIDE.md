@@ -47,6 +47,7 @@ Legend: (D)=depends-on
 5. **handlers/**  
    • **context.ts** – Vector store of agent "memories" (store/search/stats).  
    • **project.ts** – CRUD, switch & "current project" session map.  
+   • **sessionAnalytics.ts** – Session tracking, analytics, and management.  
    • **naming.ts** – Canonical naming registry & conflict detection.  
    • **decisions.ts** – Architectural decision records & queries.  
    • **agents.ts** – Multi-agent registration/coordination.  
@@ -184,6 +185,7 @@ docs/tools/foo.md
 | `config/database.ts` | Pg pool + init/close helpers |
 | `handlers/context.ts` | Vector memory store/search |
 | `handlers/project.ts` | Project CRUD/session mgmt |
+| `handlers/sessionAnalytics.ts` | Session tracking, analytics & assignment |
 | `handlers/naming.ts` | Naming registry & conflicts |
 | `handlers/decisions.ts` | ADR (Architecture Decision Record) storage |
 | `handlers/agents.ts` | Multi-agent coordination |

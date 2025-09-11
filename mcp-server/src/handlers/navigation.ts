@@ -11,7 +11,7 @@
 
 export class NavigationHandler {
   /**
-   * All 38 AIDIS tools organized by category with descriptions
+   * All 96 AIDIS tools organized by category with descriptions 
    */
   private readonly toolCatalog = {
     'System Health': [
@@ -32,6 +32,13 @@ export class NavigationHandler {
       { name: 'project_info', description: 'Get detailed information about a specific project' },
       { name: 'project_insights', description: 'Get comprehensive project health and insights' }
     ],
+    'Session Management': [
+      { name: 'session_assign', description: 'Assign current session to a project' },
+      { name: 'session_status', description: 'Get current session status and details' },
+      { name: 'session_new', description: 'Create a new session with optional title and project assignment' },
+      { name: 'session_update', description: 'Update session title and description for better organization' },
+      { name: 'session_details', description: 'Get detailed session information including title, description, and metadata' }
+    ],
     'Naming Registry': [
       { name: 'naming_register', description: 'Register a name to prevent conflicts' },
       { name: 'naming_check', description: 'Check for naming conflicts before using a name' },
@@ -44,18 +51,11 @@ export class NavigationHandler {
       { name: 'decision_update', description: 'Update decision status, outcomes, or lessons' },
       { name: 'decision_stats', description: 'Get technical decision statistics and analysis' }
     ],
-    'Multi-Agent Coordination': [
-      { name: 'agent_register', description: 'Register an AI agent for coordination' },
-      { name: 'agent_list', description: 'List all registered agents (optionally by project)' },
-      { name: 'agent_status', description: 'Update agent status (active, busy, offline, error)' },
-      { name: 'agent_join', description: 'Join an agent to a project session' },
-      { name: 'agent_leave', description: 'Remove an agent from a project session' },
-      { name: 'agent_sessions', description: 'List active agent sessions for a project' },
-      { name: 'agent_message', description: 'Send a message between agents' },
-      { name: 'agent_messages', description: 'Get messages for an agent or project' },
-      { name: 'task_create', description: 'Create a new task for agent coordination' },
+    'Task Management': [
+      { name: 'task_create', description: 'Create a new task for coordination' },
       { name: 'task_list', description: 'List tasks with optional filtering' },
-      { name: 'task_update', description: 'Update task status and assignment' }
+      { name: 'task_update', description: 'Update task status and assignment' },
+      { name: 'task_details', description: 'Get detailed information for a specific task' }
     ],
     'Code Analysis': [
       { name: 'code_analyze', description: 'Analyze code file structure and dependencies' },
@@ -67,6 +67,80 @@ export class NavigationHandler {
     'Smart Search & AI': [
       { name: 'smart_search', description: 'Intelligent search across all project data' },
       { name: 'get_recommendations', description: 'Get AI-powered recommendations for development' }
+    ],
+    'Code Complexity': [
+      { name: 'complexity_analyze_files', description: 'Analyze code complexity for specific files with multi-dimensional metrics' },
+      { name: 'complexity_get_dashboard', description: 'Get comprehensive complexity dashboard for project' },
+      { name: 'complexity_get_file_metrics', description: 'Get detailed complexity metrics for specific files' },
+      { name: 'complexity_get_function_metrics', description: 'Get detailed complexity metrics at function level' },
+      { name: 'complexity_get_hotspots', description: 'Get complexity hotspots that require immediate attention' },
+      { name: 'complexity_get_alerts', description: 'Get active complexity alerts and threshold violations' },
+      { name: 'complexity_acknowledge_alert', description: 'Acknowledge a complexity alert' },
+      { name: 'complexity_resolve_alert', description: 'Mark a complexity alert as resolved' },
+      { name: 'complexity_get_refactoring_opportunities', description: 'Get prioritized refactoring opportunities' },
+      { name: 'complexity_get_trends', description: 'Get complexity trends and forecasting data over time' },
+      { name: 'complexity_get_technical_debt', description: 'Get technical debt analysis based on complexity metrics' },
+      { name: 'complexity_analyze_commit', description: 'Analyze complexity for files changed in git commits' },
+      { name: 'complexity_set_thresholds', description: 'Configure complexity thresholds and alerting rules' },
+      { name: 'complexity_get_performance', description: 'Get complexity tracking system performance statistics' },
+      { name: 'complexity_start_tracking', description: 'Start the complexity tracking service' },
+      { name: 'complexity_stop_tracking', description: 'Stop the complexity tracking service' }
+    ],
+    'Development Metrics': [
+      { name: 'metrics_collect_project', description: 'Trigger comprehensive metrics collection for a project' },
+      { name: 'metrics_get_dashboard', description: 'Get comprehensive project metrics dashboard data' },
+      { name: 'metrics_get_core_metrics', description: 'Get detailed core development metrics (velocity, quality, debt)' },
+      { name: 'metrics_get_pattern_intelligence', description: 'Get pattern-based intelligence metrics' },
+      { name: 'metrics_get_productivity_health', description: 'Get developer productivity and health metrics' },
+      { name: 'metrics_get_alerts', description: 'Get active metrics alerts and notifications' },
+      { name: 'metrics_acknowledge_alert', description: 'Acknowledge a metrics alert' },
+      { name: 'metrics_resolve_alert', description: 'Mark a metrics alert as resolved' },
+      { name: 'metrics_get_trends', description: 'Get metrics trends and forecasting data' },
+      { name: 'metrics_get_performance', description: 'Get metrics collection system performance statistics' },
+      { name: 'metrics_start_collection', description: 'Start the metrics collection service' },
+      { name: 'metrics_stop_collection', description: 'Stop the metrics collection service' }
+    ],
+    'Metrics Aggregation': [
+      { name: 'metrics_aggregate_projects', description: 'Aggregate metrics across multiple projects with various aggregation types' },
+      { name: 'metrics_aggregate_timeline', description: 'Aggregate metrics over time with specified granularity and smoothing' },
+      { name: 'metrics_calculate_correlations', description: 'Calculate correlations and relationships between metrics' },
+      { name: 'metrics_get_executive_summary', description: 'Generate comprehensive executive summary with key insights' },
+      { name: 'metrics_export_data', description: 'Export aggregated metrics data in various formats (CSV, JSON, Excel)' }
+    ],
+    'Pattern Detection': [
+      { name: 'pattern_detection_start', description: 'Start the real-time pattern detection service' },
+      { name: 'pattern_detection_stop', description: 'Stop the pattern detection service and get final metrics' },
+      { name: 'pattern_detection_status', description: 'Get pattern detection service status and performance metrics' },
+      { name: 'pattern_detect_commits', description: 'Detect patterns in specific commits or recent commits' },
+      { name: 'pattern_track_git_activity', description: 'Track git activity with automatic pattern detection' },
+      { name: 'pattern_get_alerts', description: 'Get real-time pattern alerts for high-risk discoveries' },
+      { name: 'pattern_get_session_insights', description: 'Get pattern insights for current session' }
+    ],
+    'Pattern Analysis': [
+      { name: 'pattern_analyze_project', description: 'Get comprehensive pattern analysis for project' },
+      { name: 'pattern_analyze_session', description: 'Analyze patterns for specific session context' },
+      { name: 'pattern_analyze_commit', description: 'Analyze patterns for specific git commits with impact analysis' },
+      { name: 'pattern_get_discovered', description: 'Get discovered patterns with advanced filtering' },
+      { name: 'pattern_get_insights', description: 'Get actionable pattern insights with advanced filtering' },
+      { name: 'pattern_get_trends', description: 'Analyze pattern trends over time with forecasting' },
+      { name: 'pattern_get_correlations', description: 'Find correlations between different pattern types' },
+      { name: 'pattern_get_anomalies', description: 'Detect pattern anomalies and outliers with statistical analysis' },
+      { name: 'pattern_get_recommendations', description: 'Generate AI-driven pattern-based recommendations' },
+      { name: 'pattern_get_performance', description: 'Get pattern detection system performance metrics' }
+    ],
+    'Outcome Tracking': [
+      { name: 'outcome_record', description: 'Record a decision outcome measurement with evidence and scoring' },
+      { name: 'outcome_track_metric', description: 'Track metrics over time for a decision to monitor progress' },
+      { name: 'outcome_analyze_impact', description: 'Analyze and record impact relationships between decisions' },
+      { name: 'outcome_conduct_retrospective', description: 'Conduct a structured retrospective on a decision' },
+      { name: 'outcome_get_insights', description: 'Get learning insights and patterns from decision outcomes' },
+      { name: 'outcome_get_analytics', description: 'Get comprehensive decision analytics, trends, and reporting' },
+      { name: 'outcome_predict_success', description: 'Predict decision success probability using historical patterns' }
+    ],
+    'Git Integration': [
+      { name: 'git_session_commits', description: 'Get all git commits linked to a session with correlation details' },
+      { name: 'git_commit_sessions', description: 'Get all sessions that contributed to a specific git commit' },
+      { name: 'git_correlate_session', description: 'Manually trigger git correlation for current or specified session' }
     ]
   };
 
@@ -173,6 +247,44 @@ export class NavigationHandler {
         { name: 'projectId', type: 'string', required: false, description: 'Project ID (uses current if not specified)' }
       ],
       returns: 'Project health metrics, activity patterns, and recommendations'
+    },
+
+    // Session Management
+    'session_assign': {
+      description: 'Assign current session to a project for context organization',
+      parameters: [
+        { name: 'projectName', type: 'string', required: true, description: 'Name of the project to assign the session to' }
+      ],
+      returns: 'Confirmation of session assignment with project details'
+    },
+    'session_status': {
+      description: 'Get current session status and details including duration and context count',
+      parameters: [],
+      returns: 'Session ID, type, project assignment, start time, duration, and context statistics'
+    },
+    'session_new': {
+      description: 'Create a new session with optional title and project assignment',
+      parameters: [
+        { name: 'title', type: 'string', required: false, description: 'Optional custom title for the session' },
+        { name: 'projectName', type: 'string', required: false, description: 'Optional project to assign the new session to' }
+      ],
+      returns: 'New session ID and project assignment confirmation'
+    },
+    'session_update': {
+      description: 'Update session title and description for better organization and context',
+      parameters: [
+        { name: 'sessionId', type: 'string', required: true, description: 'ID of the session to update' },
+        { name: 'title', type: 'string', required: false, description: 'New title for the session (optional)' },
+        { name: 'description', type: 'string', required: false, description: 'New description for the session (optional)' }
+      ],
+      returns: 'Updated session details with new title/description and metadata'
+    },
+    'session_details': {
+      description: 'Get detailed session information including title, description, and comprehensive metadata',
+      parameters: [
+        { name: 'sessionId', type: 'string', required: true, description: 'ID of the session to get details for' }
+      ],
+      returns: 'Complete session information including title, description, timestamps, project, and activity metrics'
     },
 
     // Add more tool parameters as needed...
@@ -406,77 +518,7 @@ export class NavigationHandler {
       }
     ],
 
-    // Multi-Agent Coordination
-    'agent_register': [
-      {
-        title: 'Register a coding agent',
-        example: `agent_register({
-  name: "CodeAgent",
-  type: "ai_assistant",
-  capabilities: ["coding", "debugging", "refactoring"]
-})`
-      }
-    ],
-    // Multi-Agent Coordination - NOW WITH AGENT NAME SUPPORT!
-    'agent_status': [
-      {
-        title: 'Update agent status using agent name',
-        example: `agent_status({
-  agentId: "CodeAgent",
-  status: "active"
-})`
-      },
-      {
-        title: 'Set agent to busy with UUID',
-        example: `agent_status({
-  agentId: "02a6745c-a361-41bb-b76f-86e16a4aea8e",
-  status: "busy"
-})`
-      }
-    ],
-    'agent_message': [
-      {
-        title: 'Send message between agents using names',
-        example: `agent_message({
-  fromAgentId: "CodeAgent",
-  toAgentId: "QaAgent",
-  title: "Code review request",
-  content: "Please review the new authentication module"
-})`
-      },
-      {
-        title: 'Broadcast message to all agents',
-        example: `agent_message({
-  fromAgentId: "ProjectManager",
-  title: "System maintenance",
-  content: "Database migration scheduled for tonight",
-  messageType: "alert"
-})`
-      }
-    ],
-    'agent_join': [
-      {
-        title: 'Join agent to project using name',
-        example: `agent_join({
-  agentId: "QaAgent"
-})`
-      },
-      {
-        title: 'Join with specific session',
-        example: `agent_join({
-  agentId: "CodeAgent",
-  sessionId: "sprint-3-session"
-})`
-      }
-    ],
-    'agent_leave': [
-      {
-        title: 'Remove agent from project',
-        example: `agent_leave({
-  agentId: "TestAgent"
-})`
-      }
-    ],
+    // Task Management
     'task_create': [
       {
         title: 'Create implementation task',
@@ -515,6 +557,82 @@ export class NavigationHandler {
   assignedTo: "CodeReviewGuru"
 })`
       }
+    ],
+    'task_details': [
+      {
+        title: 'Get full task details',
+        example: `task_details({
+  taskId: "59823126-9442-45dd-87e7-3dfae691e41f"
+})`
+      },
+      {
+        title: 'Get task details for specific project',
+        example: `task_details({
+  taskId: "59823126-9442-45dd-87e7-3dfae691e41f",
+  projectId: "my-project-id"
+})`
+      }
+    ],
+    
+    // Session Management
+    'session_assign': [
+      {
+        title: 'Assign session to current project',
+        example: `session_assign({
+  projectName: "my-web-app"
+})`
+      }
+    ],
+    'session_status': [
+      {
+        title: 'Get current session information',
+        example: `session_status()`
+      }
+    ],
+    'session_new': [
+      {
+        title: 'Create new session with title',
+        example: `session_new({
+  title: "Feature Development Sprint",
+  projectName: "aidis-bootstrap"
+})`
+      },
+      {
+        title: 'Create simple new session',
+        example: `session_new()`
+      }
+    ],
+    'session_update': [
+      {
+        title: 'Update session title only',
+        example: `session_update({
+  sessionId: "67b60ed0-1234-5678-9abc-def012345678",
+  title: "Authentication Module Development"
+})`
+      },
+      {
+        title: 'Update both title and description',
+        example: `session_update({
+  sessionId: "67b60ed0-1234-5678-9abc-def012345678",
+  title: "User Authentication Implementation",
+  description: "Implementing JWT-based authentication with login, logout, and session management. Includes password hashing and token validation."
+})`
+      },
+      {
+        title: 'Update description only',
+        example: `session_update({
+  sessionId: "67b60ed0-1234-5678-9abc-def012345678",
+  description: "Working on database optimization and query performance improvements for the user management system."
+})`
+      }
+    ],
+    'session_details': [
+      {
+        title: 'Get session details with metadata',
+        example: `session_details({
+  sessionId: "67b60ed0-1234-5678-9abc-def012345678"
+})`
+      }
     ]
   };
 
@@ -523,7 +641,7 @@ export class NavigationHandler {
    */
   async getHelp(): Promise<any> {
     let helpText = '🚀 **AIDIS - AI Development Intelligence System**\n\n';
-    helpText += '**38 Tools Available Across 8 Categories:**\n\n';
+    helpText += '**96 Tools Available Across 16 Categories:**\n\n';
 
     for (const [category, tools] of Object.entries(this.toolCatalog)) {
       helpText += `## ${category} (${tools.length} tools)\n`;

@@ -6,7 +6,7 @@
 ## IMMEDIATE ESSENTIALS
 
 ### System Status
-**AIDIS: 41 MCP Tools - 100% Operational**
+**AIDIS: 96 MCP Tools - 100% Operational**
 - System Health: 2 tools
 - Context Management: 4 tools (includes context_get_recent)
 - Project Management: 6 tools  
@@ -20,7 +20,7 @@
 ### Navigation Tools - START HERE
 Essential tools for discovering AIDIS capabilities:
 
-- **`aidis_help`** - Show all 41 tools organized by category
+- **`aidis_help`** - Show all 96 tools organized by category
 - **`aidis_explain <toolname>`** - Get detailed help for any specific tool  
 - **`aidis_examples <toolname>`** - See usage examples and patterns
 

@@ -273,4 +273,154 @@ export class SessionAnalyticsService {
       throw new Error('Failed to get token usage patterns');
     }
   }
+
+  /**
+   * Get sessions list with filtering for the dashboard
+   */
+  static async getSessionsList(options: {
+    projectId?: string;
+    status?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<{
+    sessions: any[];
+    total: number;
+  }> {
+    try {
+      const { projectId, status, limit = 50, offset = 0 } = options;
+      
+      let whereConditions: string[] = [];
+      let params: any[] = [];
+      let paramIndex = 1;
+      
+      if (projectId) {
+        whereConditions.push(`s.project_id = $${paramIndex}`);
+        params.push(projectId);
+        paramIndex++;
+      }
+      
+      // Map frontend status to session status logic
+      if (status && status !== 'all') {
+        if (status === 'active') {
+          whereConditions.push(`s.ended_at IS NULL`);
+        } else if (status === 'inactive') {
+          whereConditions.push(`s.ended_at IS NOT NULL`);
+        }
+      }
+      
+      const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
+      
+      // Get total count for pagination
+      const countQuery = `
+        SELECT COUNT(*) as total
+        FROM user_sessions s
+        LEFT JOIN projects p ON s.project_id = p.id
+        ${whereClause}
+      `;
+      
+      const countResult = await pool.query(countQuery, params);
+      const total = parseInt(countResult.rows[0].total) || 0;
+      
+      // Get sessions with details
+      const sessionsQuery = `
+        SELECT 
+          s.id,
+          s.project_id,
+          s.title,
+          s.description,
+          s.started_at,
+          s.ended_at,
+          s.total_tokens,
+          s.total_characters,
+          p.name as project_name,
+          EXTRACT(EPOCH FROM (COALESCE(s.ended_at, CURRENT_TIMESTAMP) - s.started_at)) / 60 as duration_minutes,
+          COUNT(c.id) as contexts_count,
+          COUNT(t.id) as tasks_count,
+          CASE 
+            WHEN s.ended_at IS NULL THEN 'active'
+            WHEN s.ended_at > CURRENT_TIMESTAMP - INTERVAL '1 hour' THEN 'inactive'
+            ELSE 'disconnected'
+          END as status,
+          CASE
+            WHEN s.session_type = 'mcp' THEN 'mcp'
+            WHEN s.session_type = 'web' THEN 'web'
+            ELSE 'api'
+          END as type
+        FROM user_sessions s
+        LEFT JOIN projects p ON s.project_id = p.id
+        LEFT JOIN contexts c ON s.id = c.session_id
+        LEFT JOIN tasks t ON s.project_id = t.project_id AND s.id = t.created_by
+        ${whereClause}
+        GROUP BY s.id, s.project_id, s.title, s.description, s.started_at, s.ended_at, 
+                 s.total_tokens, s.total_characters, p.name, s.session_type
+        ORDER BY s.started_at DESC
+        LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
+      `;
+      
+      params.push(limit, offset);
+      const sessionsResult = await pool.query(sessionsQuery, params);
+      
+      const sessions = sessionsResult.rows.map(row => ({
+        id: row.id,
+        title: row.title,
+        description: row.description,
+        project_id: row.project_id,
+        project_name: row.project_name,
+        created_at: row.started_at,
+        status: row.status,
+        type: row.type,
+        startedAt: row.started_at,
+        lastActivity: row.ended_at || row.started_at,
+        duration: Math.round(parseFloat(row.duration_minutes) || 0),
+        contextsCount: parseInt(row.contexts_count) || 0,
+        tasksCount: parseInt(row.tasks_count) || 0,
+      }));
+      
+      return {
+        sessions,
+        total
+      };
+    } catch (error) {
+      console.error('Get sessions list error:', error);
+      throw new Error('Failed to get sessions list');
+    }
+  }
+
+  /**
+   * Get session statistics for dashboard
+   */
+  static async getSessionStats(projectId?: string): Promise<{
+    totalSessions: number;
+    activeSessions: number;
+    todaySessions: number;
+    averageDuration: number;
+  }> {
+    try {
+      const whereClause = projectId ? 'WHERE s.project_id = $1' : '';
+      const params = projectId ? [projectId] : [];
+      
+      const query = `
+        SELECT 
+          COUNT(*) as total_sessions,
+          COUNT(CASE WHEN s.ended_at IS NULL THEN 1 END) as active_sessions,
+          COUNT(CASE WHEN DATE(s.started_at) = CURRENT_DATE THEN 1 END) as today_sessions,
+          COALESCE(AVG(EXTRACT(EPOCH FROM (COALESCE(s.ended_at, CURRENT_TIMESTAMP) - s.started_at)) / 60), 0) as avg_duration_minutes
+        FROM user_sessions s
+        ${whereClause}
+      `;
+      
+      const result = await pool.query(query, params);
+      const row = result.rows[0];
+      
+      return {
+        totalSessions: parseInt(row.total_sessions) || 0,
+        activeSessions: parseInt(row.active_sessions) || 0,
+        todaySessions: parseInt(row.today_sessions) || 0,
+        averageDuration: Math.round(parseFloat(row.avg_duration_minutes) || 0),
+      };
+    } catch (error) {
+      console.error('Get session stats error:', error);
+      throw new Error('Failed to get session stats');
+    }
+  }
 }

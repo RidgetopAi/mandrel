@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Table, Tag, Typography, Space, Button, Card } from 'antd';
-import { EyeOutlined, FileTextOutlined } from '@ant-design/icons';
+import { EyeOutlined, FileTextOutlined, EditOutlined } from '@ant-design/icons';
 import { Session } from '../../services/projectApi';
+import SessionEditModal from '../sessions/SessionEditModal';
 import type { ColumnsType } from 'antd/es/table';
 
 const { Text } = Typography;
@@ -10,6 +11,7 @@ interface SessionListProps {
   sessions: Session[];
   loading?: boolean;
   onViewSession?: (session: Session) => void;
+  onSessionUpdate?: (session: Session) => void;
   showProject?: boolean;
 }
 
@@ -17,8 +19,10 @@ const SessionList: React.FC<SessionListProps> = ({
   sessions,
   loading = false,
   onViewSession,
+  onSessionUpdate,
   showProject = false
 }) => {
+  const [editingSession, setEditingSession] = useState<Session | null>(null);
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleString();
@@ -48,6 +52,23 @@ const SessionList: React.FC<SessionListProps> = ({
         <Text code style={{ fontSize: '11px' }}>
           {id.slice(0, 8)}...
         </Text>
+      )
+    },
+    {
+      title: 'Title',
+      dataIndex: 'title',
+      key: 'title',
+      width: 200,
+      render: (title: string, record: Session) => (
+        title ? (
+          <Text strong style={{ fontSize: '13px' }}>
+            {title}
+          </Text>
+        ) : (
+          <Text type="secondary" style={{ fontStyle: 'italic', fontSize: '12px' }}>
+            Session {new Date(record.created_at).toLocaleDateString()}
+          </Text>
+        )
       )
     },
     ...(showProject ? [{
@@ -99,38 +120,64 @@ const SessionList: React.FC<SessionListProps> = ({
     {
       title: 'Actions',
       key: 'actions',
-      width: 100,
+      width: 130,
       align: 'center' as const,
       render: (_, record: Session) => (
-        <Button
-          type="text"
-          icon={<EyeOutlined />}
-          onClick={() => onViewSession?.(record)}
-          title="View session details"
-        >
-          View
-        </Button>
+        <Space size="small">
+          <Button
+            type="text"
+            icon={<EyeOutlined />}
+            onClick={() => onViewSession?.(record)}
+            title="View session details"
+            size="small"
+          >
+            View
+          </Button>
+          <Button
+            type="text"
+            icon={<EditOutlined />}
+            onClick={() => setEditingSession(record)}
+            title="Edit session details"
+            size="small"
+          >
+            Edit
+          </Button>
+        </Space>
       )
     }
   ];
 
+  const handleSessionUpdate = (updatedSession: Session) => {
+    onSessionUpdate?.(updatedSession);
+    setEditingSession(null);
+  };
+
   return (
-    <Card>
-      <Table
-        columns={columns}
-        dataSource={sessions}
-        loading={loading}
-        rowKey="id"
-        pagination={{
-          pageSize: 10,
-          showSizeChanger: true,
-          showQuickJumper: true,
-          showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} sessions`
-        }}
-        scroll={{ x: 800 }}
-        size="small"
+    <>
+      <Card>
+        <Table
+          columns={columns}
+          dataSource={sessions}
+          loading={loading}
+          rowKey="id"
+          pagination={{
+            pageSize: 10,
+            showSizeChanger: true,
+            showQuickJumper: true,
+            showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} sessions`
+          }}
+          scroll={{ x: 900 }}
+          size="small"
+        />
+      </Card>
+
+      <SessionEditModal
+        session={editingSession}
+        visible={!!editingSession}
+        onClose={() => setEditingSession(null)}
+        onSuccess={handleSessionUpdate}
       />
-    </Card>
+    </>
   );
 };
 

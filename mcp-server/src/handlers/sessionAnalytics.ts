@@ -552,8 +552,24 @@ export class SessionManagementHandler {
         };
       }
 
-      // Find project by name
-      const projects = await projectHandler.listProjects();
+      // Find project by name with improved error handling for service dependencies
+      // Fixed TS009: Better project service dependency management
+      let projects;
+      try {
+        projects = await projectHandler.listProjects();
+        if (!projects || !Array.isArray(projects)) {
+          return {
+            success: false,
+            message: 'Project service error: Invalid response from project service'
+          };
+        }
+      } catch (error) {
+        return {
+          success: false,
+          message: `Project service dependency error: ${error instanceof Error ? error.message : 'Unknown error'}`
+        };
+      }
+
       const project = projects.find(p => 
         p.name.toLowerCase() === projectName.toLowerCase() ||
         p.name.toLowerCase().includes(projectName.toLowerCase())
@@ -567,17 +583,34 @@ export class SessionManagementHandler {
         };
       }
 
-      // Update session with project ID
-      await db.query(`
-        UPDATE sessions 
-        SET project_id = $1, 
-            metadata = COALESCE(metadata, '{}') || $2
-        WHERE id = $3
-      `, [
-        project.id,
-        JSON.stringify({ assigned_manually: true, assigned_at: new Date().toISOString() }),
-        activeSessionId
-      ]);
+      // Update session with project ID with improved error handling
+      // Fixed TS009: Better database dependency error handling
+      try {
+        const updateResult = await db.query(`
+          UPDATE sessions 
+          SET project_id = $1, 
+              metadata = COALESCE(metadata, '{}') || $2
+          WHERE id = $3
+        `, [
+          project.id,
+          JSON.stringify({ assigned_manually: true, assigned_at: new Date().toISOString() }),
+          activeSessionId
+        ]);
+
+        // Verify the update actually affected a row
+        if (updateResult.rowCount === 0) {
+          return {
+            success: false,
+            message: `Session ${activeSessionId.substring(0, 8)}... not found or already ended`
+          };
+        }
+      } catch (dbError) {
+        console.error('❌ Database error during session assignment:', dbError);
+        return {
+          success: false,
+          message: `Database dependency error: ${dbError instanceof Error ? dbError.message : 'Unknown database error'}`
+        };
+      }
 
       return {
         success: true,
@@ -667,6 +700,223 @@ export class SessionManagementHandler {
   }
 
   /**
+   * Update session title and description
+   */
+  static async updateSessionDetails(
+    sessionId: string, 
+    title?: string, 
+    description?: string
+  ): Promise<{
+    success: boolean;
+    session?: any;
+    message: string;
+  }> {
+    try {
+      console.log(`✏️  Updating session ${sessionId.substring(0, 8)}... with title: "${title || ''}" description: "${description ? description.substring(0, 50) + '...' : ''}"`);
+
+      // Verify session exists
+      const sessionCheck = await db.query(`
+        SELECT id, title, description, project_id 
+        FROM sessions 
+        WHERE id = $1
+      `, [sessionId]);
+
+      if (sessionCheck.rows.length === 0) {
+        return {
+          success: false,
+          message: `Session ${sessionId} not found`
+        };
+      }
+
+      const currentSession = sessionCheck.rows[0];
+
+      // Build update query dynamically based on provided fields
+      const updates: string[] = [];
+      const values: any[] = [];
+      let paramIndex = 1;
+
+      if (title !== undefined) {
+        updates.push(`title = $${paramIndex}`);
+        values.push(title.trim() || null);
+        paramIndex++;
+      }
+
+      if (description !== undefined) {
+        updates.push(`description = $${paramIndex}`);
+        values.push(description.trim() || null);
+        paramIndex++;
+      }
+
+      // Always update the updated_at timestamp and metadata
+      updates.push(`updated_at = NOW()`);
+      updates.push(`metadata = COALESCE(metadata, '{}') || $${paramIndex}`);
+      values.push(JSON.stringify({
+        last_updated: new Date().toISOString(),
+        updated_fields: {
+          title: title !== undefined,
+          description: description !== undefined
+        },
+        updated_by: 'session_management'
+      }));
+      paramIndex++;
+
+      // Add session ID as final parameter
+      values.push(sessionId);
+
+      const updateQuery = `
+        UPDATE sessions 
+        SET ${updates.join(', ')}
+        WHERE id = $${paramIndex}
+        RETURNING id, title, description, project_id, updated_at
+      `;
+
+      const updateResult = await db.query(updateQuery, values);
+      const updatedSession = updateResult.rows[0];
+
+      // Get project name if assigned
+      let projectName = null;
+      if (updatedSession.project_id) {
+        const projectResult = await db.query(`
+          SELECT name FROM projects WHERE id = $1
+        `, [updatedSession.project_id]);
+        if (projectResult.rows.length > 0) {
+          projectName = projectResult.rows[0].name;
+        }
+      }
+
+      // Log the update event
+      await logEvent({
+        actor: 'ai',
+        session_id: sessionId,
+        project_id: updatedSession.project_id,
+        event_type: 'session_details_updated',
+        status: 'closed',
+        metadata: {
+          previous_title: currentSession.title,
+          new_title: updatedSession.title,
+          previous_description: currentSession.description,
+          new_description: updatedSession.description,
+          fields_updated: {
+            title: title !== undefined,
+            description: description !== undefined
+          }
+        },
+        tags: ['session', 'update', 'management']
+      });
+
+      console.log(`✅ Session ${sessionId.substring(0, 8)}... updated successfully`);
+
+      return {
+        success: true,
+        session: {
+          id: updatedSession.id,
+          title: updatedSession.title,
+          description: updatedSession.description,
+          project_id: updatedSession.project_id,
+          project_name: projectName,
+          updated_at: updatedSession.updated_at
+        },
+        message: `Session details updated successfully`
+      };
+
+    } catch (error) {
+      console.error('❌ Session update error:', error);
+      
+      // Log the error
+      await logEvent({
+        actor: 'ai',
+        session_id: sessionId,
+        event_type: 'session_update_error',
+        status: 'error',
+        metadata: {
+          error: error instanceof Error ? error.message : 'Unknown error',
+          attempted_title: title,
+          attempted_description: description
+        },
+        tags: ['session', 'update', 'error']
+      });
+
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Failed to update session details'
+      };
+    }
+  }
+
+  /**
+   * Get session details with title and description
+   */
+  static async getSessionDetailsWithMeta(sessionId: string): Promise<{
+    success: boolean;
+    session?: any;
+    message: string;
+  }> {
+    try {
+      console.log(`🔍 Getting detailed session info for: ${sessionId.substring(0, 8)}...`);
+
+      const result = await db.query(`
+        SELECT 
+          s.id,
+          s.title,
+          s.description,
+          s.agent_type,
+          s.started_at,
+          s.ended_at,
+          s.project_id,
+          s.context_summary,
+          s.updated_at,
+          s.metadata,
+          p.name as project_name,
+          COALESCE((SELECT COUNT(*) FROM contexts c WHERE c.session_id = s.id), 0) as contexts_count,
+          COALESCE((SELECT COUNT(*) FROM technical_decisions td WHERE td.session_id = s.id), 0) as decisions_count
+        FROM sessions s
+        LEFT JOIN projects p ON s.project_id = p.id
+        WHERE s.id = $1
+      `, [sessionId]);
+
+      if (result.rows.length === 0) {
+        return {
+          success: false,
+          message: `Session ${sessionId} not found`
+        };
+      }
+
+      const session = result.rows[0];
+      const duration = session.ended_at 
+        ? new Date(session.ended_at).getTime() - new Date(session.started_at).getTime()
+        : Date.now() - new Date(session.started_at).getTime();
+
+      return {
+        success: true,
+        session: {
+          id: session.id,
+          title: session.title,
+          description: session.description,
+          type: session.agent_type,
+          started_at: session.started_at,
+          ended_at: session.ended_at,
+          updated_at: session.updated_at,
+          project_id: session.project_id,
+          project_name: session.project_name || 'No project assigned',
+          context_summary: session.context_summary,
+          duration_minutes: Math.round(duration / 60000),
+          contexts_created: parseInt(session.contexts_count),
+          decisions_created: parseInt(session.decisions_count),
+          metadata: session.metadata || {}
+        },
+        message: `Session details retrieved successfully`
+      };
+
+    } catch (error) {
+      console.error('❌ Session details error:', error);
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Failed to get session details'
+      };
+    }
+  }
+
+  /**
    * Create new session with custom title and project
    */
   static async createNewSession(title?: string, projectName?: string): Promise<{
@@ -711,17 +961,17 @@ export class SessionManagementHandler {
         ]);
       }
 
-      // Create new session
-      const newSessionId = await SessionTracker.startSession(projectId);
+      // Create new session with title
+      const newSessionId = await SessionTracker.startSession(projectId, title);
 
-      // Update with custom title if provided
+      // Update with custom metadata
       if (title) {
         await db.query(`
           UPDATE sessions 
           SET metadata = COALESCE(metadata, '{}') || $1
           WHERE id = $2
         `, [
-          JSON.stringify({ title: title, custom_title: true }),
+          JSON.stringify({ custom_title: true, session_type: 'manual' }),
           newSessionId
         ]);
       }
