@@ -7,7 +7,7 @@
  * STDIO MCP transport has been extracted to separate adapters.
  * 
  * Core Features:
- * - HTTP API for all 41 AIDIS tools
+ * - HTTP API for all 96 AIDIS tools
  * - Health endpoints (/healthz, /readyz)
  * - Database connectivity with circuit breaker
  * - Process management and graceful shutdown
@@ -16,7 +16,7 @@
  * ✅ Remove STDIO transport dependencies
  * ✅ Keep all HTTP endpoints functional
  * ✅ Preserve database connectivity and reliability features
- * ✅ Maintain all 41 AIDIS tools via HTTP API
+ * ✅ Maintain all 96 AIDIS tools via HTTP API
  */
 
 import { processLock } from './utils/processLock.js';
@@ -39,7 +39,7 @@ import { contextHandler } from './handlers/context.js';
 import { projectHandler } from './handlers/project.js';
 import { namingHandler } from './handlers/naming.js';
 import { decisionsHandler } from './handlers/decisions.js';
-import { agentsHandler } from './handlers/agents.js';
+import { tasksHandler } from './handlers/tasks.js';
 import { codeAnalysisHandler } from './handlers/codeAnalysis.js';
 import { smartSearchHandler } from './handlers/smartSearch.js';
 import { navigationHandler } from './handlers/navigation.js';
@@ -455,6 +455,9 @@ class AIDISCoreServer {
       case 'task_update':
         return await this.handleTaskUpdate(validatedArgs as any);
         
+      case 'task_details':
+        return await this.handleTaskDetails(validatedArgs as any);
+        
       case 'agent_message':
         return await this.handleAgentMessage(validatedArgs as any);
         
@@ -509,7 +512,7 @@ class AIDISCoreServer {
       'project_list', 'project_create', 'project_switch', 'project_current', 'project_info',
       'naming_register', 'naming_check', 'naming_suggest', 'naming_stats',
       'decision_record', 'decision_search', 'decision_update', 'decision_stats',
-      'agent_register', 'agent_list', 'agent_status', 'task_create', 'task_list', 'task_update',
+      'agent_register', 'agent_list', 'agent_status', 'task_create', 'task_list', 'task_update', 'task_details',
       'agent_message', 'agent_messages', 'agent_join', 'agent_leave', 'agent_sessions',
       'code_analyze', 'code_components', 'code_dependencies', 'code_impact', 'code_stats',
       'smart_search', 'get_recommendations', 'project_insights'
@@ -820,6 +823,69 @@ class AIDISCoreServer {
       args.sessionId || 'default-session',
       args.result
     );
+  }
+
+  private async handleTaskDetails(args: any) {
+    const projectId = args.projectId || await projectHandler.getCurrentProjectId('default-session');
+    
+    // Get single task with full details
+    const tasks = await agentsHandler.listTasks(projectId);
+    const task = tasks.find(t => t.id === args.taskId);
+    
+    if (!task) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `❌ Task not found\n\n` +
+                  `🆔 Task ID: ${args.taskId}\n` +
+                  `📋 Project: ${projectId}\n\n` +
+                  `💡 Use task_list to see available tasks`
+          }
+        ]
+      };
+    }
+
+    const statusIcon = {
+      todo: '⏰',
+      in_progress: '🔄',
+      blocked: '🚫',
+      completed: '✅',
+      cancelled: '❌'
+    }[task.status] || '❓';
+
+    const priorityIcon = {
+      low: '🔵',
+      medium: '🟡',
+      high: '🔴',
+      urgent: '🚨'
+    }[task.priority] || '⚪';
+
+    const assignedText = task.assignedTo ? `\n👤 Assigned: ${task.assignedTo}` : '\n👤 Assigned: (unassigned)';
+    const createdByText = task.createdBy ? `\n🛠️  Created By: ${task.createdBy}` : '';
+    const tagsText = task.tags.length > 0 ? `\n🏷️  Tags: [${task.tags.join(', ')}]` : '';
+    const dependenciesText = task.dependencies.length > 0 ? `\n🔗 Dependencies: [${task.dependencies.join(', ')}]` : '';
+    const descriptionText = task.description ? `\n\n📝 **Description:**\n${task.description}` : '\n\n📝 **Description:** (no description provided)';
+    const startedText = task.startedAt ? `\n🚀 Started: ${task.startedAt.toISOString()}` : '';
+    const completedText = task.completedAt ? `\n✅ Completed: ${task.completedAt.toISOString()}` : '';
+    const metadataText = Object.keys(task.metadata).length > 0 ? `\n📊 Metadata: ${JSON.stringify(task.metadata, null, 2)}` : '';
+
+    return {
+      content: [
+        {
+          type: 'text',
+          text: `📋 **Task Details** ${statusIcon} ${priorityIcon}\n\n` +
+                `🆔 **ID:** ${task.id}\n` +
+                `📌 **Title:** ${task.title}\n` +
+                `🔖 **Type:** ${task.type}\n` +
+                `📊 **Status:** ${task.status}\n` +
+                `⚡ **Priority:** ${task.priority}${assignedText}${createdByText}${tagsText}${dependenciesText}${descriptionText}\n\n` +
+                `⏰ **Created:** ${task.createdAt.toISOString()}\n` +
+                `🔄 **Updated:** ${task.updatedAt.toISOString()}${startedText}${completedText}${metadataText}\n\n` +
+                `💡 Update with: task_update(taskId="${task.id}", status="...", assignedTo="...")`
+        }
+      ]
+    };
   }
 
   private async handleAgentMessage(args: any) {
@@ -1234,7 +1300,7 @@ class AIDISCoreServer {
       console.log('   🏷️  Naming: naming_register, naming_check, naming_suggest, naming_stats');
       console.log('   📋 Decisions: decision_record, decision_search, decision_update, decision_stats');
       console.log('   🤖 Agents: agent_register, agent_list, agent_status, agent_join, agent_leave, agent_sessions');
-      console.log('   📋 Tasks: task_create, task_list, task_update, agent_message, agent_messages');
+      console.log('   📋 Tasks: task_create, task_list, task_update, task_details, agent_message, agent_messages');
       console.log('   📦 Code Analysis: code_analyze, code_components, code_dependencies, code_impact, code_stats');
       console.log('   🧠 Smart Search: smart_search, get_recommendations, project_insights');
       
@@ -1247,7 +1313,7 @@ class AIDISCoreServer {
       console.log('🤖 Multi-Agent Coordination: READY');
       console.log('📦 Code Analysis: READY');
       console.log('🧠 Smart Search & AI Recommendations: READY');
-      console.log('🌐 HTTP API: READY - All 41 tools available via HTTP');
+      console.log('🌐 HTTP API: READY - All 96 tools available via HTTP');
       
     } catch (error) {
       console.error('❌ Failed to start AIDIS Core HTTP Service:', error);

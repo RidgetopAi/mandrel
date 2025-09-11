@@ -240,6 +240,11 @@ export const taskSchemas = {
     assignedTo: z.string().uuid().optional(),
     progress: z.number().min(0).max(100).optional(),
     notes: z.string().max(2000).optional()
+  }),
+
+  details: z.object({
+    taskId: z.string().uuid(),
+    projectId: z.string().optional()
   })
 };
 
@@ -343,6 +348,7 @@ export const validationSchemas = {
   task_create: taskSchemas.create,
   task_list: taskSchemas.list,
   task_update: taskSchemas.update,
+  task_details: taskSchemas.details,
   
   // Code Analysis
   code_analyze: codeSchemas.analyze,
@@ -358,7 +364,31 @@ export const validationSchemas = {
   // Session Management
   session_assign: sessionSchemas.assign,
   session_status: sessionSchemas.status,
-  session_new: sessionSchemas.new
+  session_new: sessionSchemas.new,
+  
+  // Pattern Detection
+  pattern_detection_start: z.object({}),
+  pattern_detection_stop: z.object({}),
+  pattern_detect_commits: z.object({
+    projectId: z.string().uuid().optional(),
+    sessionId: z.string().uuid().optional(),
+    commitShas: z.array(z.string()).optional()
+  }),
+  pattern_get_session_insights: z.object({
+    sessionId: z.string().uuid().optional()
+  }),
+  pattern_analyze_project: z.object({
+    projectId: z.string().uuid().optional()
+  }),
+  pattern_get_alerts: z.object({
+    severity: z.enum(['critical', 'high', 'medium', 'low']).optional(),
+    limit: z.number().int().min(1).max(50).default(10)
+  }),
+  pattern_detection_status: z.object({}),
+  pattern_track_git_activity: z.object({
+    projectId: z.string().uuid().optional(),
+    filePaths: z.array(z.string()).optional()
+  })
 };
 
 /**

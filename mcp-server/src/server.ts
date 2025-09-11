@@ -19,7 +19,7 @@
  * - Circuit breaker pattern
  */
 
-import { processLock } from './utils/processLock.js';
+import { processLock } from './utils/processLock.ts';
 
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
@@ -40,13 +40,40 @@ import { contextHandler } from './handlers/context.js';
 import { projectHandler } from './handlers/project.js';
 import { namingHandler } from './handlers/naming.js';
 import { decisionsHandler } from './handlers/decisions.js';
-import { agentsHandler } from './handlers/agents.js';
+import { tasksHandler } from './handlers/tasks.js';
 import { codeAnalysisHandler } from './handlers/codeAnalysis.js';
 import { smartSearchHandler } from './handlers/smartSearch.js';
 import { navigationHandler } from './handlers/navigation.js';
 import { validationMiddleware } from './middleware/validation.js';
 import { AIDISMCPProxy } from './utils/mcpProxy.js';
 import { SessionTracker } from './services/sessionTracker.js';
+import { SessionManagementHandler } from './handlers/sessionAnalytics.js';
+import { GitHandler } from './handlers/git.js';
+import { startGitTracking, stopGitTracking } from './services/gitTracker.js';
+import { patternDetectionHandlers } from './handlers/patternDetection.js';
+import { patternAnalysisHandlers } from './handlers/patternAnalysis.js';
+import { startPatternDetection, stopPatternDetection } from './services/patternDetector.js';
+import { DevelopmentMetricsHandler } from './handlers/developmentMetrics.js';
+import { 
+  startMetricsCollection, 
+  stopMetricsCollection, 
+  collectMetricsOnCommit,
+  collectMetricsOnPatternUpdate 
+} from './services/metricsCollector.js';
+import { 
+  startMetricsIntegration,
+  stopMetricsIntegration 
+} from './services/metricsIntegration.js';
+// TC015: Code Complexity Tracking imports
+import { CodeComplexityHandler } from './handlers/codeComplexity.js';
+import { 
+  startComplexityTracking,
+  stopComplexityTracking 
+} from './services/complexityTracker.js';
+// TC016: Decision Outcome Tracking imports
+import { outcomeTrackingHandler } from './handlers/outcomeTracking.js';
+// TC018: Metrics Aggregation imports
+import { MetricsAggregationHandler } from './handlers/metricsAggregation.js';
 
 // Enterprise hardening constants
 const PID_FILE = '/home/ridgetop/aidis/run/aidis.pid';
@@ -154,10 +181,16 @@ class CircuitBreaker {
   private lastFailureTime: number = 0;
   private state: 'closed' | 'open' | 'half-open' = 'closed';
   
+  private failureThreshold: number;
+  private recoveryTimeout: number;
+
   constructor(
-    private failureThreshold: number = 5,
-    private recoveryTimeout: number = 30000
-  ) {}
+    failureThreshold: number = 5,
+    recoveryTimeout: number = 30000
+  ) {
+    this.failureThreshold = failureThreshold;
+    this.recoveryTimeout = recoveryTimeout;
+  }
   
   async execute<T>(operation: () => Promise<T>): Promise<T> {
     if (this.state === 'open') {
@@ -442,6 +475,9 @@ class AIDISServer {
       case 'task_update':
         return await this.handleTaskUpdate(args as any);
         
+      case 'task_details':
+        return await this.handleTaskDetails(args as any);
+        
       case 'code_analyze':
         return await this.handleCodeAnalyze(args as any);
         
@@ -465,6 +501,152 @@ class AIDISServer {
         
       case 'project_insights':
         return await this.handleProjectInsights(args as any);
+
+      // Session Management Tools
+      case 'session_assign':
+        return await this.handleSessionAssign(args as any);
+        
+      case 'session_status':
+        return await this.handleSessionStatus();
+        
+      case 'session_new':
+        return await this.handleSessionNew(args as any);
+        
+      case 'session_update':
+        return await this.handleSessionUpdate(args as any);
+        
+      case 'session_details':
+        return await this.handleSessionDetails(args as any);
+
+      // Git Correlation Tools
+      case 'git_session_commits':
+        return await this.handleGitSessionCommits(args as any);
+        
+      case 'git_commit_sessions':
+        return await this.handleGitCommitSessions(args as any);
+        
+      case 'git_correlate_session':
+        return await this.handleGitCorrelateSession(args as any);
+
+      // TC013: Pattern Detection Tools
+      case 'pattern_detection_start':
+        return await patternDetectionHandlers.pattern_detection_start(args as any);
+      
+      case 'pattern_detection_stop':
+        return await patternDetectionHandlers.pattern_detection_stop();
+      
+      case 'pattern_detect_commits':
+        return await patternDetectionHandlers.pattern_detect_commits(args as any);
+      
+      case 'pattern_get_session_insights':
+        return await patternDetectionHandlers.pattern_get_session_insights(args as any);
+      
+      case 'pattern_analyze_project':
+        return await patternDetectionHandlers.pattern_analyze_project(args as any);
+      
+      case 'pattern_get_alerts':
+        return await patternDetectionHandlers.pattern_get_alerts(args as any);
+      
+      case 'pattern_detection_status':
+        return await patternDetectionHandlers.pattern_detection_status();
+      
+      case 'pattern_track_git_activity':
+        return await patternDetectionHandlers.pattern_track_git_activity();
+      
+      // TC017: Pattern Analysis Tools - Comprehensive pattern intelligence API
+      case 'pattern_get_discovered':
+        return await patternAnalysisHandlers.pattern_get_discovered(args as any);
+      
+      case 'pattern_get_trends':
+        return await patternAnalysisHandlers.pattern_get_trends(args as any);
+      
+      case 'pattern_get_correlations':
+        return await patternAnalysisHandlers.pattern_get_correlations(args as any);
+      
+      case 'pattern_get_insights':
+        return await patternAnalysisHandlers.pattern_get_insights(args as any);
+      
+      case 'pattern_get_alerts':
+        return await patternAnalysisHandlers.pattern_get_alerts(args as any);
+      
+      case 'pattern_get_anomalies':
+        return await patternAnalysisHandlers.pattern_get_anomalies(args as any);
+      
+      case 'pattern_get_recommendations':
+        return await patternAnalysisHandlers.pattern_get_recommendations(args as any);
+      
+      case 'pattern_analyze_session':
+        return await patternAnalysisHandlers.pattern_analyze_session(args as any);
+      
+      case 'pattern_analyze_commit':
+        return await patternAnalysisHandlers.pattern_analyze_commit(args as any);
+      
+      case 'pattern_get_performance':
+        return await patternAnalysisHandlers.pattern_get_performance(args as any);
+      
+      // Development Metrics Tools
+      case 'metrics_collect_project':
+      case 'metrics_get_dashboard':
+      case 'metrics_get_core_metrics':
+      case 'metrics_get_pattern_intelligence':
+      case 'metrics_get_productivity_health':
+      case 'metrics_get_alerts':
+      case 'metrics_acknowledge_alert':
+      case 'metrics_resolve_alert':
+      case 'metrics_get_trends':
+      case 'metrics_get_performance':
+      case 'metrics_start_collection':
+      case 'metrics_stop_collection':
+        return await DevelopmentMetricsHandler.handleTool(toolName, args);
+        
+      // TC018: Metrics Aggregation Tools
+      case 'metrics_aggregate_projects':
+      case 'metrics_aggregate_timeline':
+      case 'metrics_calculate_correlations':
+      case 'metrics_get_executive_summary':
+      case 'metrics_export_data':
+        return await MetricsAggregationHandler.handleTool(toolName, args);
+        
+      // TC015: Code Complexity Tracking tools
+      case 'complexity_analyze_files':
+      case 'complexity_get_dashboard':
+      case 'complexity_get_file_metrics':
+      case 'complexity_get_function_metrics':
+      case 'complexity_get_hotspots':
+      case 'complexity_get_alerts':
+      case 'complexity_acknowledge_alert':
+      case 'complexity_resolve_alert':
+      case 'complexity_get_refactoring_opportunities':
+      case 'complexity_get_trends':
+      case 'complexity_get_technical_debt':
+      case 'complexity_analyze_commit':
+      case 'complexity_set_thresholds':
+      case 'complexity_get_performance':
+      case 'complexity_start_tracking':
+      case 'complexity_stop_tracking':
+        return await CodeComplexityHandler.handleTool(toolName, args);
+        
+      // TC016: Decision Outcome Tracking tools
+      case 'outcome_record':
+        return await outcomeTrackingHandler.recordOutcome(args);
+        
+      case 'outcome_track_metric':
+        return await outcomeTrackingHandler.trackMetric(args);
+        
+      case 'outcome_analyze_impact':
+        return await outcomeTrackingHandler.analyzeImpact(args);
+        
+      case 'outcome_conduct_retrospective':
+        return await outcomeTrackingHandler.conductRetrospective(args);
+        
+      case 'outcome_get_insights':
+        return await outcomeTrackingHandler.getInsights(args);
+        
+      case 'outcome_get_analytics':
+        return await outcomeTrackingHandler.getAnalytics(args);
+        
+      case 'outcome_predict_success':
+        return await outcomeTrackingHandler.predictSuccess(args);
         
       default:
         throw new McpError(
@@ -1087,9 +1269,24 @@ class AIDISServer {
               required: ['taskId', 'status']
             },
           },
-
-
-
+          {
+            name: 'task_details',
+            description: 'Get detailed information for a specific task',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                taskId: {
+                  type: 'string',
+                  description: 'Task ID to get details for'
+                },
+                projectId: {
+                  type: 'string', 
+                  description: 'Optional project ID (uses current if not specified)'
+                }
+              },
+              required: ['taskId']
+            },
+          },
 
           {
             name: 'code_analyze',
@@ -1249,6 +1446,1184 @@ class AIDISServer {
               }
             },
           },
+        
+        // Session Management Tools
+        {
+          name: 'session_assign',
+          description: 'Assign current session to a project',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              projectName: {
+                type: 'string',
+                description: 'Name of the project to assign the session to'
+              }
+            },
+            required: ['projectName']
+          }
+        },
+        {
+          name: 'session_status',
+          description: 'Get current session status and details',
+          inputSchema: {
+            type: 'object',
+            properties: {}
+          }
+        },
+        {
+          name: 'session_new',
+          description: 'Create a new session with optional title and project assignment',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              title: {
+                type: 'string',
+                description: 'Optional custom title for the session'
+              },
+              projectName: {
+                type: 'string',
+                description: 'Optional project to assign the new session to'
+              }
+            },
+            required: []
+          }
+        },
+        {
+          name: 'session_update',
+          description: 'Update session title and description for better organization',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              sessionId: {
+                type: 'string',
+                description: 'ID of the session to update'
+              },
+              title: {
+                type: 'string',
+                description: 'New title for the session (optional)'
+              },
+              description: {
+                type: 'string',
+                description: 'New description for the session (optional)'
+              }
+            },
+            required: ['sessionId']
+          }
+        },
+        {
+          name: 'session_details',
+          description: 'Get detailed session information including title, description, and metadata',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              sessionId: {
+                type: 'string',
+                description: 'ID of the session to get details for'
+              }
+            },
+            required: ['sessionId']
+          }
+        },
+
+        // Git Correlation Tools
+        {
+          name: 'git_session_commits',
+          description: 'Get all git commits linked to a session with correlation details',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              sessionId: {
+                type: 'string',
+                description: 'Session ID (uses current session if not provided)'
+              },
+              includeDetails: {
+                type: 'boolean',
+                description: 'Include full commit details like files changed, insertions, deletions (default: false)'
+              },
+              confidenceThreshold: {
+                type: 'number',
+                minimum: 0,
+                maximum: 1,
+                description: 'Minimum correlation confidence score (0.0-1.0, default: 0.0)'
+              }
+            },
+            required: []
+          }
+        },
+        {
+          name: 'git_commit_sessions',
+          description: 'Get all sessions that contributed to a specific git commit',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              commitSha: {
+                type: 'string',
+                description: 'Git commit SHA (full or partial)'
+              },
+              includeDetails: {
+                type: 'boolean',
+                description: 'Include detailed session information (default: false)'
+              }
+            },
+            required: ['commitSha']
+          }
+        },
+        {
+          name: 'git_correlate_session',
+          description: 'Manually trigger git correlation for current or specified session',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              sessionId: {
+                type: 'string',
+                description: 'Session ID (uses current session if not provided)'
+              },
+              projectId: {
+                type: 'string',
+                description: 'Project ID (uses session project if not provided)'
+              },
+              forceRefresh: {
+                type: 'boolean',
+                description: 'Recalculate existing correlations (default: false)'
+              },
+              confidenceThreshold: {
+                type: 'number',
+                minimum: 0,
+                maximum: 1,
+                description: 'Minimum correlation confidence threshold (default: 0.3)'
+              }
+            },
+            required: []
+          }
+        },
+
+        // TC013: Pattern Detection Tools
+        {
+          name: 'pattern_detection_start',
+          description: 'Start the real-time pattern detection service',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              enableRealTime: {
+                type: 'boolean',
+                description: 'Enable real-time pattern detection (default: true)'
+              },
+              enableBatchProcessing: {
+                type: 'boolean',
+                description: 'Enable batch processing for historical analysis (default: true)'
+              },
+              detectionTimeoutMs: {
+                type: 'number',
+                description: 'Detection timeout in milliseconds (default: 100)'
+              },
+              updateIntervalMs: {
+                type: 'number',
+                description: 'Pattern update interval in milliseconds (default: 5000)'
+              }
+            }
+          }
+        },
+        {
+          name: 'pattern_detection_stop',
+          description: 'Stop the pattern detection service and get final metrics',
+          inputSchema: {
+            type: 'object',
+            properties: {}
+          }
+        },
+        {
+          name: 'pattern_detect_commits',
+          description: 'Detect patterns in specific commits or recent commits for current session',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              commitShas: {
+                type: 'array',
+                items: { type: 'string' },
+                description: 'Specific commit SHAs to analyze (if not provided, uses recent commits)'
+              },
+              sessionId: {
+                type: 'string',
+                description: 'Optional session ID (uses current if not specified)'
+              },
+              projectId: {
+                type: 'string',
+                description: 'Optional project ID (uses session project if not specified)'
+              },
+              realTimeMode: {
+                type: 'boolean',
+                description: 'Use real-time buffered processing (default: false)'
+              }
+            }
+          }
+        },
+        {
+          name: 'pattern_get_session_insights',
+          description: 'Get pattern insights for current session',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              sessionId: {
+                type: 'string',
+                description: 'Optional session ID (uses current if not specified)'
+              },
+              confidenceThreshold: {
+                type: 'number',
+                minimum: 0,
+                maximum: 1,
+                description: 'Minimum confidence score for insights (default: 0.5)'
+              },
+              includeHistorical: {
+                type: 'boolean',
+                description: 'Include historical insights (default: false)'
+              },
+              riskLevelFilter: {
+                type: 'array',
+                items: { type: 'string', enum: ['low', 'medium', 'high', 'critical'] },
+                description: 'Filter by risk levels'
+              },
+              insightTypeFilter: {
+                type: 'array',
+                items: { type: 'string' },
+                description: 'Filter by insight types'
+              }
+            }
+          }
+        },
+        {
+          name: 'pattern_analyze_project',
+          description: 'Get comprehensive pattern analysis for project',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              projectId: {
+                type: 'string',
+                description: 'Optional project ID (uses session project if not specified)'
+              },
+              sessionId: {
+                type: 'string',
+                description: 'Optional session ID (uses current if not specified)'
+              },
+              timeRangeHours: {
+                type: 'number',
+                description: 'Analysis time range in hours (default: 72)'
+              },
+              includeArchived: {
+                type: 'boolean',
+                description: 'Include archived patterns (default: false)'
+              },
+              patternTypes: {
+                type: 'array',
+                items: { type: 'string' },
+                description: 'Filter by pattern types'
+              }
+            }
+          }
+        },
+        {
+          name: 'pattern_get_alerts',
+          description: 'Get real-time pattern alerts for high-risk discoveries',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              projectId: {
+                type: 'string',
+                description: 'Optional project ID (uses session project if not specified)'
+              },
+              sessionId: {
+                type: 'string',
+                description: 'Optional session ID (uses current if not specified)'
+              },
+              severityFilter: {
+                type: 'array',
+                items: { type: 'string', enum: ['info', 'warning', 'error', 'critical'] },
+                description: 'Filter by alert severity'
+              },
+              alertTypeFilter: {
+                type: 'array',
+                items: { type: 'string' },
+                description: 'Filter by alert types'
+              },
+              timeRangeHours: {
+                type: 'number',
+                description: 'Time range in hours (default: 24)'
+              },
+              limit: {
+                type: 'number',
+                description: 'Maximum number of alerts (default: 20)'
+              }
+            }
+          }
+        },
+        {
+          name: 'pattern_detection_status',
+          description: 'Get pattern detection service status and performance metrics',
+          inputSchema: {
+            type: 'object',
+            properties: {}
+          }
+        },
+        {
+          name: 'pattern_track_git_activity',
+          description: 'Track git activity with automatic pattern detection',
+          inputSchema: {
+            type: 'object',
+            properties: {}
+          }
+        },
+        
+        // TC017: Pattern Analysis Tools - Comprehensive pattern intelligence API
+        {
+          name: 'pattern_get_discovered',
+          description: 'Get discovered patterns with advanced filtering and search capabilities',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              projectId: { type: 'string', description: 'Project ID to analyze' },
+              sessionId: { type: 'string', description: 'Session ID to analyze' },
+              patternTypes: { type: 'array', items: { type: 'string' }, description: 'Pattern types to include' },
+              confidenceMin: { type: 'number', description: 'Minimum confidence threshold' },
+              riskLevelFilter: { type: 'array', items: { type: 'string' }, description: 'Risk levels to filter' },
+              timeRangeHours: { type: 'number', description: 'Time range in hours' },
+              limit: { type: 'number', description: 'Maximum results to return' },
+              offset: { type: 'number', description: 'Result offset for pagination' }
+            }
+          }
+        },
+        {
+          name: 'pattern_get_trends',
+          description: 'Analyze pattern trends over time with forecasting',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              projectId: { type: 'string', description: 'Project ID to analyze' },
+              patternType: { type: 'string', description: 'Pattern type to analyze trends for' },
+              timeRangeDays: { type: 'number', description: 'Time range in days' },
+              granularity: { type: 'string', enum: ['hour', 'day', 'week', 'month'], description: 'Time granularity' },
+              includeForecasting: { type: 'boolean', description: 'Include trend forecasting' },
+              minConfidence: { type: 'number', description: 'Minimum confidence threshold' }
+            },
+            required: ['patternType']
+          }
+        },
+        {
+          name: 'pattern_get_correlations',
+          description: 'Find correlations between different pattern types and instances',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              projectId: { type: 'string', description: 'Project ID to analyze' },
+              pattern1Type: { type: 'string', description: 'First pattern type' },
+              pattern2Type: { type: 'string', description: 'Second pattern type' },
+              minCorrelationScore: { type: 'number', description: 'Minimum correlation score' },
+              timeRangeHours: { type: 'number', description: 'Time range in hours' },
+              includeNegativeCorrelations: { type: 'boolean', description: 'Include negative correlations' },
+              limit: { type: 'number', description: 'Maximum results to return' }
+            }
+          }
+        },
+        {
+          name: 'pattern_get_insights',
+          description: 'Get actionable pattern insights with advanced filtering',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              projectId: { type: 'string', description: 'Project ID to analyze' },
+              sessionId: { type: 'string', description: 'Session ID to analyze' },
+              insightTypes: { type: 'array', items: { type: 'string' }, description: 'Insight types to include' },
+              riskLevelFilter: { type: 'array', items: { type: 'string' }, description: 'Risk levels to filter' },
+              confidenceMin: { type: 'number', description: 'Minimum confidence threshold' },
+              businessImpactFilter: { type: 'array', items: { type: 'string' }, description: 'Business impact levels' },
+              sortBy: { type: 'string', enum: ['confidence', 'risk', 'priority', 'impact', 'created'], description: 'Sort order' },
+              limit: { type: 'number', description: 'Maximum results to return' },
+              offset: { type: 'number', description: 'Result offset for pagination' }
+            }
+          }
+        },
+        {
+          name: 'pattern_get_alerts',
+          description: 'Get pattern-based alerts and notifications',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              projectId: { type: 'string', description: 'Project ID to analyze' },
+              sessionId: { type: 'string', description: 'Session ID to analyze' },
+              severityFilter: { type: 'array', items: { type: 'string' }, description: 'Alert severity levels' },
+              alertTypeFilter: { type: 'array', items: { type: 'string' }, description: 'Alert types to include' },
+              timeRangeHours: { type: 'number', description: 'Time range in hours' },
+              sortBy: { type: 'string', enum: ['severity', 'timestamp', 'confidence'], description: 'Sort order' },
+              limit: { type: 'number', description: 'Maximum results to return' }
+            }
+          }
+        },
+        {
+          name: 'pattern_get_anomalies',
+          description: 'Detect pattern anomalies and outliers with statistical analysis',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              projectId: { type: 'string', description: 'Project ID to analyze' },
+              patternTypes: { type: 'array', items: { type: 'string' }, description: 'Pattern types to analyze' },
+              detectionMethod: { type: 'string', enum: ['statistical', 'ml', 'threshold', 'hybrid'], description: 'Detection method' },
+              sensitivityLevel: { type: 'string', enum: ['low', 'medium', 'high'], description: 'Detection sensitivity' },
+              timeRangeHours: { type: 'number', description: 'Time range in hours' },
+              minAnomalyScore: { type: 'number', description: 'Minimum anomaly score threshold' },
+              limit: { type: 'number', description: 'Maximum results to return' }
+            }
+          }
+        },
+        {
+          name: 'pattern_get_recommendations',
+          description: 'Generate AI-driven pattern-based recommendations',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              projectId: { type: 'string', description: 'Project ID to analyze' },
+              sessionId: { type: 'string', description: 'Session ID to analyze' },
+              focusAreas: { type: 'array', items: { type: 'string' }, description: 'Areas to focus recommendations on' },
+              priorityLevel: { type: 'string', enum: ['low', 'medium', 'high', 'urgent'], description: 'Minimum priority level' },
+              implementationCapacity: { type: 'string', enum: ['limited', 'moderate', 'high'], description: 'Implementation capacity' },
+              limit: { type: 'number', description: 'Maximum results to return' }
+            }
+          }
+        },
+        {
+          name: 'pattern_analyze_session',
+          description: 'Analyze patterns for specific session context',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              sessionId: { type: 'string', description: 'Session ID to analyze' },
+              includeHistorical: { type: 'boolean', description: 'Include historical patterns' },
+              timeRangeHours: { type: 'number', description: 'Time range in hours' },
+              analysisDepth: { type: 'string', enum: ['basic', 'detailed', 'comprehensive'], description: 'Analysis depth' }
+            }
+          }
+        },
+        {
+          name: 'pattern_analyze_commit',
+          description: 'Analyze patterns for specific git commits with impact analysis',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              commitShas: { type: 'array', items: { type: 'string' }, description: 'Git commit SHAs to analyze' },
+              projectId: { type: 'string', description: 'Project ID' },
+              includeImpactAnalysis: { type: 'boolean', description: 'Include change impact analysis' },
+              analysisDepth: { type: 'string', enum: ['basic', 'detailed', 'comprehensive'], description: 'Analysis depth' }
+            },
+            required: ['commitShas']
+          }
+        },
+        {
+          name: 'pattern_get_performance',
+          description: 'Get pattern detection system performance metrics and optimization insights',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              projectId: { type: 'string', description: 'Project ID to analyze' },
+              timeRangeHours: { type: 'number', description: 'Time range in hours' },
+              includeOptimizationSuggestions: { type: 'boolean', description: 'Include optimization suggestions' }
+            }
+          }
+        },
+        
+        // Development Metrics Tools - TC014: Comprehensive metrics collection system
+        ...DevelopmentMetricsHandler.getTools(),
+        
+        // TC018: Metrics Aggregation Tools - Advanced aggregation and correlation analysis
+        {
+          name: 'metrics_aggregate_projects',
+          description: 'Aggregate metrics across multiple projects with various aggregation types',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              projectIds: {
+                type: 'array',
+                items: { type: 'string' },
+                description: 'List of project IDs to aggregate metrics from'
+              },
+              timeframe: {
+                type: 'object',
+                properties: {
+                  startDate: { type: 'string', description: 'Start date (ISO format)' },
+                  endDate: { type: 'string', description: 'End date (ISO format)' }
+                },
+                required: ['startDate', 'endDate'],
+                description: 'Time period for aggregation'
+              },
+              metricTypes: {
+                type: 'array',
+                items: { type: 'string' },
+                description: 'List of metric types to include (e.g., code_velocity, technical_debt_accumulation)'
+              },
+              aggregationType: {
+                type: 'string',
+                enum: ['sum', 'average', 'median', 'percentile', 'count', 'min', 'max'],
+                description: 'Type of aggregation to perform'
+              },
+              percentileValue: {
+                type: 'number',
+                description: 'Percentile value (0-100) for percentile aggregation'
+              },
+              groupBy: {
+                type: 'string',
+                enum: ['project', 'metric_type', 'time_period', 'scope'],
+                description: 'How to group the aggregated results'
+              },
+              includeConfidenceMetrics: {
+                type: 'boolean',
+                description: 'Include confidence intervals and statistical measures'
+              }
+            },
+            required: ['projectIds', 'timeframe', 'metricTypes', 'aggregationType']
+          }
+        },
+        {
+          name: 'metrics_aggregate_timeline',
+          description: 'Aggregate metrics over time with specified granularity and smoothing',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              projectId: {
+                type: 'string',
+                description: 'Project ID to analyze'
+              },
+              period: {
+                type: 'string',
+                enum: ['daily', 'weekly', 'monthly', 'quarterly'],
+                description: 'Aggregation period'
+              },
+              granularity: {
+                type: 'string',
+                enum: ['hour', 'day', 'week', 'month'],
+                description: 'Time granularity for data points'
+              },
+              metricTypes: {
+                type: 'array',
+                items: { type: 'string' },
+                description: 'List of metric types to include (optional, all if not specified)'
+              },
+              timeframe: {
+                type: 'object',
+                properties: {
+                  startDate: { type: 'string', description: 'Start date (ISO format)' },
+                  endDate: { type: 'string', description: 'End date (ISO format)' }
+                },
+                required: ['startDate', 'endDate'],
+                description: 'Time period for analysis'
+              },
+              fillGaps: {
+                type: 'boolean',
+                description: 'Fill missing time periods with interpolated values'
+              },
+              smoothing: {
+                type: 'string',
+                enum: ['none', 'moving_average', 'exponential'],
+                description: 'Smoothing algorithm to apply'
+              },
+              windowSize: {
+                type: 'number',
+                description: 'Window size for smoothing algorithms'
+              }
+            },
+            required: ['projectId', 'period', 'granularity', 'timeframe']
+          }
+        },
+        {
+          name: 'metrics_calculate_correlations',
+          description: 'Calculate correlations and relationships between metrics with advanced analysis',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              projectId: {
+                type: 'string',
+                description: 'Project ID to analyze'
+              },
+              metric1: {
+                type: 'object',
+                properties: {
+                  type: { type: 'string', description: 'First metric type' },
+                  scope: { type: 'string', description: 'First metric scope (optional)' }
+                },
+                required: ['type'],
+                description: 'First metric for correlation analysis'
+              },
+              metric2: {
+                type: 'object',
+                properties: {
+                  type: { type: 'string', description: 'Second metric type' },
+                  scope: { type: 'string', description: 'Second metric scope (optional)' }
+                },
+                required: ['type'],
+                description: 'Second metric for correlation analysis'
+              },
+              timeframe: {
+                type: 'object',
+                properties: {
+                  startDate: { type: 'string', description: 'Start date (ISO format)' },
+                  endDate: { type: 'string', description: 'End date (ISO format)' }
+                },
+                required: ['startDate', 'endDate'],
+                description: 'Time period for analysis'
+              },
+              correlationType: {
+                type: 'string',
+                enum: ['pearson', 'spearman', 'kendall'],
+                description: 'Type of correlation analysis (default: pearson)'
+              },
+              includeLagAnalysis: {
+                type: 'boolean',
+                description: 'Include lag correlation analysis'
+              },
+              maxLag: {
+                type: 'number',
+                description: 'Maximum lag periods to analyze'
+              },
+              includeLeadingIndicators: {
+                type: 'boolean',
+                description: 'Detect leading indicators'
+              },
+              includePerformanceDrivers: {
+                type: 'boolean',
+                description: 'Identify performance drivers'
+              }
+            },
+            required: ['projectId', 'metric1', 'metric2', 'timeframe']
+          }
+        },
+        {
+          name: 'metrics_get_executive_summary',
+          description: 'Generate comprehensive executive summary with key insights and recommendations',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              projectId: {
+                type: 'string',
+                description: 'Project ID to analyze'
+              },
+              dateRange: {
+                type: 'object',
+                properties: {
+                  startDate: { type: 'string', description: 'Start date (ISO format)' },
+                  endDate: { type: 'string', description: 'End date (ISO format)' }
+                },
+                required: ['startDate', 'endDate'],
+                description: 'Analysis period'
+              },
+              includeForecasts: {
+                type: 'boolean',
+                description: 'Include predictive forecasts'
+              },
+              includeRiskAssessment: {
+                type: 'boolean',
+                description: 'Include risk assessment'
+              },
+              includeRecommendations: {
+                type: 'boolean',
+                description: 'Include actionable recommendations'
+              },
+              compareToBaseline: {
+                type: 'boolean',
+                description: 'Compare to historical baseline'
+              },
+              baselinePeriodDays: {
+                type: 'number',
+                description: 'Number of days for baseline comparison period'
+              }
+            },
+            required: ['projectId', 'dateRange']
+          }
+        },
+        {
+          name: 'metrics_export_data',
+          description: 'Export aggregated metrics data in various formats (CSV, JSON, Excel)',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              projectId: {
+                type: 'string',
+                description: 'Project ID to export data from'
+              },
+              exportType: {
+                type: 'string',
+                enum: ['csv', 'json', 'excel'],
+                description: 'Export format'
+              },
+              metricTypes: {
+                type: 'array',
+                items: { type: 'string' },
+                description: 'List of metric types to export (optional, all if not specified)'
+              },
+              timeframe: {
+                type: 'object',
+                properties: {
+                  startDate: { type: 'string', description: 'Start date (ISO format)' },
+                  endDate: { type: 'string', description: 'End date (ISO format)' }
+                },
+                required: ['startDate', 'endDate'],
+                description: 'Time period for export'
+              },
+              aggregationType: {
+                type: 'string',
+                enum: ['raw', 'daily', 'weekly', 'monthly'],
+                description: 'Aggregation level for export data'
+              },
+              includeMetadata: {
+                type: 'boolean',
+                description: 'Include statistical metadata in export'
+              },
+              includeCorrelations: {
+                type: 'boolean',
+                description: 'Include correlation analysis in export'
+              }
+            },
+            required: ['projectId', 'exportType', 'timeframe']
+          }
+        },
+        
+        // Code Complexity Tools - TC015: Multi-dimensional complexity tracking system
+        ...CodeComplexityHandler.getTools(),
+        // TC016: Decision Outcome Tracking Tools - Transform decision tracking to learning system
+        {
+          name: 'outcome_record',
+          description: 'Record a decision outcome measurement with evidence and scoring',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              decisionId: { 
+                type: 'string', 
+                description: 'ID of the decision to record outcome for' 
+              },
+              projectId: { 
+                type: 'string', 
+                description: 'Optional project ID (uses current project if not specified)' 
+              },
+              outcomeType: { 
+                type: 'string', 
+                enum: ['implementation', 'performance', 'maintenance', 'cost', 'adoption', 'security', 'scalability', 'developer_experience', 'user_experience'],
+                description: 'Type of outcome being measured' 
+              },
+              outcomeScore: { 
+                type: 'number', 
+                minimum: 1, 
+                maximum: 10,
+                description: 'Outcome score from 1 (disastrous) to 10 (exceptional)' 
+              },
+              outcomeStatus: { 
+                type: 'string', 
+                enum: ['in_progress', 'successful', 'failed', 'mixed', 'abandoned', 'superseded'],
+                description: 'Overall status of the outcome' 
+              },
+              predictedValue: { 
+                type: 'number', 
+                description: 'Optional predicted value for comparison' 
+              },
+              actualValue: { 
+                type: 'number', 
+                description: 'Optional actual value for comparison' 
+              },
+              measurementPeriodDays: { 
+                type: 'number', 
+                description: 'Days after decision when measured (auto-calculated if not provided)' 
+              },
+              evidenceType: { 
+                type: 'string', 
+                enum: ['metrics', 'user_feedback', 'performance_data', 'cost_analysis', 'developer_survey', 'incident_report', 'code_review', 'automated_test'],
+                description: 'Type of evidence supporting the outcome' 
+              },
+              evidenceData: { 
+                type: 'object', 
+                description: 'Structured evidence data' 
+              },
+              notes: { 
+                type: 'string', 
+                description: 'Additional notes about the outcome' 
+              },
+              measuredBy: { 
+                type: 'string', 
+                description: 'Who/what measured this outcome' 
+              },
+              confidenceLevel: { 
+                type: 'string', 
+                enum: ['low', 'medium', 'high'],
+                description: 'Confidence in the measurement (default: medium)' 
+              }
+            },
+            required: ['decisionId', 'outcomeType', 'outcomeScore', 'outcomeStatus']
+          }
+        },
+        {
+          name: 'outcome_track_metric',
+          description: 'Track metrics over time for a decision to monitor progress and trends',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              decisionId: { 
+                type: 'string', 
+                description: 'ID of the decision to track metrics for' 
+              },
+              projectId: { 
+                type: 'string', 
+                description: 'Optional project ID (uses current project if not specified)' 
+              },
+              metricName: { 
+                type: 'string', 
+                description: 'Name of the metric (e.g., "response_time_ms", "user_satisfaction")' 
+              },
+              metricCategory: { 
+                type: 'string', 
+                enum: ['performance', 'cost', 'quality', 'velocity', 'satisfaction', 'adoption', 'maintenance', 'security', 'reliability'],
+                description: 'Category of the metric' 
+              },
+              metricValue: { 
+                type: 'number', 
+                description: 'Current value of the metric' 
+              },
+              metricUnit: { 
+                type: 'string', 
+                description: 'Unit of measurement (e.g., "ms", "$", "%", "points")' 
+              },
+              baselineValue: { 
+                type: 'number', 
+                description: 'Baseline value before the decision' 
+              },
+              targetValue: { 
+                type: 'number', 
+                description: 'Target value we aim to achieve' 
+              },
+              daysSinceDecision: { 
+                type: 'number', 
+                description: 'Number of days since the decision was made' 
+              },
+              phase: { 
+                type: 'string', 
+                enum: ['pre_implementation', 'implementation', 'early_adoption', 'steady_state', 'optimization', 'migration', 'deprecation'],
+                description: 'Current phase of the decision lifecycle' 
+              },
+              dataSource: { 
+                type: 'string', 
+                description: 'Where the metric data came from' 
+              },
+              collectionMethod: { 
+                type: 'string', 
+                description: 'How the metric was collected' 
+              },
+              sampleSize: { 
+                type: 'number', 
+                description: 'Sample size for the measurement' 
+              },
+              confidenceInterval: { 
+                type: 'number', 
+                description: 'Confidence interval for the measurement' 
+              },
+              externalFactors: { 
+                type: 'object', 
+                description: 'External factors that might influence the metric' 
+              }
+            },
+            required: ['decisionId', 'metricName', 'metricCategory', 'metricValue', 'daysSinceDecision', 'phase']
+          }
+        },
+        {
+          name: 'outcome_analyze_impact',
+          description: 'Analyze and record impact relationships between decisions',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              sourceDecisionId: { 
+                type: 'string', 
+                description: 'ID of the decision that causes impact' 
+              },
+              impactedDecisionId: { 
+                type: 'string', 
+                description: 'ID of the decision being impacted' 
+              },
+              projectId: { 
+                type: 'string', 
+                description: 'Optional project ID (uses current project if not specified)' 
+              },
+              impactType: { 
+                type: 'string', 
+                enum: ['enables', 'conflicts_with', 'depends_on', 'supersedes', 'complements', 'complicates', 'simplifies', 'blocks', 'accelerates'],
+                description: 'Type of impact relationship' 
+              },
+              impactStrength: { 
+                type: 'string', 
+                enum: ['low', 'medium', 'high'],
+                description: 'Strength of the impact (default: medium)' 
+              },
+              impactDirection: { 
+                type: 'string', 
+                enum: ['positive', 'negative', 'neutral'],
+                description: 'Direction of the impact (default: neutral)' 
+              },
+              timeImpactDays: { 
+                type: 'number', 
+                description: 'Time impact in days (positive = delay, negative = acceleration)' 
+              },
+              costImpactAmount: { 
+                type: 'number', 
+                description: 'Financial impact amount' 
+              },
+              complexityImpactScore: { 
+                type: 'number', 
+                minimum: -10,
+                maximum: 10,
+                description: 'Complexity impact score (-10 = much simpler, +10 = much more complex)' 
+              },
+              analysisMethod: { 
+                type: 'string', 
+                enum: ['manual_review', 'automated_analysis', 'stakeholder_feedback', 'performance_correlation', 'timeline_analysis', 'dependency_graph'],
+                description: 'Method used to analyze the impact' 
+              },
+              description: { 
+                type: 'string', 
+                description: 'Description of the impact relationship' 
+              },
+              confidenceScore: { 
+                type: 'number', 
+                minimum: 0,
+                maximum: 1,
+                description: 'Confidence in the impact analysis (0-1 scale)' 
+              },
+              discoveredBy: { 
+                type: 'string', 
+                description: 'Who or what discovered this impact relationship' 
+              }
+            },
+            required: ['sourceDecisionId', 'impactedDecisionId', 'impactType', 'analysisMethod', 'confidenceScore']
+          }
+        },
+        {
+          name: 'outcome_conduct_retrospective',
+          description: 'Conduct a structured retrospective on a decision with stakeholder input',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              decisionId: { 
+                type: 'string', 
+                description: 'ID of the decision to retrospect on' 
+              },
+              projectId: { 
+                type: 'string', 
+                description: 'Optional project ID (uses current project if not specified)' 
+              },
+              retrospectiveType: { 
+                type: 'string', 
+                enum: ['quarterly', 'post_implementation', 'incident_driven', 'milestone', 'ad_hoc'],
+                description: 'Type of retrospective being conducted' 
+              },
+              participants: { 
+                type: 'array', 
+                items: { type: 'string' },
+                description: 'List of retrospective participants' 
+              },
+              facilitator: { 
+                type: 'string', 
+                description: 'Retrospective facilitator' 
+              },
+              overallSatisfaction: { 
+                type: 'number', 
+                minimum: 1,
+                maximum: 10,
+                description: 'Overall satisfaction with the decision (1-10 scale)' 
+              },
+              wouldDecideSameAgain: { 
+                type: 'boolean', 
+                description: 'Would the team make the same decision again?' 
+              },
+              recommendationToOthers: { 
+                type: 'number', 
+                minimum: 1,
+                maximum: 10,
+                description: 'How likely to recommend this decision to others (1-10 scale)' 
+              },
+              whatWentWell: { 
+                type: 'string', 
+                description: 'What aspects of the decision went well' 
+              },
+              whatWentPoorly: { 
+                type: 'string', 
+                description: 'What aspects of the decision went poorly' 
+              },
+              whatWeLearned: { 
+                type: 'string', 
+                description: 'Key lessons learned from the decision' 
+              },
+              whatWeWouldDoDifferently: { 
+                type: 'string', 
+                description: 'What the team would do differently next time' 
+              },
+              recommendationsForSimilarDecisions: { 
+                type: 'string', 
+                description: 'Recommendations for similar future decisions' 
+              },
+              processImprovements: { 
+                type: 'string', 
+                description: 'Suggested improvements to the decision-making process' 
+              },
+              toolsOrResourcesNeeded: { 
+                type: 'string', 
+                description: 'Tools or resources that would have helped' 
+              },
+              unforeseenRisks: { 
+                type: 'string', 
+                description: 'Risks that were not anticipated' 
+              },
+              riskMitigationEffectiveness: { 
+                type: 'string', 
+                description: 'How effective was the risk mitigation' 
+              },
+              newRisksDiscovered: { 
+                type: 'string', 
+                description: 'New risks discovered during implementation' 
+              },
+              timeToValueActualDays: { 
+                type: 'number', 
+                description: 'Actual time to realize value from the decision' 
+              },
+              timeToValuePredictedDays: { 
+                type: 'number', 
+                description: 'Originally predicted time to value' 
+              },
+              totalEffortActualHours: { 
+                type: 'number', 
+                description: 'Actual total effort in hours' 
+              },
+              totalEffortPredictedHours: { 
+                type: 'number', 
+                description: 'Originally predicted effort in hours' 
+              },
+              stakeholderFeedback: { 
+                type: 'object', 
+                description: 'Structured feedback from stakeholders' 
+              },
+              adoptionChallenges: { 
+                type: 'string', 
+                description: 'Challenges encountered during adoption' 
+              },
+              changeManagementLessons: { 
+                type: 'string', 
+                description: 'Lessons learned about change management' 
+              },
+              retrospectiveQualityScore: { 
+                type: 'number', 
+                minimum: 1,
+                maximum: 10,
+                description: 'Quality score for the retrospective process itself (1-10)' 
+              },
+              actionItems: { 
+                type: 'array', 
+                items: {
+                  type: 'object',
+                  properties: {
+                    description: { type: 'string' },
+                    assignee: { type: 'string' },
+                    dueDate: { type: 'string' },
+                    completed: { type: 'boolean' }
+                  }
+                },
+                description: 'Action items from the retrospective' 
+              },
+              followUpRequired: { 
+                type: 'boolean', 
+                description: 'Whether follow-up actions are required' 
+              },
+              followUpDate: { 
+                type: 'string', 
+                description: 'Date for follow-up review' 
+              }
+            },
+            required: ['decisionId', 'retrospectiveType', 'participants', 'overallSatisfaction', 'wouldDecideSameAgain', 'recommendationToOthers', 'retrospectiveQualityScore']
+          }
+        },
+        {
+          name: 'outcome_get_insights',
+          description: 'Get learning insights and patterns extracted from decision outcomes',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              projectId: { 
+                type: 'string', 
+                description: 'Optional project ID (uses current project if not specified)' 
+              },
+              insightType: { 
+                type: 'string', 
+                enum: ['success_pattern', 'failure_pattern', 'risk_indicator', 'best_practice', 'anti_pattern', 'correlation', 'threshold', 'timing_pattern'],
+                description: 'Filter by specific type of insight' 
+              },
+              limit: { 
+                type: 'number', 
+                minimum: 1,
+                maximum: 50,
+                description: 'Maximum number of insights to return (default: 20)' 
+              }
+            }
+          }
+        },
+        {
+          name: 'outcome_get_analytics',
+          description: 'Get comprehensive decision analytics, trends, and reporting',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              projectId: { 
+                type: 'string', 
+                description: 'Optional project ID (uses current project if not specified)' 
+              },
+              timeframeDays: { 
+                type: 'number', 
+                minimum: 1,
+                maximum: 365,
+                description: 'Timeframe for analytics in days (default: 90)' 
+              }
+            }
+          }
+        },
+        {
+          name: 'outcome_predict_success',
+          description: 'Predict decision success probability using historical patterns and ML insights',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              decisionType: { 
+                type: 'string', 
+                enum: ['architecture', 'library', 'framework', 'pattern', 'api_design', 'database', 'deployment', 'security', 'performance', 'ui_ux', 'testing', 'tooling', 'process', 'naming_convention', 'code_style'],
+                description: 'Type of decision to predict success for' 
+              },
+              impactLevel: { 
+                type: 'string', 
+                enum: ['low', 'medium', 'high', 'critical'],
+                description: 'Impact level of the decision' 
+              },
+              projectId: { 
+                type: 'string', 
+                description: 'Optional project ID (uses current project if not specified)' 
+              },
+              teamExperience: { 
+                type: 'string', 
+                enum: ['low', 'medium', 'high'],
+                description: 'Team experience level with this type of decision' 
+              },
+              timelinePressure: { 
+                type: 'string', 
+                enum: ['low', 'medium', 'high'],
+                description: 'Timeline pressure for the decision' 
+              },
+              complexity: { 
+                type: 'string', 
+                enum: ['low', 'medium', 'high'],
+                description: 'Complexity level of the decision' 
+              },
+              stakeholderAlignment: { 
+                type: 'string', 
+                enum: ['low', 'medium', 'high'],
+                description: 'Level of stakeholder alignment on the decision' 
+              }
+            },
+            required: ['decisionType', 'impactLevel']
+          }
+        },
         ],
       };
     });
@@ -1322,6 +2697,11 @@ class AIDISServer {
     const arrayParams = ['tags', 'aliases', 'contextTags', 'dependencies', 'capabilities', 
                          'alternativesConsidered', 'affectedComponents', 'contextRefs', 
                          'taskRefs', 'paths'];
+    
+    // Known number parameters that might come as strings from the MCP transport
+    const numberParams = ['limit', 'maxDepth', 'relevanceScore', 'confidenceScore', 
+                          'priority', 'estimatedHours', 'actualHours', 'hours_back',
+                          'confidenceThreshold', 'minConfidence'];
 
     for (const param of arrayParams) {
       if (result[param] && typeof result[param] === 'string') {
@@ -1336,6 +2716,17 @@ class AIDISServer {
         } catch (error) {
           // If parsing fails, leave as string - might be intentional
           // Silently continue - this is expected for non-array string parameters
+        }
+      }
+    }
+    
+    // Handle number parameters
+    for (const param of numberParams) {
+      if (result[param] !== undefined && typeof result[param] === 'string') {
+        const numValue = Number(result[param]);
+        if (!isNaN(numValue)) {
+          result[param] = numValue;
+          console.error(`✅ Converted ${param} to number: ${numValue}`);
         }
       }
     }
@@ -2247,7 +3638,7 @@ class AIDISServer {
     await projectHandler.initializeSession('default-session');
     const projectId = args.projectId || await projectHandler.getCurrentProjectId('default-session');
     
-    const task = await agentsHandler.createTask(
+    const task = await tasksHandler.createTask(
       projectId,
       args.title,
       args.description,
@@ -2286,7 +3677,7 @@ class AIDISServer {
    */
   private async handleTaskList(args: any) {
     const projectId = args.projectId || await projectHandler.getCurrentProjectId('default-session');
-    const tasks = await agentsHandler.listTasks(projectId, args.assignedTo, args.status, args.type);
+    const tasks = await tasksHandler.listTasks(projectId, args.assignedTo, args.status, args.type);
 
     if (tasks.length === 0) {
       return {
@@ -2331,7 +3722,8 @@ class AIDISServer {
         {
           type: 'text',
           text: `📋 Project Tasks (${tasks.length})\n\n${taskList}\n\n` +
-                `💡 Update tasks with: task_update\n` +
+                `💡 Get full details: task_details(taskId="...")\n` +
+                `🔄 Update tasks with: task_update\n` +
                 `🤖 Assign to agents with: task_update`
         },
       ],
@@ -2342,7 +3734,7 @@ class AIDISServer {
    * Handle task update requests
    */
   private async handleTaskUpdate(args: any) {
-    await agentsHandler.updateTaskStatus(args.taskId, args.status, args.assignedTo, args.metadata);
+    await tasksHandler.updateTaskStatus(args.taskId, args.status, args.assignedTo, args.metadata);
 
     const statusIcon = {
       todo: '⏰',
@@ -2365,6 +3757,72 @@ class AIDISServer {
                 `🤝 Changes visible to all coordinating agents!`
         },
       ],
+    };
+  }
+
+  /**
+   * Handle task details requests
+   */
+  private async handleTaskDetails(args: any) {
+    const projectId = args.projectId || await projectHandler.getCurrentProjectId('default-session');
+    
+    // Get single task with full details
+    const tasks = await tasksHandler.listTasks(projectId);
+    const task = tasks.find(t => t.id === args.taskId);
+    
+    if (!task) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `❌ Task not found\n\n` +
+                  `🆔 Task ID: ${args.taskId}\n` +
+                  `📋 Project: ${projectId}\n\n` +
+                  `💡 Use task_list to see available tasks`
+          }
+        ]
+      };
+    }
+
+    const statusIcon = {
+      todo: '⏰',
+      in_progress: '🔄',
+      blocked: '🚫',
+      completed: '✅',
+      cancelled: '❌'
+    }[task.status] || '❓';
+
+    const priorityIcon = {
+      low: '🔵',
+      medium: '🟡',
+      high: '🔴',
+      urgent: '🚨'
+    }[task.priority] || '⚪';
+
+    const assignedText = task.assignedTo ? `\n👤 Assigned: ${task.assignedTo}` : '\n👤 Assigned: (unassigned)';
+    const createdByText = task.createdBy ? `\n🛠️  Created By: ${task.createdBy}` : '';
+    const tagsText = task.tags.length > 0 ? `\n🏷️  Tags: [${task.tags.join(', ')}]` : '';
+    const dependenciesText = task.dependencies.length > 0 ? `\n🔗 Dependencies: [${task.dependencies.join(', ')}]` : '';
+    const descriptionText = task.description ? `\n\n📝 **Description:**\n${task.description}` : '\n\n📝 **Description:** (no description provided)';
+    const startedText = task.startedAt ? `\n🚀 Started: ${task.startedAt.toISOString()}` : '';
+    const completedText = task.completedAt ? `\n✅ Completed: ${task.completedAt.toISOString()}` : '';
+    const metadataText = Object.keys(task.metadata).length > 0 ? `\n📊 Metadata: ${JSON.stringify(task.metadata, null, 2)}` : '';
+
+    return {
+      content: [
+        {
+          type: 'text',
+          text: `📋 **Task Details** ${statusIcon} ${priorityIcon}\n\n` +
+                `🆔 **ID:** ${task.id}\n` +
+                `📌 **Title:** ${task.title}\n` +
+                `🔖 **Type:** ${task.type}\n` +
+                `📊 **Status:** ${task.status}\n` +
+                `⚡ **Priority:** ${task.priority}${assignedText}${createdByText}${tagsText}${dependenciesText}${descriptionText}\n\n` +
+                `⏰ **Created:** ${task.createdAt.toISOString()}\n` +
+                `🔄 **Updated:** ${task.updatedAt.toISOString()}${startedText}${completedText}${metadataText}\n\n` +
+                `💡 Update with: task_update(taskId="${task.id}", status="...", assignedTo="...")`
+        }
+      ]
     };
   }
 
@@ -3005,6 +4463,89 @@ class AIDISServer {
         console.warn('⚠️  Failed to initialize session tracking:', error);
         console.warn('   Contexts will be stored without session association');
       }
+
+      // Initialize real-time git tracking
+      console.log('⚡ Starting real-time git tracking...');
+      try {
+        await startGitTracking({
+          enableFileWatching: true,
+          enablePeriodicPolling: true,
+          pollingIntervalMs: 30000, // 30 seconds
+          correlationDelayMs: 5000   // 5 seconds delay after detection
+        });
+        console.log('✅ Git tracking initialized successfully');
+      } catch (error) {
+        console.warn('⚠️  Failed to initialize git tracking:', error);
+        console.warn('   Git correlation will be manual only');
+      }
+
+      // Initialize pattern detection service
+      console.log('🔍 Starting pattern detection service...');
+      try {
+        await startPatternDetection({
+          enableRealTimeDetection: true,
+          enableBatchProcessing: true,
+          detectionTimeoutMs: 100, // Sub-100ms target
+          patternUpdateIntervalMs: 5000 // 5 seconds
+        });
+        console.log('✅ Pattern detection service initialized successfully');
+      } catch (error) {
+        console.warn('⚠️  Failed to initialize pattern detection:', error);
+        console.warn('   Pattern detection will be manual only');
+      }
+
+      // Initialize development metrics collection service
+      console.log('📊 Starting development metrics collection service...');
+      try {
+        await startMetricsCollection({
+          enableRealTimeCollection: true,
+          enableBatchProcessing: true,
+          collectionTimeoutMs: 100, // Sub-100ms target
+          autoCollectOnCommit: true,
+          autoCollectOnPatternUpdate: true,
+          autoCollectOnSessionEnd: true,
+          scheduledCollectionIntervalMs: 300000 // 5 minutes
+        });
+        console.log('✅ Metrics collection service initialized successfully');
+      } catch (error) {
+        console.warn('⚠️  Failed to initialize metrics collection:', error);
+        console.warn('   Metrics collection will be manual only');
+      }
+
+      // Initialize metrics integration service for real-time triggers
+      console.log('🔗 Starting metrics integration service...');
+      try {
+        await startMetricsIntegration({
+          enableGitTriggers: true,
+          enablePatternTriggers: true,
+          enableSessionTriggers: true,
+          enableAlertNotifications: true,
+          gitTriggerDelayMs: 5000,
+          patternTriggerDelayMs: 3000,
+          maxConcurrentCollections: 3
+        });
+        console.log('✅ Metrics integration service initialized successfully');
+      } catch (error) {
+        console.warn('⚠️  Failed to initialize metrics integration:', error);
+        console.warn('   Real-time metrics triggers will be disabled');
+      }
+
+      // TC015: Initialize code complexity tracking service
+      console.log('🧮 Starting complexity tracking service...');
+      try {
+        await startComplexityTracking({
+          enableRealTimeAnalysis: true,
+          enableBatchProcessing: true,
+          analysisTimeoutMs: 100, // Sub-100ms target
+          autoAnalyzeOnCommit: true,
+          autoAnalyzeOnThresholdBreach: true,
+          scheduledAnalysisIntervalMs: 600000 // 10 minutes
+        });
+        console.log('✅ Complexity tracking service initialized successfully');
+      } catch (error) {
+        console.warn('⚠️  Failed to initialize complexity tracking:', error);
+        console.warn('   Complexity tracking will be manual only');
+      }
       
       // ORACLE FIX #3: Start health check server
       console.log(`🏥 Starting health check server on port ${HEALTH_PORT}...`);
@@ -3037,9 +4578,11 @@ class AIDISServer {
       console.log('   🏷️  Naming: naming_register, naming_check, naming_suggest, naming_stats');
       console.log('   📋 Decisions: decision_record, decision_search, decision_update, decision_stats');
       console.log('   🤖 Agents: agent_register, agent_list, agent_status, agent_join, agent_leave, agent_sessions');
-      console.log('   📋 Tasks: task_create, task_list, task_update, agent_message, agent_messages');
+      console.log('   📋 Tasks: task_create, task_list, task_update, task_details, agent_message, agent_messages');
       console.log('   📦 Code Analysis: code_analyze, code_components, code_dependencies, code_impact, code_stats');
       console.log('   🧠 Smart Search: smart_search, get_recommendations, project_insights');
+      console.log('   📊 Development Metrics: metrics_collect_project, metrics_get_dashboard, metrics_get_alerts, metrics_get_trends');
+      console.log('   📊 Metrics Aggregation: metrics_aggregate_projects, metrics_aggregate_timeline, metrics_calculate_correlations, metrics_get_executive_summary, metrics_export_data');
       
       console.log('🚀 System Status:');
       console.log('🧠 AI Context Management: ONLINE');
@@ -3050,6 +4593,8 @@ class AIDISServer {
       console.log('🤖 Multi-Agent Coordination: READY');
       console.log('📦 Code Analysis: READY');
       console.log('🧠 Smart Search & AI Recommendations: READY');
+      console.log('📊 Development Metrics Collection: READY');
+      console.log('📊 Metrics Aggregation & Correlation: READY');
       
     } catch (error) {
       console.error('❌ Failed to start AIDIS MCP Server:', error);
@@ -3080,6 +4625,51 @@ class AIDISServer {
       } catch (error) {
         console.warn('⚠️  Failed to end session:', error);
       }
+
+      // Stop git tracking
+      console.log('⚡ Stopping git tracking...');
+      try {
+        await stopGitTracking();
+        console.log('✅ Git tracking stopped gracefully');
+      } catch (error) {
+        console.warn('⚠️  Failed to stop git tracking:', error);
+      }
+
+      // Stop pattern detection service
+      console.log('🔍 Stopping pattern detection service...');
+      try {
+        await stopPatternDetection();
+        console.log('✅ Pattern detection service stopped gracefully');
+      } catch (error) {
+        console.warn('⚠️  Failed to stop pattern detection:', error);
+      }
+
+      // Stop metrics collection service
+      console.log('📊 Stopping metrics collection service...');
+      try {
+        await stopMetricsCollection();
+        console.log('✅ Metrics collection service stopped gracefully');
+      } catch (error) {
+        console.warn('⚠️  Failed to stop metrics collection:', error);
+      }
+
+      // Stop metrics integration service
+      console.log('🔗 Stopping metrics integration service...');
+      try {
+        await stopMetricsIntegration();
+        console.log('✅ Metrics integration service stopped gracefully');
+      } catch (error) {
+        console.warn('⚠️  Failed to stop metrics integration:', error);
+      }
+
+      // TC015: Stop complexity tracking service
+      console.log('🧮 Stopping complexity tracking service...');
+      try {
+        await stopComplexityTracking();
+        console.log('✅ Complexity tracking service stopped gracefully');
+      } catch (error) {
+        console.warn('⚠️  Failed to stop complexity tracking:', error);
+      }
       
       // Close health check server
       if (this.healthServer) {
@@ -3106,6 +4696,445 @@ class AIDISServer {
       console.error('❌ Error during shutdown:', error);
       throw error;
     }
+  }
+
+  // Session Management Handler Methods
+  
+  /**
+   * Handle session assignment to project
+   */
+  private async handleSessionAssign(args: any) {
+    console.log(`🔗 Session assign request: project="${args.projectName}"`);
+    
+    const result = await SessionManagementHandler.assignSessionToProject(args.projectName);
+    
+    return {
+      content: [
+        {
+          type: 'text',
+          text: result.message + (result.success ? `\n\n📝 Session ID: ${result.sessionId?.substring(0, 8)}...\n🏷️  Project: ${result.projectName}` : '')
+        }
+      ]
+    };
+  }
+
+  /**
+   * Handle session status request
+   */
+  private async handleSessionStatus() {
+    console.log('📋 Session status request');
+    
+    const result = await SessionManagementHandler.getSessionStatus();
+    
+    if (!result.success) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `❌ ${result.message}`
+          }
+        ]
+      };
+    }
+
+    const session = result.session!;
+    const statusText = `📋 Current Session Status\n\n` +
+      `🆔 Session ID: ${session.id.substring(0, 8)}...\n` +
+      `🏷️  Type: ${session.type}\n` +
+      `🏢 Project: ${session.project_name}\n` +
+      `⏰ Started: ${new Date(session.started_at).toLocaleString()}\n` +
+      `⏱️  Duration: ${session.duration_minutes} minutes\n` +
+      `📝 Contexts: ${session.contexts_created}\n` +
+      `🎯 Decisions: ${session.decisions_created}\n` +
+      (session.metadata.title ? `📌 Title: "${session.metadata.title}"\n` : '') +
+      (session.metadata.assigned_manually ? `🔧 Manually assigned at: ${new Date(session.metadata.assigned_at).toLocaleString()}\n` : '');
+
+    return {
+      content: [
+        {
+          type: 'text',
+          text: statusText
+        }
+      ]
+    };
+  }
+
+  /**
+   * Handle new session creation
+   */
+  private async handleSessionNew(args: any) {
+    console.log(`🆕 New session request: title="${args.title}", project="${args.projectName}"`);
+    
+    const result = await SessionManagementHandler.createNewSession(args.title, args.projectName);
+    
+    return {
+      content: [
+        {
+          type: 'text',
+          text: result.message + (result.success ? `\n\n📝 Session ID: ${result.sessionId?.substring(0, 8)}...\n🏷️  Project: ${result.projectName}` : '')
+        }
+      ]
+    };
+  }
+
+  /**
+   * Handle session update (title and description)
+   */
+  private async handleSessionUpdate(args: any) {
+    console.log(`✏️  Session update request: session="${args.sessionId?.substring(0, 8)}...", title="${args.title || 'unchanged'}", description="${args.description ? args.description.substring(0, 50) + '...' : 'unchanged'}"`);
+    
+    if (!args.sessionId) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: '❌ Session ID is required for updates'
+          }
+        ]
+      };
+    }
+
+    if (!args.title && !args.description) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: '❌ At least one field (title or description) must be provided for update'
+          }
+        ]
+      };
+    }
+    
+    const result = await SessionManagementHandler.updateSessionDetails(
+      args.sessionId, 
+      args.title, 
+      args.description
+    );
+    
+    if (!result.success) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `❌ ${result.message}`
+          }
+        ]
+      };
+    }
+
+    const session = result.session!;
+    let updateText = `✅ Session Updated Successfully\n\n`;
+    updateText += `🆔 Session ID: ${session.id.substring(0, 8)}...\n`;
+    
+    if (session.title) {
+      updateText += `📌 Title: "${session.title}"\n`;
+    }
+    
+    if (session.description) {
+      updateText += `📝 Description: ${session.description.length > 100 ? session.description.substring(0, 100) + '...' : session.description}\n`;
+    }
+    
+    updateText += `🏢 Project: ${session.project_name || 'No project assigned'}\n`;
+    updateText += `⏰ Updated: ${new Date(session.updated_at).toLocaleString()}`;
+
+    return {
+      content: [
+        {
+          type: 'text',
+          text: updateText
+        }
+      ]
+    };
+  }
+
+  /**
+   * Handle session details request
+   */
+  private async handleSessionDetails(args: any) {
+    console.log(`🔍 Session details request: session="${args.sessionId?.substring(0, 8)}..."`);
+    
+    if (!args.sessionId) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: '❌ Session ID is required'
+          }
+        ]
+      };
+    }
+    
+    const result = await SessionManagementHandler.getSessionDetailsWithMeta(args.sessionId);
+    
+    if (!result.success) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `❌ ${result.message}`
+          }
+        ]
+      };
+    }
+
+    const session = result.session!;
+    let detailsText = `📋 Session Details\n\n`;
+    detailsText += `🆔 Session ID: ${session.id.substring(0, 8)}...\n`;
+    
+    if (session.title) {
+      detailsText += `📌 Title: "${session.title}"\n`;
+    } else {
+      detailsText += `📌 Title: (not set)\n`;
+    }
+    
+    if (session.description) {
+      detailsText += `📝 Description: ${session.description}\n`;
+    } else {
+      detailsText += `📝 Description: (not set)\n`;
+    }
+    
+    detailsText += `🏷️  Type: ${session.type}\n`;
+    detailsText += `🏢 Project: ${session.project_name}\n`;
+    detailsText += `⏰ Started: ${new Date(session.started_at).toLocaleString()}\n`;
+    
+    if (session.ended_at) {
+      detailsText += `🏁 Ended: ${new Date(session.ended_at).toLocaleString()}\n`;
+    }
+    
+    detailsText += `⏱️  Duration: ${session.duration_minutes} minutes\n`;
+    detailsText += `📝 Contexts: ${session.contexts_created}\n`;
+    detailsText += `🎯 Decisions: ${session.decisions_created}\n`;
+    
+    if (session.context_summary) {
+      detailsText += `\n📄 Summary: ${session.context_summary}\n`;
+    }
+    
+    if (session.updated_at && session.updated_at !== session.started_at) {
+      detailsText += `\n🔄 Last Updated: ${new Date(session.updated_at).toLocaleString()}`;
+    }
+
+    return {
+      content: [
+        {
+          type: 'text',
+          text: detailsText
+        }
+      ]
+    };
+  }
+
+  // Git Correlation Handler Methods
+  
+  /**
+   * Handle git session commits request
+   */
+  private async handleGitSessionCommits(args: any) {
+    console.log(`📊 Git session commits request: sessionId="${args.sessionId || 'current'}", includeDetails=${args.includeDetails || false}`);
+    
+    const result = await GitHandler.gitSessionCommits({
+      sessionId: args.sessionId,
+      includeDetails: args.includeDetails || false,
+      confidenceThreshold: args.confidenceThreshold || 0.0
+    });
+
+    if (!result.success) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `❌ Failed to get session commits: ${result.error}`
+          }
+        ]
+      };
+    }
+
+    let responseText = `📊 **Git Commits for Session ${result.sessionId.substring(0, 8)}...**\n\n`;
+    responseText += `**Summary:**\n`;
+    responseText += `• Total commits: ${result.totalCommits}\n`;
+    responseText += `• Average confidence: ${result.avgConfidence}%\n`;
+    
+    if (result.timeRange) {
+      responseText += `• Session timeframe: ${new Date(result.timeRange.start).toLocaleString()} - ${new Date(result.timeRange.end).toLocaleString()}\n`;
+    }
+
+    if (result.commits.length > 0) {
+      responseText += `\n**Linked Commits:**\n`;
+      result.commits.forEach((commit, index) => {
+        responseText += `\n${index + 1}. **${commit.short_sha}** (${Math.round(commit.confidence_score * 100)}% confidence)\n`;
+        responseText += `   📝 ${commit.message}\n`;
+        responseText += `   👤 ${commit.author_name} <${commit.author_email}>\n`;
+        responseText += `   📅 ${new Date(commit.author_date).toLocaleString()}\n`;
+        responseText += `   🔗 Link type: ${commit.link_type}`;
+        
+        if (commit.time_proximity_minutes !== null && commit.time_proximity_minutes !== undefined) {
+          responseText += ` (${commit.time_proximity_minutes} min proximity)`;
+        }
+        
+        if (commit.author_match) {
+          responseText += ` ✅ Author match`;
+        }
+        
+        if (args.includeDetails && commit.files_changed) {
+          responseText += `\n   📁 Files: ${commit.files_changed}, +${commit.insertions || 0}/-${commit.deletions || 0} lines`;
+        }
+      });
+    } else {
+      responseText += `\n🔍 No commits found linked to this session.`;
+      if (args.confidenceThreshold && args.confidenceThreshold > 0) {
+        responseText += ` Try lowering the confidence threshold (currently ${args.confidenceThreshold}).`;
+      }
+    }
+
+    return {
+      content: [
+        {
+          type: 'text',
+          text: responseText
+        }
+      ]
+    };
+  }
+
+  /**
+   * Handle git commit sessions request
+   */
+  private async handleGitCommitSessions(args: any) {
+    console.log(`🔍 Git commit sessions request: commitSha="${args.commitSha}", includeDetails=${args.includeDetails || false}`);
+    
+    const result = await GitHandler.gitCommitSessions({
+      commitSha: args.commitSha,
+      includeDetails: args.includeDetails || false
+    });
+
+    if (!result.success) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `❌ Failed to get commit sessions: ${result.error}`
+          }
+        ]
+      };
+    }
+
+    let responseText = `🔍 **Sessions for Git Commit ${result.commitSha}**\n\n`;
+    
+    if (result.commit) {
+      responseText += `**Commit Details:**\n`;
+      responseText += `• **${result.commit.short_sha}**: ${result.commit.message}\n`;
+      responseText += `• 👤 ${result.commit.author_name} <${result.commit.author_email}>\n`;
+      responseText += `• 📅 ${new Date(result.commit.author_date).toLocaleString()}\n`;
+      
+      if (result.commit.files_changed) {
+        responseText += `• 📁 ${result.commit.files_changed} files changed, +${result.commit.insertions || 0}/-${result.commit.deletions || 0} lines\n`;
+      }
+      
+      if (result.commit.branch_name) {
+        responseText += `• 🌿 Branch: ${result.commit.branch_name}\n`;
+      }
+    }
+
+    responseText += `\n**Session Correlation:**\n`;
+    responseText += `• Total sessions: ${result.totalSessions}\n`;
+    responseText += `• Average confidence: ${result.avgConfidence}%\n`;
+
+    if (result.sessions.length > 0) {
+      responseText += `\n**Linked Sessions:**\n`;
+      result.sessions.forEach((session, index) => {
+        responseText += `\n${index + 1}. **Session ${session.id.substring(0, 8)}...** (${Math.round(session.confidence_score * 100)}% confidence)\n`;
+        responseText += `   🎯 Type: ${session.session_type}\n`;
+        responseText += `   📅 Started: ${new Date(session.started_at).toLocaleString()}\n`;
+        responseText += `   ⏱️  Duration: ${session.duration_minutes} minutes\n`;
+        responseText += `   🔗 Link type: ${session.link_type}\n`;
+        
+        if (session.project_name) {
+          responseText += `   🏷️  Project: ${session.project_name}\n`;
+        }
+        
+        if (args.includeDetails) {
+          if (session.contexts_created !== undefined && session.decisions_created !== undefined) {
+            responseText += `   📝 Activity: ${session.contexts_created} contexts, ${session.decisions_created} decisions\n`;
+          }
+        }
+      });
+    } else {
+      responseText += `\n🔍 No sessions found linked to this commit.`;
+    }
+
+    return {
+      content: [
+        {
+          type: 'text',
+          text: responseText
+        }
+      ]
+    };
+  }
+
+  /**
+   * Handle git correlation trigger request
+   */
+  private async handleGitCorrelateSession(args: any) {
+    console.log(`🔗 Git correlate session request: sessionId="${args.sessionId || 'current'}", forceRefresh=${args.forceRefresh || false}`);
+    
+    const result = await GitHandler.gitCorrelateSession({
+      sessionId: args.sessionId,
+      projectId: args.projectId,
+      forceRefresh: args.forceRefresh || false,
+      confidenceThreshold: args.confidenceThreshold || 0.3
+    });
+
+    if (!result.success) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `❌ Failed to correlate session with git: ${result.error}`
+          }
+        ]
+      };
+    }
+
+    let responseText = `🔗 **Git Correlation Completed**\n\n`;
+    responseText += `**Session:** ${result.sessionId.substring(0, 8)}...\n`;
+    
+    if (result.projectId) {
+      responseText += `**Project:** ${result.projectId}\n`;
+    }
+    
+    responseText += `\n**Correlation Results:**\n`;
+    responseText += `• Links created: ${result.linksCreated}\n`;
+    responseText += `• Links updated: ${result.linksUpdated}\n`;
+    responseText += `• High confidence links: ${result.highConfidenceLinks}\n`;
+    responseText += `• Average confidence: ${result.avgConfidence}%\n`;
+    responseText += `• Processing time: ${result.processingTimeMs}ms\n`;
+
+    if (result.correlationStats) {
+      responseText += `\n**Correlation Analysis:**\n`;
+      responseText += `• Author matches: ${result.correlationStats.authorMatches}\n`;
+      responseText += `• Time proximity matches: ${result.correlationStats.timeProximityMatches}\n`;
+      responseText += `• Content similarity matches: ${result.correlationStats.contentSimilarityMatches}\n`;
+    }
+
+    if (result.linksCreated === 0 && result.linksUpdated === 0) {
+      responseText += `\n💡 **No new correlations found.** This could mean:\n`;
+      responseText += `• No recent commits in the session timeframe\n`;
+      responseText += `• Correlation confidence below threshold (${args.confidenceThreshold || 0.3})\n`;
+      responseText += `• Session not assigned to a project with git repository\n`;
+      responseText += `\nTry:\n`;
+      responseText += `• Lowering the confidence threshold\n`;
+      responseText += `• Checking if the session is assigned to the correct project\n`;
+      responseText += `• Using \`git_session_commits\` to see existing correlations\n`;
+    }
+
+    return {
+      content: [
+        {
+          type: 'text',
+          text: responseText
+        }
+      ]
+    };
   }
 }
 
