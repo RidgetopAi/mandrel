@@ -413,6 +413,23 @@ export class SmartSearchHandler {
     private async getTaskInsights(projectId: string): Promise<any> {
         const client = await this.pool.connect();
         try {
+            // Check if agent_tasks table exists before querying
+            const tableCheck = await client.query(`
+                SELECT EXISTS (
+                    SELECT FROM information_schema.tables 
+                    WHERE table_schema = 'public' 
+                    AND table_name = 'agent_tasks'
+                );
+            `);
+            
+            if (!tableCheck.rows[0].exists) {
+                // Return empty task insights if table doesn't exist
+                return {
+                    total: 0,
+                    byStatus: {}
+                };
+            }
+            
             const result = await client.query(`
                 SELECT 
                     status,

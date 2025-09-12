@@ -3041,26 +3041,99 @@ class AIDISServer {
   }
 
   /**
-   * Handle project switching requests
+   * Handle project switching requests with TS012 validation framework
    */
   private async handleProjectSwitch(args: any) {
-    console.log(`🔄 Project switch request: "${args.project}"`);
+    console.log(`🔄 [TS012] Project switch request: "${args.project}"`);
     
-    const project = await projectHandler.switchProject(args.project);
+    try {
+      // Get current session ID (in future this could come from session tracking)
+      const sessionId = this.getCurrentSessionId();
+      
+      // Use enhanced validation switching
+      const project = await projectHandler.switchProjectWithValidation(args.project, sessionId);
 
-    return {
-      content: [
-        {
-          type: 'text',
-          text: `✅ Switched to project: **${project.name}** 🟢\n\n` +
-                `📄 Description: ${project.description || 'No description'}\n` +
-                `📊 Status: ${project.status}\n` +
-                `📈 Contexts: ${project.contextCount || 0}\n` +
-                `⏰ Last Updated: ${project.updatedAt.toISOString().split('T')[0]}\n\n` +
-                `🎯 All context operations will now use this project by default`
-        },
-      ],
-    };
+      // Log successful switch for metrics and monitoring
+      const switchMetrics = {
+        sessionId,
+        targetProject: args.project,
+        switchSuccessful: true,
+        timestamp: new Date(),
+        validationPassed: true
+      };
+
+      console.log(`✅ [TS012] Project switch metrics:`, switchMetrics);
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `✅ Switched to project: **${project.name}** 🟢\n\n` +
+                  `📄 Description: ${project.description || 'No description'}\n` +
+                  `📊 Status: ${project.status}\n` +
+                  `📈 Contexts: ${project.contextCount || 0}\n` +
+                  `⏰ Last Updated: ${project.updatedAt.toISOString().split('T')[0]}\n\n` +
+                  `🎯 All context operations will now use this project by default\n` +
+                  `🛡️  Switch completed with TS012 validation framework`
+          },
+        ],
+      };
+
+    } catch (error) {
+      console.error(`❌ [TS012] Project switch failed:`, error);
+      
+      // Log failed switch for metrics and monitoring
+      const errorMetrics = {
+        sessionId: this.getCurrentSessionId(),
+        targetProject: args.project,
+        switchSuccessful: false,
+        timestamp: new Date(),
+        error: error instanceof Error ? error.message : String(error)
+      };
+
+      console.log(`❌ [TS012] Project switch error metrics:`, errorMetrics);
+
+      // Try to provide helpful error message based on error type
+      let userFriendlyMessage = `Failed to switch to project "${args.project}"`;
+      const errorMessage = error instanceof Error ? error.message : String(error);
+
+      if (errorMessage.includes('not found')) {
+        userFriendlyMessage += `\n\n💡 **Troubleshooting:**\n` +
+          `• Check if the project name is spelled correctly\n` +
+          `• Use \`project_list\` to see available projects\n` +
+          `• Create the project first with \`project_create\``;
+      } else if (errorMessage.includes('Pre-switch validation failed')) {
+        userFriendlyMessage += `\n\n💡 **Validation Issues:**\n` +
+          `• Session state may be inconsistent\n` +
+          `• Try again in a few moments\n` +
+          `• Contact support if problem persists`;
+      } else if (errorMessage.includes('Atomic switch failed')) {
+        userFriendlyMessage += `\n\n💡 **Switch Process Issues:**\n` +
+          `• The switch was safely rolled back\n` +
+          `• Your previous project setting is preserved\n` +
+          `• Try again or contact support`;
+      }
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `❌ ${userFriendlyMessage}\n\n` +
+                  `**Error Details:** ${errorMessage}\n\n` +
+                  `🛡️  Protected by TS012 validation framework`
+          },
+        ],
+      };
+    }
+  }
+
+  /**
+   * Get current session ID (placeholder for future session tracking enhancement)
+   */
+  private getCurrentSessionId(): string {
+    // In future versions, this would come from proper session tracking
+    // For now, use a default session ID that integrates with existing ProjectHandler
+    return 'default-session';
   }
 
   /**
