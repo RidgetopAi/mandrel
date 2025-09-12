@@ -1,0 +1,63 @@
+=== AIDIS REFACTORING BASELINE - Fri Sep 12 15:32:25 EDT 2025 ===
+
+## Git Repository State
+Commit: 1881c89636f42cad00582fc03af8e1be63e8b043
+Date: 2025-09-12 15:31:48 -0400
+Message: Add comprehensive AIDIS refactoring plan and task breakdown
+Author: RidgetopAi <brianj@ridgetopai.net>
+
+## Current Branch and Tags
+Branch: refactor/phase-0-baseline
+Baseline Tag: pre-refactor-baseline-2025-09-12
+
+## Running Processes
+ridgetop   10472  0.1  1.0 11899360 166480 pts/6 Sl+  13:20   0:13 /home/ridgetop/.vscode-server/bin/6f17636121051a53c88d3e605c491d22af2ba755/node /home/ridgetop/.vscode-server/bin/6f17636121051a53c88d3e605c491d22af2ba755/out/server-main.js --host=127.0.0.1 --port=0 --connection-token=1303380028-3064785569-2755077904-104171490 --use-host-proxy --without-browser-env-var --disable-websocket-compression --accept-server-license-terms --telemetry-level=all
+ridgetop   10527  0.3  1.7 1459648 287604 pts/6  Sl+  13:20   0:29 /home/ridgetop/.vscode-server/bin/6f17636121051a53c88d3e605c491d22af2ba755/node /home/ridgetop/.vscode-server/bin/6f17636121051a53c88d3e605c491d22af2ba755/out/bootstrap-fork --type=fileWatcher
+ridgetop   10813  2.4  6.4 55392808 1035188 pts/6 Sl+ 13:20   3:13 /home/ridgetop/.vscode-server/bin/6f17636121051a53c88d3e605c491d22af2ba755/node --dns-result-order=ipv4first /home/ridgetop/.vscode-server/bin/6f17636121051a53c88d3e605c491d22af2ba755/out/bootstrap-fork --type=extensionHost --transformURIs --useHostProxy=true
+ridgetop   10891  0.0  0.3 1012816 51736 pts/10  Sl+  13:20   0:00 /home/ridgetop/.vscode-server/bin/6f17636121051a53c88d3e605c491d22af2ba755/node /home/ridgetop/.vscode-remote-containers/dist/vscode-remote-containers-server-0.422.1.js
+ridgetop   10911  0.0  0.3 1016460 58924 pts/6   Sl+  13:20   0:00 /home/ridgetop/.vscode-server/bin/6f17636121051a53c88d3e605c491d22af2ba755/node /home/ridgetop/.vscode-server/bin/6f17636121051a53c88d3e605c491d22af2ba755/extensions/json-language-features/server/dist/node/jsonServerMain --node-ipc --clientProcessId=10813
+ridgetop   11233  0.1  1.2 1429224 197700 pts/6  Sl+  13:20   0:11 /home/ridgetop/.vscode-server/bin/6f17636121051a53c88d3e605c491d22af2ba755/node /home/ridgetop/.vscode-server/extensions/streetsidesoftware.code-spell-checker-4.2.6/packages/_server/dist/main.cjs --node-ipc --clientProcessId=10813
+ridgetop   11478  0.0  0.4 1026304 72304 pts/6   Sl+  13:21   0:00 node /home/ridgetop/.npm/_npx/9833c18b2d85bc59/node_modules/.bin/mcp-server-playwright --headless --isolated
+ridgetop   11782  0.0  0.4 1033004 79960 pts/6   Sl+  13:22   0:02 /home/ridgetop/.vscode-server/bin/6f17636121051a53c88d3e605c491d22af2ba755/node /home/ridgetop/.vscode-server/bin/6f17636121051a53c88d3e605c491d22af2ba755/extensions/markdown-language-features/dist/serverWorkerMain --node-ipc --clientProcessId=10813
+ridgetop   27402  0.0  0.0   2804  1584 ?        S    14:36   0:00 sh -c nodemon src/server.ts
+ridgetop   27403  0.0  0.3 1310048 61512 ?       Sl   14:36   0:01 node /home/ridgetop/aidis/aidis-command/node_modules/.bin/nodemon src/server.ts
+ridgetop   27456  0.0  0.0   2804  1584 ?        S    14:36   0:00 sh -c nodemon src/server.ts
+ridgetop   27457  0.0  0.3 1310436 61396 ?       Sl   14:36   0:01 node /home/ridgetop/aidis/aidis-command/node_modules/.bin/nodemon src/server.ts
+ridgetop   27605  0.0  0.3 1010780 51224 pts/7   Ssl+ 14:37   0:00 /home/ridgetop/.vscode-server/bin/6f17636121051a53c88d3e605c491d22af2ba755/node -e const net = require('net'); process.stdin.pause(); const client = net.createConnection({ host: '127.0.0.1', port: 44003 }, () => { client.pipe(process.stdout); process.stdin.pipe(client); }); client.on('close', function (hadError) { console.error(hadError ? 'Remote close with error' : 'Remote close'); process.exit(hadError ? 1 : 0); }); client.on('error', function (err) { process.stderr.write(err && (err.stack || err.message) || String(err)); });
+ridgetop   27626  0.0  0.3 1010780 51616 pts/8   Ssl+ 14:37   0:00 /home/ridgetop/.vscode-server/bin/6f17636121051a53c88d3e605c491d22af2ba755/node -e const net = require('net'); process.stdin.pause(); const client = net.createConnection({ host: '127.0.0.1', port: 44003 }, () => { client.pipe(process.stdout); process.stdin.pipe(client); }); client.on('close', function (hadError) { console.error(hadError ? 'Remote close with error' : 'Remote close'); process.exit(hadError ? 1 : 0); }); client.on('error', function (err) { process.stderr.write(err && (err.stack || err.message) || String(err)); });
+ridgetop   27750  0.0  0.0   2804  1584 ?        S    14:37   0:00 sh -c nodemon src/server.ts
+ridgetop   27751  0.0  0.3 1310308 61872 ?       Sl   14:37   0:01 node /home/ridgetop/aidis/aidis-command/node_modules/.bin/nodemon src/server.ts
+ridgetop   30461  0.0  0.0   2804  1584 ?        S    14:51   0:00 sh -c nodemon src/server.ts
+ridgetop   30462  0.0  0.3 1312100 63492 ?       Sl   14:51   0:01 node /home/ridgetop/aidis/aidis-command/node_modules/.bin/nodemon src/server.ts
+ridgetop   30674  0.0  0.0   2804  1584 ?        S    14:52   0:00 sh -c ts-node src/server.ts
+ridgetop   30677  0.0  0.0   2804  1584 ?        S    14:52   0:00 sh -c ts-node src/server.ts
+ridgetop   30678  0.3  1.7 1314628 290032 ?      Sl   14:52   0:08 node /home/ridgetop/aidis/aidis-command/node_modules/.bin/ts-node src/server.ts
+ridgetop   30679  0.4  1.8 1518604 298776 ?      Sl   14:52   0:10 node /home/ridgetop/aidis/aidis-command/node_modules/.bin/ts-node src/server.ts
+ridgetop   30698  0.0  0.0   2804  1584 ?        S    14:52   0:00 sh -c ts-node src/server.ts
+ridgetop   30699  0.3  1.7 1314900 289524 ?      Sl   14:52   0:08 node /home/ridgetop/aidis/aidis-command/node_modules/.bin/ts-node src/server.ts
+ridgetop   32217  7.9  1.4 11933888 241324 pts/2 Rl+  15:00   2:33 node --no-warnings /home/ridgetop/.nvm/versions/node/v22.18.0/bin/amp
+ridgetop   32259  0.0  0.3 1045180 60248 pts/2   Sl+  15:00   0:00 node /home/ridgetop/aidis/mcp-server/node_modules/.bin/tsx src/server.ts
+ridgetop   32270  0.2  1.3 44725400 211344 pts/2 Sl+  15:00   0:04 /home/ridgetop/.nvm/versions/node/v22.18.0/bin/node --require /home/ridgetop/aidis/mcp-server/node_modules/tsx/dist/preflight.cjs --import file:///home/ridgetop/aidis/mcp-server/node_modules/tsx/dist/loader.mjs src/server.ts
+ridgetop   32282  0.0  0.0 1237748 11768 pts/2   Sl+  15:00   0:01 /home/ridgetop/aidis/mcp-server/node_modules/@esbuild/linux-x64/bin/esbuild --service=0.25.9 --ping
+ridgetop   32293  0.0  0.4 1026308 72624 pts/2   Sl+  15:00   0:00 node /home/ridgetop/.npm/_npx/9833c18b2d85bc59/node_modules/.bin/mcp-server-playwright --headless --isolated
+ridgetop   32483  0.0  0.3 1015256 59000 pts/0   Sl+  15:01   0:00 node /home/ridgetop/aidis/aidis-command/node_modules/.bin/concurrently npm run dev:backend npm run dev:frontend
+ridgetop   32538  0.0  0.0   2804  1584 pts/0    S+   15:01   0:00 sh -c nodemon src/server.ts
+ridgetop   32540  0.0  0.3 1309532 59236 pts/0   Sl+  15:01   0:00 node /home/ridgetop/aidis/aidis-command/node_modules/.bin/nodemon src/server.ts
+ridgetop   32541  0.0  0.3 878508 49808 pts/0    Sl+  15:01   0:00 node /home/ridgetop/aidis/aidis-command/node_modules/.bin/react-scripts start
+ridgetop   32554  0.5  4.6 43917908 749216 pts/0 Sl+  15:01   0:10 /home/ridgetop/.nvm/versions/node/v22.18.0/bin/node /home/ridgetop/aidis/aidis-command/node_modules/react-scripts/scripts/start.js
+ridgetop   32579  0.3  2.5 1352860 416956 pts/0  Sl+  15:01   0:07 /home/ridgetop/.nvm/versions/node/v22.18.0/bin/node --max-old-space-size=2048 /home/ridgetop/aidis/aidis-command/node_modules/fork-ts-checker-webpack-plugin/lib/typescript-reporter/reporter/TypeScriptReporterRpcService.js
+ridgetop   32581  0.0  0.5 1050780 93168 pts/0   Sl+  15:01   0:00 /home/ridgetop/.nvm/versions/node/v22.18.0/bin/node --max-old-space-size=2048 /home/ridgetop/aidis/aidis-command/node_modules/fork-ts-checker-webpack-plugin/lib/typescript-reporter/reporter/TypeScriptReporterRpcService.js
+
+## Port Usage
+tcp        0      0 0.0.0.0:3000            0.0.0.0:*               LISTEN      32554/node          
+tcp        0      0 0.0.0.0:5432            0.0.0.0:*               LISTEN      -                   
+tcp6       0      0 :::8080                 :::*                    LISTEN      32270/node          
+tcp6       0      0 :::5000                 :::*                    LISTEN      30679/node          
+tcp6       0      0 :::5432                 :::*                    LISTEN      -                   
+
+## Database Status
+ current_database | table_count 
+------------------+-------------
+ aidis_production |          65
+(1 row)
+
