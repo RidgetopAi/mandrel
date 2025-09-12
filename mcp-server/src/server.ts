@@ -20,6 +20,9 @@
  */
 
 import { processLock } from './utils/processLock.ts';
+import { logger, CorrelationIdManager } from './utils/logger.js';
+import { RequestLogger } from './middleware/requestLogger.js';
+import { ErrorHandler } from './utils/errorHandler.js';
 
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
@@ -105,9 +108,25 @@ async function isSystemDServiceRunning(): Promise<boolean> {
   }
 }
 
+// Initialize logging system
+logger.info('AIDIS MCP Server Starting', {
+  component: 'SERVER',
+  operation: 'startup',
+  metadata: {
+    version: '0.1.0-hardened',
+    nodeVersion: process.version,
+    pid: process.pid,
+    mcpDebug: !!process.env.MCP_DEBUG,
+    logLevel: process.env.AIDIS_LOG_LEVEL || 'info'
+  }
+});
+
 // Enable MCP debug logging
 if (process.env.MCP_DEBUG) {
-  console.log('🐛 MCP Debug logging enabled:', process.env.MCP_DEBUG);
+  logger.debug('MCP Debug logging enabled', {
+    component: 'MCP',
+    metadata: { debugLevel: process.env.MCP_DEBUG }
+  });
 }
 
 /**
@@ -296,6 +315,28 @@ class AIDISServer {
   }
 
   /**
+   * Get current session ID for logging context
+   */
+  private getCurrentSessionId(): string | undefined {
+    try {
+      return SessionTracker.getCurrentSessionId();
+    } catch {
+      return undefined;
+    }
+  }
+
+  /**
+   * Get current project ID for logging context
+   */
+  private getCurrentProjectId(): string | undefined {
+    try {
+      return projectHandler.getCurrentProject()?.id;
+    } catch {
+      return undefined;
+    }
+  }
+
+  /**
    * Setup Health Check Server with MCP Tool Endpoints
    */
   private setupHealthServer(): void {
@@ -304,26 +345,38 @@ class AIDISServer {
       
       if (req.url === '/healthz') {
         // Basic health check - always returns 200 if server is responding
-        res.writeHead(200);
-        res.end(JSON.stringify({
+        const startTime = Date.now();
+        const healthData = {
           status: 'healthy',
           timestamp: new Date().toISOString(),
           uptime: process.uptime(),
           pid: process.pid,
           version: '0.1.0-hardened'
-        }));
+        };
+        
+        res.writeHead(200);
+        res.end(JSON.stringify(healthData));
+        
+        // Log health check
+        RequestLogger.logHealthCheck('/healthz', 'healthy', Date.now() - startTime);
         
       } else if (req.url === '/readyz') {
         // Readiness check - validates database connectivity
+        const startTime = Date.now();
         const isReady = this.dbHealthy && this.circuitBreaker.getState() !== 'open';
         
-        res.writeHead(isReady ? 200 : 503);
-        res.end(JSON.stringify({
+        const readinessData = {
           status: isReady ? 'ready' : 'not_ready',
           database: this.dbHealthy ? 'connected' : 'disconnected',
           circuit_breaker: this.circuitBreaker.getState(),
           timestamp: new Date().toISOString()
-        }));
+        };
+        
+        res.writeHead(isReady ? 200 : 503);
+        res.end(JSON.stringify(readinessData));
+        
+        // Log readiness check
+        RequestLogger.logHealthCheck('/readyz', isReady ? 'healthy' : 'unhealthy', Date.now() - startTime);
         
       } else if (req.url?.startsWith('/mcp/tools/') && req.method === 'POST') {
         // MCP Tool HTTP Endpoints for Proxy Forwarding
@@ -373,13 +426,24 @@ class AIDISServer {
       }));
 
     } catch (error: any) {
-      console.error('🚨 MCP Tool HTTP Error:', error);
+      // Enhanced error handling with logging
+      ErrorHandler.handleMcpError(error, toolName || 'unknown', requestData.arguments, {
+        component: 'HTTP_ADAPTER',
+        operation: 'mcp_tool_request',
+        correlationId: CorrelationIdManager.get(),
+        additionalContext: {
+          httpRequest: true,
+          url: req.url,
+          method: req.method
+        }
+      });
       
       res.writeHead(500);
       res.end(JSON.stringify({
         success: false,
         error: error.message,
-        type: error.constructor.name
+        type: error.constructor.name,
+        correlationId: CorrelationIdManager.get()
       }));
     }
   }
@@ -388,16 +452,38 @@ class AIDISServer {
    * Execute MCP Tool (shared logic for both MCP and HTTP)
    */
   private async executeMcpTool(toolName: string, args: any): Promise<any> {
-    // ORACLE HARDENING: Input validation middleware
-    const validation = validationMiddleware(toolName, args || {});
-    if (!validation.success) {
-      throw new McpError(
-        ErrorCode.InvalidParams,
-        `Input validation failed: ${validation.error}`
-      );
-    }
+    // Generate correlation ID for request tracing
+    const correlationId = CorrelationIdManager.generate();
     
-    const validatedArgs = validation.data;
+    return RequestLogger.wrapOperation(
+      toolName,
+      args,
+      async () => {
+        // ORACLE HARDENING: Input validation middleware
+        const validation = validationMiddleware(toolName, args || {});
+        if (!validation.success) {
+          throw new McpError(
+            ErrorCode.InvalidParams,
+            `Input validation failed: ${validation.error}`
+          );
+        }
+        
+        const validatedArgs = validation.data;
+        
+        return this.executeToolOperation(toolName, validatedArgs);
+      },
+      {
+        correlationId,
+        sessionId: this.getCurrentSessionId(),
+        projectId: this.getCurrentProjectId()
+      }
+    );
+  }
+
+  /**
+   * Execute the actual tool operation
+   */
+  private async executeToolOperation(toolName: string, validatedArgs: any): Promise<any> {
     
     switch (toolName) {
       case 'aidis_ping':
@@ -4503,26 +4589,48 @@ class AIDISServer {
    * Start the MCP server with Enterprise Hardening
    */
   async start(): Promise<void> {
-  console.log('🚀 Starting AIDIS MCP Server (Enterprise Hardened)...');
+    RequestLogger.logSystemEvent('server_startup_initiated', {
+      version: '0.1.0-hardened',
+      processId: process.pid,
+      nodeVersion: process.version
+    });
 
-  // ORACLE FIX #1: Enforce process singleton (CRITICAL)
-  try {
-  processLock.acquire();
-  } catch (error) {
-    console.error('❌ Cannot start: Another AIDIS instance is already running');
-      console.error(error);
+    // ORACLE FIX #1: Enforce process singleton (CRITICAL)
+    try {
+      processLock.acquire();
+      logger.info('Process singleton acquired successfully', {
+        component: 'STARTUP',
+        operation: 'singleton_lock'
+      });
+    } catch (error) {
+      logger.error('Cannot start: Another AIDIS instance is already running', error as Error, {
+        component: 'STARTUP',
+        operation: 'singleton_lock_failed'
+      });
       process.exit(1);
     }
     
     try {
       // ORACLE FIX #2: Initialize database with retry and circuit breaker
-      console.log('🔌 Initializing database connection with retry logic...');
+      logger.info('Initializing database connection with retry logic', {
+        component: 'STARTUP',
+        operation: 'database_init'
+      });
       
       await RetryHandler.executeWithRetry(async () => {
         await this.circuitBreaker.execute(async () => {
+          const startTime = Date.now();
           await initializeDatabase();
           this.dbHealthy = true;
-          console.log('✅ Database connection established');
+          
+          logger.info('Database connection established successfully', {
+            component: 'STARTUP',
+            operation: 'database_connected',
+            duration: Date.now() - startTime,
+            metadata: {
+              circuitBreakerState: this.circuitBreaker.getState()
+            }
+          });
         });
       });
       
@@ -4670,7 +4778,16 @@ class AIDISServer {
       console.log('📊 Metrics Aggregation & Correlation: READY');
       
     } catch (error) {
-      console.error('❌ Failed to start AIDIS MCP Server:', error);
+      // Enhanced error handling for startup failures
+      ErrorHandler.handleError(error as Error, {
+        component: 'STARTUP',
+        operation: 'server_startup_failed',
+        systemState: {
+          memoryUsage: process.memoryUsage(),
+          uptime: process.uptime()
+        }
+      }, 'startup');
+      
       this.dbHealthy = false;
       
       // Clean up on startup failure
@@ -4682,7 +4799,11 @@ class AIDISServer {
    * Enhanced Graceful Shutdown
    */
   async gracefulShutdown(signal: string): Promise<void> {
-    console.log(`\n📴 Received ${signal}, shutting down gracefully...`);
+    RequestLogger.logSystemEvent('graceful_shutdown_initiated', {
+      signal,
+      uptime: process.uptime(),
+      memoryUsage: process.memoryUsage()
+    });
     
     try {
       // End current session if active
@@ -4763,10 +4884,18 @@ class AIDISServer {
       // Mark as unhealthy
       this.dbHealthy = false;
       
-      console.log('✅ Graceful shutdown completed');
+      RequestLogger.logSystemEvent('graceful_shutdown_completed', {
+        signal,
+        shutdownDuration: process.uptime(),
+        finalMemoryUsage: process.memoryUsage()
+      });
       
     } catch (error) {
-      console.error('❌ Error during shutdown:', error);
+      logger.error('Error during graceful shutdown', error as Error, {
+        component: 'SHUTDOWN',
+        operation: 'shutdown_error',
+        metadata: { signal }
+      });
       throw error;
     }
   }
