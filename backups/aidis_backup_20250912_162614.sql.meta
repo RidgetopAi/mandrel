@@ -1,0 +1,15 @@
+{
+  "backup_date": "2025-09-12T16:26:15-04:00",
+  "database_name": "aidis_production",
+  "database_size": "25 MB",
+  "backup_files": {
+    "compressed": "aidis_backup_20250912_162614.sql.backup",
+    "sql": "aidis_backup_20250912_162614.sql.gz"
+  },
+  "backup_sizes": {
+    "compressed": "2.1M",
+    "sql": "1.3M"
+  },
+  "pg_version": "PostgreSQL 16.9 (Debian 16.9-1.pgdg120+1) on x86_64-pc-linux-gnu, compiled by gcc (Debian 12.2.0-14) 12.2.0, 64-bit",
+  "table_count": 65
+}
