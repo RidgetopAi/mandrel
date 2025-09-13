@@ -185,6 +185,34 @@ export class SphereGeometry {
             }
         });
     }
+    
+    /**
+     * Set sphere color
+     * @param {string} color - New color as hex string (e.g., '#4488ff')
+     */
+    setColor(color) {
+        const hexColor = typeof color === 'string' ? parseInt(color.replace('#', ''), 16) : color;
+        this.options.wireframeColor = hexColor;
+        
+        if (this.wireframeSphere && this.wireframeSphere.material) {
+            this.wireframeSphere.material.color.setHex(hexColor);
+        }
+        
+        if (this.solidSphere && this.solidSphere.material) {
+            this.solidSphere.material.color.setHex(hexColor);
+        }
+        
+        // Update grid lines color
+        this.group.children.forEach(child => {
+            if (child.type === 'Group') {
+                child.children.forEach(line => {
+                    if (line.material && line.material.color) {
+                        line.material.color.setHex(hexColor);
+                    }
+                });
+            }
+        });
+    }
 
     /**
      * Set solid sphere visibility

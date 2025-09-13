@@ -408,6 +408,63 @@ export class BoidSwarm {
             visualizer.setVelocityArrowVisible(visible);
         });
     }
+    
+    /**
+     * Set boid color for all boids
+     * @param {string} color - New color as hex string (e.g., '#ffffff')
+     */
+    setBoidColor(color) {
+        const hexColor = typeof color === 'string' ? parseInt(color.replace('#', ''), 16) : color;
+        this.options.baseColor = hexColor;
+        this.boids.forEach(visualizer => {
+            if (this.options.colorVariation) {
+                const variantColor = this.generateVariantColor(hexColor, visualizer.id || 0);
+                visualizer.setColor(variantColor);
+            } else {
+                visualizer.setColor(hexColor);
+            }
+        });
+    }
+    
+    /**
+     * Set trail color for all boids
+     * @param {string} color - New trail color as hex string
+     */
+    setTrailColor(color) {
+        const hexColor = typeof color === 'string' ? parseInt(color.replace('#', ''), 16) : color;
+        this.boids.forEach(visualizer => {
+            if (visualizer.trail && visualizer.trail.material) {
+                visualizer.trail.material.color.setHex(hexColor);
+            }
+        });
+    }
+    
+    /**
+     * Set boid size for all boids
+     * @param {number} size - New size multiplier
+     */
+    setBoidSize(size) {
+        this.options.boidSize = size;
+        this.boids.forEach(visualizer => {
+            if (visualizer.mesh) {
+                visualizer.mesh.scale.setScalar(size);
+            }
+        });
+    }
+    
+    /**
+     * Set trail length for all boids
+     * @param {number} length - New trail length
+     */
+    setTrailLength(length) {
+        this.boids.forEach(visualizer => {
+            visualizer.maxTrailLength = length;
+            // Trim existing trail if it's too long
+            if (visualizer.trailPositions.length > length) {
+                visualizer.trailPositions = visualizer.trailPositions.slice(-length);
+            }
+        });
+    }
 
     /**
      * Get the Three.js group containing all boid visualizations

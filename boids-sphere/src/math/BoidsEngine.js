@@ -29,6 +29,7 @@ export const DEFAULT_CONFIG = {
     boundaryWeight: 2.0,
     wanderWeight: 0.1,
     obstacleWeight: 3.0,
+    attractorWeight: 2.0,
     
     // Boid physics
     maxSpeed: 2.0,
@@ -67,6 +68,7 @@ export class BoidsEngine {
         this.config = { ...DEFAULT_CONFIG, ...config };
         this.boids = [];
         this.obstacles = [];
+        this.attractorSystem = null; // Will be set externally by visualization system
         
         // Performance tracking
         this.frameCount = 0;
@@ -241,6 +243,16 @@ export class BoidsEngine {
         if (this.config.wanderWeight > 0) {
             const wanderForce = wander(boid, this.config.wanderWeight);
             boid.acceleration.add(wanderForce);
+        }
+
+        // Apply attractor/repeller forces
+        if (this.attractorSystem) {
+            const attractorForce = this.attractorSystem.calculateAttractorForces(boid);
+            if (attractorForce && attractorForce.magnitude() > 0) {
+                // Scale attractor force and add to acceleration
+                attractorForce.multiply(this.config.attractorWeight || 1.0);
+                boid.acceleration.add(attractorForce);
+            }
         }
         
         // Store neighbors for potential use by visualization or other systems
@@ -805,6 +817,14 @@ export class BoidsEngine {
         if (this.config.enableSphericalConstraints) {
             this.initializeSphericalConstraints();
         }
+    }
+
+    /**
+     * Set the attractor system reference for calculating attractor forces
+     * @param {Object} attractorSystem - InteractiveAttractors instance
+     */
+    setAttractorSystem(attractorSystem) {
+        this.attractorSystem = attractorSystem;
     }
 
     /**
