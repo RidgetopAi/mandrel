@@ -49,7 +49,7 @@ import { smartSearchHandler } from './handlers/smartSearch.js';
 import { navigationHandler } from './handlers/navigation.js';
 import { validationMiddleware } from './middleware/validation.js';
 import { AIDISMCPProxy } from './utils/mcpProxy.js';
-import { SessionTracker } from './services/sessionTracker.js';
+import { SessionTracker, ensureActiveSession } from './services/sessionTracker.js';
 import { SessionManagementHandler } from './handlers/sessionAnalytics.js';
 import { GitHandler } from './handlers/git.js';
 import { startGitTracking, stopGitTracking } from './services/gitTracker.js';
@@ -393,9 +393,13 @@ class AIDISServer {
    * Handle MCP Tool Requests via HTTP (for proxy forwarding)
    */
   private async handleMcpToolRequest(req: http.IncomingMessage, res: http.ServerResponse): Promise<void> {
+    // Define variables outside try block for error handler access
+    let toolName: string | undefined;
+    let requestData: any = {};
+    
     try {
       // Extract tool name from URL: /mcp/tools/{toolName}
-      const toolName = req.url?.split('/mcp/tools/')[1];
+      toolName = req.url?.split('/mcp/tools/')[1];
       if (!toolName) {
         res.writeHead(400);
         res.end(JSON.stringify({ error: 'Tool name required' }));
@@ -410,7 +414,7 @@ class AIDISServer {
         req.on('end', resolve);
       });
 
-      const requestData = body ? JSON.parse(body) : {};
+      requestData = body ? JSON.parse(body) : {};
       const rawArgs = requestData.arguments || requestData.args || {};
 
       // Fix array parameter deserialization for Claude Code compatibility
@@ -529,109 +533,109 @@ class AIDISServer {
         return await this.handleProjectInfo(validatedArgs as any);
 
       case 'naming_register':
-        return await this.handleNamingRegister(args as any);
+        return await this.handleNamingRegister(validatedArgs as any);
         
       case 'naming_check':
-        return await this.handleNamingCheck(args as any);
+        return await this.handleNamingCheck(validatedArgs as any);
         
       case 'naming_suggest':
-        return await this.handleNamingSuggest(args as any);
+        return await this.handleNamingSuggest(validatedArgs as any);
         
       case 'naming_stats':
-        return await this.handleNamingStats(args as any);
+        return await this.handleNamingStats(validatedArgs as any);
 
       case 'decision_record':
-        return await this.handleDecisionRecord(args as any);
+        return await this.handleDecisionRecord(validatedArgs as any);
         
       case 'decision_search':
-        return await this.handleDecisionSearch(args as any);
+        return await this.handleDecisionSearch(validatedArgs as any);
         
       case 'decision_update':
-        return await this.handleDecisionUpdate(args as any);
+        return await this.handleDecisionUpdate(validatedArgs as any);
         
       case 'decision_stats':
-        return await this.handleDecisionStats(args as any);
+        return await this.handleDecisionStats(validatedArgs as any);
         
       case 'task_create':
-        return await this.handleTaskCreate(args as any);
+        return await this.handleTaskCreate(validatedArgs as any);
         
       case 'task_list':
-        return await this.handleTaskList(args as any);
+        return await this.handleTaskList(validatedArgs as any);
         
       case 'task_update':
-        return await this.handleTaskUpdate(args as any);
+        return await this.handleTaskUpdate(validatedArgs as any);
         
       case 'task_details':
-        return await this.handleTaskDetails(args as any);
+        return await this.handleTaskDetails(validatedArgs as any);
         
       case 'code_analyze':
-        return await this.handleCodeAnalyze(args as any);
+        return await this.handleCodeAnalyze(validatedArgs as any);
         
       case 'code_components':
-        return await this.handleCodeComponents(args as any);
+        return await this.handleCodeComponents(validatedArgs as any);
         
       case 'code_dependencies':
-        return await this.handleCodeDependencies(args as any);
+        return await this.handleCodeDependencies(validatedArgs as any);
         
       case 'code_impact':
-        return await this.handleCodeImpact(args as any);
+        return await this.handleCodeImpact(validatedArgs as any);
         
       case 'code_stats':
-        return await this.handleCodeStats(args as any);
+        return await this.handleCodeStats(validatedArgs as any);
         
       case 'smart_search':
-        return await this.handleSmartSearch(args as any);
+        return await this.handleSmartSearch(validatedArgs as any);
         
       case 'get_recommendations':
-        return await this.handleRecommendations(args as any);
+        return await this.handleRecommendations(validatedArgs as any);
         
       case 'project_insights':
-        return await this.handleProjectInsights(args as any);
+        return await this.handleProjectInsights(validatedArgs as any);
 
       // Session Management Tools
       case 'session_assign':
-        return await this.handleSessionAssign(args as any);
+        return await this.handleSessionAssign(validatedArgs as any);
         
       case 'session_status':
         return await this.handleSessionStatus();
         
       case 'session_new':
-        return await this.handleSessionNew(args as any);
+        return await this.handleSessionNew(validatedArgs as any);
         
       case 'session_update':
-        return await this.handleSessionUpdate(args as any);
+        return await this.handleSessionUpdate(validatedArgs as any);
         
       case 'session_details':
-        return await this.handleSessionDetails(args as any);
+        return await this.handleSessionDetails(validatedArgs as any);
 
       // Git Correlation Tools
       case 'git_session_commits':
-        return await this.handleGitSessionCommits(args as any);
+        return await this.handleGitSessionCommits(validatedArgs as any);
         
       case 'git_commit_sessions':
-        return await this.handleGitCommitSessions(args as any);
+        return await this.handleGitCommitSessions(validatedArgs as any);
         
       case 'git_correlate_session':
-        return await this.handleGitCorrelateSession(args as any);
+        return await this.handleGitCorrelateSession(validatedArgs as any);
 
       // TC013: Pattern Detection Tools
       case 'pattern_detection_start':
-        return await patternDetectionHandlers.pattern_detection_start(args as any);
+        return await patternDetectionHandlers.pattern_detection_start(validatedArgs as any);
       
       case 'pattern_detection_stop':
         return await patternDetectionHandlers.pattern_detection_stop();
       
       case 'pattern_detect_commits':
-        return await patternDetectionHandlers.pattern_detect_commits(args as any);
+        return await patternDetectionHandlers.pattern_detect_commits(validatedArgs as any);
       
       case 'pattern_get_session_insights':
-        return await patternDetectionHandlers.pattern_get_session_insights(args as any);
+        return await patternDetectionHandlers.pattern_get_session_insights(validatedArgs as any);
       
       case 'pattern_analyze_project':
-        return await patternDetectionHandlers.pattern_analyze_project(args as any);
+        return await patternDetectionHandlers.pattern_analyze_project(validatedArgs as any);
       
       case 'pattern_get_alerts':
-        return await patternDetectionHandlers.pattern_get_alerts(args as any);
+        return await patternDetectionHandlers.pattern_get_alerts(validatedArgs as any);
       
       case 'pattern_detection_status':
         return await patternDetectionHandlers.pattern_detection_status();
@@ -641,34 +645,34 @@ class AIDISServer {
       
       // TC017: Pattern Analysis Tools - Comprehensive pattern intelligence API
       case 'pattern_get_discovered':
-        return await patternAnalysisHandlers.pattern_get_discovered(args as any);
+        return await patternAnalysisHandlers.pattern_get_discovered(validatedArgs as any);
       
       case 'pattern_get_trends':
-        return await patternAnalysisHandlers.pattern_get_trends(args as any);
+        return await patternAnalysisHandlers.pattern_get_trends(validatedArgs as any);
       
       case 'pattern_get_correlations':
-        return await patternAnalysisHandlers.pattern_get_correlations(args as any);
+        return await patternAnalysisHandlers.pattern_get_correlations(validatedArgs as any);
       
       case 'pattern_get_insights':
-        return await patternAnalysisHandlers.pattern_get_insights(args as any);
+        return await patternAnalysisHandlers.pattern_get_insights(validatedArgs as any);
       
       case 'pattern_get_alerts':
-        return await patternAnalysisHandlers.pattern_get_alerts(args as any);
+        return await patternAnalysisHandlers.pattern_get_alerts(validatedArgs as any);
       
       case 'pattern_get_anomalies':
-        return await patternAnalysisHandlers.pattern_get_anomalies(args as any);
+        return await patternAnalysisHandlers.pattern_get_anomalies(validatedArgs as any);
       
       case 'pattern_get_recommendations':
-        return await patternAnalysisHandlers.pattern_get_recommendations(args as any);
+        return await patternAnalysisHandlers.pattern_get_recommendations(validatedArgs as any);
       
       case 'pattern_analyze_session':
-        return await patternAnalysisHandlers.pattern_analyze_session(args as any);
+        return await patternAnalysisHandlers.pattern_analyze_session(validatedArgs as any);
       
       case 'pattern_analyze_commit':
-        return await patternAnalysisHandlers.pattern_analyze_commit(args as any);
+        return await patternAnalysisHandlers.pattern_analyze_commit(validatedArgs as any);
       
       case 'pattern_get_performance':
-        return await patternAnalysisHandlers.pattern_get_performance(args as any);
+        return await patternAnalysisHandlers.pattern_get_performance(validatedArgs as any);
       
       // Development Metrics Tools
       case 'metrics_collect_project':
@@ -4635,10 +4639,11 @@ class AIDISServer {
       });
       
       // Initialize session tracking for this AIDIS instance
-      console.log('📋 Starting new session for this AIDIS instance...');
+      console.log('📋 Ensuring session exists for this AIDIS instance...');
       try {
         const currentProject = await projectHandler.getCurrentProject();
-        const sessionId = await SessionTracker.startSession(currentProject?.id);
+        // Use ensureActiveSession to reuse existing active session or create new one
+        const sessionId = await ensureActiveSession(currentProject?.id);
         console.log(`✅ Session tracking initialized: ${sessionId.substring(0, 8)}...`);
       } catch (error) {
         console.warn('⚠️  Failed to initialize session tracking:', error);

@@ -33,7 +33,11 @@ export const requestLoggingMiddleware = (
   };
 
   // Log incoming request
-  requestLogger.info('Incoming request', requestMetadata);
+  requestLogger.info('Incoming request', {
+    ...requestMetadata,
+    method: requestMetadata.method,
+    url: requestMetadata.url
+  });
 
   // Capture response data
   const originalSend = res.send;
@@ -83,13 +87,36 @@ function logResponse(
     timestamp: new Date().toISOString()
   };
 
+  // Get request details from res object
+  const req = res.req as any;
+  const method = req?.method;
+  const url = req?.originalUrl || req?.url;
+
   // Log response
   if (res.statusCode >= 500) {
-    requestLogger.error('Server error response', responseMetadata);
+    requestLogger.error('Server error response', {
+      ...responseMetadata,
+      method,
+      url,
+      statusCode: responseMetadata.statusCode,
+      responseTime: responseMetadata.responseTime
+    });
   } else if (res.statusCode >= 400) {
-    requestLogger.warn('Client error response', responseMetadata);
+    requestLogger.warn('Client error response', {
+      ...responseMetadata,
+      method,
+      url,
+      statusCode: responseMetadata.statusCode,
+      responseTime: responseMetadata.responseTime
+    });
   } else {
-    requestLogger.info('Request completed', responseMetadata);
+    requestLogger.info('Request completed', {
+      ...responseMetadata,
+      method,
+      url,
+      statusCode: responseMetadata.statusCode,
+      responseTime: responseMetadata.responseTime
+    });
   }
 
   // Log security events

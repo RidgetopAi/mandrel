@@ -34,8 +34,11 @@ export const ProjectProvider: React.FC<ProjectProviderProps> = ({ children }) =>
   // Save current project to localStorage when it changes
   useEffect(() => {
     if (currentProject) {
+      localStorage.setItem('aidis_selected_project', JSON.stringify(currentProject));
+      // Keep backward compatibility by also saving to old key
       localStorage.setItem('aidis_current_project', JSON.stringify(currentProject));
     } else {
+      localStorage.removeItem('aidis_selected_project');
       localStorage.removeItem('aidis_current_project');
     }
   }, [currentProject]);
@@ -60,7 +63,11 @@ export const ProjectProvider: React.FC<ProjectProviderProps> = ({ children }) =>
       }
       
       // Fallback to localStorage if session API fails
-      const stored = localStorage.getItem('aidis_current_project');
+      let stored = localStorage.getItem('aidis_selected_project');
+      if (!stored) {
+        // Try the old key for backward compatibility
+        stored = localStorage.getItem('aidis_current_project');
+      }
       if (stored) {
         const project = JSON.parse(stored);
         setCurrentProject(project);
@@ -70,7 +77,11 @@ export const ProjectProvider: React.FC<ProjectProviderProps> = ({ children }) =>
       console.error('Failed to load project from session:', error);
       // Fallback to localStorage
       try {
-        const stored = localStorage.getItem('aidis_current_project');
+        let stored = localStorage.getItem('aidis_selected_project');
+        if (!stored) {
+          // Try the old key for backward compatibility
+          stored = localStorage.getItem('aidis_current_project');
+        }
         if (stored) {
           const project = JSON.parse(stored);
           setCurrentProject(project);

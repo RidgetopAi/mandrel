@@ -60,18 +60,21 @@ const ProjectInsights: React.FC<ProjectInsightsProps> = ({ projectId, className 
     fetchInsights();
   }, [projectId]);
 
-  const parseInsights = (rawInsights: string): ParsedInsights => {
+  const parseInsights = (rawInsights: string | any): ParsedInsights => {
     try {
+      // Ensure rawInsights is a string
+      const insightsStr = typeof rawInsights === 'string' ? rawInsights : JSON.stringify(rawInsights);
+      
       // Parse the text response from MCP tool
-      const lines = rawInsights.split('\n');
+      const lines = insightsStr.split('\n');
       
       // Extract metrics using regex patterns
-      const codeHealthMatch = rawInsights.match(/Code Health:.*?(\d+\.?\d*)/);
-      const teamEfficiencyMatch = rawInsights.match(/Team Efficiency:.*?(\d+)/);
-      const componentsMatch = rawInsights.match(/Components:\s*(\d+)/);
-      const contextsMatch = rawInsights.match(/Contexts:\s*(\d+)/);
-      const decisionsMatch = rawInsights.match(/Decisions:\s*(\d+)/);
-      const tasksMatch = rawInsights.match(/Tasks:\s*(\d+)/);
+      const codeHealthMatch = insightsStr.match(/Code Health:.*?(\d+\.?\d*)/);
+      const teamEfficiencyMatch = insightsStr.match(/Team Efficiency:.*?(\d+)/);
+      const componentsMatch = insightsStr.match(/Components:\s*(\d+)/);
+      const contextsMatch = insightsStr.match(/Contexts:\s*(\d+)/);
+      const decisionsMatch = insightsStr.match(/Decisions:\s*(\d+)/);
+      const tasksMatch = insightsStr.match(/Tasks:\s*(\d+)/);
 
       const codeScore = codeHealthMatch ? parseFloat(codeHealthMatch[1]) : 0;
       const teamScore = teamEfficiencyMatch ? parseInt(teamEfficiencyMatch[1]) : 0;

@@ -3,6 +3,7 @@ import { Card, Row, Col, Tabs, Button, notification, Select } from 'antd';
 import { PlusOutlined, BarChartOutlined, ProjectOutlined } from '@ant-design/icons';
 import useWebSocketSingleton from '../hooks/useWebSocketSingleton';
 import { apiService } from '../services/api';
+import { useProjectContext } from '../contexts/ProjectContext';
 // TODO: Import remaining components once they're fixed
 // import TaskKanbanBoard from '../components/tasks/TaskKanbanBoard';
 import TaskList from '../components/tasks/TaskList';
@@ -42,22 +43,11 @@ const { TabPane } = Tabs;
  */
 const Tasks: React.FC = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(false);
   const [creating, setCreating] = useState(false);
-  const [selectedProject, setSelectedProject] = useState<string>(() => {
-    const saved = localStorage.getItem('aidis_selected_project');
-    return saved || '';
-  });
-
-  // Save selected project to localStorage when it changes
-  useEffect(() => {
-    if (selectedProject) {
-      localStorage.setItem('aidis_selected_project', selectedProject);
-    } else {
-      localStorage.removeItem('aidis_selected_project');
-    }
-  }, [selectedProject]);
+  
+  // Use the global project context instead of local state
+  const { currentProject, allProjects } = useProjectContext();
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [activeTab, setActiveTab] = useState('kanban');
 
@@ -127,10 +117,10 @@ const Tasks: React.FC = () => {
 
   // Reload tasks when project selection changes
   useEffect(() => {
-    if (projects.length > 0) {
+    if (currentProject) {
       loadTasks();
     }
-  }, [selectedProject, projects.length]);
+  }, [currentProject]);
 
   // Cleanup effect for component unmounting
   useEffect(() => {
@@ -146,19 +136,15 @@ const Tasks: React.FC = () => {
   const loadInitialData = async () => {
     setLoading(true);
     try {
-      const projectsRes = await apiService.get<{success: boolean; data: {projects: Project[]}}>('/projects');
-
-      setProjects(projectsRes.data.projects || []);
-
-      // Auto-select first project if none selected
-      if (!selectedProject && projectsRes.data.projects?.length > 0) {
-        setSelectedProject(projectsRes.data.projects[0].id);
+      // Projects are now managed by ProjectContext, just load tasks
+      if (currentProject) {
+        await loadTasks();
       }
     } catch (error) {
       console.error('Failed to load initial data:', error);
       notification.error({
         message: 'Loading Error',
-        description: 'Failed to load projects.'
+        description: 'Failed to load initial data.'
       });
     } finally {
       setLoading(false);
@@ -166,12 +152,12 @@ const Tasks: React.FC = () => {
   };
 
   const loadTasks = async () => {
-    if (!selectedProject) return;
+    if (!currentProject) return;
     
     setLoading(true);
     try {
       const response = await apiService.get<{success: boolean; data: {tasks: Task[]}}>('/tasks', {
-        params: { project_id: selectedProject }
+        params: { project_id: currentProject.id }
       });
       setTasks(response.data.tasks || []);
     } catch (error) {
@@ -190,7 +176,7 @@ const Tasks: React.FC = () => {
     try {
       const response = await apiService.post<{success: boolean; data: {task: Task}}>('/tasks', {
         ...taskData,
-        project_id: selectedProject
+        project_id: currentProject?.id
       });
       
       // Task will be added via WebSocket, but add immediately for better UX
@@ -253,7 +239,7 @@ const Tasks: React.FC = () => {
     }
   };
 
-  const selectedProjectName = projects.find(p => p.id === selectedProject)?.name || 'All Projects';
+  const selectedProjectName = currentProject?.name || 'No Project Selected';
 
   return (
     <div className="tasks-page" style={{ padding: '24px' }}>
@@ -275,31 +261,21 @@ const Tasks: React.FC = () => {
                   type="primary"
                   icon={<PlusOutlined />}
                   onClick={() => setShowCreateForm(true)}
-                  disabled={!selectedProject}
+                  disabled={!currentProject}
                 >
                   Create Task
                 </Button>
               </div>
             </div>
 
-            {/* Project Selection */}
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ marginRight: '8px' }}>Project:</label>
-              <Select
-                value={selectedProject || undefined}
-                placeholder={projects.length === 0 ? "Loading projects..." : "All Projects"}
-                onChange={(value) => setSelectedProject(value || '')}
-                style={{ minWidth: '200px' }}
-                allowClear
-                loading={projects.length === 0}
-              >
-                {projects.map(project => (
-                  <Select.Option key={project.id} value={project.id}>
-                    {project.name}
-                  </Select.Option>
-                ))}
-              </Select>
-            </div>
+            {/* Project selection is now handled by the global ProjectSwitcher in the header */}
+            {!currentProject && (
+              <div style={{ marginBottom: '16px', padding: '12px', backgroundColor: '#f6f6f6', borderRadius: '6px' }}>
+                <p style={{ margin: 0, color: '#666' }}>
+                  Please select a project using the Project Switcher in the header to view and manage tasks.
+                </p>
+              </div>
+            )}
           </Card>
         </Col>
 
@@ -316,7 +292,7 @@ const Tasks: React.FC = () => {
                   loading={loading}
                   onUpdateTask={handleUpdateTask}
                   onDeleteTask={handleDeleteTask}
-                  projects={projects}
+                  projects={allProjects}
                 />
               </TabPane>
 
@@ -326,7 +302,7 @@ const Tasks: React.FC = () => {
                   loading={loading}
                   onUpdateTask={handleUpdateTask}
                   onDeleteTask={handleDeleteTask}
-                  projects={projects}
+                  projects={allProjects}
                 />
               </TabPane>
 
@@ -338,7 +314,7 @@ const Tasks: React.FC = () => {
               </TabPane>
 
               <TabPane tab={<span><BarChartOutlined />Analytics</span>} key="analytics">
-                <TaskAnalytics projectId={selectedProject} />
+                <TaskAnalytics projectId={currentProject?.id} />
               </TabPane>
 
               <TabPane tab="Dependencies" key="dependencies">
@@ -353,13 +329,15 @@ const Tasks: React.FC = () => {
       </Row>
 
       {/* Task Creation Form Modal */}
-      <TaskForm
-        visible={showCreateForm}
-        projectId={selectedProject}
-        onSubmit={handleCreateTask}
-        onCancel={() => setShowCreateForm(false)}
-        loading={creating}
-      />
+      {currentProject && (
+        <TaskForm
+          visible={showCreateForm}
+          projectId={currentProject.id}
+          onSubmit={handleCreateTask}
+          onCancel={() => setShowCreateForm(false)}
+          loading={creating}
+        />
+      )}
     </div>
   );
 };

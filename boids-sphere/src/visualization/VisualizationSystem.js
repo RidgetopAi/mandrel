@@ -8,6 +8,8 @@ import { CameraControls } from './CameraControls.js';
 import { SphereGeometry } from './SphereGeometry.js';
 import { BoidSwarm } from './BoidVisualizer.js';
 import { BoidsEngine, DEFAULT_CONFIG } from '../math/BoidsEngine.js';
+import { GuiControls } from './GuiControls.js';
+import { InteractiveAttractors } from './InteractiveAttractors.js';
 
 export class VisualizationSystem {
     constructor(containerId, options = {}) {
@@ -37,12 +39,14 @@ export class VisualizationSystem {
         this.sphereGeometry = null;
         this.boidSwarm = null;
         this.boidsEngine = null;
+        this.interactiveAttractors = null;
 
         // Animation state
         this.isRunning = false;
         this.animationId = null;
         this.lastTime = 0;
         this.deltaTime = 0;
+        this.timeScale = 1.0;
 
         // Performance tracking
         this.stats = {
@@ -55,21 +59,7 @@ export class VisualizationSystem {
         };
 
         // GUI controls (will be initialized later)
-        this.gui = null;
-        this.guiParams = {
-            sphereRadius: this.options.sphereRadius,
-            boidCount: 100,
-            maxSpeed: 2.0,
-            separationWeight: 1.5,
-            alignmentWeight: 1.0,
-            cohesionWeight: 1.0,
-            showSphere: this.options.showSphere,
-            showTrails: this.options.showTrails,
-            showVelocityVectors: this.options.showVelocityVectors,
-            autoRotate: false,
-            resetSimulation: () => this.resetSimulation(),
-            pausePlay: () => this.togglePause()
-        };
+        this.guiControls = null;
 
         this.init();
     }
@@ -105,11 +95,24 @@ export class VisualizationSystem {
         });
         this.sceneManager.add(this.boidSwarm.getObject3D());
 
+        // Create interactive attractors system
+        this.interactiveAttractors = new InteractiveAttractors(this.options.sphereRadius, {
+            maxAttractors: 10,
+            defaultStrength: 1.0
+        });
+        this.sceneManager.add(this.interactiveAttractors.getObject3D());
+
         // Initialize boids engine with default configuration
         this.createBoidsEngine();
 
         // Set up GUI controls
         this.initGUI();
+
+        // Initialize attractor mouse handlers
+        this.interactiveAttractors.initMouseHandlers(
+            this.sceneManager.renderer,
+            this.sceneManager.getCamera()
+        );
 
         // Start animation loop if auto-start is enabled
         if (this.options.autoStart) {
@@ -130,140 +133,41 @@ export class VisualizationSystem {
             this.boidsEngine = null;
         }
 
-        // Create new engine with current GUI parameters
+        // Create new engine with current configuration
         const engineConfig = {
             ...DEFAULT_CONFIG,
             enableSphericalConstraints: this.options.enableSphericalConstraints,
-            sphereRadius: this.guiParams.sphereRadius,
+            sphereRadius: this.options.sphereRadius,
             sphericalConstraintPreset: 'natural',
-            maxSpeed: this.guiParams.maxSpeed,
-            separationWeight: this.guiParams.separationWeight,
-            alignmentWeight: this.guiParams.alignmentWeight,
-            cohesionWeight: this.guiParams.cohesionWeight,
-            spatialOptimization: true,
-            separationRadius: 8.0,
-            alignmentRadius: 15.0,
-            cohesionRadius: 15.0
+            spatialOptimization: true
         };
 
         this.boidsEngine = new BoidsEngine(engineConfig);
 
-        // Add initial boids
-        if (this.options.enableSphericalConstraints) {
-            this.boidsEngine.addRandomBoidsOnSphere(this.guiParams.boidCount);
-        } else {
-            this.boidsEngine.addRandomBoids(this.guiParams.boidCount);
+        // Connect attractor system to boids engine
+        if (this.interactiveAttractors) {
+            this.boidsEngine.setAttractorSystem(this.interactiveAttractors);
         }
 
-        console.log(`🐦 Created boids engine with ${this.guiParams.boidCount} boids`);
+        // Add initial boids
+        const initialBoidCount = 100;
+        if (this.options.enableSphericalConstraints) {
+            this.boidsEngine.addRandomBoidsOnSphere(initialBoidCount);
+        } else {
+            this.boidsEngine.addRandomBoids(initialBoidCount);
+        }
+
+        console.log(`🐦 Created boids engine with ${initialBoidCount} boids`);
     }
 
     /**
-     * Initialize GUI controls using dat.GUI
+     * Initialize GUI controls using comprehensive GuiControls system
      */
     initGUI() {
-        if (typeof window !== 'undefined' && window.dat) {
-            this.gui = new window.dat.GUI({ autoPlace: false });
-            
-            // Add to controls container
-            const controlsContainer = document.getElementById('controls');
-            if (controlsContainer) {
-                controlsContainer.appendChild(this.gui.domElement);
-            }
-
-            // Simulation controls
-            const simFolder = this.gui.addFolder('Simulation');
-            simFolder.add(this.guiParams, 'boidCount', 10, 500, 10)
-                .onChange(() => this.updateBoidCount());
-            simFolder.add(this.guiParams, 'pausePlay').name('Pause/Play');
-            simFolder.add(this.guiParams, 'resetSimulation').name('Reset');
-            simFolder.open();
-
-            // Boid behavior controls
-            const behaviorFolder = this.gui.addFolder('Boid Behavior');
-            behaviorFolder.add(this.guiParams, 'maxSpeed', 0.5, 5.0, 0.1)
-                .onChange(() => this.updateEngineConfig());
-            behaviorFolder.add(this.guiParams, 'separationWeight', 0.0, 3.0, 0.1)
-                .onChange(() => this.updateEngineConfig());
-            behaviorFolder.add(this.guiParams, 'alignmentWeight', 0.0, 3.0, 0.1)
-                .onChange(() => this.updateEngineConfig());
-            behaviorFolder.add(this.guiParams, 'cohesionWeight', 0.0, 3.0, 0.1)
-                .onChange(() => this.updateEngineConfig());
-
-            // Sphere controls
-            const sphereFolder = this.gui.addFolder('Sphere');
-            sphereFolder.add(this.guiParams, 'sphereRadius', 20, 200, 5)
-                .onChange(() => this.updateSphereRadius());
-            sphereFolder.add(this.guiParams, 'showSphere')
-                .onChange(() => this.toggleSphere());
-
-            // Visual controls
-            const visualFolder = this.gui.addFolder('Visuals');
-            visualFolder.add(this.guiParams, 'showTrails')
-                .onChange(() => this.boidSwarm.setTrailsVisible(this.guiParams.showTrails));
-            visualFolder.add(this.guiParams, 'showVelocityVectors')
-                .onChange(() => this.boidSwarm.setVelocityArrowsVisible(this.guiParams.showVelocityVectors));
-            visualFolder.add(this.guiParams, 'autoRotate')
-                .onChange(() => this.cameraControls.autoRotate = this.guiParams.autoRotate);
-        }
+        this.guiControls = new GuiControls(this);
+        console.log('🎛️ Comprehensive GUI controls initialized');
     }
 
-    /**
-     * Update boid count
-     */
-    updateBoidCount() {
-        if (this.boidsEngine) {
-            const currentCount = this.boidsEngine.boids.length;
-            const targetCount = this.guiParams.boidCount;
-
-            if (targetCount > currentCount) {
-                // Add more boids
-                const toAdd = targetCount - currentCount;
-                if (this.options.enableSphericalConstraints) {
-                    this.boidsEngine.addRandomBoidsOnSphere(toAdd);
-                } else {
-                    this.boidsEngine.addRandomBoids(toAdd);
-                }
-            } else if (targetCount < currentCount) {
-                // Remove excess boids
-                this.boidsEngine.boids = this.boidsEngine.boids.slice(0, targetCount);
-            }
-        }
-    }
-
-    /**
-     * Update engine configuration
-     */
-    updateEngineConfig() {
-        if (this.boidsEngine) {
-            this.boidsEngine.config.maxSpeed = this.guiParams.maxSpeed;
-            this.boidsEngine.config.separationWeight = this.guiParams.separationWeight;
-            this.boidsEngine.config.alignmentWeight = this.guiParams.alignmentWeight;
-            this.boidsEngine.config.cohesionWeight = this.guiParams.cohesionWeight;
-        }
-    }
-
-    /**
-     * Update sphere radius
-     */
-    updateSphereRadius() {
-        if (this.sphereGeometry) {
-            this.sphereGeometry.updateRadius(this.guiParams.sphereRadius);
-        }
-        
-        if (this.boidsEngine) {
-            this.boidsEngine.config.sphereRadius = this.guiParams.sphereRadius;
-        }
-    }
-
-    /**
-     * Toggle sphere visibility
-     */
-    toggleSphere() {
-        if (this.sphereGeometry) {
-            this.sphereGeometry.setWireframeVisible(this.guiParams.showSphere);
-        }
-    }
 
     /**
      * Reset the simulation
@@ -346,11 +250,18 @@ export class VisualizationSystem {
 
         // Update boids simulation
         if (this.boidsEngine) {
-            // Convert deltaTime from ms to seconds for the engine
-            this.boidsEngine.update(deltaTime / 1000);
+            // Convert deltaTime from ms to seconds and apply time scale
+            const scaledDeltaTime = (deltaTime / 1000) * this.timeScale;
+            this.boidsEngine.update(scaledDeltaTime);
 
             // Update boid visualizations
             this.boidSwarm.updateBoids(this.boidsEngine.boids);
+        }
+
+        // Update interactive attractors
+        if (this.interactiveAttractors) {
+            const scaledDeltaTime = (deltaTime / 1000) * this.timeScale;
+            this.interactiveAttractors.update(scaledDeltaTime);
         }
 
         this.stats.updateTime = performance.now() - updateStartTime;
@@ -460,6 +371,10 @@ export class VisualizationSystem {
         this.stop();
 
         // Dispose of components
+        if (this.interactiveAttractors) {
+            this.interactiveAttractors.dispose();
+        }
+
         if (this.boidSwarm) {
             this.boidSwarm.dispose();
         }
@@ -476,8 +391,8 @@ export class VisualizationSystem {
             this.sceneManager.dispose();
         }
 
-        if (this.gui) {
-            this.gui.destroy();
+        if (this.guiControls) {
+            this.guiControls.dispose();
         }
 
         console.log('🧹 Visualization system disposed');
