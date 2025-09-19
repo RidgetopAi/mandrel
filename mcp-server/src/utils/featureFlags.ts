@@ -51,7 +51,7 @@ export class FeatureFlagStore {
   private flags: Record<string, boolean> = {};
   private emitter = new EventEmitter();
   private refreshInterval: number;
-  private timer: NodeJS.Timer | null = null;
+  private timer: NodeJS.Timeout | null = null;
   private version: number | null = null;
   private updatedAt: string | null = null;
 
@@ -62,10 +62,10 @@ export class FeatureFlagStore {
 
   async initialize(): Promise<void> {
     await this.refresh();
+    // Note: Timer-based refresh replaced by BullMQ queue system
+    // Background refresh is now handled by QueueManager
     if (this.refreshInterval > 0) {
-      this.timer = setInterval(() => {
-        void this.refresh();
-      }, this.refreshInterval);
+      console.log(`[FeatureFlags] Background refresh delegated to QueueManager (${this.refreshInterval}ms interval)`);
     }
   }
 

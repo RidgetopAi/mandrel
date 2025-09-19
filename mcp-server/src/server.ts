@@ -44,6 +44,7 @@ import { projectHandler } from './handlers/project.js';
 import { namingHandler } from './handlers/naming.js';
 import { decisionsHandler } from './handlers/decisions.js';
 import { tasksHandler } from './handlers/tasks.js';
+import { getQueueManager, shutdownQueue } from './services/queueManager.js';
 import { codeAnalysisHandler } from './handlers/codeAnalysis.js';
 import { smartSearchHandler } from './handlers/smartSearch.js';
 import { navigationHandler } from './handlers/navigation.js';
@@ -4922,13 +4923,23 @@ class AIDISServer {
       }
 
       if (!SKIP_BACKGROUND_SERVICES) {
-        // Initialize real-time git tracking
+        // Initialize BullMQ queue system (replaces timer-based polling)
+        console.log('🚀 Starting BullMQ queue system...');
+        try {
+          await getQueueManager();
+          console.log('✅ Queue system initialized successfully');
+        } catch (error) {
+          console.warn('⚠️  Failed to initialize queue system:', error);
+          console.warn('   Background services will be disabled');
+        }
+
+        // Initialize real-time git tracking (file watching only)
         console.log('⚡ Starting real-time git tracking...');
         try {
           await startGitTracking({
             enableFileWatching: true,
-            enablePeriodicPolling: true,
-            pollingIntervalMs: 30000, // 30 seconds
+            enablePeriodicPolling: false, // Disabled: polling moved to queue
+            pollingIntervalMs: 30000, // Still used by queue system
             correlationDelayMs: 5000   // 5 seconds delay after detection
           });
           console.log('✅ Git tracking initialized successfully');
@@ -5125,6 +5136,15 @@ class AIDISServer {
       }
 
       if (!SKIP_BACKGROUND_SERVICES) {
+        // Stop queue system first (it manages background jobs)
+        console.log('🚀 Stopping queue system...');
+        try {
+          await shutdownQueue();
+          console.log('✅ Queue system stopped gracefully');
+        } catch (error) {
+          console.warn('⚠️  Failed to stop queue system:', error);
+        }
+
         // Stop git tracking
         console.log('⚡ Stopping git tracking...');
         try {
