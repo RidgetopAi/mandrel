@@ -28,12 +28,20 @@ export class EmbeddingService {
   private model: string;
   private dimensions: number;
   private localModel: Pipeline | null = null;
-  private localModelName: string = 'Xenova/all-MiniLM-L6-v2'; // 384 dimensions, very fast
+  private localModelName: string = 'Xenova/all-MiniLM-L6-v2'; // Emits 384D embeddings which we normalize downstream
   private preferLocal: boolean;
+  private targetDimensions: number;
 
   constructor() {
     this.model = process.env.EMBEDDING_MODEL || 'text-embedding-ada-002';
-    this.dimensions = parseInt(process.env.EMBEDDING_DIMENSIONS || '384'); // Default to local model dimensions
+    const configuredTarget = parseInt(
+      process.env.EMBEDDING_TARGET_DIMENSIONS || process.env.EMBEDDING_DIMENSIONS || '1536'
+    );
+    this.targetDimensions = Number.isFinite(configuredTarget) && configuredTarget > 0
+      ? configuredTarget
+      : 1536;
+
+    this.dimensions = this.targetDimensions;
     this.preferLocal = process.env.EMBEDDING_PREFER_LOCAL !== 'false'; // Default to local
   }
 
@@ -76,7 +84,8 @@ export class EmbeddingService {
     // Try local model first (if preferred)
     if (this.preferLocal) {
       try {
-        return await this.generateLocalEmbedding(text);
+        const localResult = await this.generateLocalEmbedding(text);
+        return this.applyTargetDimensions(localResult, 'local');
       } catch (error) {
         console.warn('⚠️  Local embedding failed, trying alternatives:', error.message);
       }
@@ -86,7 +95,8 @@ export class EmbeddingService {
     const apiKey = process.env.OPENAI_API_KEY;
     if (apiKey && apiKey !== 'your_openai_api_key_here' && apiKey.startsWith('sk-')) {
       try {
-        return await this.generateOpenAIEmbedding(text, apiKey);
+        const openAIResult = await this.generateOpenAIEmbedding(text, apiKey);
+        return this.applyTargetDimensions(openAIResult, 'openai');
       } catch (error) {
         console.warn('⚠️  OpenAI embedding failed, trying alternatives:', error.message);
       }
@@ -95,7 +105,8 @@ export class EmbeddingService {
     // If local wasn't preferred, try it as backup
     if (!this.preferLocal) {
       try {
-        return await this.generateLocalEmbedding(text);
+        const backupLocal = await this.generateLocalEmbedding(text);
+        return this.applyTargetDimensions(backupLocal, 'local-backup');
       } catch (error) {
         console.warn('⚠️  Local embedding backup failed:', error.message);
       }
@@ -103,7 +114,8 @@ export class EmbeddingService {
 
     // Final fallback to mock embeddings
     console.log('📝 Using mock embeddings as final fallback');
-    return this.generateMockEmbedding(text);
+    const mockEmbedding = this.generateMockEmbedding(text);
+    return this.applyTargetDimensions(mockEmbedding, 'mock');
   }
 
   /**
@@ -164,7 +176,8 @@ export class EmbeddingService {
       };
     } catch (error) {
       console.warn('⚠️  Real embedding failed, falling back to mock:', error);
-      return this.generateMockEmbedding(text);
+      const mockEmbedding = this.generateMockEmbedding(text);
+      return this.applyTargetDimensions(mockEmbedding, 'openai-fallback');
     }
   }
 
@@ -178,12 +191,12 @@ export class EmbeddingService {
   private generateMockEmbedding(text: string): EmbeddingVector {
     console.log('🎭 Generating mock embedding for development...');
     
-    // Create a deterministic hash-based embedding
-    const embedding = new Array(this.dimensions);
+    const dimensions = this.targetDimensions;
+    const embedding = new Array(dimensions);
     const textHash = this.simpleHash(text);
     
     // Use different aspects of the text to create varied dimensions
-    for (let i = 0; i < this.dimensions; i++) {
+    for (let i = 0; i < dimensions; i++) {
       // Create pseudo-random values based on text content and position
       const seed = textHash + i;
       const value = Math.sin(seed * 0.001) * 0.6; // Range roughly [-0.6, 0.6] to leave room for signals
@@ -193,13 +206,65 @@ export class EmbeddingService {
     // Add some content-based signals to make similar texts have similar embeddings
     this.addContentSignals(embedding, text);
 
-    console.log(`✅ Generated mock embedding (${this.dimensions} dimensions)`);
+    console.log(`✅ Generated mock embedding (${dimensions} dimensions before normalization)`);
     
     return {
       embedding,
-      dimensions: this.dimensions,
+      dimensions,
       model: `${this.model}-mock`,
     };
+  }
+
+  /**
+   * Normalize embeddings from different sources to the canonical dimensionality
+   */
+  private applyTargetDimensions(result: EmbeddingVector, source: string): EmbeddingVector {
+    const normalized = this.normalizeEmbedding(result.embedding);
+
+    if (normalized.length !== result.embedding.length) {
+      console.log(`🔁 Adjusted ${source} embedding from ${result.embedding.length}D to ${this.targetDimensions}D`);
+    }
+
+    return {
+      embedding: normalized,
+      dimensions: this.targetDimensions,
+      model: result.model,
+    };
+  }
+
+  /**
+   * Pad or downsample embeddings so they match the configured dimensionality
+   */
+  private normalizeEmbedding(rawEmbedding: number[]): number[] {
+    const target = this.targetDimensions;
+    const source = Array.from(rawEmbedding ?? []);
+
+    if (target <= 0) {
+      return source;
+    }
+
+    if (source.length === target) {
+      return source;
+    }
+
+    if (source.length === 0) {
+      return new Array(target).fill(0);
+    }
+
+    const normalized = new Array<number>(target);
+
+    if (source.length > target) {
+      const step = source.length / target;
+      for (let i = 0; i < target; i++) {
+        normalized[i] = source[Math.floor(i * step)];
+      }
+    } else {
+      for (let i = 0; i < target; i++) {
+        normalized[i] = source[i % source.length];
+      }
+    }
+
+    return normalized;
   }
 
   /**

@@ -1183,17 +1183,6 @@ $$ LANGUAGE plpgsql;
 -- GRANT ALL PRIVILEGES ON pattern_discovery_sessions, file_cooccurrence_patterns, temporal_patterns, developer_patterns, change_magnitude_patterns, pattern_insights, pattern_operation_metrics TO aidis_app;
 -- GRANT SELECT ON project_pattern_summary, high_risk_files_summary, developer_collaboration_matrix, actionable_insights_summary TO aidis_readonly;
 
--- Record migration completion (create table if it doesn't exist)
-CREATE TABLE IF NOT EXISTS schema_migrations (
-    version VARCHAR(255) PRIMARY KEY,
-    description TEXT,
-    applied_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-);
-
-INSERT INTO schema_migrations (version, description, applied_at) 
-VALUES ('2025_09_10_create_change_pattern_tables', 'TC012: Comprehensive change pattern tracking schema based on TC011 research - 92,606 patterns support with sub-100ms performance', CURRENT_TIMESTAMP)
-ON CONFLICT (version) DO NOTHING;
-
 -- Validation and success message
 DO $$ 
 DECLARE

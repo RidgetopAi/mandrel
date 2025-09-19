@@ -35,8 +35,8 @@ export interface RequestContext {
  * Request/Response logging middleware for MCP operations
  */
 export class RequestLogger {
-  private static slowOperationThreshold = parseInt(process.env.AIDIS_SLOW_OP_THRESHOLD || '1000'); // 1 second
-  private static enableDetailedLogging = process.env.AIDIS_DETAILED_LOGGING === 'true';
+  private static slowOperationThreshold = parseInt(process.env.AIDIS_SLOW_OP_THRESHOLD || process.env.SLOW_OP_THRESHOLD || '1000'); // 1 second
+  private static enableDetailedLogging = (process.env.AIDIS_DETAILED_LOGGING || process.env.DETAILED_LOGGING || 'false') === 'true';
 
   /**
    * Wrap an MCP operation with comprehensive logging

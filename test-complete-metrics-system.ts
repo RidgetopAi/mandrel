@@ -17,6 +17,7 @@
 
 import { execSync } from 'child_process';
 import { db, initializeDatabase } from './mcp-server/src/config/database.js';
+import { MigrationRunner } from './mcp-server/scripts/migrate.ts';
 
 console.log('🚀 TC014 DEVELOPMENT METRICS SYSTEM - COMPLETE VALIDATION\n');
 console.log('=' .repeat(80));
@@ -142,39 +143,19 @@ async function runDatabaseMigration(): Promise<any> {
   console.log('🔄 Running metrics schema migration...');
   
   try {
-    await db.query(`
-      -- Check if migration already exists
-      CREATE TABLE IF NOT EXISTS schema_migrations (
-        version VARCHAR(255) PRIMARY KEY,
-        description TEXT,
-        applied_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-      );
+    const runner = new MigrationRunner();
+    await runner.runMigrations();
+
+    const appliedMigrations = await db.query(`
+      SELECT COUNT(*) AS count
+      FROM _aidis_migrations
+      WHERE filename = '018_create_development_metrics_tables.sql'
     `);
-    
-    // Check if TC014 migration exists
-    const migrationCheck = await db.query(`
-      SELECT EXISTS (
-        SELECT 1 FROM schema_migrations 
-        WHERE version = '2025_09_10_create_development_metrics_tables'
-      )
-    `);
-    
-    if (!migrationCheck.rows[0].exists) {
-      console.log('📄 Applying development metrics schema migration...');
-      
-      // Read and execute the migration file
-      const fs = await import('fs');
-      const migrationSQL = fs.readFileSync('./mcp-server/migrations/2025_09_10_create_development_metrics_tables.sql', 'utf8');
-      
-      await db.query(migrationSQL);
-      console.log('✅ Migration applied successfully');
-    } else {
-      console.log('✅ Migration already applied');
-    }
-    
+
     return {
       migrationApplied: true,
-      migrationVersion: '2025_09_10_create_development_metrics_tables'
+      migrationVersion: '018_create_development_metrics_tables.sql',
+      recorded: Number(appliedMigrations.rows[0].count || 0)
     };
     
   } catch (error) {

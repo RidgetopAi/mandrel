@@ -1,16 +1,15 @@
 -- TS004: Add Session Title and Description Fields
 -- Add title and description fields to sessions table for better session management
 
--- Add title field (short descriptive name for the session)
 ALTER TABLE sessions 
-ADD COLUMN title VARCHAR(255);
+ADD COLUMN IF NOT EXISTS title VARCHAR(255);
 
 -- Add description field (longer description of session purpose/goals)
 ALTER TABLE sessions 
-ADD COLUMN description TEXT;
+ADD COLUMN IF NOT EXISTS description TEXT;
 
 -- Create index on title for quick lookups
-CREATE INDEX idx_sessions_title ON sessions(title);
+CREATE INDEX IF NOT EXISTS idx_sessions_title ON sessions(title);
 
 -- Also fix the invalid default UUID for project_id while we're here (TS003 related)
 ALTER TABLE sessions 
@@ -20,7 +19,8 @@ ALTER COLUMN project_id DROP DEFAULT;
 COMMENT ON COLUMN sessions.title IS 'Short descriptive title for the session (e.g., "Implement user authentication", "Debug payment flow")';
 COMMENT ON COLUMN sessions.description IS 'Detailed description of session goals, context, and objectives';
 
--- Add trigger to ensure title is set when description is provided
+DROP TRIGGER IF EXISTS trigger_ensure_session_title ON sessions;
+
 CREATE OR REPLACE FUNCTION ensure_session_title()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -40,16 +40,25 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Apply the trigger
 CREATE TRIGGER trigger_ensure_session_title
   BEFORE INSERT OR UPDATE ON sessions
   FOR EACH ROW
   EXECUTE FUNCTION ensure_session_title();
 
 -- Add validation constraint to ensure reasonable title length
-ALTER TABLE sessions 
-ADD CONSTRAINT reasonable_title_length 
-CHECK (title IS NULL OR LENGTH(title) BETWEEN 1 AND 255);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_constraint
+    WHERE conname = 'reasonable_title_length'
+      AND conrelid = 'sessions'::regclass
+  ) THEN
+    ALTER TABLE sessions 
+    ADD CONSTRAINT reasonable_title_length 
+    CHECK (title IS NULL OR LENGTH(title) BETWEEN 1 AND 255);
+  END IF;
+END $$;
 
 -- Update existing sessions with auto-generated titles based on context_summary
 UPDATE sessions 

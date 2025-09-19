@@ -28,10 +28,10 @@ async function testContextWorkflow() {
       },
       {
         type: 'decision' as const,
-        content: 'Decided to use local embedding models via Transformers.js instead of OpenAI API to reduce costs and enable offline operation. Model: all-MiniLM-L6-v2 with 384 dimensions.',
+        content: 'Decided to use local embedding models via Transformers.js instead of OpenAI API to reduce costs and enable offline operation. Model: all-MiniLM-L6-v2 normalized to 1536 dimensions for database consistency.',
         tags: ['embeddings', 'cost-optimization', 'offline', 'transformers'],
         relevanceScore: 8,
-        metadata: { impact: 'cost_savings', model: 'all-MiniLM-L6-v2', dimensions: 384 }
+        metadata: { impact: 'cost_savings', model: 'all-MiniLM-L6-v2', dimensions: 1536 }
       },
       {
         type: 'completion' as const,

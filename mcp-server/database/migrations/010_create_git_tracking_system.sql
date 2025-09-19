@@ -87,6 +87,24 @@ CREATE TABLE IF NOT EXISTS git_commits (
     UNIQUE(project_id, commit_sha)
 );
 
+-- Add missing columns if table already exists (for partial migrations)
+ALTER TABLE git_commits ADD COLUMN IF NOT EXISTS tree_sha VARCHAR(40);
+ALTER TABLE git_commits ADD COLUMN IF NOT EXISTS repository_url TEXT;
+ALTER TABLE git_commits ADD COLUMN IF NOT EXISTS merge_strategy VARCHAR(50);
+ALTER TABLE git_commits ADD COLUMN IF NOT EXISTS discovered_by VARCHAR(100);
+ALTER TABLE git_commits ADD COLUMN IF NOT EXISTS first_seen TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE git_commits ADD COLUMN IF NOT EXISTS is_analyzed BOOLEAN DEFAULT FALSE;
+ALTER TABLE git_commits ADD COLUMN IF NOT EXISTS analysis_version INTEGER DEFAULT 1;
+
+-- Add total_changes if it doesn't exist (handle both stored and regular column)
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                   WHERE table_name = 'git_commits' AND column_name = 'total_changes') THEN
+        ALTER TABLE git_commits ADD COLUMN total_changes INTEGER GENERATED ALWAYS AS (insertions + deletions) STORED;
+    END IF;
+END $$;
+
 -- =============================================
 -- GIT BRANCHES TABLE - Branch lifecycle tracking
 -- =============================================
@@ -132,6 +150,25 @@ CREATE TABLE IF NOT EXISTS git_branches (
     UNIQUE(project_id, branch_name)
 );
 
+-- Add missing columns for git_branches if table already exists
+ALTER TABLE git_branches ADD COLUMN IF NOT EXISTS current_commit_sha VARCHAR(40);
+ALTER TABLE git_branches ADD COLUMN IF NOT EXISTS full_ref_name VARCHAR(500);
+ALTER TABLE git_branches ADD COLUMN IF NOT EXISTS is_default_branch BOOLEAN DEFAULT FALSE;
+ALTER TABLE git_branches ADD COLUMN IF NOT EXISTS is_protected BOOLEAN DEFAULT FALSE;
+ALTER TABLE git_branches ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;
+ALTER TABLE git_branches ADD COLUMN IF NOT EXISTS upstream_branch VARCHAR(255);
+ALTER TABLE git_branches ADD COLUMN IF NOT EXISTS merge_target VARCHAR(255);
+ALTER TABLE git_branches ADD COLUMN IF NOT EXISTS first_commit_date TIMESTAMP WITH TIME ZONE;
+ALTER TABLE git_branches ADD COLUMN IF NOT EXISTS last_commit_date TIMESTAMP WITH TIME ZONE;
+ALTER TABLE git_branches ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP WITH TIME ZONE;
+ALTER TABLE git_branches ADD COLUMN IF NOT EXISTS description TEXT;
+ALTER TABLE git_branches ADD COLUMN IF NOT EXISTS branch_type VARCHAR(50) DEFAULT 'feature';
+ALTER TABLE git_branches ADD COLUMN IF NOT EXISTS commits_ahead INTEGER DEFAULT 0;
+ALTER TABLE git_branches ADD COLUMN IF NOT EXISTS commits_behind INTEGER DEFAULT 0;
+ALTER TABLE git_branches ADD COLUMN IF NOT EXISTS total_commits INTEGER DEFAULT 0;
+ALTER TABLE git_branches ADD COLUMN IF NOT EXISTS associated_sessions UUID[] DEFAULT '{}';
+ALTER TABLE git_branches ADD COLUMN IF NOT EXISTS metadata JSONB DEFAULT '{}'::jsonb;
+
 -- =============================================
 -- GIT FILE CHANGES TABLE - File-level change tracking
 -- =============================================
@@ -175,6 +212,29 @@ CREATE TABLE IF NOT EXISTS git_file_changes (
         lines_added >= 0 AND lines_removed >= 0
     )
 );
+
+-- Add missing columns for git_file_changes if table already exists
+ALTER TABLE git_file_changes ADD COLUMN IF NOT EXISTS commit_id UUID;
+ALTER TABLE git_file_changes ADD COLUMN IF NOT EXISTS old_file_path TEXT;
+ALTER TABLE git_file_changes ADD COLUMN IF NOT EXISTS file_type VARCHAR(50);
+ALTER TABLE git_file_changes ADD COLUMN IF NOT EXISTS change_type VARCHAR(20);
+ALTER TABLE git_file_changes ADD COLUMN IF NOT EXISTS lines_added INTEGER DEFAULT 0;
+ALTER TABLE git_file_changes ADD COLUMN IF NOT EXISTS lines_removed INTEGER DEFAULT 0;
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                   WHERE table_name = 'git_file_changes' AND column_name = 'lines_changed') THEN
+        ALTER TABLE git_file_changes ADD COLUMN lines_changed INTEGER GENERATED ALWAYS AS (lines_added + lines_removed) STORED;
+    END IF;
+END $$;
+ALTER TABLE git_file_changes ADD COLUMN IF NOT EXISTS old_file_mode VARCHAR(10);
+ALTER TABLE git_file_changes ADD COLUMN IF NOT EXISTS new_file_mode VARCHAR(10);
+ALTER TABLE git_file_changes ADD COLUMN IF NOT EXISTS is_binary BOOLEAN DEFAULT FALSE;
+ALTER TABLE git_file_changes ADD COLUMN IF NOT EXISTS is_generated BOOLEAN DEFAULT FALSE;
+ALTER TABLE git_file_changes ADD COLUMN IF NOT EXISTS component_id UUID;
+ALTER TABLE git_file_changes ADD COLUMN IF NOT EXISTS affects_exports BOOLEAN DEFAULT FALSE;
+ALTER TABLE git_file_changes ADD COLUMN IF NOT EXISTS complexity_delta INTEGER DEFAULT 0;
+ALTER TABLE git_file_changes ADD COLUMN IF NOT EXISTS patch_preview TEXT;
 
 -- =============================================
 -- COMMIT SESSION LINKS TABLE - Session correlation
@@ -253,7 +313,16 @@ CREATE INDEX IF NOT EXISTS idx_git_commits_author ON git_commits(author_email, a
 CREATE INDEX IF NOT EXISTS idx_git_commits_type ON git_commits(commit_type, project_id);
 CREATE INDEX IF NOT EXISTS idx_git_commits_merge ON git_commits(is_merge_commit, project_id);
 CREATE INDEX IF NOT EXISTS idx_git_commits_analyzed ON git_commits(is_analyzed, project_id);
-CREATE INDEX IF NOT EXISTS idx_git_commits_stats ON git_commits(files_changed DESC, total_changes DESC);
+-- Create stats index (conditionally based on column existence)
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.columns
+               WHERE table_name = 'git_commits' AND column_name = 'total_changes') THEN
+        CREATE INDEX IF NOT EXISTS idx_git_commits_stats ON git_commits(files_changed DESC, total_changes DESC);
+    ELSE
+        CREATE INDEX IF NOT EXISTS idx_git_commits_stats ON git_commits(files_changed DESC, (insertions + deletions) DESC);
+    END IF;
+END $$;
 
 -- Composite indexes for common queries
 CREATE INDEX IF NOT EXISTS idx_git_commits_project_date ON git_commits(project_id, author_date DESC);

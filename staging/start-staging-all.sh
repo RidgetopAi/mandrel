@@ -5,16 +5,39 @@
 
 cd "$(dirname "$0")"
 
+# Load staging configuration
+export NODE_ENV=staging
+echo "🔧 Loading staging configuration..."
+
+# Source centralized environment config if it exists
+if [ -f "../config/environments/.env.staging" ]; then
+    echo "📄 Loading config from: ../config/environments/.env.staging"
+    export $(grep -v '^#' "../config/environments/.env.staging" | xargs)
+fi
+
+# Set environment-specific variables with fallbacks
+STAGING_DATABASE=${AIDIS_DATABASE_NAME:-aidis_staging}
+FRONTEND_PORT=${AIDIS_COMMAND_DEV_PORT:-3001}
+BACKEND_PORT=${AIDIS_COMMAND_PROD_PORT:-6000}
+MCP_HTTP_PORT=${AIDIS_HTTP_PORT:-9090}
+
 echo "🧪 Starting AIDIS Complete Staging Environment..."
+echo "================================================="
+echo "🔧 Configuration:"
+echo "   Database: $STAGING_DATABASE"
+echo "   Frontend Port: $FRONTEND_PORT"
+echo "   Backend Port: $BACKEND_PORT"
+echo "   MCP HTTP Port: $MCP_HTTP_PORT"
 echo "================================================="
 
 # Ensure staging directory structure
 mkdir -p logs run
 
 # 1. Setup database (if needed)
-if ! psql -h localhost -p 5432 -d aidis_staging -c "SELECT 1;" > /dev/null 2>&1; then
-    echo "📦 Setting up staging database..."
-    ./setup-staging-database.sh
+echo "🔍 Checking staging database: $STAGING_DATABASE"
+if ! psql -h localhost -p 5432 -d "$STAGING_DATABASE" -c "SELECT 1;" > /dev/null 2>&1; then
+    echo "📦 Setting up staging database: $STAGING_DATABASE"
+    STAGING_DATABASE="$STAGING_DATABASE" ./setup-staging-database.sh
 fi
 
 echo ""
@@ -56,11 +79,11 @@ echo "🎉 AIDIS Staging Environment Started Successfully!"
 echo "================================================="
 echo ""
 echo "📊 Service URLs:"
-echo "   Frontend:  http://localhost:3001"
-echo "   Backend:   http://localhost:6000"  
-echo "   MCP HTTP:  http://localhost:9090 (+ STDIO)"
+echo "   Frontend:  http://localhost:$FRONTEND_PORT"
+echo "   Backend:   http://localhost:$BACKEND_PORT"
+echo "   MCP HTTP:  http://localhost:$MCP_HTTP_PORT (+ STDIO)"
 echo ""
-echo "🗄️  Database:  aidis_staging"
+echo "🗄️  Database:  $STAGING_DATABASE"
 echo ""
 echo "📋 Logs:"
 echo "   MCP:       tail -f staging/logs/mcp-staging.log"
@@ -77,19 +100,19 @@ echo ""
 echo "🔍 Quick Health Check:"
 sleep 3
 
-if curl -s http://localhost:6000/healthz > /dev/null 2>&1; then
-    echo "✅ Backend healthy"
+if curl -s http://localhost:$BACKEND_PORT/healthz > /dev/null 2>&1; then
+    echo "✅ Backend healthy (port $BACKEND_PORT)"
 else
-    echo "❌ Backend unhealthy"
+    echo "❌ Backend unhealthy (port $BACKEND_PORT)"
 fi
 
-if curl -s http://localhost:3001 > /dev/null 2>&1; then
-    echo "✅ Frontend accessible"
+if curl -s http://localhost:$FRONTEND_PORT > /dev/null 2>&1; then
+    echo "✅ Frontend accessible (port $FRONTEND_PORT)"
 else
-    echo "❌ Frontend inaccessible"
+    echo "❌ Frontend inaccessible (port $FRONTEND_PORT)"
 fi
 
-DB_CHECK=$(psql -h localhost -p 5432 -d aidis_staging -t -c "SELECT count(*) FROM projects;" 2>/dev/null)
+DB_CHECK=$(psql -h localhost -p 5432 -d "$STAGING_DATABASE" -t -c "SELECT count(*) FROM projects;" 2>/dev/null)
 if [ $? -eq 0 ]; then
     echo "✅ Database connected ($DB_CHECK projects)"
 else

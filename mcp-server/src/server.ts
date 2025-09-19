@@ -77,20 +77,33 @@ import {
 import { outcomeTrackingHandler } from './handlers/outcomeTracking.js';
 // TC018: Metrics Aggregation imports
 import { MetricsAggregationHandler } from './handlers/metricsAggregation.js';
+import { ensureFeatureFlags } from './utils/featureFlags.js';
+import { portManager } from './utils/portManager.js';
 
 // Enterprise hardening constants
 const PID_FILE = '/home/ridgetop/aidis/run/aidis.pid';
-const HEALTH_PORT = process.env.AIDIS_HEALTH_PORT || 8080;
 const MAX_RETRIES = 3;
 const INITIAL_RETRY_DELAY = 1000;
+// Helper function to get environment variable with AIDIS_ prefix and fallback
+function getEnvVar(aidisKey: string, legacyKey: string, defaultValue: string = ''): string {
+  return process.env[aidisKey] || process.env[legacyKey] || defaultValue;
+}
+
+const SKIP_DATABASE = getEnvVar('AIDIS_SKIP_DATABASE', 'SKIP_DATABASE', 'false') === 'true';
+const SKIP_BACKGROUND_SERVICES = getEnvVar('AIDIS_SKIP_BACKGROUND', 'SKIP_BACKGROUND', 'false') === 'true';
+const SKIP_STDIO_TRANSPORT = getEnvVar('AIDIS_SKIP_STDIO', 'SKIP_STDIO', 'false') === 'true';
 
 /**
  * Check if SystemD AIDIS service is already running
  */
 async function isSystemDServiceRunning(): Promise<boolean> {
   try {
+    // Try to discover the port from registry first
+    const registeredPort = await portManager.discoverServicePort('aidis-mcp');
+    const healthPort = registeredPort || (await portManager.assignPort('aidis-mcp'));
+
     return new Promise((resolve) => {
-      const req = http.get(`http://localhost:${HEALTH_PORT}/healthz`, (res) => {
+      const req = http.get(`http://localhost:${healthPort}/healthz`, (res) => {
         let data = '';
         res.on('data', (chunk) => data += chunk);
         res.on('end', () => {
@@ -116,16 +129,17 @@ logger.info('AIDIS MCP Server Starting', {
     version: '0.1.0-hardened',
     nodeVersion: process.version,
     pid: process.pid,
-    mcpDebug: !!process.env.MCP_DEBUG,
-    logLevel: process.env.AIDIS_LOG_LEVEL || 'info'
+    mcpDebug: !!(getEnvVar('AIDIS_MCP_DEBUG', 'MCP_DEBUG')),
+    logLevel: getEnvVar('AIDIS_LOG_LEVEL', 'LOG_LEVEL', 'info')
   }
 });
 
 // Enable MCP debug logging
-if (process.env.MCP_DEBUG) {
+const mcpDebugValue = getEnvVar('AIDIS_MCP_DEBUG', 'MCP_DEBUG');
+if (mcpDebugValue) {
   logger.debug('MCP Debug logging enabled', {
     component: 'MCP',
-    metadata: { debugLevel: process.env.MCP_DEBUG }
+    metadata: { debugLevel: mcpDebugValue }
   });
 }
 
@@ -431,22 +445,28 @@ class AIDISServer {
 
     } catch (error: any) {
       // Enhanced error handling with logging
-      ErrorHandler.handleMcpError(error, toolName || 'unknown', requestData.arguments, {
-        component: 'HTTP_ADAPTER',
-        operation: 'mcp_tool_request',
-        correlationId: CorrelationIdManager.get(),
-        additionalContext: {
-          httpRequest: true,
-          url: req.url,
-          method: req.method
-        }
-      });
-      
+      let responseError = error instanceof Error ? error : new Error(String(error));
+      try {
+        ErrorHandler.handleMcpError(responseError, toolName || 'unknown', requestData.arguments, {
+          component: 'HTTP_ADAPTER',
+          operation: 'mcp_tool_request',
+          correlationId: CorrelationIdManager.get(),
+          additionalContext: {
+            httpRequest: true,
+            url: req.url,
+            method: req.method
+          }
+        });
+      } catch (loggedError) {
+        // ErrorHandler re-throws; reuse the logged error for HTTP response but prevent propagation
+        responseError = loggedError as Error;
+      }
+
       res.writeHead(500);
       res.end(JSON.stringify({
         success: false,
-        error: error.message,
-        type: error.constructor.name,
+        error: responseError.message,
+        type: responseError.constructor.name,
         correlationId: CorrelationIdManager.get()
       }));
     }
@@ -567,7 +587,13 @@ class AIDISServer {
         
       case 'task_details':
         return await this.handleTaskDetails(validatedArgs as any);
-        
+
+      case 'task_bulk_update':
+        return await this.handleTaskBulkUpdate(validatedArgs as any);
+
+      case 'task_progress_summary':
+        return await this.handleTaskProgressSummary(validatedArgs as any);
+
       case 'code_analyze':
         return await this.handleCodeAnalyze(validatedArgs as any);
         
@@ -1323,11 +1349,35 @@ class AIDISServer {
                 status: {
                   type: 'string',
                   enum: ['todo', 'in_progress', 'blocked', 'completed', 'cancelled'],
-                  description: 'Filter by task status'
+                  description: 'Filter by single task status'
+                },
+                statuses: {
+                  type: 'array',
+                  items: {
+                    type: 'string',
+                    enum: ['todo', 'in_progress', 'blocked', 'completed', 'cancelled']
+                  },
+                  description: 'Filter by multiple task statuses (takes precedence over status)'
                 },
                 type: {
                   type: 'string',
                   description: 'Filter by task type'
+                },
+                tags: {
+                  type: 'array',
+                  items: {
+                    type: 'string'
+                  },
+                  description: 'Filter by tags (matches ANY of the provided tags)'
+                },
+                priority: {
+                  type: 'string',
+                  enum: ['low', 'medium', 'high', 'urgent'],
+                  description: 'Filter by priority level'
+                },
+                phase: {
+                  type: 'string',
+                  description: 'Filter by phase (looks for "phase-{value}" in tags)'
                 }
               }
             },
@@ -1377,7 +1427,68 @@ class AIDISServer {
               required: ['taskId']
             },
           },
-
+          {
+            name: 'task_bulk_update',
+            description: 'Update multiple tasks atomically with the same changes',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                task_ids: {
+                  type: 'array',
+                  items: {
+                    type: 'string'
+                  },
+                  description: 'Array of task IDs to update'
+                },
+                status: {
+                  type: 'string',
+                  enum: ['todo', 'in_progress', 'blocked', 'completed', 'cancelled'],
+                  description: 'New status for all specified tasks'
+                },
+                assignedTo: {
+                  type: 'string',
+                  description: 'Agent ID to assign all tasks to'
+                },
+                priority: {
+                  type: 'string',
+                  enum: ['low', 'medium', 'high', 'urgent'],
+                  description: 'New priority for all specified tasks'
+                },
+                metadata: {
+                  type: 'object',
+                  description: 'Additional metadata to apply to all tasks'
+                },
+                notes: {
+                  type: 'string',
+                  description: 'Notes to add to all tasks (stored in metadata)'
+                },
+                projectId: {
+                  type: 'string',
+                  description: 'Optional project ID for validation (uses current if not specified)'
+                }
+              },
+              required: ['task_ids']
+            },
+          },
+          {
+            name: 'task_progress_summary',
+            description: 'Get task progress summary with grouping and completion percentages',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                groupBy: {
+                  type: 'string',
+                  enum: ['phase', 'status', 'priority', 'type', 'assignedTo'],
+                  description: 'How to group the progress summary (default: phase)',
+                  default: 'phase'
+                },
+                projectId: {
+                  type: 'string',
+                  description: 'Project ID to analyze (optional, uses current project if not provided)'
+                }
+              }
+            }
+          },
           {
             name: 'code_analyze',
             description: 'Analyze code file structure and dependencies',
@@ -2849,6 +2960,13 @@ class AIDISServer {
   private async handleStatus() {
     const status = await this.getServerStatus();
     
+    const flagSummaryEntries = Object.entries(status.featureFlags || {});
+    const flagSummary = flagSummaryEntries.length
+      ? flagSummaryEntries
+          .map(([name, enabled]) => `${name}=${enabled ? 'ON' : 'off'}`)
+          .join(', ')
+      : 'none';
+
     return {
       content: [
         {
@@ -2859,6 +2977,7 @@ class AIDISServer {
                 `Database: ${status.database.connected ? '✅ Connected' : '❌ Disconnected'}\n` +
                 `Memory Usage: ${(status.memory.used / 1024 / 1024).toFixed(2)} MB\n` +
                 `Environment: ${status.environment}\n` +
+                `Feature Flags: ${flagSummary}\n` +
                 `Started: ${status.startTime}`,
         },
       ],
@@ -3660,6 +3779,8 @@ class AIDISServer {
   private async getServerStatus() {
     const uptime = process.uptime();
     const memoryUsage = process.memoryUsage();
+    const featureFlagStore = await ensureFeatureFlags();
+    const featureFlags = featureFlagStore.getAllFlags();
     
     // Test database connectivity
     let databaseConnected = false;
@@ -3678,15 +3799,16 @@ class AIDISServer {
       environment: process.env.NODE_ENV || 'development',
       database: {
         connected: databaseConnected,
-        host: process.env.DATABASE_HOST || 'localhost',
-        port: process.env.DATABASE_PORT || '5432',
-        database: process.env.DATABASE_NAME || 'aidis_development',
+        host: getEnvVar('AIDIS_DATABASE_HOST', 'DATABASE_HOST', 'localhost'),
+        port: getEnvVar('AIDIS_DATABASE_PORT', 'DATABASE_PORT', '5432'),
+        database: getEnvVar('AIDIS_DATABASE_NAME', 'DATABASE_NAME', 'aidis_development'),
       },
       memory: {
         used: memoryUsage.rss,
         heap: memoryUsage.heapUsed,
         external: memoryUsage.external,
       },
+      featureFlags,
     };
   }
 
@@ -3840,7 +3962,16 @@ class AIDISServer {
    */
   private async handleTaskList(args: any) {
     const projectId = args.projectId || await projectHandler.getCurrentProjectId('default-session');
-    const tasks = await tasksHandler.listTasks(projectId, args.assignedTo, args.status, args.type);
+    const tasks = await tasksHandler.listTasks(
+      projectId,
+      args.assignedTo,
+      args.status,
+      args.type,
+      args.tags,
+      args.priority,
+      args.phase,
+      args.statuses
+    );
 
     if (tasks.length === 0) {
       return {
@@ -3921,6 +4052,141 @@ class AIDISServer {
         },
       ],
     };
+  }
+
+  /**
+   * Handle bulk task update requests
+   */
+  private async handleTaskBulkUpdate(args: any) {
+    const projectId = args.projectId || await projectHandler.getCurrentProjectId('default-session');
+
+    try {
+      const result = await tasksHandler.bulkUpdateTasks(args.task_ids, {
+        status: args.status,
+        assignedTo: args.assignedTo,
+        priority: args.priority,
+        metadata: args.metadata,
+        notes: args.notes,
+        projectId: projectId
+      });
+
+      const statusIcon = args.status ? {
+        todo: '⏰',
+        in_progress: '🔄',
+        blocked: '🚫',
+        completed: '✅',
+        cancelled: '❌'
+      }[args.status] || '❓' : '';
+
+      const updates = [];
+      if (args.status) updates.push(`Status: ${args.status} ${statusIcon}`);
+      if (args.assignedTo) updates.push(`Assigned To: ${args.assignedTo}`);
+      if (args.priority) updates.push(`Priority: ${args.priority}`);
+      if (args.notes) updates.push(`Notes: ${args.notes}`);
+      if (args.metadata) updates.push(`Metadata: Updated`);
+
+      const updatesText = updates.length > 0 ? `\n📊 Applied Updates:\n   ${updates.join('\n   ')}\n` : '';
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `✅ Bulk update completed successfully!\n\n` +
+                  `📊 **Results Summary:**\n` +
+                  `   • Total Requested: ${result.totalRequested}\n` +
+                  `   • Successfully Updated: ${result.successfullyUpdated}\n` +
+                  `   • Failed: ${result.failed}\n\n` +
+                  `🆔 **Updated Task IDs:**\n   ${result.updatedTaskIds.slice(0, 10).join('\n   ')}` +
+                  (result.updatedTaskIds.length > 10 ? `\n   ... and ${result.updatedTaskIds.length - 10} more` : '') +
+                  updatesText +
+                  `\n⏰ Updated: ${new Date().toISOString().split('T')[0]}\n\n` +
+                  `🤝 Changes visible to all coordinating agents!\n\n` +
+                  `💡 Use task_list to see updated tasks`
+          },
+        ],
+      };
+
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `❌ Bulk update failed!\n\n` +
+                  `🚨 **Error:** ${error.message}\n\n` +
+                  `📊 **Request Details:**\n` +
+                  `   • Task Count: ${args.task_ids?.length || 0}\n` +
+                  `   • Task IDs: ${args.task_ids?.slice(0, 5).join(', ')}${args.task_ids?.length > 5 ? '...' : ''}\n` +
+                  `   • Project: ${projectId}\n\n` +
+                  `💡 Verify task IDs exist and belong to the project using task_list`
+          },
+        ],
+      };
+    }
+  }
+
+  /**
+   * Handle task progress summary requests
+   */
+  private async handleTaskProgressSummary(args: any) {
+    const projectId = args.projectId || await projectHandler.getCurrentProjectId('default-session');
+    const groupBy = args.groupBy || 'phase';
+
+    try {
+      const summary = await tasksHandler.getTaskProgressSummary(projectId, groupBy);
+
+      // Format the response for human readability
+      const overallStatus = `${summary.overallProgress.completed}/${summary.overallProgress.total} (${summary.overallProgress.percentage}%)`;
+
+      let responseText = `📊 **Task Progress Summary**\n\n`;
+      responseText += `**Overall Progress**: ${overallStatus} tasks completed\n`;
+      responseText += `**Total Tasks**: ${summary.totalTasks}\n\n`;
+
+      if (summary.groupedProgress.length > 0) {
+        responseText += `**Progress by ${groupBy.charAt(0).toUpperCase() + groupBy.slice(1)}**:\n\n`;
+
+        summary.groupedProgress.forEach(group => {
+          const progressIcon = group.completionPercentage === 100 ? '✅' :
+                               group.completionPercentage >= 75 ? '🟢' :
+                               group.completionPercentage >= 50 ? '🟡' :
+                               group.completionPercentage >= 25 ? '🟠' : '🔴';
+
+          const groupName = group.group === 'ungrouped' ? 'No Group' : group.group;
+          responseText += `${progressIcon} **${groupName}**: ${group.completedTasks}/${group.totalTasks} (${group.completionPercentage}%)\n`;
+
+          if (group.inProgressTasks > 0) {
+            responseText += `   🔄 In Progress: ${group.inProgressTasks}\n`;
+          }
+          if (group.pendingTasks > 0) {
+            responseText += `   ⏰ Pending: ${group.pendingTasks}\n`;
+          }
+          if (group.blockedTasks > 0) {
+            responseText += `   🚫 Blocked: ${group.blockedTasks}\n`;
+          }
+          responseText += '\n';
+        });
+      } else {
+        responseText += `No tasks found with valid ${groupBy} grouping.\n`;
+      }
+
+      responseText += `\n💡 **Usage**: \`task_progress_summary(groupBy="phase|status|priority|type|assignedTo")\``;
+
+      return {
+        content: [{
+          type: "text",
+          text: responseText
+        }]
+      };
+
+    } catch (error) {
+      return {
+        content: [{
+          type: "text",
+          text: `❌ Progress summary failed!\n\n` +
+                `🚨 **Error:** ${error.message}\n\n` +
+                `💡 Try: task_progress_summary(groupBy="phase")`
+        }]
+      };
+    }
   }
 
   /**
@@ -4621,141 +4887,170 @@ class AIDISServer {
         operation: 'database_init'
       });
       
-      await RetryHandler.executeWithRetry(async () => {
-        await this.circuitBreaker.execute(async () => {
-          const startTime = Date.now();
-          await initializeDatabase();
-          this.dbHealthy = true;
-          
-          logger.info('Database connection established successfully', {
-            component: 'STARTUP',
-            operation: 'database_connected',
-            duration: Date.now() - startTime,
-            metadata: {
-              circuitBreakerState: this.circuitBreaker.getState()
-            }
+      if (!SKIP_DATABASE) {
+        await RetryHandler.executeWithRetry(async () => {
+          await this.circuitBreaker.execute(async () => {
+            const startTime = Date.now();
+            await initializeDatabase();
+            this.dbHealthy = true;
+            
+            logger.info('Database connection established successfully', {
+              component: 'STARTUP',
+              operation: 'database_connected',
+              duration: Date.now() - startTime,
+              metadata: {
+                circuitBreakerState: this.circuitBreaker.getState()
+              }
+            });
           });
         });
-      });
+        
+        // Initialize session tracking for this AIDIS instance
+        console.log('📋 Ensuring session exists for this AIDIS instance...');
+        try {
+          const currentProject = await projectHandler.getCurrentProject();
+          // Use ensureActiveSession to reuse existing active session or create new one
+          const sessionId = await ensureActiveSession(currentProject?.id);
+          console.log(`✅ Session tracking initialized: ${sessionId.substring(0, 8)}...`);
+        } catch (error) {
+          console.warn('⚠️  Failed to initialize session tracking:', error);
+          console.warn('   Contexts will be stored without session association');
+        }
+      } else {
+        console.log('🧪 Skipping database initialization (AIDIS_SKIP_DATABASE=true)');
+        this.dbHealthy = true;
+      }
+
+      if (!SKIP_BACKGROUND_SERVICES) {
+        // Initialize real-time git tracking
+        console.log('⚡ Starting real-time git tracking...');
+        try {
+          await startGitTracking({
+            enableFileWatching: true,
+            enablePeriodicPolling: true,
+            pollingIntervalMs: 30000, // 30 seconds
+            correlationDelayMs: 5000   // 5 seconds delay after detection
+          });
+          console.log('✅ Git tracking initialized successfully');
+        } catch (error) {
+          console.warn('⚠️  Failed to initialize git tracking:', error);
+          console.warn('   Git correlation will be manual only');
+        }
+
+        // Initialize pattern detection service
+        console.log('🔍 Starting pattern detection service...');
+        try {
+          await startPatternDetection({
+            enableRealTimeDetection: true,
+            enableBatchProcessing: true,
+            detectionTimeoutMs: 100, // Sub-100ms target
+            patternUpdateIntervalMs: 5000 // 5 seconds
+          });
+          console.log('✅ Pattern detection service initialized successfully');
+        } catch (error) {
+          console.warn('⚠️  Failed to initialize pattern detection:', error);
+          console.warn('   Pattern detection will be manual only');
+        }
+
+        // Initialize development metrics collection service
+        console.log('📊 Starting development metrics collection service...');
+        try {
+          await startMetricsCollection({
+            enableRealTimeCollection: true,
+            enableBatchProcessing: true,
+            collectionTimeoutMs: 100, // Sub-100ms target
+            autoCollectOnCommit: true,
+            autoCollectOnPatternUpdate: true,
+            autoCollectOnSessionEnd: true,
+            scheduledCollectionIntervalMs: 300000 // 5 minutes
+          });
+          console.log('✅ Metrics collection service initialized successfully');
+        } catch (error) {
+          console.warn('⚠️  Failed to initialize metrics collection:', error);
+          console.warn('   Metrics collection will be manual only');
+        }
+
+        // Initialize metrics integration service for real-time triggers
+        console.log('🔗 Starting metrics integration service...');
+        try {
+          await startMetricsIntegration({
+            enableGitTriggers: true,
+            enablePatternTriggers: true,
+            enableSessionTriggers: true,
+            enableAlertNotifications: true,
+            gitTriggerDelayMs: 5000,
+            patternTriggerDelayMs: 3000,
+            maxConcurrentCollections: 3
+          });
+          console.log('✅ Metrics integration service initialized successfully');
+        } catch (error) {
+          console.warn('⚠️  Failed to initialize metrics integration:', error);
+          console.warn('   Real-time metrics triggers will be disabled');
+        }
+
+        // TC015: Initialize code complexity tracking service
+        console.log('🧮 Starting complexity tracking service...');
+        try {
+          await startComplexityTracking({
+            enableRealTimeAnalysis: true,
+            enableBatchProcessing: true,
+            analysisTimeoutMs: 100, // Sub-100ms target
+            autoAnalyzeOnCommit: true,
+            autoAnalyzeOnThresholdBreach: true,
+            scheduledAnalysisIntervalMs: 600000 // 10 minutes
+          });
+          console.log('✅ Complexity tracking service initialized successfully');
+        } catch (error) {
+          console.warn('⚠️  Failed to initialize complexity tracking:', error);
+          console.warn('   Complexity tracking will be manual only');
+        }
+      } else {
+        console.log('🧪 Skipping background services (AIDIS_SKIP_BACKGROUND=true)');
+      }
       
-      // Initialize session tracking for this AIDIS instance
-      console.log('📋 Ensuring session exists for this AIDIS instance...');
-      try {
-        const currentProject = await projectHandler.getCurrentProject();
-        // Use ensureActiveSession to reuse existing active session or create new one
-        const sessionId = await ensureActiveSession(currentProject?.id);
-        console.log(`✅ Session tracking initialized: ${sessionId.substring(0, 8)}...`);
-      } catch (error) {
-        console.warn('⚠️  Failed to initialize session tracking:', error);
-        console.warn('   Contexts will be stored without session association');
-      }
+      // ORACLE FIX #3: Start health check server with dynamic port assignment
+      const assignedPort = await portManager.assignPort('aidis-mcp');
+      console.log(`🏥 Starting health check server...`);
 
-      // Initialize real-time git tracking
-      console.log('⚡ Starting real-time git tracking...');
-      try {
-        await startGitTracking({
-          enableFileWatching: true,
-          enablePeriodicPolling: true,
-          pollingIntervalMs: 30000, // 30 seconds
-          correlationDelayMs: 5000   // 5 seconds delay after detection
-        });
-        console.log('✅ Git tracking initialized successfully');
-      } catch (error) {
-        console.warn('⚠️  Failed to initialize git tracking:', error);
-        console.warn('   Git correlation will be manual only');
-      }
+      this.healthServer?.listen(assignedPort, async () => {
+        const actualPort = (this.healthServer!.address() as any)?.port || assignedPort;
 
-      // Initialize pattern detection service
-      console.log('🔍 Starting pattern detection service...');
-      try {
-        await startPatternDetection({
-          enableRealTimeDetection: true,
-          enableBatchProcessing: true,
-          detectionTimeoutMs: 100, // Sub-100ms target
-          patternUpdateIntervalMs: 5000 // 5 seconds
-        });
-        console.log('✅ Pattern detection service initialized successfully');
-      } catch (error) {
-        console.warn('⚠️  Failed to initialize pattern detection:', error);
-        console.warn('   Pattern detection will be manual only');
-      }
+        // Register the service with its actual port
+        await portManager.registerService('aidis-mcp', actualPort, '/healthz');
+        await portManager.logPortConfiguration('aidis-mcp', actualPort);
 
-      // Initialize development metrics collection service
-      console.log('📊 Starting development metrics collection service...');
-      try {
-        await startMetricsCollection({
-          enableRealTimeCollection: true,
-          enableBatchProcessing: true,
-          collectionTimeoutMs: 100, // Sub-100ms target
-          autoCollectOnCommit: true,
-          autoCollectOnPatternUpdate: true,
-          autoCollectOnSessionEnd: true,
-          scheduledCollectionIntervalMs: 300000 // 5 minutes
-        });
-        console.log('✅ Metrics collection service initialized successfully');
-      } catch (error) {
-        console.warn('⚠️  Failed to initialize metrics collection:', error);
-        console.warn('   Metrics collection will be manual only');
-      }
-
-      // Initialize metrics integration service for real-time triggers
-      console.log('🔗 Starting metrics integration service...');
-      try {
-        await startMetricsIntegration({
-          enableGitTriggers: true,
-          enablePatternTriggers: true,
-          enableSessionTriggers: true,
-          enableAlertNotifications: true,
-          gitTriggerDelayMs: 5000,
-          patternTriggerDelayMs: 3000,
-          maxConcurrentCollections: 3
-        });
-        console.log('✅ Metrics integration service initialized successfully');
-      } catch (error) {
-        console.warn('⚠️  Failed to initialize metrics integration:', error);
-        console.warn('   Real-time metrics triggers will be disabled');
-      }
-
-      // TC015: Initialize code complexity tracking service
-      console.log('🧮 Starting complexity tracking service...');
-      try {
-        await startComplexityTracking({
-          enableRealTimeAnalysis: true,
-          enableBatchProcessing: true,
-          analysisTimeoutMs: 100, // Sub-100ms target
-          autoAnalyzeOnCommit: true,
-          autoAnalyzeOnThresholdBreach: true,
-          scheduledAnalysisIntervalMs: 600000 // 10 minutes
-        });
-        console.log('✅ Complexity tracking service initialized successfully');
-      } catch (error) {
-        console.warn('⚠️  Failed to initialize complexity tracking:', error);
-        console.warn('   Complexity tracking will be manual only');
-      }
-      
-      // ORACLE FIX #3: Start health check server
-      console.log(`🏥 Starting health check server on port ${HEALTH_PORT}...`);
-      this.healthServer?.listen(HEALTH_PORT, () => {
         console.log(`✅ Health endpoints available:`);
-        console.log(`   🏥 Liveness:  http://localhost:${HEALTH_PORT}/healthz`);
-        console.log(`   🎯 Readiness: http://localhost:${HEALTH_PORT}/readyz`);
+        console.log(`   🏥 Liveness:  http://localhost:${actualPort}/healthz`);
+        console.log(`   🎯 Readiness: http://localhost:${actualPort}/readyz`);
       });
       
       // ORACLE FIX #4: Create transport with MCP debug logging
-      console.log('🔗 Creating MCP transport with debug logging...');
-      const transport = new StdioServerTransport();
-      
-      // Enhanced connection logging
-      console.log('🤝 Connecting to MCP transport...');
-      await this.server.connect(transport);
-      
-      console.log('✅ AIDIS MCP Server is running and ready for connections!');
+      if (!SKIP_STDIO_TRANSPORT) {
+        console.log('🔗 Creating MCP transport with debug logging...');
+        const transport = new StdioServerTransport();
+        
+        // Enhanced connection logging
+        console.log('🤝 Connecting to MCP transport...');
+        await this.server.connect(transport);
+        
+        console.log('✅ AIDIS MCP Server is running and ready for connections!');
+      } else {
+        console.log('🧪 Skipping MCP stdio transport (AIDIS_SKIP_STDIO=true)');
+      }
       console.log('🔒 Enterprise Security Features:');
       console.log(`   🔒 Process Singleton: ACTIVE (PID: ${process.pid})`);
-      console.log(`   🏥 Health Endpoints: http://localhost:${HEALTH_PORT}/healthz,readyz`);
+
+      // Get the actual assigned port for logging
+      const actualPort = (this.healthServer?.address() as any)?.port;
+      if (actualPort) {
+        console.log(`   🏥 Health Endpoints: http://localhost:${actualPort}/healthz,readyz`);
+      } else {
+        console.log(`   🏥 Health Endpoints: Starting up...`);
+      }
+
       console.log(`   🔄 Retry Logic: ${MAX_RETRIES} attempts with exponential backoff`);
       console.log(`   ⚡ Circuit Breaker: ${this.circuitBreaker.getState().toUpperCase()}`);
-      console.log(`   🐛 MCP Debug: ${process.env.MCP_DEBUG || 'DISABLED'}`);
+      console.log(`   🐛 MCP Debug: ${getEnvVar('AIDIS_MCP_DEBUG', 'MCP_DEBUG', 'DISABLED')}`);
       
       console.log('🎯 Available tools:');
       console.log('   📊 System: aidis_ping, aidis_status');
@@ -4764,7 +5059,7 @@ class AIDISServer {
       console.log('   🏷️  Naming: naming_register, naming_check, naming_suggest, naming_stats');
       console.log('   📋 Decisions: decision_record, decision_search, decision_update, decision_stats');
       console.log('   🤖 Agents: agent_register, agent_list, agent_status, agent_join, agent_leave, agent_sessions');
-      console.log('   📋 Tasks: task_create, task_list, task_update, task_details, agent_message, agent_messages');
+      console.log('   📋 Tasks: task_create, task_list, task_update, task_bulk_update, task_details, task_progress_summary, agent_message, agent_messages');
       console.log('   📦 Code Analysis: code_analyze, code_components, code_dependencies, code_impact, code_stats');
       console.log('   🧠 Smart Search: smart_search, get_recommendations, project_insights');
       console.log('   📊 Development Metrics: metrics_collect_project, metrics_get_dashboard, metrics_get_alerts, metrics_get_trends');
@@ -4811,83 +5106,97 @@ class AIDISServer {
     });
     
     try {
-      // End current session if active
-      console.log('📋 Ending active session...');
-      try {
-        const activeSessionId = await SessionTracker.getActiveSession();
-        if (activeSessionId) {
-          await SessionTracker.endSession(activeSessionId);
-          console.log('✅ Session ended gracefully');
-        } else {
-          console.log('ℹ️  No active session to end');
+      if (!SKIP_DATABASE) {
+        // End current session if active
+        console.log('📋 Ending active session...');
+        try {
+          const activeSessionId = await SessionTracker.getActiveSession();
+          if (activeSessionId) {
+            await SessionTracker.endSession(activeSessionId);
+            console.log('✅ Session ended gracefully');
+          } else {
+            console.log('ℹ️  No active session to end');
+          }
+        } catch (error) {
+          console.warn('⚠️  Failed to end session:', error);
         }
-      } catch (error) {
-        console.warn('⚠️  Failed to end session:', error);
+      } else {
+        console.log('🧪 Skipping session shutdown (AIDIS_SKIP_DATABASE=true)');
       }
 
-      // Stop git tracking
-      console.log('⚡ Stopping git tracking...');
-      try {
-        await stopGitTracking();
-        console.log('✅ Git tracking stopped gracefully');
-      } catch (error) {
-        console.warn('⚠️  Failed to stop git tracking:', error);
-      }
+      if (!SKIP_BACKGROUND_SERVICES) {
+        // Stop git tracking
+        console.log('⚡ Stopping git tracking...');
+        try {
+          await stopGitTracking();
+          console.log('✅ Git tracking stopped gracefully');
+        } catch (error) {
+          console.warn('⚠️  Failed to stop git tracking:', error);
+        }
 
-      // Stop pattern detection service
-      console.log('🔍 Stopping pattern detection service...');
-      try {
-        await stopPatternDetection();
-        console.log('✅ Pattern detection service stopped gracefully');
-      } catch (error) {
-        console.warn('⚠️  Failed to stop pattern detection:', error);
-      }
+        // Stop pattern detection service
+        console.log('🔍 Stopping pattern detection service...');
+        try {
+          await stopPatternDetection();
+          console.log('✅ Pattern detection service stopped gracefully');
+        } catch (error) {
+          console.warn('⚠️  Failed to stop pattern detection:', error);
+        }
 
-      // Stop metrics collection service
-      console.log('📊 Stopping metrics collection service...');
-      try {
-        await stopMetricsCollection();
-        console.log('✅ Metrics collection service stopped gracefully');
-      } catch (error) {
-        console.warn('⚠️  Failed to stop metrics collection:', error);
-      }
+        // Stop metrics collection service
+        console.log('📊 Stopping metrics collection service...');
+        try {
+          await stopMetricsCollection();
+          console.log('✅ Metrics collection service stopped gracefully');
+        } catch (error) {
+          console.warn('⚠️  Failed to stop metrics collection:', error);
+        }
 
-      // Stop metrics integration service
-      console.log('🔗 Stopping metrics integration service...');
-      try {
-        await stopMetricsIntegration();
-        console.log('✅ Metrics integration service stopped gracefully');
-      } catch (error) {
-        console.warn('⚠️  Failed to stop metrics integration:', error);
-      }
+        // Stop metrics integration service
+        console.log('🔗 Stopping metrics integration service...');
+        try {
+          await stopMetricsIntegration();
+          console.log('✅ Metrics integration service stopped gracefully');
+        } catch (error) {
+          console.warn('⚠️  Failed to stop metrics integration:', error);
+        }
 
-      // TC015: Stop complexity tracking service
-      console.log('🧮 Stopping complexity tracking service...');
-      try {
-        await stopComplexityTracking();
-        console.log('✅ Complexity tracking service stopped gracefully');
-      } catch (error) {
-        console.warn('⚠️  Failed to stop complexity tracking:', error);
+        // TC015: Stop complexity tracking service
+        console.log('🧮 Stopping complexity tracking service...');
+        try {
+          await stopComplexityTracking();
+          console.log('✅ Complexity tracking service stopped gracefully');
+        } catch (error) {
+          console.warn('⚠️  Failed to stop complexity tracking:', error);
+        }
+      } else {
+        console.log('🧪 Background services disabled; skipping shutdown hooks');
       }
       
-      // Close health check server
+      // Close health check server and unregister from port registry
       if (this.healthServer) {
         console.log('🏥 Closing health check server...');
         await new Promise<void>((resolve) => {
-          this.healthServer!.close(() => {
-            console.log('✅ Health check server closed');
+          this.healthServer!.close(async () => {
+            // Unregister the service from port registry
+            await portManager.unregisterService('aidis-mcp');
+            console.log('✅ Health check server closed and unregistered');
             resolve();
           });
         });
       }
       
-      // Close database connections
-      console.log('🔌 Closing database connections...');
-      await closeDatabase();
-      console.log('✅ Database connections closed');
-      
-      // Mark as unhealthy
-      this.dbHealthy = false;
+      if (!SKIP_DATABASE) {
+        // Close database connections
+        console.log('🔌 Closing database connections...');
+        await closeDatabase();
+        console.log('✅ Database connections closed');
+        
+        // Mark as unhealthy
+        this.dbHealthy = false;
+      } else {
+        console.log('🧪 Skipping database close (AIDIS_SKIP_DATABASE=true)');
+      }
       
       RequestLogger.logSystemEvent('graceful_shutdown_completed', {
         signal,
@@ -5371,6 +5680,8 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     try {
       console.log('🚀 Starting AIDIS in Direct Mode (SystemD dependency removed)');
       
+      await ensureFeatureFlags();
+
       serverInstance = new AIDISServer();
       
       // Start with enhanced error handling

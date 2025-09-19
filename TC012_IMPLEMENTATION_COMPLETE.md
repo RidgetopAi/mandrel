@@ -190,7 +190,7 @@ ORDER BY lift_score DESC LIMIT 20;
 ## 📋 DEPLOYMENT ARTIFACTS
 
 ### Migration File
-- **Location**: `mcp-server/migrations/2025_09_10_create_change_pattern_tables.sql`
+- **Location**: `mcp-server/database/migrations/019_create_change_pattern_tables.sql`
 - **Size**: 1,300+ lines of production SQL
 - **Features**: Complete schema with indexes, views, triggers, and validation
 - **Documentation**: Comprehensive inline comments and examples

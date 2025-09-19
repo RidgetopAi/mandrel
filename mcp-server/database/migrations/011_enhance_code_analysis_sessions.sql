@@ -97,14 +97,23 @@ ALTER COLUMN metadata SET DEFAULT '{
 DO $$
 BEGIN
     IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'git_commits') THEN
-        -- Add foreign key to git_commits
-        ALTER TABLE code_analysis_sessions 
-        ADD CONSTRAINT fk_code_analysis_sessions_commit 
-        FOREIGN KEY (project_id, commit_sha) 
-        REFERENCES git_commits(project_id, commit_sha) 
-        ON DELETE SET NULL;
-        
-        RAISE NOTICE 'Added foreign key constraint to git_commits table';
+        -- Check if constraint already exists before adding
+        IF NOT EXISTS (
+            SELECT 1 FROM information_schema.table_constraints
+            WHERE constraint_name = 'fk_code_analysis_sessions_commit'
+            AND table_name = 'code_analysis_sessions'
+        ) THEN
+            -- Add foreign key to git_commits
+            ALTER TABLE code_analysis_sessions
+            ADD CONSTRAINT fk_code_analysis_sessions_commit
+            FOREIGN KEY (project_id, commit_sha)
+            REFERENCES git_commits(project_id, commit_sha)
+            ON DELETE SET NULL;
+
+            RAISE NOTICE 'Added foreign key constraint to git_commits table';
+        ELSE
+            RAISE NOTICE 'Foreign key constraint already exists - skipping';
+        END IF;
     ELSE
         RAISE NOTICE 'git_commits table not found - skipping foreign key constraint';
     END IF;
@@ -262,6 +271,7 @@ CREATE TRIGGER validate_code_analysis_session_data
 -- =============================================
 
 -- Function to calculate session analysis summary
+DROP FUNCTION IF EXISTS get_session_analysis_summary(UUID);
 CREATE OR REPLACE FUNCTION get_session_analysis_summary(session_uuid UUID)
 RETURNS TABLE (
     total_analyses INTEGER,
@@ -294,6 +304,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Function to get project analysis insights
+DROP FUNCTION IF EXISTS get_project_analysis_insights(UUID, INTEGER);
 CREATE OR REPLACE FUNCTION get_project_analysis_insights(proj_id UUID, days_back INTEGER DEFAULT 30)
 RETURNS TABLE (
     total_sessions INTEGER,
@@ -400,6 +411,7 @@ ON code_metrics(analysis_session_id) WHERE analysis_session_id IS NOT NULL;
 -- =============================================
 
 -- Function to create a sample analysis session for testing
+DROP FUNCTION IF EXISTS create_sample_analysis_session(UUID, UUID, VARCHAR(40));
 CREATE OR REPLACE FUNCTION create_sample_analysis_session(
     proj_id UUID,
     session_id UUID DEFAULT NULL,
@@ -478,32 +490,26 @@ $$ LANGUAGE plpgsql;
 -- Verify migration success
 SELECT 'Migration 011 completed successfully - Code analysis sessions enhanced for TC005' as status;
 
--- Show enhanced table structure
-\d code_analysis_sessions;
-
--- Show new table
-\d analysis_session_links;
-
 -- Show row counts
-SELECT 
-    'code_analysis_sessions' as table_name, COUNT(*) as row_count 
+SELECT
+    'code_analysis_sessions' as table_name, COUNT(*) as row_count
 FROM code_analysis_sessions
 UNION ALL
-SELECT 
-    'analysis_session_links' as table_name, COUNT(*) as row_count 
+SELECT
+    'analysis_session_links' as table_name, COUNT(*) as row_count
 FROM analysis_session_links;
 
 -- Test the helper functions exist
 SELECT 'Helper functions created successfully' as function_status
 WHERE EXISTS (
-    SELECT 1 FROM information_schema.routines 
+    SELECT 1 FROM information_schema.routines
     WHERE routine_name IN ('get_session_analysis_summary', 'get_project_analysis_insights', 'create_sample_analysis_session')
 );
 
 -- Show new indexes created
-SELECT 
-    schemaname, tablename, indexname 
-FROM pg_indexes 
+SELECT
+    schemaname, tablename, indexname
+FROM pg_indexes
 WHERE tablename IN ('code_analysis_sessions', 'analysis_session_links', 'code_components', 'code_metrics')
 AND indexname LIKE '%analysis%'
 ORDER BY tablename, indexname;

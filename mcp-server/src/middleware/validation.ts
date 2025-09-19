@@ -242,8 +242,23 @@ export const taskSchemas = {
     notes: z.string().max(2000).optional()
   }),
 
+  bulk_update: z.object({
+    task_ids: z.array(z.string().uuid()).min(1).max(50),
+    status: z.enum(['todo', 'in_progress', 'blocked', 'completed', 'cancelled']).optional(),
+    assignedTo: z.string().optional(),
+    priority: z.enum(['low', 'medium', 'high', 'urgent']).optional(),
+    metadata: baseMetadata,
+    notes: z.string().max(2000).optional(),
+    projectId: z.string().optional()
+  }),
+
   details: z.object({
     taskId: z.string().uuid(),
+    projectId: z.string().optional()
+  }),
+
+  progress_summary: z.object({
+    groupBy: z.enum(['phase', 'status', 'priority', 'type', 'assignedTo']).optional().default('phase'),
     projectId: z.string().optional()
   })
 };
@@ -348,7 +363,9 @@ export const validationSchemas = {
   task_create: taskSchemas.create,
   task_list: taskSchemas.list,
   task_update: taskSchemas.update,
+  task_bulk_update: taskSchemas.bulk_update,
   task_details: taskSchemas.details,
+  task_progress_summary: taskSchemas.progress_summary,
   
   // Code Analysis
   code_analyze: codeSchemas.analyze,

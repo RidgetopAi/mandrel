@@ -12,12 +12,19 @@
  * - Confidence-based correlation scoring
  */
 
-import GitService from '../../../aidis-command/backend/dist/services/gitService.js';
+import GitServiceModule from '../../../aidis-command/backend/dist/services/gitService.js';
 import { SessionDetailService } from '../../../aidis-command/backend/dist/services/sessionDetail.js';
 import { db } from '../config/database.js';
 import { logEvent } from '../middleware/eventLogger.js';
 import { getCurrentSession } from '../services/sessionManager.js';
 import { PatternDetector, detectPatterns, bufferCommitsForProcessing } from '../services/patternDetector.js';
+
+// The compiled gitService module exports both `GitService` and `default` in CommonJS format.
+// When imported from ESM (the MCP server), Node returns the module namespace object.
+// Normalize the export here so downstream code always works with the class itself.
+const GitService = (GitServiceModule as any)?.GitService
+  ?? (GitServiceModule as any)?.default
+  ?? GitServiceModule;
 
 export interface GitSessionCommitsParams {
   sessionId?: string; // If not provided, uses current session

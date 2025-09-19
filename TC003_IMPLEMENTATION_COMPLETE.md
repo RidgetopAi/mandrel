@@ -24,7 +24,7 @@ TC003 has been successfully implemented with a complete git commit data collecti
 ## 📁 Files Created/Modified
 
 ### New Files Created:
-- `/mcp-server/migrations/2025_09_10_create_git_tracking_tables.sql` - Complete database schema
+- `mcp-server/database/migrations/010_create_git_tracking_system.sql` - Complete database schema
 - `/aidis-command/backend/src/types/git.ts` - Comprehensive TypeScript types  
 - `/aidis-command/backend/src/services/gitService.ts` - Main git service implementation
 - `/test-git-service.ts` - Comprehensive test suite

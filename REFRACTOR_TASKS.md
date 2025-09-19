@@ -211,12 +211,12 @@ verify-backup.sh           # Test backup integrity
 **Dependencies**: TR0008
 
 **Tasks:**
-- [ ] Define API contracts between MCP server and HTTP bridge
-- [ ] Create contract tests for all 96 MCP tools
-- [ ] Add schema validation for MCP request/response formats
-- [ ] Build consumer contract tests for web backend
-- [ ] Set up contract test execution in CI/CD
-- [ ] Document contract testing procedures
+- [x] Define API contracts between MCP server and HTTP bridge
+- [x] Create contract tests for all 96 MCP tools
+- [x] Add schema validation for MCP request/response formats
+- [x] Build consumer contract tests for web backend
+- [x] Set up contract test execution in CI/CD (scripts provided for `mcp-server` and backend runners)
+- [x] Document contract testing procedures
 
 **Contract Testing Tools:**
 - Pact (consumer-driven contracts)

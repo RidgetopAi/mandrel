@@ -25,8 +25,25 @@ Essential tools for discovering AIDIS capabilities:
 - **`aidis_explain <toolname>`** - Get detailed help for any specific tool  
 - **`aidis_examples <toolname>`** - See usage examples and patterns
 
+### HTTP Bridge Connection
+**AIDIS tools are accessible via HTTP bridge at port 8080**
+- **Endpoint Pattern**: `http://localhost:8080/mcp/tools/{toolName}`
+- **Method**: POST with JSON body containing tool arguments
+- **Test Connection**: Always start with `aidis_ping` to verify the bridge is working
+
+**Quick Test**:
+```bash
+# Test AIDIS connection (always do this first!)
+curl -X POST http://localhost:8080/mcp/tools/aidis_ping \
+  -H "Content-Type: application/json" \
+  -d '{}'
+
+# Expected response:
+# {"success":true,"result":{"content":[{"type":"text","text":"🏓 AIDIS Pong! ..."}]}}
+```
+
 ### Session Startup Workflow
-1. `aidis_ping` - Test connection
+1. `aidis_ping` - Test HTTP bridge connection (via curl or direct tool call)
 2. `aidis_help` - See all available tools
 3. `project_current` - Check current project
 4. `aidis_explain <tool>` - Get help for tools you want to use

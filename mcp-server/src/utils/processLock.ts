@@ -48,28 +48,33 @@ export class ProcessLock {
       
       console.log(`✅ Process lock acquired (PID: ${process.pid})`);
       
-      // Clean up lock file on exit
+      const disableExitHandlers = process.env.AIDIS_DISABLE_PROCESS_EXIT_HANDLERS === 'true';
+
+      // Always release lock on normal process exit
       process.on('exit', () => this.release());
-      process.on('SIGINT', () => {
-        console.log('\n🔄 Received SIGINT, shutting down gracefully...');
-        this.release();
-        process.exit(0);
-      });
-      process.on('SIGTERM', () => {
-        console.log('\n🔄 Received SIGTERM, shutting down gracefully...');
-        this.release();
-        process.exit(0);
-      });
-      process.on('uncaughtException', (error) => {
-        console.error('❌ Uncaught Exception:', error);
-        this.release();
-        process.exit(1);
-      });
-      process.on('unhandledRejection', (reason, promise) => {
-        console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
-        this.release();
-        process.exit(1);
-      });
+
+      if (!disableExitHandlers) {
+        process.on('SIGINT', () => {
+          console.log('\n🔄 Received SIGINT, shutting down gracefully...');
+          this.release();
+          process.exit(0);
+        });
+        process.on('SIGTERM', () => {
+          console.log('\n🔄 Received SIGTERM, shutting down gracefully...');
+          this.release();
+          process.exit(0);
+        });
+        process.on('uncaughtException', (error) => {
+          console.error('❌ Uncaught Exception:', error);
+          this.release();
+          process.exit(1);
+        });
+        process.on('unhandledRejection', (reason, promise) => {
+          console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
+          this.release();
+          process.exit(1);
+        });
+      }
 
     } catch (error) {
       throw new Error(`Failed to acquire process lock: ${error}`);

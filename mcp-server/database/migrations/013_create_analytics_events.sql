@@ -3,8 +3,7 @@
 -- Author: AIDIS System
 -- Date: 2025-09-08
 
--- Create analytics_events table with exact specification
-CREATE TABLE analytics_events (
+CREATE TABLE IF NOT EXISTS analytics_events (
     event_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     actor VARCHAR(20) NOT NULL, -- 'human' | 'ai' | 'system'
@@ -23,12 +22,11 @@ CREATE TABLE analytics_events (
     metadata JSONB
 );
 
--- Performance indexes for common query patterns
-CREATE INDEX idx_analytics_events_timestamp ON analytics_events(timestamp);
-CREATE INDEX idx_analytics_events_project_id ON analytics_events(project_id);
-CREATE INDEX idx_analytics_events_session_id ON analytics_events(session_id);
-CREATE INDEX idx_analytics_events_event_type ON analytics_events(event_type);
-CREATE INDEX idx_analytics_events_actor ON analytics_events(actor);
+CREATE INDEX IF NOT EXISTS idx_analytics_events_timestamp ON analytics_events(timestamp);
+CREATE INDEX IF NOT EXISTS idx_analytics_events_project_id ON analytics_events(project_id);
+CREATE INDEX IF NOT EXISTS idx_analytics_events_session_id ON analytics_events(session_id);
+CREATE INDEX IF NOT EXISTS idx_analytics_events_event_type ON analytics_events(event_type);
+CREATE INDEX IF NOT EXISTS idx_analytics_events_actor ON analytics_events(actor);
 
 -- Add table comment
 COMMENT ON TABLE analytics_events IS 'Canonical event logging table for AIDIS analytics tracking';

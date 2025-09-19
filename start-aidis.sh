@@ -37,8 +37,22 @@ sleep 3
 if ps -p $AIDIS_PID > /dev/null 2>&1; then
     echo "✅ AIDIS MCP Server started successfully (PID: $AIDIS_PID)"
     echo "📋 Logs: tail -f logs/aidis.log"
-    echo "🏥 Health: curl http://localhost:8080/healthz"
+
+    # Check port registry for actual assigned port
+    sleep 2
+    if [ -f run/port-registry.json ]; then
+        ACTUAL_PORT=$(cat run/port-registry.json | grep -o '"port":[0-9]*' | head -1 | cut -d':' -f2)
+        if [ -n "$ACTUAL_PORT" ]; then
+            echo "🏥 Health: curl http://localhost:${ACTUAL_PORT}/healthz"
+        else
+            echo "🏥 Health: curl http://localhost:8080/healthz (fallback)"
+        fi
+    else
+        echo "🏥 Health: curl http://localhost:8080/healthz (fallback)"
+    fi
+
     echo "🛑 Stop: ./stop-aidis.sh"
+    echo "📡 Port Assignment: Check run/port-registry.json for actual ports"
 else
     echo "❌ Failed to start AIDIS"
     echo "📋 Check logs: tail logs/aidis.log"

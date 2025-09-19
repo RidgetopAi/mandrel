@@ -1,25 +1,97 @@
 import { Pool, PoolConfig } from 'pg';
-import dotenv from 'dotenv';
+import dotenvSafe from 'dotenv-safe';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
-// Load environment variables
-dotenv.config();
+// Get current directory for ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Load environment variables with validation
+const envExamplePath = path.resolve(__dirname, '../../.env.example');
+const envPath = path.resolve(__dirname, '../../.env');
+
+// Check if files exist before loading
+import fs from 'fs';
+if (!fs.existsSync(envExamplePath)) {
+  console.warn(`⚠️  .env.example not found at ${envExamplePath}`);
+}
+
+// Load environment variables from centralized config hierarchy
+const nodeEnv = process.env.NODE_ENV || 'development';
+const configRoot = path.resolve(__dirname, '../../../config');
+
+const envPaths = [
+  path.join(configRoot, 'environments', `.env.${nodeEnv}`),
+  path.resolve(__dirname, '../../.env')
+];
+
+console.log(`🔧 [MCP] Loading configuration for environment: ${nodeEnv}`);
+
+// Load hierarchical configuration
+for (const configPath of envPaths) {
+  if (fs.existsSync(configPath)) {
+    console.log(`📄 [MCP] Loading config from: ${configPath}`);
+    // Read and parse the .env file manually for ES modules
+    try {
+      const envContent = fs.readFileSync(configPath, 'utf8');
+      const envLines = envContent.split('\n').filter(line => line.trim() && !line.startsWith('#'));
+      for (const line of envLines) {
+        const [key, ...valueParts] = line.split('=');
+        const value = valueParts.join('=').trim();
+        if (key && value && !process.env[key]) {
+          process.env[key] = value;
+        }
+      }
+    } catch (error) {
+      console.warn(`⚠️ [MCP] Failed to load config from: ${configPath}`);
+    }
+  }
+}
+
+// Validate required variables
+try {
+  dotenvSafe.config({
+    example: envExamplePath,
+    allowEmptyValues: true,
+    path: false as any // Don't load any .env file, just validate current process.env
+  });
+  console.log('✅ [MCP] Environment variable validation passed');
+} catch (error) {
+  console.error('❌ [MCP] Environment variable validation failed:', (error as Error).message);
+  if (process.env.NODE_ENV === 'production') {
+    process.exit(1);
+  } else {
+    console.warn('⚠️  [MCP] Continuing in development mode despite validation errors');
+  }
+}
 
 /**
  * Database Configuration for AIDIS
- * 
+ *
  * This sets up our PostgreSQL connection pool with proper error handling
  * and reconnection logic. The pool manages multiple database connections
  * efficiently, which is crucial for a high-performance MCP server.
  */
 
+// Helper function to get environment variable with AIDIS_ prefix and fallback
+function getEnvVar(aidisKey: string, legacyKey: string, defaultValue: string = ''): string {
+  return process.env[aidisKey] || process.env[legacyKey] || defaultValue;
+}
+
+function getEnvVarInt(aidisKey: string, legacyKey: string, defaultValue: string = '0'): number {
+  const value = getEnvVar(aidisKey, legacyKey, defaultValue);
+  return parseInt(value);
+}
+
 const dbConfig: PoolConfig = {
-  user: process.env.DATABASE_USER || 'ridgetop',
-  host: process.env.DATABASE_HOST || 'localhost',
-  database: process.env.DATABASE_NAME || (() => {
-    throw new Error('DATABASE_NAME environment variable is required! No fallback allowed.');
+  user: getEnvVar('AIDIS_DATABASE_USER', 'DATABASE_USER', 'ridgetop'),
+  host: getEnvVar('AIDIS_DATABASE_HOST', 'DATABASE_HOST', 'localhost'),
+  database: getEnvVar('AIDIS_DATABASE_NAME', 'DATABASE_NAME') || (() => {
+    throw new Error('AIDIS_DATABASE_NAME or DATABASE_NAME environment variable is required! No fallback allowed.');
   })(),
-  password: process.env.DATABASE_PASSWORD || '',
-  port: parseInt(process.env.DATABASE_PORT || '5432'),
+  password: getEnvVar('AIDIS_DATABASE_PASSWORD', 'DATABASE_PASSWORD', ''),
+  port: getEnvVarInt('AIDIS_DATABASE_PORT', 'DATABASE_PORT', '5432'),
   
   // Connection pool settings
   max: 20, // Maximum number of connections

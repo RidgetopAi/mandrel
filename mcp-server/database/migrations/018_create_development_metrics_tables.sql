@@ -1001,11 +1001,6 @@ CREATE TRIGGER core_metrics_alert_generation
 -- MIGRATION COMPLETION AND VALIDATION
 -- =============================================================================
 
--- Record migration completion
-INSERT INTO schema_migrations (version, description, applied_at) 
-VALUES ('2025_09_10_create_development_metrics_tables', 'TC014: Comprehensive development metrics collection system for actionable intelligence', CURRENT_TIMESTAMP)
-ON CONFLICT (version) DO NOTHING;
-
 -- Validation and success message
 DO $$ 
 DECLARE
