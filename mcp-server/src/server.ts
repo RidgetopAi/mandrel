@@ -39,6 +39,7 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 
 import { initializeDatabase, closeDatabase } from './config/database.js';
+import { dbPool, poolHealthCheck } from './services/databasePool.js';
 import { contextHandler } from './handlers/context.js';
 import { projectHandler } from './handlers/project.js';
 import { namingHandler } from './handlers/naming.js';
@@ -70,9 +71,12 @@ import {
 } from './services/metricsIntegration.js';
 // TC015: Code Complexity Tracking imports
 import { CodeComplexityHandler } from './handlers/codeComplexity.js';
-import { 
+import { handleComplexityAnalyze } from './handlers/complexity/complexityAnalyze.js';
+import { handleComplexityInsights } from './handlers/complexity/complexityInsights.js';
+import { handleComplexityManage } from './handlers/complexity/complexityManage.js';
+import {
   startComplexityTracking,
-  stopComplexityTracking 
+  stopComplexityTracking
 } from './services/complexityTracker.js';
 // TC016: Decision Outcome Tracking imports
 import { outcomeTrackingHandler } from './handlers/outcomeTracking.js';
@@ -376,23 +380,53 @@ class AIDISServer {
         RequestLogger.logHealthCheck('/healthz', 'healthy', Date.now() - startTime);
         
       } else if (req.url === '/readyz') {
-        // Readiness check - validates database connectivity
+        // Readiness check - validates database connectivity and pool health
         const startTime = Date.now();
-        const isReady = this.dbHealthy && this.circuitBreaker.getState() !== 'open';
-        
+
+        // Check connection pool health (TR008-4)
+        const poolHealth = await poolHealthCheck();
+        const poolStats = dbPool.getStats();
+
+        const isReady = this.dbHealthy &&
+                       this.circuitBreaker.getState() !== 'open' &&
+                       poolHealth.healthy;
+
         const readinessData = {
           status: isReady ? 'ready' : 'not_ready',
           database: this.dbHealthy ? 'connected' : 'disconnected',
           circuit_breaker: this.circuitBreaker.getState(),
+          pool: {
+            healthy: poolHealth.healthy,
+            total_connections: poolStats.totalCount,
+            active_connections: poolStats.activeQueries,
+            pool_utilization: `${poolStats.poolUtilization.toFixed(1)}%`,
+            health_status: poolStats.healthStatus
+          },
           timestamp: new Date().toISOString()
         };
-        
+
         res.writeHead(isReady ? 200 : 503);
         res.end(JSON.stringify(readinessData));
-        
+
         // Log readiness check
         RequestLogger.logHealthCheck('/readyz', isReady ? 'healthy' : 'unhealthy', Date.now() - startTime);
-        
+
+      } else if (req.url === '/livez') {
+        // Liveness check - simple alive check (Kubernetes style)
+        const startTime = Date.now();
+        const livenessData = {
+          status: 'alive',
+          timestamp: new Date().toISOString(),
+          uptime: process.uptime(),
+          pid: process.pid
+        };
+
+        res.writeHead(200);
+        res.end(JSON.stringify(livenessData));
+
+        // Log liveness check
+        RequestLogger.logHealthCheck('/livez', 'alive', Date.now() - startTime);
+
       } else if (req.url?.startsWith('/mcp/tools/') && req.method === 'POST') {
         // MCP Tool HTTP Endpoints for Proxy Forwarding
         await this.handleMcpToolRequest(req, res);
@@ -725,6 +759,12 @@ class AIDISServer {
         return await MetricsAggregationHandler.handleTool(toolName, args);
         
       // TC015: Code Complexity Tracking tools
+      case 'complexity_analyze':
+        return await handleComplexityAnalyze(args);
+      case 'complexity_insights':
+        return await handleComplexityInsights(args);
+      case 'complexity_manage':
+        return await handleComplexityManage(args);
       case 'complexity_analyze_files':
       case 'complexity_get_dashboard':
       case 'complexity_get_file_metrics':
@@ -2382,8 +2422,462 @@ class AIDISServer {
             required: ['projectId', 'exportType', 'timeframe']
           }
         },
-        
+
         // Code Complexity Tools - TC015: Multi-dimensional complexity tracking system
+        {
+          name: 'complexity_analyze',
+          description: 'Unified complexity analysis tool - replaces complexity_analyze_files, complexity_analyze_commit, complexity_get_file_metrics, and complexity_get_function_metrics',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              target: {
+                oneOf: [
+                  { type: 'string' },
+                  { type: 'array', items: { type: 'string' } }
+                ],
+                description: 'Target for analysis - file path(s), commit hash(es), or function identifier'
+              },
+              type: {
+                type: 'string',
+                enum: ['file', 'files', 'commit', 'function'],
+                description: 'Type of analysis to perform'
+              },
+              options: {
+                type: 'object',
+                properties: {
+                  projectId: {
+                    type: 'string',
+                    description: 'Project ID for context (auto-detected if not provided)'
+                  },
+                  trigger: {
+                    type: 'string',
+                    enum: ['manual', 'git_commit', 'scheduled', 'threshold_breach', 'batch_analysis'],
+                    description: 'Analysis trigger source',
+                    default: 'manual'
+                  },
+                  includeMetrics: {
+                    type: 'array',
+                    items: {
+                      type: 'string',
+                      enum: ['cyclomatic', 'cognitive', 'halstead', 'dependency', 'all']
+                    },
+                    description: 'Specific complexity metrics to include',
+                    default: ['all']
+                  },
+                  functionOptions: {
+                    type: 'object',
+                    properties: {
+                      className: {
+                        type: 'string',
+                        description: 'Class name containing the function'
+                      },
+                      functionSignature: {
+                        type: 'string',
+                        description: 'Function signature to match'
+                      },
+                      lineRange: {
+                        type: 'object',
+                        properties: {
+                          start: { type: 'number' },
+                          end: { type: 'number' }
+                        },
+                        description: 'Line range for analysis'
+                      }
+                    },
+                    description: 'Function-specific options (when type = function)'
+                  },
+                  fileOptions: {
+                    type: 'object',
+                    properties: {
+                      includeDetailedMetrics: {
+                        type: 'boolean',
+                        description: 'Include detailed function-level metrics'
+                      },
+                      excludeTests: {
+                        type: 'boolean',
+                        description: 'Exclude test files from analysis'
+                      },
+                      excludePatterns: {
+                        type: 'array',
+                        items: { type: 'string' },
+                        description: 'Custom file patterns to exclude'
+                      }
+                    },
+                    description: 'File analysis options (when type = file/files)'
+                  },
+                  commitOptions: {
+                    type: 'object',
+                    properties: {
+                      compareWith: {
+                        type: 'string',
+                        description: 'Compare against specific commit (default: previous commit)'
+                      },
+                      includeImpactAnalysis: {
+                        type: 'boolean',
+                        description: 'Include impact analysis'
+                      },
+                      changedFilesOnly: {
+                        type: 'boolean',
+                        description: 'Only analyze changed files'
+                      }
+                    },
+                    description: 'Commit analysis options (when type = commit)'
+                  },
+                  format: {
+                    type: 'object',
+                    properties: {
+                      includeRawMetrics: {
+                        type: 'boolean',
+                        description: 'Include raw metrics data'
+                      },
+                      includeChartData: {
+                        type: 'boolean',
+                        description: 'Include visualization data'
+                      },
+                      groupBy: {
+                        type: 'string',
+                        enum: ['file', 'function', 'class', 'none'],
+                        description: 'Group results by file/function/class'
+                      }
+                    },
+                    description: 'Output formatting options'
+                  }
+                },
+                description: 'Optional analysis configuration'
+              }
+            },
+            required: ['target', 'type']
+          }
+        },
+        {
+          name: 'complexity_insights',
+          description: 'Unified complexity insights tool - replaces complexity_get_dashboard, complexity_get_hotspots, complexity_get_trends, complexity_get_technical_debt, and complexity_get_refactoring_opportunities',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              view: {
+                type: 'string',
+                enum: ['dashboard', 'hotspots', 'trends', 'debt', 'refactoring'],
+                description: 'Type of insights to retrieve'
+              },
+              filters: {
+                type: 'object',
+                properties: {
+                  projectId: {
+                    type: 'string',
+                    description: 'Project ID for scoping'
+                  },
+                  timeRange: {
+                    type: 'object',
+                    properties: {
+                      startDate: { type: 'string', description: 'ISO date string' },
+                      endDate: { type: 'string', description: 'ISO date string' },
+                      period: {
+                        type: 'string',
+                        enum: ['day', 'week', 'month', 'quarter', 'year'],
+                        description: 'Time period for trends and historical data'
+                      }
+                    },
+                    description: 'Time range for trends and historical data'
+                  },
+                  thresholds: {
+                    type: 'object',
+                    properties: {
+                      minComplexity: { type: 'number', minimum: 0, description: 'Minimum complexity threshold' },
+                      maxComplexity: { type: 'number', minimum: 0, description: 'Maximum complexity threshold' },
+                      riskLevels: {
+                        type: 'array',
+                        items: {
+                          type: 'string',
+                          enum: ['very_low', 'low', 'moderate', 'high', 'very_high', 'critical']
+                        },
+                        description: 'Risk levels to filter by'
+                      }
+                    },
+                    description: 'Complexity thresholds for filtering'
+                  },
+                  dashboardOptions: {
+                    type: 'object',
+                    properties: {
+                      includeHotspots: { type: 'boolean', description: 'Include hotspots in dashboard' },
+                      includeAlerts: { type: 'boolean', description: 'Include alerts in dashboard' },
+                      includeOpportunities: { type: 'boolean', description: 'Include refactoring opportunities' },
+                      includeTrends: { type: 'boolean', description: 'Include trend indicators' }
+                    },
+                    description: 'Dashboard-specific options'
+                  },
+                  hotspotOptions: {
+                    type: 'object',
+                    properties: {
+                      minHotspotScore: { type: 'number', minimum: 0, maximum: 1, description: 'Minimum hotspot score (0-1)' },
+                      hotspotTypes: {
+                        type: 'array',
+                        items: {
+                          type: 'string',
+                          enum: ['high_complexity', 'frequent_changes', 'combined_risk', 'coupling_hotspot']
+                        },
+                        description: 'Types of hotspots to detect'
+                      },
+                      limit: { type: 'number', minimum: 1, description: 'Maximum number of hotspots to return' },
+                      sortBy: {
+                        type: 'string',
+                        enum: ['complexity', 'change_frequency', 'hotspot_score', 'risk_level'],
+                        description: 'Sort order for hotspots'
+                      }
+                    },
+                    description: 'Hotspots-specific options'
+                  },
+                  trendsOptions: {
+                    type: 'object',
+                    properties: {
+                      metrics: {
+                        type: 'array',
+                        items: {
+                          type: 'string',
+                          enum: ['cyclomatic', 'cognitive', 'halstead', 'coupling', 'maintainability']
+                        },
+                        description: 'Metrics to include in trend analysis'
+                      },
+                      includeForecast: { type: 'boolean', description: 'Include forecasting data' },
+                      forecastPeriods: { type: 'number', minimum: 1, description: 'Number of periods to forecast' }
+                    },
+                    description: 'Trends-specific options'
+                  },
+                  debtOptions: {
+                    type: 'object',
+                    properties: {
+                      calculationMethod: {
+                        type: 'string',
+                        enum: ['conservative', 'aggressive', 'balanced'],
+                        description: 'Debt calculation method'
+                      },
+                      includeRemediation: { type: 'boolean', description: 'Include remediation estimates' },
+                      groupBy: {
+                        type: 'string',
+                        enum: ['file', 'function', 'class', 'component', 'severity'],
+                        description: 'Group debt by category'
+                      }
+                    },
+                    description: 'Technical debt-specific options'
+                  },
+                  refactoringOptions: {
+                    type: 'object',
+                    properties: {
+                      minRoiScore: { type: 'number', minimum: 0, description: 'Minimum ROI score for opportunities' },
+                      maxEffortHours: { type: 'number', minimum: 1, description: 'Maximum effort hours to consider' },
+                      opportunityTypes: {
+                        type: 'array',
+                        items: {
+                          type: 'string',
+                          enum: ['extract_method', 'split_function', 'reduce_nesting', 'eliminate_duplication', 'simplify_conditionals', 'reduce_parameters', 'break_dependencies', 'improve_cohesion']
+                        },
+                        description: 'Opportunity types to include'
+                      },
+                      sortBy: {
+                        type: 'string',
+                        enum: ['priority', 'roi', 'effort', 'complexity_reduction'],
+                        description: 'Sort opportunities by priority'
+                      },
+                      limit: { type: 'number', minimum: 1, description: 'Maximum number of opportunities to return' }
+                    },
+                    description: 'Refactoring-specific options'
+                  }
+                },
+                description: 'Optional insight configuration filters'
+              }
+            },
+            required: ['view']
+          }
+        },
+        {
+          name: 'complexity_manage',
+          description: 'Unified complexity management tool - replaces complexity_start_tracking, complexity_stop_tracking, complexity_get_alerts, complexity_acknowledge_alert, complexity_resolve_alert, complexity_set_thresholds, and complexity_get_performance',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              action: {
+                type: 'string',
+                enum: ['start', 'stop', 'alerts', 'acknowledge', 'resolve', 'thresholds', 'performance'],
+                description: 'Management action to perform'
+              },
+              params: {
+                type: 'object',
+                properties: {
+                  projectId: {
+                    type: 'string',
+                    description: 'Project ID for scoping operations'
+                  },
+                  alertParams: {
+                    type: 'object',
+                    properties: {
+                      alertId: {
+                        type: 'string',
+                        description: 'Alert ID for acknowledge/resolve actions'
+                      },
+                      alertIds: {
+                        type: 'array',
+                        items: { type: 'string' },
+                        description: 'Multiple alert IDs for batch operations'
+                      },
+                      notes: {
+                        type: 'string',
+                        description: 'Acknowledgment/resolution notes'
+                      },
+                      userId: {
+                        type: 'string',
+                        description: 'User performing the action'
+                      },
+                      filters: {
+                        type: 'object',
+                        properties: {
+                          severity: {
+                            type: 'array',
+                            items: {
+                              type: 'string',
+                              enum: ['info', 'warning', 'error', 'critical']
+                            },
+                            description: 'Filter alerts by severity'
+                          },
+                          type: {
+                            type: 'array',
+                            items: {
+                              type: 'string',
+                              enum: ['threshold_exceeded', 'complexity_regression', 'hotspot_detected', 'technical_debt_spike']
+                            },
+                            description: 'Filter alerts by type'
+                          },
+                          filePath: {
+                            type: 'string',
+                            description: 'Filter alerts by file path'
+                          },
+                          dateRange: {
+                            type: 'object',
+                            properties: {
+                              startDate: { type: 'string', description: 'Start date (ISO format)' },
+                              endDate: { type: 'string', description: 'End date (ISO format)' }
+                            },
+                            description: 'Filter alerts by date range'
+                          }
+                        },
+                        description: 'Filter criteria for alerts'
+                      }
+                    },
+                    description: 'Alert management parameters'
+                  },
+                  thresholdParams: {
+                    type: 'object',
+                    properties: {
+                      cyclomaticComplexityThresholds: {
+                        type: 'object',
+                        properties: {
+                          low: { type: 'number', minimum: 1, description: 'Low complexity threshold' },
+                          moderate: { type: 'number', minimum: 1, description: 'Moderate complexity threshold' },
+                          high: { type: 'number', minimum: 1, description: 'High complexity threshold' },
+                          veryHigh: { type: 'number', minimum: 1, description: 'Very high complexity threshold' },
+                          critical: { type: 'number', minimum: 1, description: 'Critical complexity threshold' }
+                        },
+                        description: 'Cyclomatic complexity thresholds'
+                      },
+                      cognitiveComplexityThresholds: {
+                        type: 'object',
+                        properties: {
+                          low: { type: 'number', minimum: 1 },
+                          moderate: { type: 'number', minimum: 1 },
+                          high: { type: 'number', minimum: 1 },
+                          veryHigh: { type: 'number', minimum: 1 },
+                          critical: { type: 'number', minimum: 1 }
+                        },
+                        description: 'Cognitive complexity thresholds'
+                      },
+                      halsteadEffortThresholds: {
+                        type: 'object',
+                        properties: {
+                          low: { type: 'number', minimum: 1 },
+                          moderate: { type: 'number', minimum: 1 },
+                          high: { type: 'number', minimum: 1 },
+                          veryHigh: { type: 'number', minimum: 1 },
+                          critical: { type: 'number', minimum: 1 }
+                        },
+                        description: 'Halstead effort thresholds'
+                      },
+                      couplingThresholds: {
+                        type: 'object',
+                        properties: {
+                          low: { type: 'number', minimum: 0, maximum: 1 },
+                          moderate: { type: 'number', minimum: 0, maximum: 1 },
+                          high: { type: 'number', minimum: 0, maximum: 1 },
+                          veryHigh: { type: 'number', minimum: 0, maximum: 1 },
+                          critical: { type: 'number', minimum: 0, maximum: 1 }
+                        },
+                        description: 'Coupling thresholds'
+                      },
+                      alertConfiguration: {
+                        type: 'object',
+                        properties: {
+                          alertOnThresholdBreach: { type: 'boolean', description: 'Enable threshold breach alerts' },
+                          alertOnComplexityRegression: { type: 'number', minimum: 5, maximum: 100, description: 'Percentage increase to trigger regression alert' },
+                          alertOnHotspotDetection: { type: 'boolean', description: 'Enable hotspot detection alerts' }
+                        },
+                        description: 'Alert configuration settings'
+                      },
+                      hotspotConfiguration: {
+                        type: 'object',
+                        properties: {
+                          hotspotMinComplexity: { type: 'number', minimum: 0, description: 'Minimum complexity for hotspot detection' },
+                          hotspotMinChangeFrequency: { type: 'number', minimum: 0, description: 'Minimum change frequency for hotspot detection' },
+                          hotspotChangeTimeFrameDays: { type: 'number', minimum: 1, description: 'Time frame in days for change frequency calculation' }
+                        },
+                        description: 'Hotspot detection configuration'
+                      }
+                    },
+                    description: 'Threshold configuration parameters'
+                  },
+                  trackingParams: {
+                    type: 'object',
+                    properties: {
+                      enableRealTimeAnalysis: { type: 'boolean', description: 'Enable real-time complexity analysis' },
+                      enableBatchProcessing: { type: 'boolean', description: 'Enable batch processing of complexity analysis' },
+                      analysisTimeoutMs: { type: 'number', minimum: 1000, description: 'Analysis timeout in milliseconds' },
+                      maxFilesPerBatch: { type: 'number', minimum: 1, description: 'Maximum files per batch analysis' },
+                      autoAnalyzeOnCommit: { type: 'boolean', description: 'Automatically analyze complexity on git commits' },
+                      scheduledAnalysisIntervalMs: { type: 'number', minimum: 60000, description: 'Interval for scheduled analysis in milliseconds' },
+                      supportedFileTypes: {
+                        type: 'array',
+                        items: { type: 'string' },
+                        description: 'File types to include in analysis'
+                      },
+                      excludePatterns: {
+                        type: 'array',
+                        items: { type: 'string' },
+                        description: 'File patterns to exclude from analysis'
+                      }
+                    },
+                    description: 'Tracking configuration parameters'
+                  },
+                  performanceParams: {
+                    type: 'object',
+                    properties: {
+                      includeDetailedTiming: { type: 'boolean', description: 'Include detailed timing breakdown' },
+                      includeMemoryStats: { type: 'boolean', description: 'Include memory usage statistics' },
+                      includeQualityMetrics: { type: 'boolean', description: 'Include analysis quality metrics' },
+                      timeRange: {
+                        type: 'object',
+                        properties: {
+                          startDate: { type: 'string', description: 'Start date for performance data (ISO format)' },
+                          endDate: { type: 'string', description: 'End date for performance data (ISO format)' }
+                        },
+                        description: 'Time range for performance data'
+                      }
+                    },
+                    description: 'Performance monitoring parameters'
+                  }
+                },
+                description: 'Action-specific parameters'
+              }
+            },
+            required: ['action']
+          }
+        },
         ...CodeComplexityHandler.getTools(),
         // TC016: Decision Outcome Tracking Tools - Transform decision tracking to learning system
         {
@@ -4892,7 +5386,11 @@ class AIDISServer {
         await RetryHandler.executeWithRetry(async () => {
           await this.circuitBreaker.execute(async () => {
             const startTime = Date.now();
+            // Initialize legacy database connection
             await initializeDatabase();
+
+            // Initialize optimized connection pool (TR008-4)
+            await dbPool.initialize();
             this.dbHealthy = true;
             
             logger.info('Database connection established successfully', {
