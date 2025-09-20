@@ -69,22 +69,9 @@ export class NavigationHandler {
       { name: 'get_recommendations', description: 'Get AI-powered recommendations for development' }
     ],
     'Code Complexity': [
-      { name: 'complexity_analyze_files', description: 'Analyze code complexity for specific files with multi-dimensional metrics' },
-      { name: 'complexity_get_dashboard', description: 'Get comprehensive complexity dashboard for project' },
-      { name: 'complexity_get_file_metrics', description: 'Get detailed complexity metrics for specific files' },
-      { name: 'complexity_get_function_metrics', description: 'Get detailed complexity metrics at function level' },
-      { name: 'complexity_get_hotspots', description: 'Get complexity hotspots that require immediate attention' },
-      { name: 'complexity_get_alerts', description: 'Get active complexity alerts and threshold violations' },
-      { name: 'complexity_acknowledge_alert', description: 'Acknowledge a complexity alert' },
-      { name: 'complexity_resolve_alert', description: 'Mark a complexity alert as resolved' },
-      { name: 'complexity_get_refactoring_opportunities', description: 'Get prioritized refactoring opportunities' },
-      { name: 'complexity_get_trends', description: 'Get complexity trends and forecasting data over time' },
-      { name: 'complexity_get_technical_debt', description: 'Get technical debt analysis based on complexity metrics' },
-      { name: 'complexity_analyze_commit', description: 'Analyze complexity for files changed in git commits' },
-      { name: 'complexity_set_thresholds', description: 'Configure complexity thresholds and alerting rules' },
-      { name: 'complexity_get_performance', description: 'Get complexity tracking system performance statistics' },
-      { name: 'complexity_start_tracking', description: 'Start the complexity tracking service' },
-      { name: 'complexity_stop_tracking', description: 'Stop the complexity tracking service' }
+      { name: 'complexity_analyze', description: 'Unified complexity analysis - file analysis, commit analysis, and detailed metrics' },
+      { name: 'complexity_insights', description: 'Unified complexity insights - dashboard, hotspots, trends, technical debt, and refactoring opportunities' },
+      { name: 'complexity_manage', description: 'Unified complexity management - tracking service, alerts, thresholds, and performance monitoring' }
     ],
     'Development Metrics': [
       { name: 'metrics_collect_project', description: 'Trigger comprehensive metrics collection for a project' },
@@ -641,7 +628,7 @@ export class NavigationHandler {
    */
   async getHelp(): Promise<any> {
     let helpText = '🚀 **AIDIS - AI Development Intelligence System**\n\n';
-    helpText += '**96 Tools Available Across 16 Categories:**\n\n';
+    helpText += '**83 Tools Available Across 16 Categories:**\n\n';
 
     for (const [category, tools] of Object.entries(this.toolCatalog)) {
       helpText += `## ${category} (${tools.length} tools)\n`;

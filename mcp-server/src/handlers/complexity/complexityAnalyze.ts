@@ -131,7 +131,7 @@ async function routeAnalysisRequest(params: ComplexityAnalyzeParams): Promise<an
           options.functionOptions
         );
 
-        return formatFunctionAnalysisResponse(result, params, Date.now() - startTime);
+        return await formatFunctionAnalysisResponse(result, params, Date.now() - startTime);
       }
 
       default:
@@ -293,11 +293,11 @@ async function getFunctionMetricsForAnalysis(
 /**
  * Format function analysis response to match consolidated interface
  */
-function formatFunctionAnalysisResponse(functions: any[], params: ComplexityAnalyzeParams, executionTimeMs: number): ComplexityAnalyzeResponse {
+async function formatFunctionAnalysisResponse(functions: any[], params: ComplexityAnalyzeParams, executionTimeMs: number): Promise<ComplexityAnalyzeResponse> {
 
   return {
     analysis: {
-      sessionId: getCurrentSession().toString(),
+      sessionId: await getCurrentSession(),
       projectId: params.options?.projectId || '',
       timestamp: new Date(),
       executionTimeMs,

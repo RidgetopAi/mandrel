@@ -748,40 +748,25 @@ class AIDISServer {
       case 'metrics_get_performance':
       case 'metrics_start_collection':
       case 'metrics_stop_collection':
-        return await DevelopmentMetricsHandler.handleTool(toolName, args);
-        
+        return await DevelopmentMetricsHandler.handleTool(toolName, validatedArgs);
+
       // TC018: Metrics Aggregation Tools
       case 'metrics_aggregate_projects':
       case 'metrics_aggregate_timeline':
       case 'metrics_calculate_correlations':
       case 'metrics_get_executive_summary':
       case 'metrics_export_data':
-        return await MetricsAggregationHandler.handleTool(toolName, args);
+        return await MetricsAggregationHandler.handleTool(toolName, validatedArgs);
         
       // TC015: Code Complexity Tracking tools
       case 'complexity_analyze':
-        return await handleComplexityAnalyze(args);
+        return await handleComplexityAnalyze(validatedArgs);
       case 'complexity_insights':
-        return await handleComplexityInsights(args);
+        return await handleComplexityInsights(validatedArgs);
       case 'complexity_manage':
-        return await handleComplexityManage(args);
-      case 'complexity_analyze_files':
-      case 'complexity_get_dashboard':
-      case 'complexity_get_file_metrics':
-      case 'complexity_get_function_metrics':
-      case 'complexity_get_hotspots':
-      case 'complexity_get_alerts':
-      case 'complexity_acknowledge_alert':
-      case 'complexity_resolve_alert':
-      case 'complexity_get_refactoring_opportunities':
-      case 'complexity_get_trends':
-      case 'complexity_get_technical_debt':
-      case 'complexity_analyze_commit':
-      case 'complexity_set_thresholds':
-      case 'complexity_get_performance':
-      case 'complexity_start_tracking':
-      case 'complexity_stop_tracking':
-        return await CodeComplexityHandler.handleTool(toolName, args);
+        return await handleComplexityManage(validatedArgs);
+      // TC015: Deprecated complexity tools removed - TT009-1 Tool Consolidation Phase 1 Complete
+      // 16 tools consolidated into complexity_analyze, complexity_insights, complexity_manage
         
       // TC016: Decision Outcome Tracking tools
       case 'outcome_record':

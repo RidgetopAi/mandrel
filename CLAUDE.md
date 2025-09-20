@@ -6,22 +6,29 @@
 ## IMMEDIATE ESSENTIALS
 
 ### System Status
-**AIDIS: 44 MCP Tools - 100% Operational**
+**AIDIS: 83 MCP Tools - 100% Operational** *(Post TT009-1 Consolidation)*
 - System Health: 2 tools
 - Context Management: 4 tools (includes context_get_recent)
-- Project Management: 6 tools  
-- **Session Management: 3 tools (NEW!)**
+- Project Management: 6 tools
+- **Session Management: 3 tools**
 - Naming Registry: 4 tools
 - Technical Decisions: 4 tools
 - Multi-Agent Coordination: 11 tools
 - Code Analysis: 5 tools
 - Smart Search & AI: 2 tools
+- **Code Complexity: 3 tools** *(Consolidated from 16 tools)*
 - **Navigation Tools: 3 tools**
+
+### Complexity Tools Consolidation (TT009-1 Complete)
+**16 → 3 Tools: ~6,000 Token Savings Achieved**
+- **`complexity_analyze`** - File/commit analysis (replaces 4 tools)
+- **`complexity_insights`** - Dashboard/hotspots/trends/debt/opportunities (replaces 5 tools)
+- **`complexity_manage`** - Tracking/alerts/thresholds/performance (replaces 7 tools)
 
 ### Navigation Tools - START HERE
 Essential tools for discovering AIDIS capabilities:
 
-- **`aidis_help`** - Show all 44 tools organized by category
+- **`aidis_help`** - Show all 83 tools organized by category
 - **`aidis_explain <toolname>`** - Get detailed help for any specific tool  
 - **`aidis_examples <toolname>`** - See usage examples and patterns
 
@@ -180,6 +187,6 @@ project_list(includeStats?: boolean)
   - **Array parameters**: Must be actual JSON arrays, not quoted strings
 ---
 
-**Last Updated**: 2025-09-09  
-**Tools**: 44 total (41 core + 3 navigation)  
+**Last Updated**: 2025-09-19
+**Tools**: 83 total (80 core + 3 navigation) - *Post TT009-1 Consolidation*
 **Status**: Production ready with dual AI collaboration support and session management
