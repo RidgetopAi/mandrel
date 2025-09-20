@@ -1,10 +1,13 @@
 /**
- * System Monitoring Service
- * Provides real-time system health and performance metrics
+ * TR015-4: Enhanced Service Monitoring and Alerting
+ * Oracle Refactor Phase 4 - Comprehensive Service Health Monitoring
+ * Extends existing monitoring with service-specific boundaries from TR014-4
  */
 
 import { db } from '../database/connection';
+import { webSocketService } from './websocket';
 import os from 'os';
+import axios from 'axios';
 
 interface SystemMetrics {
   timestamp: number;
@@ -61,6 +64,41 @@ interface UiErrorReport {
   timestamp: string;
 }
 
+// TR015-4: Service-specific monitoring interfaces
+interface ServiceStatus {
+  name: string;
+  port: number;
+  status: 'healthy' | 'degraded' | 'down';
+  responseTime: number;
+  lastCheck: Date;
+  url: string;
+  slaTarget: number;
+  uptime?: number;
+  error?: string;
+}
+
+interface AlertRule {
+  id: string;
+  service: string;
+  metric: string;
+  threshold: number;
+  operator: 'gt' | 'lt' | 'eq';
+  severity: 'critical' | 'warning' | 'info';
+  enabled: boolean;
+  cooldown: number;
+  lastTriggered?: Date;
+}
+
+interface MonitoringStats {
+  totalServices: number;
+  healthyServices: number;
+  degradedServices: number;
+  downServices: number;
+  averageResponseTime: number;
+  slaCompliance: number;
+  lastUpdate: Date;
+}
+
 class MonitoringService {
   private healthChecks: Map<string, HealthCheck> = new Map();
   private requestCount = 0;
@@ -68,6 +106,125 @@ class MonitoringService {
   private responseTimes: number[] = [];
   private readonly maxHistorySize = 100;
   private uiErrors: UiErrorReport[] = [];
+
+  // TR015-4: Service-specific monitoring
+  private services: Map<string, ServiceStatus> = new Map();
+  private alertRules: Map<string, AlertRule> = new Map();
+  private alertHistory: Array<{ rule: AlertRule; timestamp: Date; value: number }> = [];
+  private monitoringInterval: NodeJS.Timeout | null = null;
+  private isServiceMonitoringActive = false;
+
+  constructor() {
+    this.initializeServices();
+    this.initializeAlertRules();
+  }
+
+  // TR015-4: Service initialization based on TR014-4 boundaries
+  private initializeServices() {
+    const coreServices = [
+      {
+        name: 'Frontend Dev Server',
+        port: 3000,
+        url: 'http://localhost:3000',
+        slaTarget: 100 // 100ms per TR014-4
+      },
+      {
+        name: 'Command Backend API',
+        port: 5000,
+        url: 'http://localhost:5000/api/health',
+        slaTarget: 200 // 200ms per TR014-4
+      },
+      {
+        name: 'AIDIS MCP Server',
+        port: 8080,
+        url: 'http://localhost:8080/health',
+        slaTarget: 500 // 500ms per TR014-4
+      }
+    ];
+
+    coreServices.forEach(service => {
+      this.services.set(service.name, {
+        name: service.name,
+        port: service.port,
+        status: 'down',
+        responseTime: 0,
+        lastCheck: new Date(),
+        url: service.url,
+        slaTarget: service.slaTarget
+      });
+    });
+  }
+
+  private initializeAlertRules() {
+    const rules: AlertRule[] = [
+      // Critical alerts per TR014-4 SLA definitions
+      {
+        id: 'frontend-down',
+        service: 'Frontend Dev Server',
+        metric: 'availability',
+        threshold: 0,
+        operator: 'eq',
+        severity: 'critical',
+        enabled: true,
+        cooldown: 60000 // 1 minute
+      },
+      {
+        id: 'backend-down',
+        service: 'Command Backend API',
+        metric: 'availability',
+        threshold: 0,
+        operator: 'eq',
+        severity: 'critical',
+        enabled: true,
+        cooldown: 60000
+      },
+      {
+        id: 'mcp-down',
+        service: 'AIDIS MCP Server',
+        metric: 'availability',
+        threshold: 0,
+        operator: 'eq',
+        severity: 'critical',
+        enabled: true,
+        cooldown: 60000
+      },
+      // Performance alerts based on SLA thresholds
+      {
+        id: 'frontend-slow',
+        service: 'Frontend Dev Server',
+        metric: 'responseTime',
+        threshold: 100,
+        operator: 'gt',
+        severity: 'warning',
+        enabled: true,
+        cooldown: 300000 // 5 minutes
+      },
+      {
+        id: 'backend-slow',
+        service: 'Command Backend API',
+        metric: 'responseTime',
+        threshold: 200,
+        operator: 'gt',
+        severity: 'warning',
+        enabled: true,
+        cooldown: 300000
+      },
+      {
+        id: 'mcp-slow',
+        service: 'AIDIS MCP Server',
+        metric: 'responseTime',
+        threshold: 500,
+        operator: 'gt',
+        severity: 'critical',
+        enabled: true,
+        cooldown: 300000
+      }
+    ];
+
+    rules.forEach(rule => {
+      this.alertRules.set(rule.id, rule);
+    });
+  }
 
   /**
    * Record API request metrics
@@ -306,6 +463,265 @@ class MonitoringService {
     }
 
     console.error('🔴 UI Error Reported', normalized);
+  }
+
+  // TR015-4: Service-specific health checking
+  async checkServiceHealth(serviceName: string): Promise<ServiceStatus> {
+    const service = this.services.get(serviceName);
+    if (!service) {
+      throw new Error(`Service ${serviceName} not found`);
+    }
+
+    const startTime = Date.now();
+    let status: ServiceStatus['status'] = 'down';
+    let error: string | undefined;
+
+    try {
+      const response = await axios.get(service.url, {
+        timeout: 5000,
+        validateStatus: (status) => status < 500
+      });
+
+      const responseTime = Date.now() - startTime;
+
+      if (response.status === 200) {
+        if (responseTime <= service.slaTarget) {
+          status = 'healthy';
+        } else {
+          status = 'degraded';
+        }
+      } else {
+        status = 'degraded';
+        error = `HTTP ${response.status}`;
+      }
+
+      const updatedService: ServiceStatus = {
+        ...service,
+        status,
+        responseTime,
+        lastCheck: new Date(),
+        ...(error && { error })
+      };
+
+      this.services.set(serviceName, updatedService);
+      return updatedService;
+
+    } catch (err) {
+      const responseTime = Date.now() - startTime;
+      error = err instanceof Error ? err.message : 'Unknown error';
+
+      const updatedService: ServiceStatus = {
+        ...service,
+        status: 'down',
+        responseTime,
+        lastCheck: new Date(),
+        error
+      };
+
+      this.services.set(serviceName, updatedService);
+      return updatedService;
+    }
+  }
+
+  async checkAllServices(): Promise<ServiceStatus[]> {
+    const checks = Array.from(this.services.keys()).map(serviceName =>
+      this.checkServiceHealth(serviceName)
+    );
+
+    const results = await Promise.allSettled(checks);
+    return results
+      .filter(result => result.status === 'fulfilled')
+      .map(result => (result as PromiseFulfilledResult<ServiceStatus>).value);
+  }
+
+  evaluateAlerts(services: ServiceStatus[]) {
+    const now = new Date();
+
+    this.alertRules.forEach(rule => {
+      if (!rule.enabled) return;
+
+      // Check cooldown
+      if (rule.lastTriggered &&
+          (now.getTime() - rule.lastTriggered.getTime()) < rule.cooldown) {
+        return;
+      }
+
+      const service = services.find(s => s.name === rule.service);
+      if (!service) return;
+
+      let value: number;
+      let shouldAlert = false;
+
+      switch (rule.metric) {
+        case 'availability':
+          value = service.status === 'healthy' ? 1 : 0;
+          break;
+        case 'responseTime':
+          value = service.responseTime;
+          break;
+        default:
+          return;
+      }
+
+      switch (rule.operator) {
+        case 'gt':
+          shouldAlert = value > rule.threshold;
+          break;
+        case 'lt':
+          shouldAlert = value < rule.threshold;
+          break;
+        case 'eq':
+          shouldAlert = value === rule.threshold;
+          break;
+      }
+
+      if (shouldAlert) {
+        this.triggerAlert(rule, value);
+        rule.lastTriggered = now;
+      }
+    });
+  }
+
+  private triggerAlert(rule: AlertRule, value: number) {
+    const alert = {
+      id: `${rule.id}-${Date.now()}`,
+      rule: rule.id,
+      service: rule.service,
+      metric: rule.metric,
+      severity: rule.severity,
+      value,
+      threshold: rule.threshold,
+      timestamp: new Date(),
+      message: this.generateAlertMessage(rule, value)
+    };
+
+    // Log alert
+    console.log(`🚨 ALERT [${rule.severity.toUpperCase()}]: ${alert.message}`);
+
+    // Store in history
+    this.alertHistory.push({ rule, timestamp: new Date(), value });
+
+    // Broadcast via WebSocket
+    webSocketService.broadcast({
+      type: 'monitoring_alert',
+      data: alert
+    });
+
+    // Keep alert history manageable
+    if (this.alertHistory.length > 1000) {
+      this.alertHistory = this.alertHistory.slice(-500);
+    }
+  }
+
+  private generateAlertMessage(rule: AlertRule, value: number): string {
+    switch (rule.metric) {
+      case 'availability':
+        return `${rule.service} is ${value === 0 ? 'DOWN' : 'UP'}`;
+      case 'responseTime':
+        return `${rule.service} response time ${value}ms exceeds SLA threshold ${rule.threshold}ms`;
+      default:
+        return `${rule.service} ${rule.metric} ${rule.operator} ${rule.threshold} (current: ${value})`;
+    }
+  }
+
+  getServiceMonitoringStats(): MonitoringStats {
+    const services = Array.from(this.services.values());
+    const totalServices = services.length;
+    const healthyServices = services.filter(s => s.status === 'healthy').length;
+    const degradedServices = services.filter(s => s.status === 'degraded').length;
+    const downServices = services.filter(s => s.status === 'down').length;
+
+    const avgResponseTime = services.length > 0
+      ? services.reduce((sum, s) => sum + s.responseTime, 0) / services.length
+      : 0;
+
+    const slaCompliance = totalServices > 0
+      ? (healthyServices / totalServices) * 100
+      : 0;
+
+    return {
+      totalServices,
+      healthyServices,
+      degradedServices,
+      downServices,
+      averageResponseTime: Math.round(avgResponseTime),
+      slaCompliance: Math.round(slaCompliance * 100) / 100,
+      lastUpdate: new Date()
+    };
+  }
+
+  getAllMonitoredServices(): ServiceStatus[] {
+    return Array.from(this.services.values());
+  }
+
+  getAlertRules(): AlertRule[] {
+    return Array.from(this.alertRules.values());
+  }
+
+  getRecentAlerts(limit = 50): Array<{ rule: AlertRule; timestamp: Date; value: number }> {
+    return this.alertHistory
+      .slice(-limit)
+      .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+  }
+
+  updateAlertRule(ruleId: string, updates: Partial<AlertRule>) {
+    const rule = this.alertRules.get(ruleId);
+    if (rule) {
+      this.alertRules.set(ruleId, { ...rule, ...updates });
+    }
+  }
+
+  startServiceMonitoring(intervalMs = 30000) {
+    if (this.isServiceMonitoringActive) {
+      console.log('Service monitoring already running');
+      return;
+    }
+
+    console.log('🔍 Starting service monitoring...');
+    this.isServiceMonitoringActive = true;
+
+    // Initial check
+    this.runServiceMonitoringCycle();
+
+    // Schedule regular checks
+    this.monitoringInterval = setInterval(() => {
+      this.runServiceMonitoringCycle();
+    }, intervalMs);
+  }
+
+  stopServiceMonitoring() {
+    if (this.monitoringInterval) {
+      clearInterval(this.monitoringInterval);
+      this.monitoringInterval = null;
+    }
+    this.isServiceMonitoringActive = false;
+    console.log('Service monitoring stopped');
+  }
+
+  private async runServiceMonitoringCycle() {
+    try {
+      const services = await this.checkAllServices();
+      this.evaluateAlerts(services);
+
+      const stats = this.getServiceMonitoringStats();
+
+      // Broadcast monitoring update
+      webSocketService.broadcast({
+        type: 'service_monitoring_update',
+        data: {
+          services,
+          stats,
+          timestamp: new Date()
+        }
+      });
+
+    } catch (error) {
+      console.error('Service monitoring cycle error:', error);
+    }
+  }
+
+  isServiceMonitoringRunning(): boolean {
+    return this.isServiceMonitoringActive;
   }
 }
 

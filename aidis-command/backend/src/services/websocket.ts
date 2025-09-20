@@ -7,16 +7,6 @@ export interface WebSocketClient extends WebSocket {
   isAuthenticated?: boolean;
 }
 
-export interface AgentStatusUpdate {
-  type: 'agent_status_update';
-  data: {
-    agentId: string;
-    name: string;
-    status: 'active' | 'busy' | 'offline' | 'error';
-    last_seen: string;
-  };
-}
-
 export interface TaskUpdate {
   type: 'task_update';
   data: {
@@ -25,20 +15,6 @@ export interface TaskUpdate {
     status: string;
     assigned_to?: string;
     project_id: string;
-  };
-}
-
-export interface AgentMessage {
-  type: 'agent_message';
-  data: {
-    messageId: string;
-    from_agent_id: string;
-    to_agent_id?: string;
-    message_type: string;
-    title?: string;
-    content: string;
-    project_id: string;
-    created_at: string;
   };
 }
 
@@ -73,7 +49,7 @@ export interface TaskStatusChanged {
   data: { task: any; previous_status: string; note?: string };
 }
 
-export type WebSocketMessage = AgentStatusUpdate | TaskUpdate | AgentMessage | 
+export type WebSocketMessage = TaskUpdate |
   TaskCreated | TaskUpdated | TaskDeleted | TasksulkUpdated | TaskAssigned | TaskStatusChanged;
 
 class WebSocketService {
@@ -176,18 +152,11 @@ class WebSocketService {
         break;
       
       case 'agent_heartbeat':
-        // Handle agent heartbeat - could update database here
-        if (message.agentId) {
-          this.broadcastToAll({
-            type: 'agent_status_update',
-            data: {
-              agentId: message.agentId,
-              name: message.name,
-              status: 'active',
-              last_seen: new Date().toISOString()
-            }
-          });
-        }
+        // Legacy agent heartbeat - no longer supported
+        ws.send(JSON.stringify({
+          type: 'error',
+          message: 'Agent functionality has been removed'
+        }));
         break;
       
       default:

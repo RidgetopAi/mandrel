@@ -40,7 +40,6 @@ function extractEndpoints(): EndpointInfo[] {
     { file: 'projects.ts', basePath: '/projects' },
     { file: 'sessions.ts', basePath: '/sessions' },
     { file: 'sessionCode.ts', basePath: '/session-code' },
-    { file: 'agents.ts', basePath: '/agents' },
     { file: 'tasks.ts', basePath: '/tasks' },
     { file: 'decisions.ts', basePath: '/decisions' },
     { file: 'naming.ts', basePath: '/naming' },
@@ -86,10 +85,6 @@ function extractEndpoints(): EndpointInfo[] {
     // Session Code endpoints - MEDIUM (legacy)
     { method: 'GET', path: '/session-code/correlate', controller: 'sessionCode', handler: 'correlateGitCommits', tested: false, riskLevel: 'MEDIUM' },
     { method: 'GET', path: '/session-code/sessions/:sessionId/commits', controller: 'sessionCode', handler: 'getSessionCommits', tested: false, riskLevel: 'MEDIUM' },
-    
-    // Agent endpoints - MEDIUM
-    { method: 'GET', path: '/agents', controller: 'agent', handler: 'getAgents', tested: false, riskLevel: 'MEDIUM' },
-    { method: 'POST', path: '/agents', controller: 'agent', handler: 'registerAgent', tested: false, riskLevel: 'MEDIUM' },
     
     // Task endpoints - MEDIUM
     { method: 'GET', path: '/tasks', controller: 'task', handler: 'getTasks', tested: false, riskLevel: 'MEDIUM' },

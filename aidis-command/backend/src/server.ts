@@ -6,6 +6,7 @@ import morgan from 'morgan';
 import config from './config/environment';
 import { logger, morganLogStream } from './config/logger';
 import { initializeDatabase } from './database/connection';
+// import { backendPool } from './database/poolManager'; // Temporarily commented out
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 import { correlationMiddleware } from './middleware/correlationId';
 import { requestLoggingMiddleware } from './middleware/requestLogger';
@@ -99,6 +100,9 @@ async function startServer(): Promise<void> {
 
     // Initialize database connection
     await initializeDatabase();
+
+    // Initialize optimized connection pool (TR008-4)
+    // await backendPool.initialize(); // Temporarily commented out
     logger.info('Database initialized successfully');
 
     const featureFlags = await featureFlagsPromise;

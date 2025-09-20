@@ -9,7 +9,6 @@ export interface DashboardStats {
   activeTasks: number;
   totalTasks: number;
   projects: number;
-  agents: number; // TODO: Implement when agent service ready
   recentActivity: {
     contextsThisWeek: number;
     tasksCompletedThisWeek: number;
@@ -46,7 +45,6 @@ class DashboardController {
         activeTasks: activeTaskCount,              // Real count from TaskService.countActive()
         totalTasks: taskStats.total,
         projects: projectStats.total_projects,
-        agents: 0, // TODO: Implement when agent service ready
         recentActivity: {
           contextsThisWeek: projectStats.recent_activity.contexts_last_week,
           tasksCompletedThisWeek: taskStats.by_status.completed || 0

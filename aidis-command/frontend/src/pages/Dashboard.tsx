@@ -14,7 +14,6 @@ import {
 } from 'antd';
 import {
   DatabaseOutlined,
-  TeamOutlined,
   FolderOutlined,
   ClockCircleOutlined,
   CheckCircleOutlined,
@@ -150,19 +149,6 @@ const Dashboard: React.FC = () => {
           </Card>
         </Col>
         
-        <Col xs={24} sm={12} lg={6}>
-          <Card>
-            <Statistic
-              title="Active Agents"
-              value={stats?.agents ?? 0}
-              prefix={<TeamOutlined />}
-              valueStyle={{ color: '#52c41a' }}
-            />
-            <Text type="secondary" style={{ fontSize: '12px' }}>
-              AI agents coordinating
-            </Text>
-          </Card>
-        </Col>
       </Row>
 
       {/* Project Insights */}
@@ -194,21 +180,6 @@ const Dashboard: React.FC = () => {
           </Card>
         </Col>
         
-        <Col xs={24} lg={8}>
-          <Card
-            title="Agent Coordination"
-            extra={<TeamOutlined style={{ color: '#52c41a' }} />}
-            hoverable
-          >
-            <Paragraph>
-              Coordinate multiple AI agents, assign tasks, and track progress
-              across your development team.
-            </Paragraph>
-            <Button type="primary" ghost>
-              Manage Agents
-            </Button>
-          </Card>
-        </Col>
         
         <Col xs={24} lg={8}>
           <Card

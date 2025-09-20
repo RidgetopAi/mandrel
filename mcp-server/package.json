@@ -16,6 +16,7 @@
     "test:watch": "vitest --watch",
     "test:integration": "vitest run tests/integration",
     "test:contracts": "vitest run src/tests/httpContract.test.ts",
+    "test:consolidation": "vitest run src/tests/complexity-consolidation.test.ts --reporter=verbose",
     "lint": "eslint src/**/*.ts",
     "type-check": "tsc --noEmit",
     "format": "prettier --write 'src/**/*.{ts,js,json}'",

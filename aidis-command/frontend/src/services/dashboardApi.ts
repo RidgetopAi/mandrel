@@ -2,7 +2,6 @@ import { apiClient } from './api';
 
 export interface DashboardStats {
   contexts: number;
-  agents: number;
   projects: number;
   activeTasks: number;
   totalTasks?: number;      // Oracle Phase 2: Include total tasks
@@ -47,7 +46,6 @@ class DashboardApi {
           activeTasks: number;
           totalTasks: number;
           projects: number;
-          agents: number;
           recentActivity: {
             contextsThisWeek: number;
             tasksCompletedThisWeek: number;
@@ -69,7 +67,6 @@ class DashboardApi {
       // Transform to frontend DashboardStats format (no hardcoded zeros!)
       const dashboardStats: DashboardStats = {
         contexts: apiData.contexts,
-        agents: apiData.agents,
         projects: apiData.projects,
         activeTasks: apiData.activeTasks,
         recentActivity: {

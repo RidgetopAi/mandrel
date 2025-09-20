@@ -29,6 +29,7 @@ import {
 function validateComplexityInsightsParams(params: any): { isValid: boolean; errors: string[]; sanitized?: ComplexityInsightsParams } {
   const errors: string[] = [];
 
+
   // Required fields validation
   if (!params.view) {
     errors.push('view parameter is required');

@@ -178,10 +178,10 @@ const TaskForm: React.FC<TaskFormProps> = ({
           label="Assigned To"
         >
           <Select placeholder="Select assignee" allowClear>
-            <Option value="CodeAgent">CodeAgent</Option>
-            <Option value="QaAgent">QaAgent</Option>
-            <Option value="ProjectManager">ProjectManager</Option>
-            <Option value="DevOpsAgent">DevOpsAgent</Option>
+            <Option value="unassigned">Unassigned</Option>
+            <Option value="system">System</Option>
+            <Option value="development">Development Team</Option>
+            <Option value="testing">Testing Team</Option>
           </Select>
         </Form.Item>
 
