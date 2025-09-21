@@ -8,6 +8,7 @@
     "ioredis": "^5.7.0",
     "node-fetch": "^3.3.2",
     "playwright": "^1.54.2",
+    "typescript": "^5.9.2",
     "ws": "^8.18.3"
   }
 }

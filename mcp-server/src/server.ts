@@ -74,6 +74,13 @@ import { CodeComplexityHandler } from './handlers/codeComplexity.js';
 import { handleComplexityAnalyze } from './handlers/complexity/complexityAnalyze.js';
 import { handleComplexityInsights } from './handlers/complexity/complexityInsights.js';
 import { handleComplexityManage } from './handlers/complexity/complexityManage.js';
+// TT009-2: Phase 2 Metrics Consolidation imports
+import { handleMetricsCollect } from './handlers/metrics/metricsCollect.js';
+import { handleMetricsAnalyze } from './handlers/metrics/metricsAnalyze.js';
+import { handleMetricsControl } from './handlers/metrics/metricsControl.js';
+// TT009-3: Phase 3 Pattern Consolidation imports
+import { handlePatternAnalyze } from './handlers/patterns/patternAnalyze.js';
+import { handlePatternInsights } from './handlers/patterns/patternInsights.js';
 import {
   startComplexityTracking,
   stopComplexityTracking
@@ -735,7 +742,21 @@ class AIDISServer {
       case 'pattern_get_performance':
         return await patternAnalysisHandlers.pattern_get_performance(validatedArgs as any);
       
-      // Development Metrics Tools
+      // TT009-2: Phase 2 Metrics Consolidation Tools
+      case 'metrics_collect':
+        return await handleMetricsCollect(validatedArgs);
+      case 'metrics_analyze':
+        return await handleMetricsAnalyze(validatedArgs);
+      case 'metrics_control':
+        return await handleMetricsControl(validatedArgs);
+
+      // TT009-3: Phase 3 Pattern Consolidation Tools
+      case 'pattern_analyze':
+        return await handlePatternAnalyze(validatedArgs);
+      case 'pattern_insights':
+        return await handlePatternInsights(validatedArgs);
+
+      // Development Metrics Tools (to be consolidated in Phase 2)
       case 'metrics_collect_project':
       case 'metrics_get_dashboard':
       case 'metrics_get_core_metrics':
@@ -768,28 +789,7 @@ class AIDISServer {
       // TC015: Deprecated complexity tools removed - TT009-1 Tool Consolidation Phase 1 Complete
       // 16 tools consolidated into complexity_analyze, complexity_insights, complexity_manage
         
-      // TC016: Decision Outcome Tracking tools
-      case 'outcome_record':
-        return await outcomeTrackingHandler.recordOutcome(args);
-        
-      case 'outcome_track_metric':
-        return await outcomeTrackingHandler.trackMetric(args);
-        
-      case 'outcome_analyze_impact':
-        return await outcomeTrackingHandler.analyzeImpact(args);
-        
-      case 'outcome_conduct_retrospective':
-        return await outcomeTrackingHandler.conductRetrospective(args);
-        
-      case 'outcome_get_insights':
-        return await outcomeTrackingHandler.getInsights(args);
-        
-      case 'outcome_get_analytics':
-        return await outcomeTrackingHandler.getAnalytics(args);
-        
-      case 'outcome_predict_success':
-        return await outcomeTrackingHandler.predictSuccess(args);
-        
+      // TC016: Decision Outcome Tracking tools - REMOVED in TT009-4 (Academic features)
       default:
         throw new McpError(
           ErrorCode.MethodNotFound,
@@ -870,7 +870,7 @@ class AIDISServer {
                 },
                 type: {
                   type: 'string',
-                  enum: ['code', 'decision', 'error', 'discussion', 'planning', 'completion', 'milestone'],
+                  enum: ['code', 'decision', 'error', 'discussion', 'planning', 'completion', 'milestone', 'reflections', 'handoff'],
                   description: 'Type of context being stored'
                 },
                 tags: {
@@ -912,7 +912,7 @@ class AIDISServer {
                 },
                 type: {
                   type: 'string',
-                  enum: ['code', 'decision', 'error', 'discussion', 'planning', 'completion'],
+                  enum: ['code', 'decision', 'error', 'discussion', 'planning', 'completion', 'milestone', 'reflections', 'handoff'],
                   description: 'Optional filter by context type'
                 },
                 tags: {
@@ -2068,22 +2068,6 @@ class AIDISServer {
           }
         },
         {
-          name: 'pattern_get_alerts',
-          description: 'Get pattern-based alerts and notifications',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              projectId: { type: 'string', description: 'Project ID to analyze' },
-              sessionId: { type: 'string', description: 'Session ID to analyze' },
-              severityFilter: { type: 'array', items: { type: 'string' }, description: 'Alert severity levels' },
-              alertTypeFilter: { type: 'array', items: { type: 'string' }, description: 'Alert types to include' },
-              timeRangeHours: { type: 'number', description: 'Time range in hours' },
-              sortBy: { type: 'string', enum: ['severity', 'timestamp', 'confidence'], description: 'Sort order' },
-              limit: { type: 'number', description: 'Maximum results to return' }
-            }
-          }
-        },
-        {
           name: 'pattern_get_anomalies',
           description: 'Detect pattern anomalies and outliers with statistical analysis',
           inputSchema: {
@@ -2153,9 +2137,966 @@ class AIDISServer {
             }
           }
         },
-        
-        // Development Metrics Tools - TC014: Comprehensive metrics collection system
-        ...DevelopmentMetricsHandler.getTools(),
+
+        // TT009-2: Phase 2 Metrics Consolidation Tools
+        {
+          name: 'metrics_collect',
+          description: 'Unified metrics collection tool - replaces metrics_collect_project, metrics_get_core_metrics, metrics_get_pattern_intelligence, and metrics_get_productivity_health',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              scope: {
+                type: 'string',
+                enum: ['project', 'core', 'patterns', 'productivity'],
+                description: 'Scope of metrics to collect'
+              },
+              target: {
+                type: 'string',
+                description: 'Target identifier (usually project ID)'
+              },
+              options: {
+                type: 'object',
+                description: 'Scope-specific options',
+                properties: {
+                  trigger: {
+                    type: 'string',
+                    enum: ['manual', 'git_commit', 'scheduled', 'pattern_update', 'session_end'],
+                    description: 'What triggered this collection (for project scope)'
+                  },
+                  metricTypes: {
+                    type: 'array',
+                    items: { type: 'string' },
+                    description: 'Specific metric types to retrieve (for core scope)'
+                  },
+                  intelligenceTypes: {
+                    type: 'array',
+                    items: { type: 'string' },
+                    description: 'Intelligence types to retrieve (for patterns scope)'
+                  },
+                  productivityTypes: {
+                    type: 'array',
+                    items: { type: 'string' },
+                    description: 'Productivity metrics to retrieve (for productivity scope)'
+                  },
+                  timeframe: {
+                    type: 'string',
+                    enum: ['1d', '7d', '30d', '90d'],
+                    description: 'Time period for analysis',
+                    default: '30d'
+                  },
+                  developerEmail: {
+                    type: 'string',
+                    description: 'Specific developer email (for productivity scope)'
+                  }
+                }
+              }
+            },
+            required: ['scope', 'target']
+          }
+        },
+        {
+          name: 'metrics_analyze',
+          description: 'Unified metrics analysis tool - replaces metrics_get_dashboard, metrics_get_trends, metrics_aggregate_projects, metrics_aggregate_timeline, metrics_calculate_correlations, and metrics_get_executive_summary',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              analysis: {
+                type: 'string',
+                enum: ['dashboard', 'trends', 'correlations', 'executive', 'aggregate_projects', 'aggregate_timeline'],
+                description: 'Type of analysis to perform'
+              },
+              options: {
+                type: 'object',
+                description: 'Analysis-specific options',
+                properties: {
+                  projectId: {
+                    type: 'string',
+                    description: 'Project ID (required for most analysis types)'
+                  },
+                  projectIds: {
+                    type: 'array',
+                    items: { type: 'string' },
+                    description: 'Multiple project IDs (for aggregate_projects analysis)'
+                  },
+                  timeframe: {
+                    oneOf: [
+                      {
+                        type: 'string',
+                        enum: ['1d', '7d', '30d', '90d', 'all'],
+                        description: 'Simple timeframe'
+                      },
+                      {
+                        type: 'object',
+                        properties: {
+                          startDate: { type: 'string', description: 'ISO date string' },
+                          endDate: { type: 'string', description: 'ISO date string' }
+                        },
+                        description: 'Custom date range'
+                      }
+                    ],
+                    description: 'Time period for analysis'
+                  },
+                  metricTypes: {
+                    type: 'array',
+                    items: { type: 'string' },
+                    description: 'Specific metric types to analyze'
+                  },
+                  includeAlerts: {
+                    type: 'boolean',
+                    description: 'Include alerts in dashboard analysis',
+                    default: true
+                  },
+                  includeTrends: {
+                    type: 'boolean',
+                    description: 'Include trends in dashboard analysis',
+                    default: true
+                  },
+                  includeForecast: {
+                    type: 'boolean',
+                    description: 'Include forecasts in trends analysis',
+                    default: true
+                  },
+                  correlationType: {
+                    type: 'string',
+                    enum: ['pearson', 'spearman', 'kendall'],
+                    description: 'Correlation calculation method',
+                    default: 'pearson'
+                  },
+                  metric1: {
+                    type: 'object',
+                    description: 'First metric for correlation analysis'
+                  },
+                  metric2: {
+                    type: 'object',
+                    description: 'Second metric for correlation analysis'
+                  },
+                  aggregationType: {
+                    type: 'string',
+                    enum: ['sum', 'average', 'median', 'percentile', 'count', 'min', 'max'],
+                    description: 'Aggregation method for project aggregation',
+                    default: 'average'
+                  },
+                  period: {
+                    type: 'string',
+                    enum: ['daily', 'weekly', 'monthly', 'quarterly'],
+                    description: 'Period for timeline aggregation',
+                    default: 'daily'
+                  },
+                  granularity: {
+                    type: 'string',
+                    enum: ['hour', 'day', 'week', 'month'],
+                    description: 'Granularity for timeline aggregation',
+                    default: 'day'
+                  }
+                }
+              }
+            },
+            required: ['analysis']
+          }
+        },
+        {
+          name: 'metrics_control',
+          description: 'TT009-2-3: Unified metrics control tool - collection management, alerts, performance, export',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              operation: {
+                type: 'string',
+                enum: ['start', 'stop', 'alerts', 'acknowledge', 'resolve', 'performance', 'export'],
+                description: 'Control operation to perform'
+              },
+              options: {
+                type: 'object',
+                description: 'Operation-specific options',
+                properties: {
+                  // Start operation options
+                  projectId: {
+                    type: 'string',
+                    description: 'Project ID (for start/alerts/export operations)'
+                  },
+                  sessionId: {
+                    type: 'string',
+                    description: 'Session ID (for start operation)'
+                  },
+                  intervalMs: {
+                    type: 'number',
+                    description: 'Collection interval in milliseconds (for start operation)',
+                    default: 300000
+                  },
+                  autoCollectGit: {
+                    type: 'boolean',
+                    description: 'Enable automatic git correlation (for start operation)',
+                    default: true
+                  },
+                  // Stop operation options
+                  gracefulShutdown: {
+                    type: 'boolean',
+                    description: 'Graceful shutdown flag (for stop operation)',
+                    default: true
+                  },
+                  collectFinalMetrics: {
+                    type: 'boolean',
+                    description: 'Collect final metrics before stopping (for stop operation)',
+                    default: true
+                  },
+                  // Alerts operation options
+                  severity: {
+                    type: 'array',
+                    items: { type: 'string' },
+                    description: 'Alert severity levels to include (for alerts operation)',
+                    default: ['low', 'medium', 'high', 'critical']
+                  },
+                  status: {
+                    type: 'string',
+                    description: 'Alert status filter (for alerts operation)',
+                    default: 'active'
+                  },
+                  limit: {
+                    type: 'number',
+                    description: 'Maximum number of alerts to return (for alerts operation)',
+                    default: 50
+                  },
+                  includeResolved: {
+                    type: 'boolean',
+                    description: 'Include resolved alerts (for alerts operation)',
+                    default: false
+                  },
+                  // Acknowledge/Resolve operation options
+                  alertId: {
+                    type: 'string',
+                    description: 'Alert ID (for acknowledge/resolve operations)'
+                  },
+                  acknowledgedBy: {
+                    type: 'string',
+                    description: 'Who acknowledged the alert (for acknowledge operation)',
+                    default: 'ai'
+                  },
+                  resolvedBy: {
+                    type: 'string',
+                    description: 'Who resolved the alert (for resolve operation)',
+                    default: 'ai'
+                  },
+                  notes: {
+                    type: 'string',
+                    description: 'Acknowledgment notes (for acknowledge operation)'
+                  },
+                  resolution: {
+                    type: 'string',
+                    description: 'Resolution description (for resolve operation)'
+                  },
+                  resolutionNotes: {
+                    type: 'string',
+                    description: 'Resolution notes (for resolve operation)'
+                  },
+                  // Performance operation options
+                  timeframe: {
+                    type: 'string',
+                    description: 'Performance timeframe (for performance operation)',
+                    default: '1h'
+                  },
+                  includeSystemMetrics: {
+                    type: 'boolean',
+                    description: 'Include system performance metrics (for performance operation)',
+                    default: true
+                  },
+                  includeQueueMetrics: {
+                    type: 'boolean',
+                    description: 'Include queue performance metrics (for performance operation)',
+                    default: true
+                  },
+                  // Export operation options
+                  format: {
+                    type: 'string',
+                    enum: ['json', 'csv'],
+                    description: 'Export format (for export operation)',
+                    default: 'json'
+                  },
+                  dateRange: {
+                    type: 'object',
+                    description: 'Date range for export (for export operation)',
+                    properties: {
+                      startDate: { type: 'string', format: 'date-time' },
+                      endDate: { type: 'string', format: 'date-time' }
+                    }
+                  },
+                  metricTypes: {
+                    type: 'array',
+                    items: { type: 'string' },
+                    description: 'Metric types to export (for export operation)',
+                    default: []
+                  },
+                  includeMetadata: {
+                    type: 'boolean',
+                    description: 'Include metadata in export (for export operation)',
+                    default: true
+                  },
+                  compressionLevel: {
+                    type: 'string',
+                    enum: ['none', 'low', 'medium', 'high'],
+                    description: 'Compression level for export (for export operation)',
+                    default: 'none'
+                  }
+                }
+              }
+            },
+            required: ['operation']
+          }
+        },
+        {
+          name: 'pattern_analyze',
+          description: 'TT009-3-1: Unified pattern analysis tool - detection, analysis, tracking operations',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              target: {
+                type: 'string',
+                enum: ['project', 'session', 'commit', 'git', 'service'],
+                description: 'Analysis target type'
+              },
+              action: {
+                type: 'string',
+                enum: ['start', 'stop', 'status', 'analyze', 'detect', 'track', 'discovered', 'performance'],
+                description: 'Analysis action to perform'
+              },
+              options: {
+                type: 'object',
+                description: 'Target and action-specific options',
+                properties: {
+                  // Service operations
+                  enableRealTime: {
+                    type: 'boolean',
+                    description: 'Enable real-time detection (for service operations)',
+                    default: true
+                  },
+                  enableBatchProcessing: {
+                    type: 'boolean',
+                    description: 'Enable batch processing (for service operations)',
+                    default: true
+                  },
+                  detectionTimeoutMs: {
+                    type: 'number',
+                    description: 'Detection timeout in milliseconds (for service operations)',
+                    default: 30000
+                  },
+                  updateIntervalMs: {
+                    type: 'number',
+                    description: 'Update interval in milliseconds (for service operations)',
+                    default: 5000
+                  },
+                  // Project analysis
+                  projectId: {
+                    type: 'string',
+                    description: 'Project ID (for project/git operations)'
+                  },
+                  includeGitPatterns: {
+                    type: 'boolean',
+                    description: 'Include git patterns (for project analysis)',
+                    default: true
+                  },
+                  includeSessionPatterns: {
+                    type: 'boolean',
+                    description: 'Include session patterns (for project analysis)',
+                    default: true
+                  },
+                  includeHistoricalData: {
+                    type: 'boolean',
+                    description: 'Include historical data (for project analysis)',
+                    default: true
+                  },
+                  analysisDepth: {
+                    type: 'string',
+                    enum: ['basic', 'comprehensive', 'deep'],
+                    description: 'Analysis depth level (for project analysis)',
+                    default: 'comprehensive'
+                  },
+                  patternTypes: {
+                    type: 'array',
+                    items: { type: 'string' },
+                    description: 'Pattern types to analyze (for various operations)',
+                    default: ['all']
+                  },
+                  // Session analysis
+                  sessionId: {
+                    type: 'string',
+                    description: 'Session ID (for session operations)'
+                  },
+                  includeContextPatterns: {
+                    type: 'boolean',
+                    description: 'Include context patterns (for session analysis)',
+                    default: true
+                  },
+                  includeTimePatterns: {
+                    type: 'boolean',
+                    description: 'Include time patterns (for session analysis)',
+                    default: true
+                  },
+                  includeActivityPatterns: {
+                    type: 'boolean',
+                    description: 'Include activity patterns (for session analysis)',
+                    default: true
+                  },
+                  confidenceThreshold: {
+                    type: 'number',
+                    description: 'Confidence threshold (for session analysis)',
+                    default: 0.7
+                  },
+                  // Commit analysis
+                  commitSha: {
+                    type: 'string',
+                    description: 'Commit SHA (for single commit analysis)'
+                  },
+                  commitShas: {
+                    type: 'array',
+                    items: { type: 'string' },
+                    description: 'Commit SHAs (for multiple commit detection)'
+                  },
+                  includeImpactAnalysis: {
+                    type: 'boolean',
+                    description: 'Include impact analysis (for commit analysis)',
+                    default: true
+                  },
+                  includeFilePatterns: {
+                    type: 'boolean',
+                    description: 'Include file patterns (for commit operations)',
+                    default: true
+                  },
+                  includeChangePatterns: {
+                    type: 'boolean',
+                    description: 'Include change patterns (for commit operations)',
+                    default: true
+                  },
+                  maxCommits: {
+                    type: 'number',
+                    description: 'Maximum commits to analyze (for commit detection)',
+                    default: 10
+                  },
+                  // Git tracking
+                  enableRealTimeTracking: {
+                    type: 'boolean',
+                    description: 'Enable real-time git tracking (for git operations)',
+                    default: true
+                  },
+                  trackingIntervalMs: {
+                    type: 'number',
+                    description: 'Tracking interval in milliseconds (for git operations)',
+                    default: 30000
+                  },
+                  minConfidence: {
+                    type: 'number',
+                    description: 'Minimum confidence score (for various operations)',
+                    default: 0.6
+                  },
+                  includeMetadata: {
+                    type: 'boolean',
+                    description: 'Include metadata (for discovered patterns)',
+                    default: true
+                  },
+                  limitResults: {
+                    type: 'number',
+                    description: 'Limit number of results (for discovered patterns)',
+                    default: 100
+                  }
+                }
+              }
+            },
+            required: ['target', 'action']
+          }
+        },
+        {
+          name: 'pattern_insights',
+          description: 'TT009-3-2: Unified pattern insights tool - insights, correlations, recommendations, alerts',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              type: {
+                type: 'string',
+                enum: ['alerts', 'session', 'insights', 'trends', 'correlations', 'anomalies', 'recommendations'],
+                description: 'Type of insight to retrieve'
+              },
+              options: {
+                type: 'object',
+                description: 'Type-specific options',
+                properties: {
+                  // General options
+                  projectId: {
+                    type: 'string',
+                    description: 'Project ID (for various operations)'
+                  },
+                  sessionId: {
+                    type: 'string',
+                    description: 'Session ID (for various operations)'
+                  },
+                  // Alerts options
+                  severity: {
+                    type: 'array',
+                    items: { type: 'string' },
+                    description: 'Alert severity levels (for alerts)',
+                    default: ['medium', 'high', 'critical']
+                  },
+                  status: {
+                    type: 'string',
+                    description: 'Alert status filter (for alerts)',
+                    default: 'active'
+                  },
+                  limit: {
+                    type: 'number',
+                    description: 'Maximum results to return (for various operations)',
+                    default: 50
+                  },
+                  includeResolved: {
+                    type: 'boolean',
+                    description: 'Include resolved alerts (for alerts)',
+                    default: false
+                  },
+                  // Session insights options
+                  includeContextPatterns: {
+                    type: 'boolean',
+                    description: 'Include context patterns (for session insights)',
+                    default: true
+                  },
+                  includeActivityPatterns: {
+                    type: 'boolean',
+                    description: 'Include activity patterns (for session insights)',
+                    default: true
+                  },
+                  includeTimePatterns: {
+                    type: 'boolean',
+                    description: 'Include time patterns (for session insights)',
+                    default: true
+                  },
+                  minConfidence: {
+                    type: 'number',
+                    description: 'Minimum confidence score (for various operations)',
+                    default: 0.6
+                  },
+                  // Actionable insights options
+                  patternTypes: {
+                    type: 'array',
+                    items: { type: 'string' },
+                    description: 'Pattern types to analyze (for various operations)',
+                    default: ['all']
+                  },
+                  riskLevels: {
+                    type: 'array',
+                    items: { type: 'string' },
+                    description: 'Risk levels to include (for insights)',
+                    default: ['medium', 'high', 'critical']
+                  },
+                  maxAge: {
+                    type: 'string',
+                    description: 'Maximum age of patterns (for insights)',
+                    default: '30d'
+                  },
+                  includeRecommendations: {
+                    type: 'boolean',
+                    description: 'Include recommendations (for insights)',
+                    default: true
+                  },
+                  limitResults: {
+                    type: 'number',
+                    description: 'Limit number of results (for insights)',
+                    default: 100
+                  },
+                  // Trends options
+                  timeframe: {
+                    type: 'string',
+                    description: 'Analysis timeframe (for trends/correlations)',
+                    default: '30d'
+                  },
+                  includeForecast: {
+                    type: 'boolean',
+                    description: 'Include forecast data (for trends)',
+                    default: true
+                  },
+                  forecastPeriods: {
+                    type: 'number',
+                    description: 'Number of forecast periods (for trends)',
+                    default: 7
+                  },
+                  granularity: {
+                    type: 'string',
+                    enum: ['hourly', 'daily', 'weekly'],
+                    description: 'Data granularity (for trends)',
+                    default: 'daily'
+                  },
+                  smoothing: {
+                    type: 'string',
+                    enum: ['none', 'moving_average', 'exponential'],
+                    description: 'Smoothing method (for trends)',
+                    default: 'moving_average'
+                  },
+                  // Correlations options
+                  patternType1: {
+                    type: 'string',
+                    description: 'First pattern type (for correlations)'
+                  },
+                  patternType2: {
+                    type: 'string',
+                    description: 'Second pattern type (for correlations)'
+                  },
+                  correlationType: {
+                    type: 'string',
+                    enum: ['pearson', 'spearman', 'kendall'],
+                    description: 'Correlation method (for correlations)',
+                    default: 'pearson'
+                  },
+                  includeLagAnalysis: {
+                    type: 'boolean',
+                    description: 'Include lag analysis (for correlations)',
+                    default: false
+                  },
+                  maxLag: {
+                    type: 'number',
+                    description: 'Maximum lag periods (for correlations)',
+                    default: 7
+                  },
+                  // Anomalies options
+                  detectionMethod: {
+                    type: 'string',
+                    enum: ['statistical', 'isolation_forest', 'one_class_svm'],
+                    description: 'Anomaly detection method (for anomalies)',
+                    default: 'statistical'
+                  },
+                  sensitivityLevel: {
+                    type: 'string',
+                    enum: ['low', 'medium', 'high'],
+                    description: 'Detection sensitivity (for anomalies)',
+                    default: 'medium'
+                  },
+                  includeContext: {
+                    type: 'boolean',
+                    description: 'Include contextual information (for anomalies)',
+                    default: true
+                  },
+                  // Recommendations options
+                  contextType: {
+                    type: 'string',
+                    enum: ['development', 'quality', 'performance', 'security'],
+                    description: 'Recommendation context (for recommendations)',
+                    default: 'development'
+                  },
+                  includeActionItems: {
+                    type: 'boolean',
+                    description: 'Include action items (for recommendations)',
+                    default: true
+                  },
+                  includePrioritization: {
+                    type: 'boolean',
+                    description: 'Include prioritization (for recommendations)',
+                    default: true
+                  },
+                  includeRiskAssessment: {
+                    type: 'boolean',
+                    description: 'Include risk assessment (for recommendations)',
+                    default: true
+                  },
+                  maxRecommendations: {
+                    type: 'number',
+                    description: 'Maximum recommendations (for recommendations)',
+                    default: 20
+                  }
+                }
+              }
+            },
+            required: ['type']
+          }
+        },
+
+        // Development Metrics Tools - TC014: Comprehensive metrics collection system (to be consolidated)
+        {
+          name: 'metrics_collect_project',
+          description: 'Trigger comprehensive metrics collection for a project',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              projectId: {
+                type: 'string',
+                description: 'Project ID to collect metrics for'
+              },
+              trigger: {
+                type: 'string',
+                enum: ['manual', 'git_commit', 'scheduled', 'pattern_update', 'session_end'],
+                description: 'What triggered this collection',
+                default: 'manual'
+              },
+              startDate: {
+                type: 'string',
+                description: 'Analysis start date (ISO format), defaults to 30 days ago'
+              },
+              endDate: {
+                type: 'string',
+                description: 'Analysis end date (ISO format), defaults to now'
+              }
+            },
+            required: ['projectId']
+          }
+        },
+        {
+          name: 'metrics_get_dashboard',
+          description: 'Get comprehensive project metrics dashboard data',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              projectId: {
+                type: 'string',
+                description: 'Project ID to get dashboard for'
+              },
+              timeframe: {
+                type: 'string',
+                enum: ['1d', '7d', '30d', '90d', 'all'],
+                description: 'Time period for metrics',
+                default: '30d'
+              },
+              includeAlerts: {
+                type: 'boolean',
+                description: 'Include active alerts in response',
+                default: true
+              },
+              includeTrends: {
+                type: 'boolean',
+                description: 'Include trend analysis',
+                default: true
+              }
+            },
+            required: ['projectId']
+          }
+        },
+        {
+          name: 'metrics_get_core_metrics',
+          description: 'Get detailed core development metrics (velocity, quality, debt)',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              projectId: {
+                type: 'string',
+                description: 'Project ID'
+              },
+              metricTypes: {
+                type: 'array',
+                items: {
+                  type: 'string',
+                  enum: ['code_velocity', 'development_focus', 'change_frequency', 'volatility_index', 'technical_debt_accumulation', 'quality_trend']
+                },
+                description: 'List of specific metrics to retrieve'
+              },
+              timeframe: {
+                type: 'string',
+                enum: ['1d', '7d', '30d', '90d', 'all'],
+                description: 'Time period for metrics',
+                default: '30d'
+              },
+              includeDetails: {
+                type: 'boolean',
+                description: 'Include detailed breakdown and analysis',
+                default: false
+              }
+            },
+            required: ['projectId']
+          }
+        },
+        {
+          name: 'metrics_get_pattern_intelligence',
+          description: 'Get pattern-based intelligence metrics',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              projectId: {
+                type: 'string',
+                description: 'Project ID'
+              },
+              analysisDepth: {
+                type: 'string',
+                enum: ['basic', 'detailed', 'comprehensive'],
+                description: 'Level of pattern analysis',
+                default: 'detailed'
+              },
+              timeframe: {
+                type: 'string',
+                enum: ['1d', '7d', '30d', '90d', 'all'],
+                description: 'Time period for analysis',
+                default: '30d'
+              }
+            },
+            required: ['projectId']
+          }
+        },
+        {
+          name: 'metrics_get_productivity_health',
+          description: 'Get developer productivity and health metrics',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              projectId: {
+                type: 'string',
+                description: 'Project ID'
+              },
+              includeTeamMetrics: {
+                type: 'boolean',
+                description: 'Include team-wide metrics',
+                default: true
+              },
+              timeframe: {
+                type: 'string',
+                enum: ['1d', '7d', '30d', '90d', 'all'],
+                description: 'Time period for metrics',
+                default: '30d'
+              }
+            },
+            required: ['projectId']
+          }
+        },
+        {
+          name: 'metrics_get_alerts',
+          description: 'Get active metrics alerts and notifications',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              projectId: {
+                type: 'string',
+                description: 'Project ID to get alerts for'
+              },
+              severity: {
+                type: 'string',
+                enum: ['low', 'medium', 'high', 'critical'],
+                description: 'Filter by alert severity'
+              },
+              category: {
+                type: 'string',
+                enum: ['performance', 'quality', 'debt', 'velocity', 'complexity'],
+                description: 'Filter by alert category'
+              },
+              includeResolved: {
+                type: 'boolean',
+                description: 'Include resolved alerts',
+                default: false
+              }
+            },
+            required: ['projectId']
+          }
+        },
+        {
+          name: 'metrics_acknowledge_alert',
+          description: 'Acknowledge a metrics alert',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              alertId: {
+                type: 'string',
+                description: 'Alert ID to acknowledge'
+              },
+              message: {
+                type: 'string',
+                description: 'Acknowledgment message'
+              }
+            },
+            required: ['alertId']
+          }
+        },
+        {
+          name: 'metrics_resolve_alert',
+          description: 'Mark a metrics alert as resolved',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              alertId: {
+                type: 'string',
+                description: 'Alert ID to resolve'
+              },
+              resolution: {
+                type: 'string',
+                description: 'Description of how the alert was resolved'
+              }
+            },
+            required: ['alertId', 'resolution']
+          }
+        },
+        {
+          name: 'metrics_get_trends',
+          description: 'Get metrics trends and forecasting data',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              projectId: {
+                type: 'string',
+                description: 'Project ID'
+              },
+              metricTypes: {
+                type: 'array',
+                items: { type: 'string' },
+                description: 'List of metric types to analyze for trends'
+              },
+              timeframe: {
+                type: 'string',
+                enum: ['7d', '30d', '90d', '180d', '1y'],
+                description: 'Time period for trend analysis',
+                default: '30d'
+              },
+              includeForecast: {
+                type: 'boolean',
+                description: 'Include forecasting projections',
+                default: true
+              }
+            },
+            required: ['projectId']
+          }
+        },
+        {
+          name: 'metrics_get_performance',
+          description: 'Get metrics collection system performance statistics',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              includeDetailedStats: {
+                type: 'boolean',
+                description: 'Include detailed performance breakdown',
+                default: false
+              },
+              timeframe: {
+                type: 'string',
+                enum: ['1h', '24h', '7d', '30d'],
+                description: 'Time period for performance stats',
+                default: '24h'
+              }
+            }
+          }
+        },
+        {
+          name: 'metrics_start_collection',
+          description: 'Start the metrics collection service',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              projectId: {
+                type: 'string',
+                description: 'Project ID to start collection for (optional, starts for all if not specified)'
+              },
+              collectionMode: {
+                type: 'string',
+                enum: ['real_time', 'batch', 'hybrid'],
+                description: 'Collection mode',
+                default: 'hybrid'
+              }
+            }
+          }
+        },
+        {
+          name: 'metrics_stop_collection',
+          description: 'Stop the metrics collection service',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              projectId: {
+                type: 'string',
+                description: 'Project ID to stop collection for (optional, stops all if not specified)'
+              },
+              graceful: {
+                type: 'boolean',
+                description: 'Perform graceful shutdown',
+                default: true
+              }
+            }
+          }
+        },
         
         // TC018: Metrics Aggregation Tools - Advanced aggregation and correlation analysis
         {
@@ -2863,406 +3804,8 @@ class AIDISServer {
             required: ['action']
           }
         },
-        ...CodeComplexityHandler.getTools(),
-        // TC016: Decision Outcome Tracking Tools - Transform decision tracking to learning system
+        // TC016: Decision Outcome Tracking Tools - REMOVED in TT009-4 (Academic features not used for building)
         {
-          name: 'outcome_record',
-          description: 'Record a decision outcome measurement with evidence and scoring',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              decisionId: { 
-                type: 'string', 
-                description: 'ID of the decision to record outcome for' 
-              },
-              projectId: { 
-                type: 'string', 
-                description: 'Optional project ID (uses current project if not specified)' 
-              },
-              outcomeType: { 
-                type: 'string', 
-                enum: ['implementation', 'performance', 'maintenance', 'cost', 'adoption', 'security', 'scalability', 'developer_experience', 'user_experience'],
-                description: 'Type of outcome being measured' 
-              },
-              outcomeScore: { 
-                type: 'number', 
-                minimum: 1, 
-                maximum: 10,
-                description: 'Outcome score from 1 (disastrous) to 10 (exceptional)' 
-              },
-              outcomeStatus: { 
-                type: 'string', 
-                enum: ['in_progress', 'successful', 'failed', 'mixed', 'abandoned', 'superseded'],
-                description: 'Overall status of the outcome' 
-              },
-              predictedValue: { 
-                type: 'number', 
-                description: 'Optional predicted value for comparison' 
-              },
-              actualValue: { 
-                type: 'number', 
-                description: 'Optional actual value for comparison' 
-              },
-              measurementPeriodDays: { 
-                type: 'number', 
-                description: 'Days after decision when measured (auto-calculated if not provided)' 
-              },
-              evidenceType: { 
-                type: 'string', 
-                enum: ['metrics', 'user_feedback', 'performance_data', 'cost_analysis', 'developer_survey', 'incident_report', 'code_review', 'automated_test'],
-                description: 'Type of evidence supporting the outcome' 
-              },
-              evidenceData: { 
-                type: 'object', 
-                description: 'Structured evidence data' 
-              },
-              notes: { 
-                type: 'string', 
-                description: 'Additional notes about the outcome' 
-              },
-              measuredBy: { 
-                type: 'string', 
-                description: 'Who/what measured this outcome' 
-              },
-              confidenceLevel: { 
-                type: 'string', 
-                enum: ['low', 'medium', 'high'],
-                description: 'Confidence in the measurement (default: medium)' 
-              }
-            },
-            required: ['decisionId', 'outcomeType', 'outcomeScore', 'outcomeStatus']
-          }
-        },
-        {
-          name: 'outcome_track_metric',
-          description: 'Track metrics over time for a decision to monitor progress and trends',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              decisionId: { 
-                type: 'string', 
-                description: 'ID of the decision to track metrics for' 
-              },
-              projectId: { 
-                type: 'string', 
-                description: 'Optional project ID (uses current project if not specified)' 
-              },
-              metricName: { 
-                type: 'string', 
-                description: 'Name of the metric (e.g., "response_time_ms", "user_satisfaction")' 
-              },
-              metricCategory: { 
-                type: 'string', 
-                enum: ['performance', 'cost', 'quality', 'velocity', 'satisfaction', 'adoption', 'maintenance', 'security', 'reliability'],
-                description: 'Category of the metric' 
-              },
-              metricValue: { 
-                type: 'number', 
-                description: 'Current value of the metric' 
-              },
-              metricUnit: { 
-                type: 'string', 
-                description: 'Unit of measurement (e.g., "ms", "$", "%", "points")' 
-              },
-              baselineValue: { 
-                type: 'number', 
-                description: 'Baseline value before the decision' 
-              },
-              targetValue: { 
-                type: 'number', 
-                description: 'Target value we aim to achieve' 
-              },
-              daysSinceDecision: { 
-                type: 'number', 
-                description: 'Number of days since the decision was made' 
-              },
-              phase: { 
-                type: 'string', 
-                enum: ['pre_implementation', 'implementation', 'early_adoption', 'steady_state', 'optimization', 'migration', 'deprecation'],
-                description: 'Current phase of the decision lifecycle' 
-              },
-              dataSource: { 
-                type: 'string', 
-                description: 'Where the metric data came from' 
-              },
-              collectionMethod: { 
-                type: 'string', 
-                description: 'How the metric was collected' 
-              },
-              sampleSize: { 
-                type: 'number', 
-                description: 'Sample size for the measurement' 
-              },
-              confidenceInterval: { 
-                type: 'number', 
-                description: 'Confidence interval for the measurement' 
-              },
-              externalFactors: { 
-                type: 'object', 
-                description: 'External factors that might influence the metric' 
-              }
-            },
-            required: ['decisionId', 'metricName', 'metricCategory', 'metricValue', 'daysSinceDecision', 'phase']
-          }
-        },
-        {
-          name: 'outcome_analyze_impact',
-          description: 'Analyze and record impact relationships between decisions',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              sourceDecisionId: { 
-                type: 'string', 
-                description: 'ID of the decision that causes impact' 
-              },
-              impactedDecisionId: { 
-                type: 'string', 
-                description: 'ID of the decision being impacted' 
-              },
-              projectId: { 
-                type: 'string', 
-                description: 'Optional project ID (uses current project if not specified)' 
-              },
-              impactType: { 
-                type: 'string', 
-                enum: ['enables', 'conflicts_with', 'depends_on', 'supersedes', 'complements', 'complicates', 'simplifies', 'blocks', 'accelerates'],
-                description: 'Type of impact relationship' 
-              },
-              impactStrength: { 
-                type: 'string', 
-                enum: ['low', 'medium', 'high'],
-                description: 'Strength of the impact (default: medium)' 
-              },
-              impactDirection: { 
-                type: 'string', 
-                enum: ['positive', 'negative', 'neutral'],
-                description: 'Direction of the impact (default: neutral)' 
-              },
-              timeImpactDays: { 
-                type: 'number', 
-                description: 'Time impact in days (positive = delay, negative = acceleration)' 
-              },
-              costImpactAmount: { 
-                type: 'number', 
-                description: 'Financial impact amount' 
-              },
-              complexityImpactScore: { 
-                type: 'number', 
-                minimum: -10,
-                maximum: 10,
-                description: 'Complexity impact score (-10 = much simpler, +10 = much more complex)' 
-              },
-              analysisMethod: { 
-                type: 'string', 
-                enum: ['manual_review', 'automated_analysis', 'stakeholder_feedback', 'performance_correlation', 'timeline_analysis', 'dependency_graph'],
-                description: 'Method used to analyze the impact' 
-              },
-              description: { 
-                type: 'string', 
-                description: 'Description of the impact relationship' 
-              },
-              confidenceScore: { 
-                type: 'number', 
-                minimum: 0,
-                maximum: 1,
-                description: 'Confidence in the impact analysis (0-1 scale)' 
-              },
-              discoveredBy: { 
-                type: 'string', 
-                description: 'Who or what discovered this impact relationship' 
-              }
-            },
-            required: ['sourceDecisionId', 'impactedDecisionId', 'impactType', 'analysisMethod', 'confidenceScore']
-          }
-        },
-        {
-          name: 'outcome_conduct_retrospective',
-          description: 'Conduct a structured retrospective on a decision with stakeholder input',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              decisionId: { 
-                type: 'string', 
-                description: 'ID of the decision to retrospect on' 
-              },
-              projectId: { 
-                type: 'string', 
-                description: 'Optional project ID (uses current project if not specified)' 
-              },
-              retrospectiveType: { 
-                type: 'string', 
-                enum: ['quarterly', 'post_implementation', 'incident_driven', 'milestone', 'ad_hoc'],
-                description: 'Type of retrospective being conducted' 
-              },
-              participants: { 
-                type: 'array', 
-                items: { type: 'string' },
-                description: 'List of retrospective participants' 
-              },
-              facilitator: { 
-                type: 'string', 
-                description: 'Retrospective facilitator' 
-              },
-              overallSatisfaction: { 
-                type: 'number', 
-                minimum: 1,
-                maximum: 10,
-                description: 'Overall satisfaction with the decision (1-10 scale)' 
-              },
-              wouldDecideSameAgain: { 
-                type: 'boolean', 
-                description: 'Would the team make the same decision again?' 
-              },
-              recommendationToOthers: { 
-                type: 'number', 
-                minimum: 1,
-                maximum: 10,
-                description: 'How likely to recommend this decision to others (1-10 scale)' 
-              },
-              whatWentWell: { 
-                type: 'string', 
-                description: 'What aspects of the decision went well' 
-              },
-              whatWentPoorly: { 
-                type: 'string', 
-                description: 'What aspects of the decision went poorly' 
-              },
-              whatWeLearned: { 
-                type: 'string', 
-                description: 'Key lessons learned from the decision' 
-              },
-              whatWeWouldDoDifferently: { 
-                type: 'string', 
-                description: 'What the team would do differently next time' 
-              },
-              recommendationsForSimilarDecisions: { 
-                type: 'string', 
-                description: 'Recommendations for similar future decisions' 
-              },
-              processImprovements: { 
-                type: 'string', 
-                description: 'Suggested improvements to the decision-making process' 
-              },
-              toolsOrResourcesNeeded: { 
-                type: 'string', 
-                description: 'Tools or resources that would have helped' 
-              },
-              unforeseenRisks: { 
-                type: 'string', 
-                description: 'Risks that were not anticipated' 
-              },
-              riskMitigationEffectiveness: { 
-                type: 'string', 
-                description: 'How effective was the risk mitigation' 
-              },
-              newRisksDiscovered: { 
-                type: 'string', 
-                description: 'New risks discovered during implementation' 
-              },
-              timeToValueActualDays: { 
-                type: 'number', 
-                description: 'Actual time to realize value from the decision' 
-              },
-              timeToValuePredictedDays: { 
-                type: 'number', 
-                description: 'Originally predicted time to value' 
-              },
-              totalEffortActualHours: { 
-                type: 'number', 
-                description: 'Actual total effort in hours' 
-              },
-              totalEffortPredictedHours: { 
-                type: 'number', 
-                description: 'Originally predicted effort in hours' 
-              },
-              stakeholderFeedback: { 
-                type: 'object', 
-                description: 'Structured feedback from stakeholders' 
-              },
-              adoptionChallenges: { 
-                type: 'string', 
-                description: 'Challenges encountered during adoption' 
-              },
-              changeManagementLessons: { 
-                type: 'string', 
-                description: 'Lessons learned about change management' 
-              },
-              retrospectiveQualityScore: { 
-                type: 'number', 
-                minimum: 1,
-                maximum: 10,
-                description: 'Quality score for the retrospective process itself (1-10)' 
-              },
-              actionItems: { 
-                type: 'array', 
-                items: {
-                  type: 'object',
-                  properties: {
-                    description: { type: 'string' },
-                    assignee: { type: 'string' },
-                    dueDate: { type: 'string' },
-                    completed: { type: 'boolean' }
-                  }
-                },
-                description: 'Action items from the retrospective' 
-              },
-              followUpRequired: { 
-                type: 'boolean', 
-                description: 'Whether follow-up actions are required' 
-              },
-              followUpDate: { 
-                type: 'string', 
-                description: 'Date for follow-up review' 
-              }
-            },
-            required: ['decisionId', 'retrospectiveType', 'participants', 'overallSatisfaction', 'wouldDecideSameAgain', 'recommendationToOthers', 'retrospectiveQualityScore']
-          }
-        },
-        {
-          name: 'outcome_get_insights',
-          description: 'Get learning insights and patterns extracted from decision outcomes',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              projectId: { 
-                type: 'string', 
-                description: 'Optional project ID (uses current project if not specified)' 
-              },
-              insightType: { 
-                type: 'string', 
-                enum: ['success_pattern', 'failure_pattern', 'risk_indicator', 'best_practice', 'anti_pattern', 'correlation', 'threshold', 'timing_pattern'],
-                description: 'Filter by specific type of insight' 
-              },
-              limit: { 
-                type: 'number', 
-                minimum: 1,
-                maximum: 50,
-                description: 'Maximum number of insights to return (default: 20)' 
-              }
-            }
-          }
-        },
-        {
-          name: 'outcome_get_analytics',
-          description: 'Get comprehensive decision analytics, trends, and reporting',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              projectId: { 
-                type: 'string', 
-                description: 'Optional project ID (uses current project if not specified)' 
-              },
-              timeframeDays: { 
-                type: 'number', 
-                minimum: 1,
-                maximum: 365,
-                description: 'Timeframe for analytics in days (default: 90)' 
-              }
-            }
-          }
-        },
-        {
-          name: 'outcome_predict_success',
           description: 'Predict decision success probability using historical patterns and ML insights',
           inputSchema: {
             type: 'object',
@@ -4053,7 +4596,12 @@ class AIDISServer {
           type: 'text',
           text: `💡 Name suggestions for ${args.entityType}:\n` +
                 `📝 Based on: "${args.description}"\n\n` +
-                suggestions.map((name, i) => `${i + 1}. ${name}`).join('\n') + '\n\n' +
+                suggestions.map((suggestion, i) =>
+                  `${i + 1}. **${suggestion.suggestedName}** (${Math.round(suggestion.confidence * 100)}% confidence)\n` +
+                  `   📋 ${suggestion.explanation}\n` +
+                  (suggestion.similarExamples.length > 0 ?
+                    `   📚 Similar: ${suggestion.similarExamples.join(', ')}\n` : '')
+                ).join('\n') + '\n' +
                 `🎯 All suggestions are conflict-free and follow project patterns!`
         },
       ],

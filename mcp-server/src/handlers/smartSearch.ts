@@ -57,18 +57,47 @@ export class SmartSearchHandler {
                 
                 for (const context of contextResults) {
                     console.log(`   - Context ${context.id}: similarity=${context.similarity}%, type=${context.contextType}`);
+
+                    // Improved relevance scoring with fallback
+                    let relevanceScore = (context.similarity || 0) / 100;
+
+                    // If semantic similarity is 0, use text matching as fallback
+                    if (relevanceScore === 0) {
+                        const content = context.content.toLowerCase();
+                        const queryLower = query.toLowerCase();
+                        const queryWords = queryLower.split(/\s+/);
+
+                        // Calculate text-based relevance
+                        let textRelevance = 0;
+                        for (const word of queryWords) {
+                            if (content.includes(word)) {
+                                textRelevance += 0.2; // Each matching word adds 20%
+                            }
+                        }
+
+                        // Boost for exact phrase matches
+                        if (content.includes(queryLower)) {
+                            textRelevance += 0.3;
+                        }
+
+                        // Boost based on context type relevance
+                        const typeBoost = context.contextType === 'planning' || context.contextType === 'decision' ? 0.2 : 0.1;
+
+                        relevanceScore = Math.min(0.8, textRelevance + typeBoost); // Cap at 80% for text matching
+                    }
+
                     results.push({
                         type: 'context',
                         id: context.id,
                         title: `${context.contextType.toUpperCase()}: ${context.content.substring(0, 60)}...`,
                         summary: context.content,
-                        relevanceScore: (context.similarity || 0) / 100, // Convert percentage to 0-1 scale
-                        metadata: { 
-                            tags: context.tags, 
+                        relevanceScore,
+                        metadata: {
+                            tags: context.tags,
                             type: context.contextType,
                             createdAt: context.createdAt
                         },
-                        source: 'semantic_search'
+                        source: relevanceScore > 0.8 ? 'semantic_search' : 'text_matching'
                     });
                 }
                 console.log(`✅ Added ${contextResults.length} context results to smart search`);
@@ -92,12 +121,39 @@ export class SmartSearchHandler {
                 
                 for (const decision of decisions) {
                     console.log(`   - Decision ${decision.id}: ${decision.title}`);
+
+                    // Calculate decision relevance based on content matching
+                    const title = decision.title.toLowerCase();
+                    const description = decision.description.toLowerCase();
+                    const queryLower = query.toLowerCase();
+                    const queryWords = queryLower.split(/\s+/);
+
+                    let relevanceScore = 0.6; // Base score for decisions
+
+                    // Boost for matching words in title (more important)
+                    for (const word of queryWords) {
+                        if (title.includes(word)) {
+                            relevanceScore += 0.15;
+                        }
+                        if (description.includes(word)) {
+                            relevanceScore += 0.05;
+                        }
+                    }
+
+                    // Boost for exact query matches
+                    if (title.includes(queryLower)) {
+                        relevanceScore += 0.2;
+                    }
+
+                    // Cap at 95% for decisions
+                    relevanceScore = Math.min(0.95, relevanceScore);
+
                     results.push({
                         type: 'decision',
                         id: decision.id,
                         title: `DECISION: ${decision.title}`,
                         summary: decision.description,
-                        relevanceScore: 0.8, // High relevance for decisions
+                        relevanceScore,
                         metadata: {
                             decisionType: decision.decisionType,
                             impactLevel: decision.impactLevel,
@@ -116,26 +172,51 @@ export class SmartSearchHandler {
                 const client = await this.pool.connect();
                 try {
                     const namingResult = await client.query(`
-                        SELECT canonical_name, entity_type, description, metadata
-                        FROM naming_registry 
+                        SELECT canonical_name, entity_type, description, naming_convention
+                        FROM naming_registry
                         WHERE project_id = $1 AND (
-                            canonical_name ILIKE $2 OR 
+                            canonical_name ILIKE $2 OR
                             description ILIKE $2 OR
-                            $2 = ANY(tags)
+                            $2 = ANY(context_tags)
                         )
                         LIMIT $3
                     `, [projectId, `%${query}%`, Math.ceil(limit / 4)]);
 
                     for (const naming of namingResult.rows) {
+                        // Calculate naming relevance based on match quality
+                        const nameLower = naming.canonical_name.toLowerCase();
+                        const descLower = (naming.description || '').toLowerCase();
+                        const queryLower = query.toLowerCase();
+                        const queryWords = queryLower.split(/\s+/);
+
+                        let relevanceScore = 0.4; // Base score for naming matches
+
+                        // Boost for exact name matches (highest priority)
+                        if (nameLower === queryLower) {
+                            relevanceScore = 0.95;
+                        } else if (nameLower.includes(queryLower)) {
+                            relevanceScore += 0.3;
+                        } else {
+                            // Partial word matches in name
+                            for (const word of queryWords) {
+                                if (nameLower.includes(word)) {
+                                    relevanceScore += 0.1;
+                                }
+                                if (descLower.includes(word)) {
+                                    relevanceScore += 0.05;
+                                }
+                            }
+                        }
+
                         results.push({
                             type: 'naming',
                             id: naming.canonical_name,
                             title: `NAME: ${naming.canonical_name}`,
                             summary: naming.description || `${naming.entity_type} name`,
-                            relevanceScore: 0.6,
+                            relevanceScore: Math.min(0.95, relevanceScore),
                             metadata: {
                                 entityType: naming.entity_type,
-                                ...naming.metadata
+                                namingConvention: naming.naming_convention
                             },
                             source: 'naming_registry'
                         });
