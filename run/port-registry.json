@@ -9,15 +9,15 @@
   "aidis-mcp": {
     "serviceName": "aidis-mcp",
     "port": 8080,
-    "pid": 14566,
-    "startedAt": "2025-09-21T03:33:26.309Z",
+    "pid": 67294,
+    "startedAt": "2025-09-21T16:54:48.922Z",
     "healthEndpoint": "/healthz"
   },
   "aidis-command-dev": {
     "serviceName": "aidis-command-dev",
     "port": 5000,
-    "pid": 14680,
-    "startedAt": "2025-09-21T03:33:42.164Z",
+    "pid": 67410,
+    "startedAt": "2025-09-21T16:54:56.124Z",
     "healthEndpoint": "/api/health"
   }
 }

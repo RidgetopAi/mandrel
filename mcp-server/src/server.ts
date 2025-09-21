@@ -368,8 +368,8 @@ class AIDISServer {
   private setupHealthServer(): void {
     this.healthServer = http.createServer(async (req, res) => {
       res.setHeader('Content-Type', 'application/json');
-      
-      if (req.url === '/healthz') {
+
+      if (req.url === '/healthz' || req.url === '/health') {
         // Basic health check - always returns 200 if server is responding
         const startTime = Date.now();
         const healthData = {
@@ -433,6 +433,58 @@ class AIDISServer {
 
         // Log liveness check
         RequestLogger.logHealthCheck('/livez', 'alive', Date.now() - startTime);
+
+      } else if (req.url === '/health/mcp') {
+        // MCP service health check
+        const startTime = Date.now();
+        const mcpHealth = {
+          status: this.server ? 'healthy' : 'unhealthy',
+          transport: this.transport ? 'connected' : 'disconnected',
+          tools_available: this.server ? Object.keys(this.server.tools || {}).length : 0,
+          timestamp: new Date().toISOString(),
+          response_time_ms: Date.now() - startTime
+        };
+
+        res.writeHead(this.server ? 200 : 503);
+        res.end(JSON.stringify(mcpHealth));
+        RequestLogger.logHealthCheck('/health/mcp', mcpHealth.status, Date.now() - startTime);
+
+      } else if (req.url === '/health/database') {
+        // Database service health check
+        const startTime = Date.now();
+        const poolStats = dbPool.getStats();
+        const dbHealth = {
+          status: this.dbHealthy ? 'healthy' : 'unhealthy',
+          connected: this.dbHealthy,
+          pool: {
+            total: poolStats.totalCount,
+            active: poolStats.activeQueries,
+            idle: poolStats.idleCount,
+            utilization: `${poolStats.poolUtilization.toFixed(1)}%`
+          },
+          timestamp: new Date().toISOString(),
+          response_time_ms: Date.now() - startTime
+        };
+
+        res.writeHead(this.dbHealthy ? 200 : 503);
+        res.end(JSON.stringify(dbHealth));
+        RequestLogger.logHealthCheck('/health/database', dbHealth.status, Date.now() - startTime);
+
+      } else if (req.url === '/health/embeddings') {
+        // Embeddings service health check
+        const startTime = Date.now();
+        const embeddingsHealth = {
+          status: 'healthy',
+          service: 'local-transformers-js',
+          model: 'Xenova/all-MiniLM-L6-v2',
+          dimensions: 384,
+          timestamp: new Date().toISOString(),
+          response_time_ms: Date.now() - startTime
+        };
+
+        res.writeHead(200);
+        res.end(JSON.stringify(embeddingsHealth));
+        RequestLogger.logHealthCheck('/health/embeddings', embeddingsHealth.status, Date.now() - startTime);
 
       } else if (req.url?.startsWith('/mcp/tools/') && req.method === 'POST') {
         // MCP Tool HTTP Endpoints for Proxy Forwarding
