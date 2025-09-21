@@ -35,7 +35,7 @@ export const aidisSystemSchemas = {
 export const contextSchemas = {
   store: z.object({
     content: z.string().min(1).max(10000),
-    type: z.enum(['code', 'decision', 'error', 'discussion', 'planning', 'completion', 'milestone']),
+    type: z.enum(['code', 'decision', 'error', 'discussion', 'planning', 'completion', 'milestone', 'reflections', 'handoff']),
     tags: baseTags,
     relevanceScore: baseRelevanceScore,
     metadata: baseMetadata,
@@ -45,7 +45,7 @@ export const contextSchemas = {
   
   search: z.object({
     query: baseQuery,
-    type: z.enum(['code', 'decision', 'error', 'discussion', 'planning', 'completion', 'milestone']).optional(),
+    type: z.enum(['code', 'decision', 'error', 'discussion', 'planning', 'completion', 'milestone', 'reflections', 'handoff']).optional(),
     tags: baseTags,
     limit: baseLimit,
     minSimilarity: z.number().min(0).max(100).optional(),
@@ -269,6 +269,14 @@ export const complexitySchemas = {
     target: z.string().min(1),
     type: z.enum(['file', 'files', 'commit', 'function']),
     options: z.object({}).optional()
+  }),
+  insights: z.object({
+    view: z.enum(['dashboard', 'hotspots', 'trends', 'debt', 'refactoring']),
+    filters: z.record(z.any()).optional()
+  }),
+  manage: z.object({
+    action: z.enum(['start_tracking', 'stop_tracking', 'get_alerts', 'acknowledge_alert', 'resolve_alert', 'set_thresholds', 'get_performance']),
+    options: z.record(z.any()).optional()
   })
 };
 
@@ -314,12 +322,22 @@ export const sessionSchemas = {
   assign: z.object({
     projectName: z.string().min(1).max(255)
   }),
-  
+
   status: z.object({}),
-  
+
   new: z.object({
     title: z.string().max(500).optional(),
     projectName: z.string().min(1).max(255).optional()
+  }),
+
+  update: z.object({
+    title: z.string().max(500).optional(),
+    description: z.string().max(2000).optional(),
+    sessionId: z.string().optional()
+  }),
+
+  details: z.object({
+    sessionId: z.string().optional()
   })
 };
 
@@ -378,6 +396,37 @@ export const validationSchemas = {
   
   // Complexity Analysis
   complexity_analyze: complexitySchemas.analyze,
+  complexity_insights: complexitySchemas.insights,
+  complexity_manage: complexitySchemas.manage,
+
+  // TT009 Consolidated Tools - Metrics
+  metrics_collect: z.object({
+    scope: z.enum(['project', 'core', 'patterns', 'productivity']),
+    target: z.string().optional(),
+    options: z.record(z.any()).optional()
+  }),
+  metrics_analyze: z.object({
+    operation: z.enum(['dashboard', 'trends', 'correlations', 'executive_summary', 'aggregation']),
+    scope: z.string().optional(),
+    options: z.record(z.any()).optional()
+  }),
+  metrics_control: z.object({
+    operation: z.enum(['collection_management', 'alerts', 'performance', 'export']),
+    action: z.string().optional(),
+    options: z.record(z.any()).optional()
+  }),
+
+  // TT009 Consolidated Tools - Patterns
+  pattern_analyze: z.object({
+    target: z.enum(['project', 'session', 'commit', 'git', 'service']),
+    action: z.enum(['start', 'stop', 'status', 'analyze', 'detect', 'track', 'discovered', 'performance']),
+    options: z.record(z.any()).optional()
+  }),
+  pattern_insights: z.object({
+    operation: z.enum(['insights', 'correlations', 'recommendations', 'alerts']),
+    scope: z.string().optional(),
+    options: z.record(z.any()).optional()
+  }),
 
   // Code Analysis
   code_analyze: codeSchemas.analyze,
@@ -389,11 +438,24 @@ export const validationSchemas = {
   // Smart Search & AI Recommendations
   smart_search: smartSearchSchemas.search,
   get_recommendations: smartSearchSchemas.recommendations,
-  
+
+  // Git Integration Tools
+  git_session_commits: z.object({
+    sessionId: z.string().optional()
+  }),
+  git_commit_sessions: z.object({
+    commitHash: z.string().min(1)
+  }),
+  git_correlate_session: z.object({
+    sessionId: z.string().optional()
+  }),
+
   // Session Management
   session_assign: sessionSchemas.assign,
   session_status: sessionSchemas.status,
   session_new: sessionSchemas.new,
+  session_update: sessionSchemas.update,
+  session_details: sessionSchemas.details,
   
   // Pattern Detection
   pattern_detection_start: z.object({}),

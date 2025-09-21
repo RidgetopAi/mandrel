@@ -18,7 +18,7 @@ import { SessionTracker, ensureActiveSession } from '../services/sessionTracker.
 export interface StoreContextRequest {
   projectId?: string;
   sessionId?: string;
-  type: 'code' | 'decision' | 'error' | 'discussion' | 'planning' | 'completion';
+  type: 'code' | 'decision' | 'error' | 'discussion' | 'planning' | 'completion' | 'milestone' | 'reflections' | 'handoff';
   content: string;
   tags?: string[];
   relevanceScore?: number;

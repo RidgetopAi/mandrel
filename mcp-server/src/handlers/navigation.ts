@@ -55,7 +55,9 @@ export class NavigationHandler {
       { name: 'task_create', description: 'Create a new task for coordination' },
       { name: 'task_list', description: 'List tasks with optional filtering' },
       { name: 'task_update', description: 'Update task status and assignment' },
-      { name: 'task_details', description: 'Get detailed information for a specific task' }
+      { name: 'task_details', description: 'Get detailed information for a specific task' },
+      { name: 'task_bulk_update', description: 'Update multiple tasks atomically with the same changes' },
+      { name: 'task_progress_summary', description: 'Get task progress summary with grouping and completion percentages' }
     ],
     'Code Analysis': [
       { name: 'code_analyze', description: 'Analyze code file structure and dependencies' },
@@ -154,7 +156,7 @@ export class NavigationHandler {
       description: 'Store development context with automatic vector embedding generation for semantic search',
       parameters: [
         { name: 'content', type: 'string', required: true, description: 'The context content (code, decisions, discussions, etc.)' },
-        { name: 'type', type: 'enum', required: true, description: 'Type: code, decision, error, discussion, planning, completion, milestone' },
+        { name: 'type', type: 'enum', required: true, description: 'Type: code, decision, error, discussion, planning, completion, milestone, reflections, handoff' },
         { name: 'tags', type: 'string[]', required: false, description: 'Optional tags for categorization' },
         { name: 'relevanceScore', type: 'number', required: false, description: 'Relevance score 0-10 (default: 5)' },
         { name: 'sessionId', type: 'string', required: false, description: 'Session ID for grouping related contexts' },
@@ -628,7 +630,7 @@ export class NavigationHandler {
    */
   async getHelp(): Promise<any> {
     let helpText = '🚀 **AIDIS - AI Development Intelligence System**\n\n';
-    helpText += '**83 Tools Available Across 16 Categories:**\n\n';
+    helpText += '**49 Tools Available Across 12 Categories:**\n\n';
 
     for (const [category, tools] of Object.entries(this.toolCatalog)) {
       helpText += `## ${category} (${tools.length} tools)\n`;

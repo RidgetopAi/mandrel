@@ -6,7 +6,7 @@
  * Translates Claude Code's MCP stdio calls to AIDIS HTTP endpoints
  * Uses the working HTTP bridge at localhost:8080/mcp/tools/*
  *
- * AUTO-GENERATED: This file contains all 96 AIDIS tools from aidis_help
+ * AUTO-GENERATED: This file contains all 83 AIDIS tools from aidis_help
  */
 
 const { Server } = require('@modelcontextprotocol/sdk/server/index.js');
@@ -30,7 +30,7 @@ const server = new Server(
   }
 );
 
-// All 96 AIDIS tools from actual server
+// All 49 AIDIS tools from actual server (post TT009-4 + Enhanced Task Tools)
 const AIDIS_TOOLS = [
   // System Health (2 tools)
   { name: 'aidis_ping', description: 'Test connectivity to AIDIS server' },
@@ -69,11 +69,13 @@ const AIDIS_TOOLS = [
   { name: 'decision_update', description: 'Update decision status, outcomes, or lessons' },
   { name: 'decision_stats', description: 'Get technical decision statistics and analysis' },
 
-  // Task Management (4 tools)
+  // Task Management (6 tools)
   { name: 'task_create', description: 'Create a new task for coordination' },
   { name: 'task_list', description: 'List tasks with optional filtering' },
   { name: 'task_update', description: 'Update task status and assignment' },
   { name: 'task_details', description: 'Get detailed information for a specific task' },
+  { name: 'task_bulk_update', description: 'Update multiple tasks atomically with the same changes' },
+  { name: 'task_progress_summary', description: 'Get task progress summary with grouping and completion percentages' },
 
   // Code Analysis (5 tools)
   { name: 'code_analyze', description: 'Analyze code file structure and dependencies' },
@@ -86,74 +88,21 @@ const AIDIS_TOOLS = [
   { name: 'smart_search', description: 'Intelligent search across all project data' },
   { name: 'get_recommendations', description: 'Get AI-powered recommendations for development' },
 
-  // Code Complexity (16 tools)
-  { name: 'complexity_analyze_files', description: 'Analyze code complexity for specific files with multi-dimensional metrics' },
-  { name: 'complexity_get_dashboard', description: 'Get comprehensive complexity dashboard for project' },
-  { name: 'complexity_get_file_metrics', description: 'Get detailed complexity metrics for specific files' },
-  { name: 'complexity_get_function_metrics', description: 'Get detailed complexity metrics at function level' },
-  { name: 'complexity_get_hotspots', description: 'Get complexity hotspots that require immediate attention' },
-  { name: 'complexity_get_alerts', description: 'Get active complexity alerts and threshold violations' },
-  { name: 'complexity_acknowledge_alert', description: 'Acknowledge a complexity alert' },
-  { name: 'complexity_resolve_alert', description: 'Mark a complexity alert as resolved' },
-  { name: 'complexity_get_refactoring_opportunities', description: 'Get prioritized refactoring opportunities' },
-  { name: 'complexity_get_trends', description: 'Get complexity trends and forecasting data over time' },
-  { name: 'complexity_get_technical_debt', description: 'Get technical debt analysis based on complexity metrics' },
-  { name: 'complexity_analyze_commit', description: 'Analyze complexity for files changed in git commits' },
-  { name: 'complexity_set_thresholds', description: 'Configure complexity thresholds and alerting rules' },
-  { name: 'complexity_get_performance', description: 'Get complexity tracking system performance statistics' },
-  { name: 'complexity_start_tracking', description: 'Start the complexity tracking service' },
-  { name: 'complexity_stop_tracking', description: 'Stop the complexity tracking service' },
+  // Code Complexity (3 consolidated tools - TT009-1)
+  { name: 'complexity_analyze', description: 'Unified complexity analysis - file analysis, commit analysis, and detailed metrics' },
+  { name: 'complexity_insights', description: 'Unified complexity insights - dashboard, hotspots, trends, technical debt, and refactoring opportunities' },
+  { name: 'complexity_manage', description: 'Unified complexity management - tracking service, alerts, thresholds, and performance monitoring' },
 
-  // Development Metrics (12 tools)
-  { name: 'metrics_collect_project', description: 'Trigger comprehensive metrics collection for a project' },
-  { name: 'metrics_get_dashboard', description: 'Get comprehensive project metrics dashboard data' },
-  { name: 'metrics_get_core_metrics', description: 'Get detailed core development metrics (velocity, quality, debt)' },
-  { name: 'metrics_get_pattern_intelligence', description: 'Get pattern-based intelligence metrics' },
-  { name: 'metrics_get_productivity_health', description: 'Get developer productivity and health metrics' },
-  { name: 'metrics_get_alerts', description: 'Get active metrics alerts and notifications' },
-  { name: 'metrics_acknowledge_alert', description: 'Acknowledge a metrics alert' },
-  { name: 'metrics_resolve_alert', description: 'Mark a metrics alert as resolved' },
-  { name: 'metrics_get_trends', description: 'Get metrics trends and forecasting data' },
-  { name: 'metrics_get_performance', description: 'Get metrics collection system performance statistics' },
-  { name: 'metrics_start_collection', description: 'Start the metrics collection service' },
-  { name: 'metrics_stop_collection', description: 'Stop the metrics collection service' },
+  // Development Metrics (3 tools - TT009-2 Consolidated from 17 tools)
+  { name: 'metrics_collect', description: 'TT009-2-1: Unified metrics collection - project, core, patterns, productivity data' },
+  { name: 'metrics_analyze', description: 'TT009-2-2: Unified metrics analysis - dashboard, trends, correlations, executive summaries, aggregation' },
+  { name: 'metrics_control', description: 'TT009-2-3: Unified metrics control - collection management, alerts, performance, export' },
 
-  // Metrics Aggregation (5 tools)
-  { name: 'metrics_aggregate_projects', description: 'Aggregate metrics across multiple projects with various aggregation types' },
-  { name: 'metrics_aggregate_timeline', description: 'Aggregate metrics over time with specified granularity and smoothing' },
-  { name: 'metrics_calculate_correlations', description: 'Calculate correlations and relationships between metrics' },
-  { name: 'metrics_get_executive_summary', description: 'Generate comprehensive executive summary with key insights' },
-  { name: 'metrics_export_data', description: 'Export aggregated metrics data in various formats (CSV, JSON, Excel)' },
+  // Pattern Detection & Analysis (2 tools - TT009-3 Consolidated from 17 tools)
+  { name: 'pattern_analyze', description: 'TT009-3-1: Unified pattern analysis - detection, analysis, tracking operations' },
+  { name: 'pattern_insights', description: 'TT009-3-2: Unified pattern insights - insights, correlations, recommendations, alerts' },
 
-  // Pattern Detection (7 tools)
-  { name: 'pattern_detection_start', description: 'Start the real-time pattern detection service' },
-  { name: 'pattern_detection_stop', description: 'Stop the pattern detection service and get final metrics' },
-  { name: 'pattern_detection_status', description: 'Get pattern detection service status and performance metrics' },
-  { name: 'pattern_detect_commits', description: 'Detect patterns in specific commits or recent commits' },
-  { name: 'pattern_track_git_activity', description: 'Track git activity with automatic pattern detection' },
-  { name: 'pattern_get_alerts', description: 'Get real-time pattern alerts for high-risk discoveries' },
-  { name: 'pattern_get_session_insights', description: 'Get pattern insights for current session' },
-
-  // Pattern Analysis (10 tools)
-  { name: 'pattern_analyze_project', description: 'Get comprehensive pattern analysis for project' },
-  { name: 'pattern_analyze_session', description: 'Analyze patterns for specific session context' },
-  { name: 'pattern_analyze_commit', description: 'Analyze patterns for specific git commits with impact analysis' },
-  { name: 'pattern_get_discovered', description: 'Get discovered patterns with advanced filtering' },
-  { name: 'pattern_get_insights', description: 'Get actionable pattern insights with advanced filtering' },
-  { name: 'pattern_get_trends', description: 'Analyze pattern trends over time with forecasting' },
-  { name: 'pattern_get_correlations', description: 'Find correlations between different pattern types' },
-  { name: 'pattern_get_anomalies', description: 'Detect pattern anomalies and outliers with statistical analysis' },
-  { name: 'pattern_get_recommendations', description: 'Generate AI-driven pattern-based recommendations' },
-  { name: 'pattern_get_performance', description: 'Get pattern detection system performance metrics' },
-
-  // Outcome Tracking (7 tools)
-  { name: 'outcome_record', description: 'Record a decision outcome measurement with evidence and scoring' },
-  { name: 'outcome_track_metric', description: 'Track metrics over time for a decision to monitor progress' },
-  { name: 'outcome_analyze_impact', description: 'Analyze and record impact relationships between decisions' },
-  { name: 'outcome_conduct_retrospective', description: 'Conduct a structured retrospective on a decision' },
-  { name: 'outcome_get_insights', description: 'Get learning insights and patterns from decision outcomes' },
-  { name: 'outcome_get_analytics', description: 'Get comprehensive decision analytics, trends, and reporting' },
-  { name: 'outcome_predict_success', description: 'Predict decision success probability using historical patterns' },
+  // Outcome Tracking - REMOVED in TT009-4 (Academic features not used for building)
 
   // Git Integration (3 tools)
   { name: 'git_session_commits', description: 'Get all git commits linked to a session with correlation details' },
