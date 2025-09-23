@@ -1,10 +1,16 @@
-import { apiClient } from './api';
+/**
+ * Dashboard API service - Phase 6 Migration
+ * Uses React Query hooks instead of direct API calls
+ * Legacy code kept for backward compatibility during migration
+ */
+
+import { DashboardService } from '../api/generated';
 
 export interface DashboardStats {
   contexts: number;
   projects: number;
   activeTasks: number;
-  totalTasks?: number;      // Oracle Phase 2: Include total tasks
+  totalTasks?: number;
   recentActivity?: {
     contextsThisWeek: number;
     sessionsThisWeek: number;
@@ -31,66 +37,54 @@ export interface ContextStats {
   by_project: Record<string, number>;
 }
 
+/**
+ * Dashboard API service class
+ * Phase 6: Migrated to use generated OpenAPI client
+ */
 class DashboardApi {
   /**
    * Get comprehensive dashboard statistics
-   * Oracle Phase 2: Use new /dashboard/stats endpoint with real counts
+   * Phase 6: Uses generated DashboardService
    */
   async getDashboardStats(): Promise<DashboardStats> {
     try {
-      // Oracle Phase 2: Use real dashboard endpoint for aggregated counts
-      const response = await apiClient.get<{ 
-        success: boolean; 
-        data: {
-          contexts: number;
-          activeTasks: number;
-          totalTasks: number;
-          projects: number;
-          recentActivity: {
-            contextsThisWeek: number;
-            tasksCompletedThisWeek: number;
-          };
-        }
-      }>('/dashboard/stats');
+      const response = await DashboardService.getDashboardStats();
 
-      // Extract data from API response
-      // Backend returns: { success: true, data: { contexts, activeTasks, ... } }
-      // API client returns the whole response, so we need response.data
-      const apiData = response.data;
-      
-      console.log('📊 Oracle Phase 2 Dashboard - API Response:', {
-        response: response,
-        extractedData: apiData,
-        endpoint: '/dashboard/stats'
-      });
+      if (!response.data) {
+        throw new Error('Invalid response from dashboard stats endpoint');
+      }
 
-      // Transform to frontend DashboardStats format (no hardcoded zeros!)
+      // Transform to frontend DashboardStats format
       const dashboardStats: DashboardStats = {
-        contexts: apiData.contexts,
-        projects: apiData.projects,
-        activeTasks: apiData.activeTasks,
+        contexts: response.data.contexts ?? 0,
+        projects: response.data.projects ?? 0,
+        activeTasks: response.data.activeTasks ?? 0,
+        totalTasks: response.data.totalTasks ?? 0,
         recentActivity: {
-          contextsThisWeek: apiData.recentActivity.contextsThisWeek,
-          sessionsThisWeek: apiData.recentActivity.tasksCompletedThisWeek
+          contextsThisWeek: response.data.recentActivity?.contextsThisWeek ?? 0,
+          sessionsThisWeek: response.data.recentActivity?.tasksCompletedThisWeek ?? 0
         }
       };
-      
-      console.log('✅ Oracle Phase 2 Dashboard - Final Stats:', dashboardStats);
+
+      console.log('✅ Phase 6 Dashboard - Generated API Stats:', dashboardStats);
       return dashboardStats;
-      
+
     } catch (error) {
-      console.error('❌ Oracle Phase 2 Dashboard API Error:', error);
+      console.error('❌ Phase 6 Dashboard API Error:', error);
       throw error;
     }
   }
 
   /**
    * Get project statistics
+   * TODO: Migrate to ProjectsService when available
    */
   async getProjectStats(): Promise<ProjectStats> {
     try {
-      const response = await apiClient.get<{ success: boolean; data: { stats: ProjectStats } }>('/projects/stats');
-      return response.data.stats;
+      // Temporary fallback to fetch until ProjectsService is migrated
+      const response = await fetch('/api/projects/stats');
+      const data = await response.json();
+      return data.data?.stats ?? data;
     } catch (error) {
       console.error('Project stats fetch error:', error);
       throw error;
@@ -99,12 +93,15 @@ class DashboardApi {
 
   /**
    * Get context statistics
+   * TODO: Migrate to ContextsService when available
    */
   async getContextStats(projectId?: string): Promise<ContextStats> {
     try {
-      const url = projectId ? `/contexts/stats?project_id=${projectId}` : '/contexts/stats';
-      const response = await apiClient.get<{ success: boolean; data: ContextStats }>(url);
-      return response.data;
+      // Temporary fallback to fetch until ContextsService is migrated
+      const url = projectId ? `/api/contexts/stats?project_id=${projectId}` : '/api/contexts/stats';
+      const response = await fetch(url);
+      const data = await response.json();
+      return data.data ?? data;
     } catch (error) {
       console.error('Context stats fetch error:', error);
       throw error;
@@ -114,3 +111,6 @@ class DashboardApi {
 
 const dashboardApiInstance = new DashboardApi();
 export default dashboardApiInstance;
+
+// Export the hooks for components that want to use React Query directly
+export { useDashboardStats, useProjectStats, useContextStats } from '../hooks/useDashboard';
