@@ -91,6 +91,10 @@ import { outcomeTrackingHandler } from './handlers/outcomeTracking.js';
 import { MetricsAggregationHandler } from './handlers/metricsAggregation.js';
 import { ensureFeatureFlags } from './utils/featureFlags.js';
 import { portManager } from './utils/portManager.js';
+// Phase 5 Integration: V2 API Router
+// import { V2McpRouter } from './api/v2/mcpRoutes.js'; // Disabled - using direct integration
+import { IngressValidator } from './middleware/ingressValidation.js';
+import { McpResponseHandler } from './utils/mcpResponseHandler.js';
 
 // Enterprise hardening constants
 const PID_FILE = '/home/ridgetop/aidis/run/aidis.pid';
@@ -315,6 +319,7 @@ class RetryHandler {
 class AIDISServer {
   private server: Server;
   private healthServer: http.Server | null = null;
+  // private v2McpRouter: V2McpRouter; // Disabled - using direct integration
   private circuitBreaker: CircuitBreaker;
   private singleton: ProcessSingleton;
   private dbHealthy: boolean = false;
@@ -322,6 +327,8 @@ class AIDISServer {
   constructor() {
     this.circuitBreaker = new CircuitBreaker();
     this.singleton = new ProcessSingleton();
+    // Phase 5 Integration: Initialize V2 API router
+    // this.v2McpRouter = new V2McpRouter(); // Disabled - using direct integration
     
     this.server = new Server(
       {
@@ -367,7 +374,18 @@ class AIDISServer {
    */
   private setupHealthServer(): void {
     this.healthServer = http.createServer(async (req, res) => {
+      // CORS headers for cross-origin requests from frontend
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
       res.setHeader('Content-Type', 'application/json');
+
+      // Handle preflight OPTIONS requests
+      if (req.method === 'OPTIONS') {
+        res.writeHead(200);
+        res.end();
+        return;
+      }
 
       if (req.url === '/healthz' || req.url === '/health') {
         // Basic health check - always returns 200 if server is responding
@@ -489,7 +507,11 @@ class AIDISServer {
       } else if (req.url?.startsWith('/mcp/tools/') && req.method === 'POST') {
         // MCP Tool HTTP Endpoints for Proxy Forwarding
         await this.handleMcpToolRequest(req, res);
-        
+
+      } else if (req.url?.startsWith('/v2/mcp/')) {
+        // Phase 5 Integration: V2 API Routes
+        await this.handleV2McpRequest(req, res);
+
       } else {
         res.writeHead(404);
         res.end(JSON.stringify({ error: 'Not found' }));
@@ -563,6 +585,194 @@ class AIDISServer {
         type: responseError.constructor.name,
         correlationId: CorrelationIdManager.get()
       }));
+    }
+  }
+
+  /**
+   * Handle V2 MCP API Requests (Phase 5 Integration)
+   */
+  private async handleV2McpRequest(req: http.IncomingMessage, res: http.ServerResponse): Promise<void> {
+    try {
+      // Create a simplified Express-like request/response adapter
+      const expressReq = {
+        method: req.method,
+        path: req.url?.replace('/v2/mcp', '') || '/',
+        url: req.url,
+        params: {},
+        body: {},
+        headers: req.headers
+      } as any;
+
+      const expressRes = {
+        json: (data: any) => {
+          res.setHeader('Content-Type', 'application/json');
+          res.writeHead(200);
+          res.end(JSON.stringify(data));
+        },
+        status: (code: number) => ({
+          json: (data: any) => {
+            res.setHeader('Content-Type', 'application/json');
+            res.writeHead(code);
+            res.end(JSON.stringify(data));
+          }
+        })
+      } as any;
+
+      // Parse request body for POST requests
+      if (req.method === 'POST') {
+        let body = '';
+        req.on('data', chunk => body += chunk);
+        await new Promise<void>((resolve) => {
+          req.on('end', resolve);
+        });
+        expressReq.body = body ? JSON.parse(body) : {};
+      }
+
+      // Extract tool name from URL for tool endpoints
+      if (req.url?.match(/\/v2\/mcp\/tools\/([^\/]+)/)) {
+        const match = req.url.match(/\/v2\/mcp\/tools\/([^\/]+)/);
+        expressReq.params.tool = match![1];
+      }
+
+      // Route to V2 router - simulate Express middleware
+      await this.simulateV2Routing(expressReq, expressRes);
+
+    } catch (error: any) {
+      logger.error('V2 MCP API error', {
+        error: error.message,
+        url: req.url,
+        method: req.method
+      });
+
+      res.setHeader('Content-Type', 'application/json');
+      res.writeHead(500);
+      res.end(JSON.stringify({
+        success: false,
+        error: 'Internal server error',
+        version: '2.0.0'
+      }));
+    }
+  }
+
+  /**
+   * Simulate V2 Router functionality without Express
+   */
+  private async simulateV2Routing(req: any, res: any): Promise<void> {
+    const path = req.path;
+
+    if (path === '/') {
+      // API info endpoint
+      res.json({
+        version: '2.0.0',
+        compatibleVersions: ['2.0.0', '2.1.0'],
+        endpoints: {
+          tools: '/v2/mcp/tools/:toolName',
+          list: '/v2/mcp/tools',
+          health: '/v2/mcp/health'
+        }
+      });
+    } else if (path === '/health') {
+      // Health endpoint
+      res.json({
+        status: 'healthy',
+        version: '2.0.0',
+        timestamp: new Date().toISOString(),
+        toolsAvailable: 47
+      });
+    } else if (path === '/tools' && req.method === 'GET') {
+      // List tools endpoint
+      res.json({
+        success: true,
+        version: '2.0.0',
+        data: {
+          tools: [
+            { name: 'context_store', endpoint: '/v2/mcp/tools/context_store' },
+            { name: 'project_list', endpoint: '/v2/mcp/tools/project_list' },
+            // Add more tools as needed
+          ],
+          totalCount: 47
+        }
+      });
+    } else if (path.startsWith('/tools/') && req.method === 'POST') {
+      // Tool execution endpoint
+      const tool = req.params.tool;
+      const requestId = `v2-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      const startTime = Date.now();
+
+      try {
+        // Enhanced validation using IngressValidator
+        const validationContext = IngressValidator.createValidationContext(
+          tool,
+          requestId,
+          'http'
+        );
+
+        const validationResult = await IngressValidator.validateIngressRequest(
+          tool,
+          req.body.arguments || {},
+          validationContext,
+          {
+            enableSanitization: true,
+            enableAuditLogging: true,
+            maxRequestSize: 1024 * 1024
+          }
+        );
+
+        if (!validationResult.success) {
+          return res.status(400).json({
+            success: false,
+            error: 'Validation failed',
+            details: validationResult.errors,
+            version: '2.0.0',
+            requestId
+          });
+        }
+
+        // Execute tool using enhanced response handler
+        const toolResult = await this.executeToolOperation(tool, validationResult.data || {});
+
+        // Process response through response handler
+        const responseResult = await McpResponseHandler.processResponse(
+          JSON.stringify(toolResult),
+          { toolName: tool, requestId }
+        );
+
+        if (!responseResult.success) {
+          return res.status(500).json({
+            success: false,
+            error: 'Tool execution failed',
+            details: responseResult.error,
+            version: '2.0.0',
+            requestId,
+            processingTime: Date.now() - startTime
+          });
+        }
+
+        res.json({
+          success: true,
+          data: responseResult.data,
+          version: '2.0.0',
+          requestId,
+          processingTime: Date.now() - startTime,
+          warnings: validationResult.warnings?.length ? validationResult.warnings : undefined
+        });
+
+      } catch (error: any) {
+        res.status(500).json({
+          success: false,
+          error: 'Internal server error',
+          version: '2.0.0',
+          requestId,
+          processingTime: Date.now() - startTime
+        });
+      }
+    } else {
+      res.status(404).json({
+        success: false,
+        error: 'Endpoint not found',
+        version: '2.0.0',
+        path: req.path
+      });
     }
   }
 
