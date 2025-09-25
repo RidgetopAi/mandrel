@@ -1,14 +1,21 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React from 'react';
 import { Card, Typography, Spin, Alert, Button, Space, Tabs, Row, Col, Statistic, Progress, Tag } from 'antd';
-import { 
-  RocketOutlined, TeamOutlined, CodeOutlined, BulbOutlined, 
+import {
+  RocketOutlined, TeamOutlined, CodeOutlined, BulbOutlined,
   WarningOutlined, CheckCircleOutlined, InfoCircleOutlined,
   ReloadOutlined, TrophyOutlined
 } from '@ant-design/icons';
-import { ProjectApi, ProjectInsights as ProjectInsightsData } from '../../services/projectApi';
+import { useProjectInsights } from '../../hooks/useProjects';
 
 const { Text, Paragraph } = Typography;
 const { TabPane } = Tabs;
+
+// Define the ProjectInsights type based on what the component expects
+interface ProjectInsightsData {
+  insights: string;
+  generatedAt: string;
+  projectId: string;
+}
 
 interface ProjectInsightsProps {
   projectId: string;
@@ -34,31 +41,24 @@ interface ParsedInsights {
 }
 
 const ProjectInsights: React.FC<ProjectInsightsProps> = ({ projectId, className }) => {
-  const [insights, setInsights] = useState<ProjectInsightsData | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { data: insightsResponse, isLoading: loading, error, refetch } = useProjectInsights(projectId);
 
-  const fetchInsights = useCallback(async () => {
-    if (!projectId) return;
+  // Debug logging to understand the issue
+  console.log('[ProjectInsights] Debug Info:', {
+    projectId,
+    insightsResponse,
+    responseData: insightsResponse?.data,
+    loading,
+    error,
+    hasData: !!insightsResponse?.data
+  });
 
-    setLoading(true);
-    setError(null);
-    
-    try {
-      const data = await ProjectApi.getProjectInsights(projectId);
-      setInsights(data);
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch project insights';
-      setError(errorMessage);
-      console.error('Project insights error:', err);
-    } finally {
-      setLoading(false);
-    }
-  }, [projectId]);
-
-  useEffect(() => {
-    fetchInsights();
-  }, [fetchInsights]);
+  // Extract the insights data from the API response
+  const insights: ProjectInsightsData | null = insightsResponse?.data ? {
+    insights: insightsResponse.data.insights || '',
+    generatedAt: insightsResponse.data.generatedAt || new Date().toISOString(),
+    projectId: projectId
+  } : null;
 
   const parseInsights = (rawInsights: string | any): ParsedInsights => {
     try {
@@ -306,10 +306,10 @@ const ProjectInsights: React.FC<ProjectInsightsProps> = ({ projectId, className 
       <Card className={className}>
         <Alert
           message="Failed to Load Project Insights"
-          description={error}
+          description={error instanceof Error ? error.message : 'Failed to fetch project insights'}
           type="error"
           action={
-            <Button size="small" onClick={fetchInsights}>
+            <Button size="small" onClick={() => refetch()}>
               <ReloadOutlined /> Retry
             </Button>
           }
@@ -326,7 +326,7 @@ const ProjectInsights: React.FC<ProjectInsightsProps> = ({ projectId, className 
           description="Project insights could not be generated at this time."
           type="info"
           action={
-            <Button size="small" onClick={fetchInsights}>
+            <Button size="small" onClick={() => refetch()}>
               <ReloadOutlined /> Try Again
             </Button>
           }
@@ -348,7 +348,7 @@ const ProjectInsights: React.FC<ProjectInsightsProps> = ({ projectId, className 
         </Space>
       }
       extra={
-        <Button size="small" onClick={fetchInsights} loading={loading}>
+        <Button size="small" onClick={() => refetch()} loading={loading}>
           <ReloadOutlined /> Refresh
         </Button>
       }
