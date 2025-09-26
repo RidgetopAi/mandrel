@@ -7,10 +7,20 @@ import {
   ThunderboltOutlined,
   BarChartOutlined,
   SettingOutlined,
+  AimOutlined,
+  ClusterOutlined,
+  AlertOutlined,
+  LineChartOutlined,
 } from '@ant-design/icons';
 import { useEmbeddingStore } from '../stores/embeddingStore';
 import SimilarityHeatmap from '../components/embedding/SimilarityHeatmap';
 import ScatterProjection from '../components/embedding/ScatterProjection';
+import ClusterAnalysis from '../components/embedding/ClusterAnalysis';
+import QualityMetrics from '../components/embedding/QualityMetrics';
+import RelevanceDashboard from '../components/embedding/RelevanceDashboard';
+import ProjectRelationshipMap from '../components/embedding/ProjectRelationshipMap';
+import KnowledgeGapInsights from '../components/embedding/KnowledgeGapInsights';
+import UsagePatterns from '../components/embedding/UsagePatterns';
 
 const { Title, Text } = Typography;
 
@@ -46,21 +56,47 @@ const Embedding: React.FC = () => {
           Clustering
         </Space>
       ),
-      children: (
-        <Card title="Embedding Clusters" bordered={false}>
-          <Alert
-            message="Phase 3: k-means Clustering Overlay"
-            description="Clustering analysis with k-means algorithm and cluster visualization."
-            type="info"
-            showIcon
-            style={{ marginBottom: 16 }}
-          />
-          <Text type="secondary">
-            Apply clustering algorithms to group similar embeddings and visualize 
-            the clusters with different colors and labels.
-          </Text>
-        </Card>
+      children: <ClusterAnalysis />,
+    },
+    {
+      key: 'relevance',
+      label: (
+        <Space>
+          <AimOutlined />
+          Relevance
+        </Space>
       ),
+      children: <RelevanceDashboard />,
+    },
+    {
+      key: 'relationships',
+      label: (
+        <Space>
+          <ClusterOutlined />
+          Relationships
+        </Space>
+      ),
+      children: <ProjectRelationshipMap />,
+    },
+    {
+      key: 'knowledge',
+      label: (
+        <Space>
+          <AlertOutlined />
+          Knowledge Gaps
+        </Space>
+      ),
+      children: <KnowledgeGapInsights />,
+    },
+    {
+      key: 'usage',
+      label: (
+        <Space>
+          <LineChartOutlined />
+          Usage Patterns
+        </Space>
+      ),
+      children: <UsagePatterns />,
     },
     {
       key: '3d',
@@ -94,21 +130,7 @@ const Embedding: React.FC = () => {
           Metrics
         </Space>
       ),
-      children: (
-        <Card title="Embedding Quality Metrics" bordered={false}>
-          <Alert
-            message="Phase 5: Quality Metrics Dashboard"
-            description="Statistical analysis and quality metrics for embedding evaluation."
-            type="info"
-            showIcon
-            style={{ marginBottom: 16 }}
-          />
-          <Text type="secondary">
-            Comprehensive metrics including silhouette scores, inertia, 
-            variance explained, and other quality indicators.
-          </Text>
-        </Card>
-      ),
+      children: <QualityMetrics />,
     },
     {
       key: 'settings',

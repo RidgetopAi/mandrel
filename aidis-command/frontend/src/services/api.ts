@@ -2,28 +2,7 @@ import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
 
 const UNASSIGNED_PROJECT_ID = '00000000-0000-0000-0000-000000000000';
 
-export interface User {
-  id: string;
-  username: string;
-  email: string;
-  role: string;
-  firstName?: string;
-  lastName?: string;
-  isActive: boolean;
-  lastLogin?: string;
-  createdAt: string;
-}
-
-export interface LoginRequest {
-  username: string;
-  password: string;
-}
-
-export interface LoginResponse {
-  token: string;
-  user: User;
-  expires: string;
-}
+// Legacy auth interfaces removed - use generated types from src/api/generated/models/
 
 export interface ApiError {
   message: string;
@@ -39,8 +18,13 @@ class ApiClient {
   }
 
   constructor() {
+    const baseURL =
+      process.env.REACT_APP_API_URL ||
+      process.env.REACT_APP_API_BASE_URL ||
+      '/api';
+
     this._instance = axios.create({
-      baseURL: process.env.REACT_APP_API_URL || 'http://localhost:5000/api',
+      baseURL,
       timeout: 10000,
       headers: {
         'Content-Type': 'application/json',
@@ -104,30 +88,8 @@ class ApiClient {
     );
   }
 
-  // Authentication endpoints
-  async login(credentials: LoginRequest): Promise<LoginResponse> {
-    const response = await this._instance.post<LoginResponse>('/auth/login', credentials);
-    return response.data;
-  }
-
-  async logout(): Promise<void> {
-    try {
-      await this._instance.post('/auth/logout');
-    } finally {
-      localStorage.removeItem('aidis_token');
-      localStorage.removeItem('aidis_user');
-    }
-  }
-
-  async refreshToken(): Promise<{ token: string; expires: string }> {
-    const response = await this._instance.post<{ token: string; expires: string }>('/auth/refresh');
-    return response.data;
-  }
-
-  async getCurrentUser(): Promise<User> {
-    const response = await this._instance.get<{ success: boolean; data: { user: User } }>('/auth/profile');
-    return response.data.data.user;
-  }
+  // Legacy authentication methods removed - use generated AuthenticationService instead
+  // See: src/hooks/useAuth.ts for React Query auth hooks
 
   // Generic HTTP methods
   async get<T>(url: string, config?: AxiosRequestConfig): Promise<T> {

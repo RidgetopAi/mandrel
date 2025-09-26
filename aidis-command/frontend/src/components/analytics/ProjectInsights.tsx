@@ -10,9 +10,13 @@ import { useProjectInsights } from '../../hooks/useProjects';
 const { Text, Paragraph } = Typography;
 const { TabPane } = Tabs;
 
-// Define the ProjectInsights type based on what the component expects
+// Define the ProjectInsights type based on what the backend actually returns
 interface ProjectInsightsData {
-  insights: string;
+  insights: {
+    projectHealth?: any;
+    teamEfficiency?: any;
+    raw?: string;
+  } | string; // Support both new structured format and legacy string format
   generatedAt: string;
   projectId: string;
 }
@@ -62,9 +66,16 @@ const ProjectInsights: React.FC<ProjectInsightsProps> = ({ projectId, className 
 
   const parseInsights = (rawInsights: string | any): ParsedInsights => {
     try {
-      // Ensure rawInsights is a string
-      const insightsStr = typeof rawInsights === 'string' ? rawInsights : JSON.stringify(rawInsights);
-      
+      // Handle structured response - extract raw content if available
+      let insightsStr: string;
+      if (typeof rawInsights === 'string') {
+        insightsStr = rawInsights;
+      } else if (rawInsights && typeof rawInsights === 'object' && rawInsights.raw) {
+        insightsStr = rawInsights.raw;
+      } else {
+        insightsStr = JSON.stringify(rawInsights, null, 2);
+      }
+
       // Parse the text response from MCP tool
       // Extract metrics using regex patterns
       const codeHealthMatch = insightsStr.match(/Code Health:.*?(\d+\.?\d*)/);
@@ -279,7 +290,27 @@ const ProjectInsights: React.FC<ProjectInsightsProps> = ({ projectId, className 
           borderRadius: '4px',
           overflow: 'auto'
         }}>
-          {insights?.insights || 'No insights available'}
+{(() => {
+            // Handle structured response properly
+            if (!insights?.insights) {
+              return 'No insights available';
+            }
+
+            if (typeof insights.insights === 'string') {
+              return insights.insights;
+            }
+
+            // If it's a structured object, try to get the raw content
+            if (insights.insights && typeof insights.insights === 'object') {
+              if (insights.insights.raw) {
+                return insights.insights.raw;
+              }
+              // Fallback to formatted JSON if no raw property
+              return JSON.stringify(insights.insights, null, 2);
+            }
+
+            return 'No insights available';
+          })()}
         </pre>
       </Paragraph>
       <Text type="secondary" style={{ fontSize: '11px' }}>

@@ -48,13 +48,14 @@ const NamingRegister: React.FC<NamingRegisterProps> = ({
 
     setCheckingAvailability(true);
     try {
+      const currentType = form.getFieldValue('type');
       // Check availability
       const availability = await NamingApi.checkNameAvailability(name);
       setAvailabilityResult(availability);
 
       // Get suggestions if name is not available
       if (!availability.available) {
-        const nameSuggestions = await NamingApi.getSuggestions(name);
+        const nameSuggestions = await NamingApi.getSuggestions(name, currentType);
         setSuggestions(nameSuggestions);
       } else {
         setSuggestions([]);

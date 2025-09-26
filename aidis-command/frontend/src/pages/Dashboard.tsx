@@ -22,9 +22,15 @@ import {
 import { useAuthContext } from '../contexts/AuthContext';
 import { useProjectContext } from '../contexts/ProjectContext';
 import { useDashboardStats } from '../hooks/useDashboardStats';
+import { useAidisV2Status } from '../hooks/useAidisV2Status';
 import ProjectInsights from '../components/analytics/ProjectInsights';
 import SystemMonitoring from '../components/analytics/SystemMonitoring';
+import MonitoringStats from '../components/analytics/MonitoringStats';
+import MonitoringAlerts from '../components/analytics/MonitoringAlerts';
+import MonitoringTrends from '../components/analytics/MonitoringTrends';
 import SessionSummaries from '../components/analytics/SessionSummaries';
+import AidisV2ApiTest from '../components/testing/AidisV2ApiTest';
+import ErrorBoundaryDemo from '../components/testing/ErrorBoundaryDemo';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -32,9 +38,12 @@ const Dashboard: React.FC = () => {
   const { user } = useAuthContext();
   const { currentProject } = useProjectContext();
   const navigate = useNavigate();
-  
+
   // Oracle Phase 2: Use dashboard stats hook with real data
   const { stats, isLoading, error, refetch } = useDashboardStats();
+
+  // TR001-6: AIDIS V2 API Status
+  const { status: aidisV2Status } = useAidisV2Status();
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -49,7 +58,7 @@ const Dashboard: React.FC = () => {
       <Space direction="vertical" size="large" style={{ width: '100%' }}>
         <div>
           <Title level={2} style={{ marginBottom: '8px' }}>
-            {getGreeting()}, {user?.firstName || user?.username}! 👋
+            {getGreeting()}, {user?.username || 'User'}! 👋
           </Title>
           <Text type="secondary">
             Welcome to AIDIS Command - Your AI Development Intelligence System
@@ -78,7 +87,7 @@ const Dashboard: React.FC = () => {
       {/* Welcome Header */}
       <div>
         <Title level={2} style={{ marginBottom: '8px' }}>
-          {getGreeting()}, {user?.firstName || user?.username}! 👋
+          {getGreeting()}, {user?.username || 'User'}! 👋
         </Title>
         <Text type="secondary">
           Welcome to AIDIS Command - Your AI Development Intelligence System
@@ -162,6 +171,19 @@ const Dashboard: React.FC = () => {
       {/* System Monitoring */}
       <SystemMonitoring />
 
+      {/* Monitoring Insights */}
+      <Row gutter={[24, 24]}>
+        <Col xs={24} xl={8}>
+          <MonitoringStats />
+        </Col>
+        <Col xs={24} xl={8}>
+          <MonitoringAlerts limit={10} />
+        </Col>
+        <Col xs={24} xl={8}>
+          <MonitoringTrends />
+        </Col>
+      </Row>
+
       {/* Feature Cards */}
       <Row gutter={[24, 24]}>
         <Col xs={24} lg={8}>
@@ -223,16 +245,45 @@ const Dashboard: React.FC = () => {
           </Col>
           <Col span={8}>
             <Space>
-              <ExclamationCircleOutlined style={{ color: '#fa8c16', fontSize: '18px' }} />
+              {aidisV2Status.status === 'connected' && (
+                <CheckCircleOutlined style={{ color: '#52c41a', fontSize: '18px' }} />
+              )}
+              {aidisV2Status.status === 'connecting' && (
+                <Spin size="small" />
+              )}
+              {aidisV2Status.status === 'error' && (
+                <ExclamationCircleOutlined style={{ color: '#ff4d4f', fontSize: '18px' }} />
+              )}
+              {aidisV2Status.status === 'unknown' && (
+                <ExclamationCircleOutlined style={{ color: '#fa8c16', fontSize: '18px' }} />
+              )}
               <div>
-                <Text strong>AIDIS MCP</Text>
+                <Text strong>
+                  AIDIS V2 API
+                  {aidisV2Status.health?.version && (
+                    <Text type="secondary"> v{aidisV2Status.health.version}</Text>
+                  )}
+                </Text>
                 <br />
-                <Text type="secondary">Connecting...</Text>
+                <Text type="secondary">
+                  {aidisV2Status.status === 'connected' &&
+                    `${aidisV2Status.health?.toolsAvailable || 0} tools (${aidisV2Status.responseTime}ms)`
+                  }
+                  {aidisV2Status.status === 'connecting' && 'Connecting...'}
+                  {aidisV2Status.status === 'error' && 'Connection failed'}
+                  {aidisV2Status.status === 'unknown' && 'Checking...'}
+                </Text>
               </div>
             </Space>
           </Col>
         </Row>
       </Card>
+
+      {/* TR001-6: AIDIS V2 API Integration Test */}
+      <AidisV2ApiTest />
+
+      {/* TR002-6: Error Boundary & Fallback Components Demo */}
+      <ErrorBoundaryDemo />
     </Space>
   );
 };

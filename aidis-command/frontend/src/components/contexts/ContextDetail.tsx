@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Drawer, Typography, Space, Tag, Button, Descriptions, Card,
   Tabs, List, message, Spin, Input, Form, Select
@@ -8,8 +8,17 @@ import {
   DeleteOutlined, TagsOutlined, CalendarOutlined, DatabaseOutlined,
   LinkOutlined, FolderOutlined, UserOutlined
 } from '@ant-design/icons';
-import { Context, useContextStore } from '../../stores/contextStore';
-import { ContextApi } from '../../services/contextApi';
+import { useContextStore } from '../../stores/contextStore';
+import type { Context } from '../../types/context';
+import {
+  useDeleteContext,
+  useRelatedContextsQuery,
+  useUpdateContext,
+} from '../../hooks/useContexts';
+import {
+  getTypeColor,
+  getTypeDisplayName,
+} from '../../utils/contextHelpers';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
@@ -38,24 +47,12 @@ const ContextDetail: React.FC<ContextDetailProps> = ({
 }) => {
   const { relatedContexts, setRelatedContexts, setCurrentContext } = useContextStore();
   const [isEditing, setIsEditing] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [loadingRelated, setLoadingRelated] = useState(false);
   const [form] = Form.useForm();
-
-  const loadRelatedContexts = useCallback(async () => {
-    if (!context) return;
-    
-    setLoadingRelated(true);
-    try {
-      const related = await ContextApi.getRelatedContexts(context.id);
-      setRelatedContexts(related);
-    } catch (error) {
-      console.error('Failed to load related contexts:', error);
-      message.error('Failed to load related contexts');
-    } finally {
-      setLoadingRelated(false);
-    }
-  }, [context, setRelatedContexts]);
+  const updateContextMutation = useUpdateContext();
+  const deleteContextMutation = useDeleteContext();
+  const { data: relatedData, isFetching: loadingRelated } = useRelatedContextsQuery(context?.id, Boolean(visible && context));
+  const updating = updateContextMutation.isPending;
+  const deleting = deleteContextMutation.isPending;
 
   useEffect(() => {
     if (context) {
@@ -64,9 +61,16 @@ const ContextDetail: React.FC<ContextDetailProps> = ({
         tags: context.tags || [],
         relevance_score: context.relevance_score
       });
-      loadRelatedContexts();
     }
-  }, [context, form, loadRelatedContexts]);
+  }, [context, form]);
+
+  useEffect(() => {
+    if (relatedData) {
+      setRelatedContexts(relatedData as Context[]);
+    } else {
+      setRelatedContexts([]);
+    }
+  }, [relatedData, setRelatedContexts]);
 
   const handleEdit = () => {
     setIsEditing(true);
@@ -86,13 +90,15 @@ const ContextDetail: React.FC<ContextDetailProps> = ({
   const handleSave = async () => {
     if (!context) return;
 
-    setLoading(true);
     try {
       const values = await form.validateFields();
-      const updatedContext = await ContextApi.updateContext(context.id, {
-        content: values.content,
-        tags: values.tags,
-        relevance_score: values.relevance_score
+      const updatedContext = await updateContextMutation.mutateAsync({
+        id: context.id,
+        updates: {
+          content: values.content,
+          tags: values.tags,
+          relevance_score: values.relevance_score,
+        },
       });
 
       setCurrentContext(updatedContext);
@@ -102,8 +108,6 @@ const ContextDetail: React.FC<ContextDetailProps> = ({
     } catch (error) {
       console.error('Failed to update context:', error);
       message.error('Failed to update context');
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -111,7 +115,7 @@ const ContextDetail: React.FC<ContextDetailProps> = ({
     if (!context) return;
 
     try {
-      await ContextApi.deleteContext(context.id);
+      await deleteContextMutation.mutateAsync(context.id);
       onDelete?.(context);
       onClose();
       message.success('Context deleted successfully');
@@ -126,7 +130,7 @@ const ContextDetail: React.FC<ContextDetailProps> = ({
     
     const shareData = {
       title: `Context: ${context.type}`,
-      text: `AIDIS Context\n\nType: ${ContextApi.getTypeDisplayName(context.type)}\nProject: ${context.project_name || 'Unknown'}\nCreated: ${dayjs(context.created_at).format('YYYY-MM-DD HH:mm')}\n\nContent:\n${context.content}`,
+      text: `AIDIS Context\n\nType: ${getTypeDisplayName(context.type)}\nProject: ${context.project_name || 'Unknown'}\nCreated: ${dayjs(context.created_at).format('YYYY-MM-DD HH:mm')}\n\nContent:\n${context.content}`,
       url: window.location.href
     };
 
@@ -151,8 +155,8 @@ const ContextDetail: React.FC<ContextDetailProps> = ({
 
   if (!context) return null;
 
-  const typeColor = ContextApi.getTypeColor(context.type);
-  const typeDisplayName = ContextApi.getTypeDisplayName(context.type);
+  const typeColor = getTypeColor(context.type);
+  const typeDisplayName = getTypeDisplayName(context.type);
 
   return (
     <Drawer
@@ -174,11 +178,12 @@ const ContextDetail: React.FC<ContextDetailProps> = ({
           {isEditing ? (
             <>
               <Button onClick={handleCancelEdit}>Cancel</Button>
-              <Button 
-                type="primary" 
-                icon={<SaveOutlined />} 
+              <Button
+                type="primary"
+                icon={<SaveOutlined />}
                 onClick={handleSave}
-                loading={loading}
+                loading={updating}
+                disabled={updating}
               >
                 Save
               </Button>
@@ -192,10 +197,12 @@ const ContextDetail: React.FC<ContextDetailProps> = ({
               Edit
             </Button>
           )}
-          <Button 
-            danger 
-            icon={<DeleteOutlined />} 
+          <Button
+            danger
+            icon={<DeleteOutlined />}
             onClick={handleDelete}
+            loading={deleting}
+            disabled={deleting}
           >
             Delete
           </Button>
@@ -329,8 +336,8 @@ const ContextDetail: React.FC<ContextDetailProps> = ({
                     <List.Item.Meta
                       title={
                         <Space>
-                          <Tag color={ContextApi.getTypeColor(relatedContext.type)}>
-                            {ContextApi.getTypeDisplayName(relatedContext.type)}
+                          <Tag color={getTypeColor(relatedContext.type)}>
+                            {getTypeDisplayName(relatedContext.type)}
                           </Tag>
                           <Text>{relatedContext.project_name}</Text>
                         </Space>

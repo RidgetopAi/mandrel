@@ -13,13 +13,16 @@ import {
   CloseOutlined,
   FileTextOutlined
 } from '@ant-design/icons';
-import { ProjectApi, Session, UpdateSessionRequest } from '../../services/projectApi';
+import type { Session, UpdateSessionRequest } from '../../types/session';
+import { useUpdateSession } from '../../hooks/useProjects';
 
 const { Text, Paragraph } = Typography;
 const { TextArea } = Input;
 
+type EditableSession = Partial<Session> & Pick<Session, 'id' | 'created_at'>;
+
 interface SessionInlineEditProps {
-  session: Session;
+  session: EditableSession;
   field: 'title' | 'description';
   onUpdate: (updatedSession: Session) => void;
   placeholder?: string;
@@ -37,7 +40,8 @@ const SessionInlineEdit: React.FC<SessionInlineEditProps> = ({
 }) => {
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(session[field] || '');
-  const [loading, setLoading] = useState(false);
+
+  const updateSessionMutation = useUpdateSession();
 
   const currentValue = session[field] || '';
   const hasValue = Boolean(currentValue.trim());
@@ -54,32 +58,31 @@ const SessionInlineEdit: React.FC<SessionInlineEditProps> = ({
 
   const handleSave = async () => {
     const trimmedValue = value.trim();
-    
+
     // If no change, just exit edit mode
     if (trimmedValue === currentValue) {
       setEditing(false);
       return;
     }
 
-    try {
-      setLoading(true);
+    const updates: UpdateSessionRequest = {
+      [field]: trimmedValue || undefined
+    };
 
-      const updates: UpdateSessionRequest = {
-        [field]: trimmedValue || undefined
-      };
-
-      const updatedSession = await ProjectApi.updateSession(session.id, updates);
-      
-      message.success(`Session ${field} updated successfully`);
-      onUpdate(updatedSession);
-      setEditing(false);
-      
-    } catch (error: any) {
-      console.error(`Failed to update session ${field}:`, error);
-      message.error(error.message || `Failed to update session ${field}`);
-    } finally {
-      setLoading(false);
-    }
+    updateSessionMutation.mutate(
+      { sessionId: session.id, updates },
+      {
+        onSuccess: (updatedSession) => {
+          message.success(`Session ${field} updated successfully`);
+          onUpdate(updatedSession);
+          setEditing(false);
+        },
+        onError: (error: any) => {
+          console.error(`Failed to update session ${field}:`, error);
+          message.error(error.message || `Failed to update session ${field}`);
+        }
+      }
+    );
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -114,7 +117,7 @@ const SessionInlineEdit: React.FC<SessionInlineEditProps> = ({
             size="small"
             icon={<CheckOutlined />}
             onClick={handleSave}
-            loading={loading}
+            loading={updateSessionMutation.isPending}
           >
             Save
           </Button>
@@ -122,7 +125,7 @@ const SessionInlineEdit: React.FC<SessionInlineEditProps> = ({
             size="small"
             icon={<CloseOutlined />}
             onClick={handleCancel}
-            disabled={loading}
+            disabled={updateSessionMutation.isPending}
           >
             Cancel
           </Button>

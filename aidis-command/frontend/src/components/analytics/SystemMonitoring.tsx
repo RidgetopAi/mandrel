@@ -1,11 +1,12 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useMemo } from 'react';
 import { Card, Typography, Row, Col, Progress, Space, Alert, Button, Statistic, Tag, Spin } from 'antd';
 import { 
   MonitorOutlined, ReloadOutlined, CheckCircleOutlined, 
   WarningOutlined, CloseCircleOutlined, DatabaseOutlined, 
   ThunderboltOutlined, ApiOutlined, ClockCircleOutlined 
 } from '@ant-design/icons';
-import { MonitoringApi, SystemHealth, SystemMetrics } from '../../services/monitoringApi';
+import { useSystemHealthQuery, useSystemMetricsQuery } from '../../hooks/useMonitoring';
+import type { MonitoringHealth as SystemHealth, MonitoringMetrics as SystemMetrics } from '../../api/monitoringClient';
 
 const { Text } = Typography;
 
@@ -20,40 +21,33 @@ const SystemMonitoring: React.FC<SystemMonitoringProps> = ({
   refreshInterval = 30000, // 30 seconds
   className 
 }) => {
-  const [health, setHealth] = useState<SystemHealth | null>(null);
-  const [metrics, setMetrics] = useState<SystemMetrics | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const healthQuery = useSystemHealthQuery({
+    refetchInterval: autoRefresh ? refreshInterval : false,
+    refetchOnWindowFocus: false,
+  });
 
-  const fetchMonitoringData = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    
-    try {
-      const [healthData, metricsData] = await Promise.all([
-        MonitoringApi.getSystemHealth(),
-        MonitoringApi.getSystemMetrics()
-      ]);
-      
-      setHealth(healthData);
-      setMetrics(metricsData);
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch monitoring data';
-      setError(errorMessage);
-      console.error('System monitoring error:', err);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const metricsQuery = useSystemMetricsQuery({
+    refetchInterval: autoRefresh ? refreshInterval : false,
+    refetchOnWindowFocus: false,
+  });
 
-  useEffect(() => {
-    fetchMonitoringData();
-    
-    if (autoRefresh) {
-      const interval = setInterval(fetchMonitoringData, refreshInterval);
-      return () => clearInterval(interval);
-    }
-  }, [autoRefresh, refreshInterval, fetchMonitoringData]);
+  const loading = healthQuery.isLoading || metricsQuery.isLoading;
+  const fetching = healthQuery.isFetching || metricsQuery.isFetching;
+  const health = healthQuery.data ?? null;
+  const metrics = metricsQuery.data ?? null;
+
+  const databaseStatus = metrics?.database?.status ?? 'unknown';
+  const databaseResponseTime = metrics?.database?.responseTime ?? 0;
+  const databaseConnections = metrics?.database?.activeConnections ?? 0;
+
+  const errorMessage = useMemo(() => {
+    const error = (healthQuery.error ?? metricsQuery.error) as Error | undefined;
+    return error?.message;
+  }, [healthQuery.error, metricsQuery.error]);
+
+  const handleRefresh = () => {
+    void Promise.all([healthQuery.refetch(), metricsQuery.refetch()]);
+  };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -107,15 +101,15 @@ const SystemMonitoring: React.FC<SystemMonitoringProps> = ({
     );
   }
 
-  if (error) {
+  if (errorMessage) {
     return (
       <Card className={className}>
         <Alert
           message="System Monitoring Error"
-          description={error}
+          description={errorMessage}
           type="error"
           action={
-            <Button size="small" onClick={fetchMonitoringData}>
+            <Button size="small" onClick={handleRefresh}>
               <ReloadOutlined /> Retry
             </Button>
           }
@@ -139,7 +133,7 @@ const SystemMonitoring: React.FC<SystemMonitoringProps> = ({
         </Space>
       }
       extra={
-        <Button size="small" onClick={fetchMonitoringData} loading={loading}>
+        <Button size="small" onClick={handleRefresh} loading={fetching}>
           <ReloadOutlined /> Refresh
         </Button>
       }
@@ -158,7 +152,7 @@ const SystemMonitoring: React.FC<SystemMonitoringProps> = ({
                   <Text type="secondary" style={{ fontSize: '12px' }}>
                     {check.message}
                   </Text>
-                  {check.responseTime > 0 && (
+                  {typeof check.responseTime === 'number' && check.responseTime > 0 && (
                     <Text type="secondary" style={{ fontSize: '11px' }}>
                       {check.responseTime}ms
                     </Text>
@@ -180,34 +174,34 @@ const SystemMonitoring: React.FC<SystemMonitoringProps> = ({
                 <Col span={12}>
                   <Statistic
                     title="Memory Usage"
-                    value={metrics.system.memory.percentage}
+                    value={metrics.system?.memory?.percentage ?? 0}
                     precision={1}
                     suffix="%"
                     prefix={<ThunderboltOutlined />}
                     valueStyle={{ 
-                      color: metrics.system.memory.percentage > 80 ? '#f5222d' : 
-                             metrics.system.memory.percentage > 60 ? '#fa8c16' : '#52c41a' 
+                      color: (metrics.system?.memory?.percentage ?? 0) > 80 ? '#f5222d' : 
+                             (metrics.system?.memory?.percentage ?? 0) > 60 ? '#fa8c16' : '#52c41a' 
                     }}
                   />
                   <Progress 
-                    percent={metrics.system.memory.percentage} 
+                    percent={metrics.system?.memory?.percentage ?? 0} 
                     size="small" 
-                    status={metrics.system.memory.percentage > 80 ? 'exception' : 'success'}
+                    status={(metrics.system?.memory?.percentage ?? 0) > 80 ? 'exception' : 'success'}
                     showInfo={false}
                   />
                   <Text type="secondary" style={{ fontSize: '11px' }}>
-                    {formatBytes(metrics.system.memory.used)} / {formatBytes(metrics.system.memory.total)}
+                    {formatBytes(metrics.system?.memory?.used ?? 0)} / {formatBytes(metrics.system?.memory?.total ?? 0)}
                   </Text>
                 </Col>
                 
                 <Col span={12}>
                   <Statistic
                     title="Uptime"
-                    value={formatUptime(metrics.system.uptime)}
+                    value={formatUptime(metrics.system?.uptime ?? 0)}
                     prefix={<ClockCircleOutlined />}
                   />
                   <Text type="secondary" style={{ fontSize: '11px' }}>
-                    PID: {metrics.system.process.pid}
+                    PID: {metrics.system?.process?.pid ?? 'N/A'}
                   </Text>
                 </Col>
               </Row>
@@ -223,15 +217,15 @@ const SystemMonitoring: React.FC<SystemMonitoringProps> = ({
                     <Space>
                       <DatabaseOutlined />
                       <Text strong>Database</Text>
-                      <Tag color={getStatusColor(metrics.database.status)}>
-                        {metrics.database.status}
+                      <Tag color={getStatusColor(databaseStatus)}>
+                        {databaseStatus.toUpperCase()}
                       </Tag>
                     </Space>
                     <Text type="secondary" style={{ fontSize: '12px' }}>
-                      Response: {metrics.database.responseTime}ms
+                      Response: {databaseResponseTime}ms
                     </Text>
                     <Text type="secondary" style={{ fontSize: '12px' }}>
-                      Connections: {metrics.database.activeConnections}
+                      Connections: {databaseConnections}
                     </Text>
                   </Space>
                 </Col>
@@ -243,13 +237,13 @@ const SystemMonitoring: React.FC<SystemMonitoringProps> = ({
                       <Text strong>API</Text>
                     </Space>
                     <Text type="secondary" style={{ fontSize: '12px' }}>
-                      Requests: {metrics.api.requestCount}
+                      Requests: {metrics.api?.requestCount ?? 0}
                     </Text>
                     <Text type="secondary" style={{ fontSize: '12px' }}>
-                      Error Rate: {metrics.api.errorRate}%
+                      Error Rate: {(metrics.api?.errorRate ?? 0).toFixed(2)}%
                     </Text>
                     <Text type="secondary" style={{ fontSize: '12px' }}>
-                      Avg Response: {metrics.api.averageResponseTime}ms
+                      Avg Response: {(metrics.api?.averageResponseTime ?? 0).toFixed(2)}ms
                     </Text>
                   </Space>
                 </Col>

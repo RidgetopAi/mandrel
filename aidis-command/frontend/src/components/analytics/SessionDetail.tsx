@@ -39,6 +39,7 @@ interface SessionDetailData {
   description?: string;
   session_type?: string;
   created_at: string;
+  updated_at?: string;
   started_at: string;
   ended_at?: string;
   duration_minutes: number;

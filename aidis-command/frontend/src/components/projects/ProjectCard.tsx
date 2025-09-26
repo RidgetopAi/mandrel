@@ -1,23 +1,30 @@
 import React from 'react';
 import { Card, Typography, Tag, Space, Statistic, Row, Col, Button, Dropdown, MenuProps } from 'antd';
-import { 
-  FolderOutlined, 
-  MoreOutlined, 
-  EditOutlined, 
+import {
+  FolderOutlined,
+  MoreOutlined,
+  EditOutlined,
   DeleteOutlined,
   EyeOutlined,
   GithubOutlined,
   FolderOpenOutlined
 } from '@ant-design/icons';
-import { Project } from '../../services/projectApi';
+import { ProjectEntity } from '../../api/generated';
 
 const { Title, Text, Paragraph } = Typography;
 
+// Extended type for project with computed statistics
+type ProjectWithStats = ProjectEntity & {
+  context_count?: number;
+  session_count?: number;
+  last_activity?: string;
+};
+
 interface ProjectCardProps {
-  project: Project;
-  onEdit: (project: Project) => void;
-  onDelete: (project: Project) => void;
-  onView: (project: Project) => void;
+  project: ProjectWithStats;
+  onEdit: (project: ProjectWithStats) => void;
+  onDelete: (project: ProjectWithStats) => void;
+  onView: (project: ProjectWithStats) => void;
 }
 
 const ProjectCard: React.FC<ProjectCardProps> = ({ 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
   Typography, 
@@ -24,9 +24,32 @@ import {
   EyeOutlined,
   TagsOutlined
 } from '@ant-design/icons';
-import ProjectApi, { SessionDetail as SessionDetailType } from '../services/projectApi';
-import { ContextApi } from '../services/contextApi';
-import { Context } from '../stores/contextStore';
+import { useQuery } from '@tanstack/react-query';
+import { apiService } from '../services/api';
+import contextsClient from '../api/contextsClient';
+import type { Context } from '../types/context';
+import { getTypeColor, getTypeDisplayName } from '../utils/contextHelpers';
+
+// Session detail type
+interface SessionDetailType {
+  id: string;
+  project_id: string;
+  project_name?: string;
+  title?: string;
+  description?: string;
+  created_at: string;
+  context_count?: number;
+  last_context_at?: string;
+  contexts?: {
+    id: string;
+    type: string;
+    content: string;
+    created_at: string;
+    tags?: string[];
+  }[];
+  duration?: number;
+  metadata?: Record<string, any>;
+}
 
 const { Title, Text, Paragraph } = Typography;
 const { TabPane } = Tabs;
@@ -34,53 +57,67 @@ const { TabPane } = Tabs;
 const SessionDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [session, setSession] = useState<SessionDetailType | null>(null);
-  const [contexts, setContexts] = useState<Context[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [contextsLoading, setContextsLoading] = useState(false);
-
-  const loadSession = useCallback(async () => {
-    if (!id) return;
-    
-    setLoading(true);
-    try {
-      const sessionDetail = await ProjectApi.getSessionDetail(id);
-      setSession(sessionDetail);
-    } catch (error) {
-      console.error('Load session error:', error);
-      message.error('Failed to load session details');
-      navigate('/projects');
-    } finally {
-      setLoading(false);
-    }
-  }, [id, navigate]);
-
-  const loadContexts = useCallback(async () => {
-    if (!id) return;
-    
-    setContextsLoading(true);
-    try {
-      const response = await ContextApi.searchContexts({ 
+  const {
+    data: contextsResult,
+    isFetching: contextsLoading,
+    error: contextsError,
+  } = useQuery({
+    queryKey: ['session', id, 'contexts'],
+    queryFn: async () => {
+      if (!id) throw new Error('Session ID is required');
+      return contextsClient.search({
         session_id: id,
         limit: 100,
         sort_by: 'created_at',
-        sort_order: 'asc'
+        sort_order: 'asc',
       });
-      setContexts(response.contexts);
-    } catch (error) {
-      console.error('Load contexts error:', error);
-      message.error('Failed to load session contexts');
-    } finally {
-      setContextsLoading(false);
+    },
+    enabled: !!id,
+  });
+
+  // Use React Query for session data
+  const {
+    data: sessionResponse,
+    isLoading: loading,
+    error
+  } = useQuery({
+    queryKey: ['session', id],
+    queryFn: async () => {
+      if (!id) throw new Error('Session ID is required');
+      const response = await apiService.get<{
+        success: boolean;
+        data: { session: SessionDetailType };
+      }>(`/sessions/${id}`);
+
+      if (!response.success) {
+        throw new Error('Failed to fetch session details');
+      }
+
+      return response.data.session;
+    },
+    enabled: !!id,
+    retry: 1,
+  });
+
+  const session = sessionResponse;
+
+  // Handle error state
+  useEffect(() => {
+    if (error) {
+      console.error('Load session error:', error);
+      message.error('Failed to load session details');
+      navigate('/projects');
     }
-  }, [id]);
+  }, [error, navigate]);
+
+  const contexts = contextsResult?.contexts ?? [];
 
   useEffect(() => {
-    if (id) {
-      loadSession();
-      loadContexts();
+    if (contextsError) {
+      console.error('Load contexts error:', contextsError);
+      message.error('Failed to load session contexts');
     }
-  }, [id, loadSession, loadContexts]);
+  }, [contextsError]);
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -101,25 +138,13 @@ const SessionDetail: React.FC = () => {
     return `${minutes}m`;
   };
 
-  const getTypeColor = (type: string): string => {
-    const colorMap: Record<string, string> = {
-      code: 'blue',
-      decision: 'purple',
-      error: 'red',
-      discussion: 'cyan',
-      planning: 'green',
-      completion: 'orange'
-    };
-    return colorMap[type] || 'default';
-  };
-
   const handleViewContext = (context: Context) => {
     // Navigate to contexts page with filter for this specific context
     navigate(`/contexts?id=${context.id}`);
   };
 
   const handleBackToProjects = () => {
-    navigate('/projects');
+    navigate('/sessions');
   };
 
   if (loading) {
@@ -147,7 +172,7 @@ const SessionDetail: React.FC = () => {
             icon={<ArrowLeftOutlined />} 
             onClick={handleBackToProjects}
           >
-            Back to Projects
+            Back to Sessions
           </Button>
         </Space>
         
@@ -242,7 +267,7 @@ const SessionDetail: React.FC = () => {
                       title={
                         <Space>
                           <Tag color={getTypeColor(context.type)}>
-                            {context.type.charAt(0).toUpperCase() + context.type.slice(1)}
+                            {getTypeDisplayName(context.type)}
                           </Tag>
                           <Text>{formatDate(context.created_at)}</Text>
                         </Space>
@@ -303,7 +328,7 @@ const SessionDetail: React.FC = () => {
                         <Space>
                           <Text strong>{formatDate(context.created_at)}</Text>
                           <Tag color={getTypeColor(context.type)}>
-                            {context.type.charAt(0).toUpperCase() + context.type.slice(1)}
+                            {getTypeDisplayName(context.type)}
                           </Tag>
                         </Space>
                         <Paragraph 

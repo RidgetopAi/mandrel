@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   Typography, Space, Row, Col, Card, List, Pagination, Spin, 
   message, Button, Modal, Empty, Alert
@@ -8,12 +8,19 @@ import {
   FilterOutlined, BarChartOutlined
 } from '@ant-design/icons';
 import { useContextStore, useContextSearch, useContextSelection } from '../stores/contextStore';
-import { ContextApi } from '../services/contextApi';
+import {
+  useContextSearchQuery,
+  useContextStatsQuery,
+  useDeleteContext,
+} from '../hooks/useContexts';
+import { getTypeDisplayName } from '../utils/contextHelpers';
+import type { Context } from '../types/context';
 import ContextCard from '../components/contexts/ContextCard';
 import ContextFilters from '../components/contexts/ContextFilters';
 import ContextDetail from '../components/contexts/ContextDetail';
 import ContextStats from '../components/contexts/ContextStats';
 import BulkActions from '../components/contexts/BulkActions';
+import { useProjectContext } from '../contexts/ProjectContext';
 import '../components/contexts/contexts.css';
 
 const { Title, Text } = Typography;
@@ -32,6 +39,7 @@ const Contexts: React.FC = () => {
     setStats,
     setCurrentContext,
     setSearching,
+    setLoading,
     setError,
     setShowDetail,
     setShowFilters,
@@ -53,48 +61,84 @@ const Contexts: React.FC = () => {
   } = useContextStore();
 
   const [showStatsModal, setShowStatsModal] = useState(false);
+  const { currentProject } = useProjectContext();
 
-  const loadContexts = useCallback(async () => {
-    setSearching(true);
-    setError(null);
-    
-    try {
-      const result = await ContextApi.searchContexts(searchParams);
-      setSearchResults(result);
-    } catch (err) {
-      console.error('Failed to load contexts:', err);
+  const deleteContextMutation = useDeleteContext();
+  const {
+    data: contextsData,
+    isFetching: contextsFetching,
+    isLoading: contextsLoading,
+    error: contextsError,
+    refetch: refetchContexts,
+  } = useContextSearchQuery(searchParams, {
+    placeholderData: (previous) => previous ?? undefined,
+  });
+
+  const {
+    data: statsData,
+    isFetching: statsFetching,
+    error: statsError,
+    refetch: refetchStats,
+  } = useContextStatsQuery({ staleTime: 1000 * 60 * 5 });
+
+  // Optimized: Consolidate project management effects
+  useEffect(() => {
+    const newProjectId = currentProject?.id;
+    if (searchParams.project_id !== newProjectId) {
+      updateSearchParam('project_id', newProjectId);
+      clearSelection();
+    }
+    // Also refetch stats when project changes
+    refetchStats();
+  }, [currentProject?.id, searchParams.project_id, updateSearchParam, clearSelection, refetchStats]);
+
+  // Optimized: Consolidate loading states
+  useEffect(() => {
+    setSearching(contextsFetching);
+    setLoading(contextsLoading);
+  }, [contextsFetching, contextsLoading, setSearching, setLoading]);
+
+  // Optimized: Consolidate error handling
+  useEffect(() => {
+    if (contextsError) {
+      console.error('Failed to load contexts:', contextsError);
       setError('Failed to load contexts. Please try again.');
       message.error('Failed to load contexts');
-    } finally {
-      setSearching(false);
+    } else {
+      setError(null);
     }
-  }, [searchParams, setSearchResults, setSearching, setError]);
-
-  const loadStats = useCallback(async () => {
-    try {
-      const contextStats = await ContextApi.getContextStats();
-      setStats(contextStats);
-    } catch (err) {
-      console.error('Failed to load context stats:', err);
+    if (statsError) {
+      console.error('Failed to load context stats:', statsError);
     }
-  }, [setStats]);
+  }, [contextsError, statsError, setError]);
 
+  // Optimized: Consolidate data processing
   useEffect(() => {
-    loadContexts();
-  }, [loadContexts]);
+    if (contextsData) {
+      const limit = contextsData.limit ?? searchParams.limit ?? 20;
+      const offset = searchParams.offset ?? 0;
+      const page = Math.floor(offset / limit) + 1;
 
-  useEffect(() => {
-    loadStats();
-  }, [loadStats]);
+      setSearchResults({
+        contexts: contextsData.contexts,
+        total: contextsData.total,
+        limit,
+        page,
+      });
+    }
+    if (statsData) {
+      setStats(statsData);
+    }
+  }, [contextsData, statsData, searchParams.limit, searchParams.offset, setSearchResults, setStats]);
 
   const handleSearch = useCallback(() => {
-    loadContexts();
-  }, [loadContexts]);
+    refetchContexts();
+  }, [refetchContexts]);
 
   const handleRefresh = () => {
     clearSelection();
-    loadContexts();
-    loadStats();
+    refetchContexts();
+    refetchStats();
   };
 
   const handleContextSelect = (id: string, selected: boolean) => {
@@ -113,17 +157,17 @@ const Contexts: React.FC = () => {
     }
   };
 
-  const handleContextView = (context: any) => {
+  const handleContextView = (context: Context) => {
     setCurrentContext(context);
     setShowDetail(true);
   };
 
-  const handleContextEdit = (context: any) => {
+  const handleContextEdit = (context: Context) => {
     setCurrentContext(context);
     setShowDetail(true);
   };
 
-  const handleContextDelete = async (context: any) => {
+  const handleContextDelete = async (context: Context) => {
     Modal.confirm({
       title: 'Delete Context',
       content: 'Are you sure you want to delete this context? This action cannot be undone.',
@@ -132,9 +176,11 @@ const Contexts: React.FC = () => {
       cancelText: 'Cancel',
       onOk: async () => {
         try {
-          await ContextApi.deleteContext(context.id);
+          await deleteContextMutation.mutateAsync(context.id);
+          removeSelectedContext(context.id);
           message.success('Context deleted successfully');
-          loadContexts(); // Refresh the list
+          refetchContexts();
+          refetchStats();
         } catch (err) {
           console.error('Failed to delete context:', err);
           message.error('Failed to delete context');
@@ -143,10 +189,10 @@ const Contexts: React.FC = () => {
     });
   };
 
-  const handleContextShare = (context: any) => {
+  const handleContextShare = (context: Context) => {
     const shareData = {
       title: `AIDIS Context: ${context.type}`,
-      text: `${ContextApi.getTypeDisplayName(context.type)} context from ${context.project_name || 'Unknown Project'}\n\n${context.content.substring(0, 200)}...`,
+      text: `${getTypeDisplayName(context.type)} context from ${context.project_name || 'Unknown Project'}\n\n${context.content.substring(0, 200)}...`,
       url: window.location.href
     };
 
@@ -160,11 +206,11 @@ const Contexts: React.FC = () => {
 
   const handleBulkDelete = (deletedCount: number) => {
     clearSelection();
-    loadContexts();
-    loadStats();
+    refetchContexts();
+    refetchStats();
   };
 
-  const handleContextUpdate = (updatedContext: any) => {
+  const handleContextUpdate = (updatedContext: Context) => {
     // Update the context in the search results
     if (searchResults) {
       const updatedContexts = searchResults.contexts.map(ctx =>
@@ -186,9 +232,13 @@ const Contexts: React.FC = () => {
     handleSearch();
   };
 
-  const contexts = searchResults?.contexts || [];
-  const total = searchResults?.total || 0;
-  const currentPage = searchResults ? Math.floor((searchParams.offset || 0) / (searchParams.limit || 20)) + 1 : 1;
+  // Memoized computed values to prevent re-renders
+  const { contexts, total, currentPage } = useMemo(() => {
+    const ctxs = searchResults?.contexts || [];
+    const ttl = searchResults?.total || 0;
+    const page = searchResults ? Math.floor((searchParams.offset || 0) / (searchParams.limit || 20)) + 1 : 1;
+    return { contexts: ctxs, total: ttl, currentPage: page };
+  }, [searchResults, searchParams.offset, searchParams.limit]);
 
   return (
     <Space direction="vertical" size="large" style={{ width: '100%' }}>
@@ -282,7 +332,7 @@ const Contexts: React.FC = () => {
                 onBulkDelete={handleBulkDelete}
                 onSelectionChange={handleSelectAll}
                 searchParams={searchParams}
-                loading={isSearching}
+                loading={contextsFetching}
               />
             )}
 
@@ -383,9 +433,11 @@ const Contexts: React.FC = () => {
         context={currentContext}
         onClose={() => setShowDetail(false)}
         onUpdate={handleContextUpdate}
-        onDelete={(context) => {
+        onDelete={() => {
           setShowDetail(false);
-          loadContexts();
+          clearSelection();
+          refetchContexts();
+          refetchStats();
         }}
       />
 
@@ -402,7 +454,7 @@ const Contexts: React.FC = () => {
         footer={null}
         width={800}
       >
-        <ContextStats stats={stats} loading={isLoading} />
+        <ContextStats stats={stats} loading={statsFetching} />
       </Modal>
     </Space>
   );

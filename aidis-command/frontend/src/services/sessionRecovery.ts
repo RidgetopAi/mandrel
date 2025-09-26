@@ -5,7 +5,7 @@
  * for seamless user experience across browser refreshes and network issues.
  */
 
-import { Session } from './projectApi';
+import type { Session } from '../types/session';
 
 interface SessionState {
   currentSession: Session | null;
@@ -103,9 +103,9 @@ export class SessionRecoveryService {
   private async syncWithBackend(): Promise<void> {
     try {
       // Import here to avoid circular dependencies
-      const { ProjectApi } = await import('./projectApi');
-      
-      const currentSession = await ProjectApi.getCurrentSession();
+      const { sessionsClient } = await import('../api/sessionsClient');
+
+      const currentSession = await sessionsClient.getCurrentSession();
       
       if (currentSession) {
         const hasChanged = !this.state.currentSession || 

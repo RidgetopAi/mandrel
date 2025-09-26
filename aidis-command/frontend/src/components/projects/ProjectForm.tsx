@@ -1,13 +1,13 @@
 import React, { useEffect } from 'react';
 import { Form, Input, Select, Button, Modal } from 'antd';
-import { Project, CreateProjectRequest, UpdateProjectRequest } from '../../services/projectApi';
+import { ProjectEntity, CreateProjectRequest, UpdateProjectRequest } from '../../api/generated';
 
 const { TextArea } = Input;
 const { Option } = Select;
 
 interface ProjectFormProps {
   visible: boolean;
-  project?: Project;
+  project?: ProjectEntity;
   onSubmit: (data: CreateProjectRequest | UpdateProjectRequest) => void;
   onCancel: () => void;
   loading?: boolean;

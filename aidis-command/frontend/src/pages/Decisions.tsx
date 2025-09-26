@@ -9,6 +9,7 @@ import {
 } from '@ant-design/icons';
 import { useDecisionStore, useDecisionSearch, useDecisionSelection } from '../stores/decisionStore';
 import { useProjectContext } from '../contexts/ProjectContext';
+import { useDecisionSearchQuery, useDecisionStatsQuery } from '../hooks/useDecisions';
 import { DecisionApi } from '../services/decisionApi';
 import DecisionCard from '../components/decisions/DecisionCard';
 import DecisionFilters from '../components/decisions/DecisionFilters';
@@ -30,6 +31,7 @@ const Decisions: React.FC = () => {
     setStats,
     setCurrentDecision,
     setSearching,
+    setLoading,
     setError,
     setShowDetail,
     setShowFilters,
@@ -50,62 +52,82 @@ const Decisions: React.FC = () => {
   const decisionSelection = useDecisionSelection();
   const [showStatsModal, setShowStatsModal] = useState(false);
 
-  const loadDecisions = useCallback(async () => {
-    setSearching(true);
-    setError(null);
-    
-    try {
-      // Include current project in search params
-      const searchParamsWithProject = {
-        ...searchParams,
-        project_id: currentProject?.id
-      };
-      const result = await DecisionApi.searchDecisions(searchParamsWithProject);
-      setSearchResults(result);
-    } catch (err) {
-      console.error('Failed to load decisions:', err);
-      setError('Failed to load decisions. Please try again.');
-      message.error('Failed to load decisions');
-    } finally {
-      setSearching(false);
+  useEffect(() => {
+    const newProjectId = currentProject?.id;
+    if (searchParams.project_id !== newProjectId) {
+      updateSearchParam('project_id', newProjectId);
+      clearSelection();
     }
-  }, [searchParams, currentProject, setSearchResults, setSearching, setError]);
+  }, [currentProject?.id, searchParams.project_id, updateSearchParam, clearSelection]);
 
-  const loadStats = useCallback(async () => {
-    try {
-      const decisionStats = await DecisionApi.getDecisionStats();
-      setStats(decisionStats);
-    } catch (err) {
-      console.error('Failed to load decision stats:', err);
-      // Set default stats to prevent undefined errors
-      setStats({
-        total_decisions: 0,
-        by_status: {
-          active: 0,
-          under_review: 0,
-          superseded: 0,
-          deprecated: 0
-        },
-        by_project: {},
-        recent_decisions: 0,
-        total_projects: 0
-      });
-    }
-  }, [setStats]);
+  const {
+    data: decisionsData,
+    isFetching: decisionsFetching,
+    isLoading: decisionsLoading,
+    error: decisionsError,
+    refetch: refetchDecisions,
+  } = useDecisionSearchQuery(searchParams, {
+    placeholderData: (previous) => previous ?? undefined,
+  });
+
+  const {
+    data: statsData,
+    error: statsError,
+    refetch: refetchStats,
+  } = useDecisionStatsQuery(currentProject?.id, { staleTime: 1000 * 60 * 5 });
 
   useEffect(() => {
-    loadDecisions();
-    loadStats();
-  }, [loadDecisions, loadStats]);
+    setSearching(decisionsFetching);
+  }, [decisionsFetching, setSearching]);
+
+  useEffect(() => {
+    setLoading(decisionsLoading);
+  }, [decisionsLoading, setLoading]);
+
+  useEffect(() => {
+    if (decisionsError) {
+      console.error('Failed to load decisions:', decisionsError);
+      setError('Failed to load decisions. Please try again.');
+      message.error('Failed to load decisions');
+    } else {
+      setError(null);
+    }
+  }, [decisionsError, setError]);
+
+  useEffect(() => {
+    if (decisionsData) {
+      const limit = decisionsData.limit ?? searchParams.limit ?? 20;
+      const page = decisionsData.page ?? Math.floor((searchParams.offset ?? 0) / limit) + 1;
+
+      setSearchResults({
+        decisions: decisionsData.decisions,
+        total: decisionsData.total,
+        limit,
+        page,
+      });
+    }
+  }, [decisionsData, searchParams.limit, searchParams.offset, setSearchResults]);
+
+  useEffect(() => {
+    if (statsData) {
+      setStats(statsData);
+    }
+  }, [statsData, setStats]);
+
+  useEffect(() => {
+    if (statsError) {
+      console.error('Failed to load decision stats:', statsError);
+    }
+  }, [statsError]);
 
   const handleSearch = useCallback(() => {
-    loadDecisions();
-  }, [loadDecisions]);
+    refetchDecisions();
+  }, [refetchDecisions]);
 
   const handleRefresh = () => {
     clearSelection();
-    loadDecisions();
-    loadStats();
+    refetchDecisions();
+    refetchStats();
   };
 
   const handleDecisionSelect = (id: number, selected: boolean) => {
@@ -137,7 +159,8 @@ const Decisions: React.FC = () => {
         try {
           await DecisionApi.deleteDecision(decision.id);
           message.success('Decision deleted successfully');
-          loadDecisions(); // Refresh the list
+          refetchDecisions();
+          refetchStats();
         } catch (err) {
           console.error('Failed to delete decision:', err);
           message.error('Failed to delete decision');
@@ -374,7 +397,8 @@ const Decisions: React.FC = () => {
         onUpdate={handleDecisionUpdate}
         onDelete={(decision) => {
           setShowDetail(false);
-          loadDecisions();
+          refetchDecisions();
+          refetchStats();
         }}
       />
 

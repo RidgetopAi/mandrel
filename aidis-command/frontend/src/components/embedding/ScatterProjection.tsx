@@ -1,79 +1,75 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import { Card, Spin, Alert, Row, Col, Statistic, Select, Slider, Divider, Button } from 'antd';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Card, Spin, Alert, Row, Col, Statistic, Select, Slider, Divider, Button, Space } from 'antd';
 import { Scatter } from '@ant-design/plots';
 import { ReloadOutlined } from '@ant-design/icons';
+import { useProjectContext } from '../../contexts/ProjectContext';
+import {
+  useEmbeddingProjectionQuery,
+} from '../../hooks/useEmbeddings';
 import { useEmbeddingStore } from '../../stores/embeddingStore';
-import { EmbeddingService } from '../../services/embeddingService';
+import { useEmbeddingDatasetSelection } from '../../hooks/useEmbeddingDatasetSelection';
 
 const { Option } = Select;
 
-interface ProjectionPoint {
+type ProjectionPoint = {
   x: number;
   y: number;
   z?: number;
   label: string;
   content: string;
-  id: number;
-}
+  id: string;
+};
 
-interface ProjectionData {
+type ProjectionData = {
   points: ProjectionPoint[];
   algorithm: string;
   varianceExplained?: number[];
-}
+};
 
 const ScatterProjection: React.FC = () => {
-  const { selectedDataset, datasets, loadDatasets } = useEmbeddingStore();
-  const [projectionData, setProjectionData] = useState<ProjectionData | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  
-  // Settings state
+  const { currentProject } = useProjectContext();
+  const projectId = currentProject?.id;
+
   const [algorithm, setAlgorithm] = useState<string>('pca');
   const [sampleSize, setSampleSize] = useState<number>(500);
-  
-  // Selected point state
   const [selectedPoint, setSelectedPoint] = useState<ProjectionPoint | null>(null);
+  const { datasetsQuery, datasets, selectedDatasetId, setSelectedDatasetId } =
+    useEmbeddingDatasetSelection(projectId);
+
+  const projectionQuery = useEmbeddingProjectionQuery(
+    {
+      datasetId: selectedDatasetId ?? undefined,
+      algorithm,
+      sampleSize,
+      projectId,
+    },
+    {
+      enabled: Boolean(projectId && selectedDatasetId),
+      refetchOnWindowFocus: false,
+    }
+  );
+
+  const projectionData = projectionQuery.data ?? null;
+  const loading = datasetsQuery.isLoading || projectionQuery.isLoading;
+  const fetching = datasetsQuery.isFetching || projectionQuery.isFetching;
+  const error = (datasetsQuery.error as Error) ?? (projectionQuery.error as Error) ?? null;
 
   useEffect(() => {
-    if (datasets.length === 0) {
-      loadDatasets();
+    if (!projectionData) {
+      setSelectedPoint(null);
     }
-  }, [datasets.length, loadDatasets]);
-
-  const fetchProjection = useCallback(async () => {
-    if (!selectedDataset) return;
-    
-    setLoading(true);
-    setError(null);
-    
-    try {
-      const data = await EmbeddingService.getProjection(
-        selectedDataset,
-        algorithm,
-        sampleSize
-      );
-      setProjectionData(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load projection data');
-    } finally {
-      setLoading(false);
-    }
-  }, [selectedDataset, algorithm, sampleSize]);
-
-  useEffect(() => {
-    if (selectedDataset) {
-      fetchProjection();
-    }
-  }, [selectedDataset, fetchProjection]);
+  }, [projectionData]);
 
   const handleRefresh = () => {
-    fetchProjection();
+    void projectionQuery.refetch();
   };
 
-  const config = {
+  const fmtPercentage = (value?: number) =>
+    typeof value === 'number' ? `${(value * 100).toFixed(1)}%` : 'N/A';
+
+  const config = useMemo(() => ({
     appendPadding: 10,
-    data: projectionData?.points || [],
+    data: projectionData?.points ?? [],
     xField: 'x',
     yField: 'y',
     colorField: 'id',
@@ -83,24 +79,16 @@ const ScatterProjection: React.FC = () => {
       fields: ['label', 'content', 'x', 'y'],
       formatter: (datum: ProjectionPoint) => ({
         name: datum.label,
-        value: `${datum.content}\nCoords: (${datum.x.toFixed(3)}, ${datum.y.toFixed(3)})`
+        value: `${datum.content}\nCoords: (${datum.x.toFixed(3)}, ${datum.y.toFixed(3)})`,
       }),
     },
     interactions: [
-      {
-        type: 'brush',
-        enable: true,
-      },
-      {
-        type: 'zoom-canvas',
-        enable: true,
-      },
-      {
-        type: 'drag-canvas',
-        enable: true,
-      },
+      { type: 'brush', enable: true },
+      { type: 'zoom-canvas', enable: true },
+      { type: 'drag-canvas', enable: true },
     ],
     onReady: (plot: any) => {
+      plot.off('plot:click');
       plot.on('plot:click', (evt: any) => {
         const { data } = evt;
         if (data) {
@@ -110,52 +98,25 @@ const ScatterProjection: React.FC = () => {
     },
     xAxis: {
       title: {
-        text: `PC1 ${projectionData?.varianceExplained ? 
-          `(${(projectionData.varianceExplained[0] * 100).toFixed(1)}%)` : ''}`,
+        text: `PC1 ${fmtPercentage(projectionData?.varianceExplained?.[0])}`,
       },
-      grid: {
-        line: {
-          style: {
-            stroke: '#f0f0f0',
-          },
-        },
-      },
+      grid: { line: { style: { stroke: '#f0f0f0' } } },
     },
     yAxis: {
       title: {
-        text: `PC2 ${projectionData?.varianceExplained ? 
-          `(${(projectionData.varianceExplained[1] * 100).toFixed(1)}%)` : ''}`,
+        text: `PC2 ${fmtPercentage(projectionData?.varianceExplained?.[1])}`,
       },
-      grid: {
-        line: {
-          style: {
-            stroke: '#f0f0f0',
-          },
-        },
-      },
+      grid: { line: { style: { stroke: '#f0f0f0' } } },
     },
     legend: false,
-  };
+  }), [projectionData]);
 
-  const totalVarianceExplained = projectionData?.varianceExplained?.reduce((sum, val) => sum + val, 0) || 0;
-
-  if (datasets.length === 0) {
-    return (
-      <Card title="2D Scatter Plot Projection" bordered={false}>
-        <div style={{ textAlign: 'center', padding: '50px 0' }}>
-          <Spin size="large" />
-          <div style={{ marginTop: 16 }}>Loading datasets...</div>
-        </div>
-      </Card>
-    );
-  }
-
-  if (!selectedDataset) {
+  if (!projectId) {
     return (
       <Card title="2D Scatter Plot Projection" bordered={false}>
         <Alert
-          message="No Dataset Selected"
-          description="Please select an embedding dataset to visualize the 2D projection."
+          message="Select a project"
+          description="Choose a project to explore embedding projections."
           type="info"
           showIcon
         />
@@ -163,158 +124,152 @@ const ScatterProjection: React.FC = () => {
     );
   }
 
+  if (loading && !projectionData) {
+    return (
+      <Card title="2D Scatter Plot Projection" bordered={false}>
+        <div style={{ textAlign: 'center', padding: '50px 0' }}>
+          <Spin size="large" />
+          <div style={{ marginTop: 16 }}>Loading embeddings...</div>
+        </div>
+      </Card>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card title="2D Scatter Plot Projection" bordered={false}>
+        <Alert
+          message="Error"
+          description={error.message}
+          type="error"
+          showIcon
+        />
+        <Button style={{ marginTop: 16 }} icon={<ReloadOutlined />} onClick={handleRefresh}>
+          Retry
+        </Button>
+      </Card>
+    );
+  }
+
+  if (datasets.length === 0) {
+    return (
+      <Card title="2D Scatter Plot Projection" bordered={false}>
+        <Alert
+          message="No embeddings available"
+          description="No embedding datasets were found for this project."
+          type="info"
+          showIcon
+        />
+      </Card>
+    );
+  }
+
+  if (!selectedDatasetId) {
+    return (
+      <Card title="2D Scatter Plot Projection" bordered={false}>
+        <Alert
+          message="No dataset selected"
+          description="Select an embedding dataset to visualize the projection."
+          type="info"
+          showIcon
+        />
+      </Card>
+    );
+  }
+
+  const totalVariance = projectionData?.varianceExplained?.reduce((sum, value) => sum + value, 0) ?? 0;
+
   return (
     <Row gutter={16}>
       <Col span={selectedPoint ? 16 : 24}>
-        <Card 
-          title="2D Scatter Plot Projection" 
+        <Card
+          title="2D Scatter Plot Projection"
           bordered={false}
           extra={
-            <Button 
-              icon={<ReloadOutlined />} 
-              onClick={handleRefresh}
-              loading={loading}
-            >
+            <Button icon={<ReloadOutlined />} onClick={handleRefresh} loading={fetching}>
               Refresh
             </Button>
           }
         >
-          {/* Settings Panel */}
-          <Card 
-            size="small" 
-            title="Projection Settings" 
-            style={{ marginBottom: 16 }}
-            bodyStyle={{ padding: '12px 16px' }}
-          >
+          <Card size="small" title="Projection Settings" style={{ marginBottom: 16 }} bodyStyle={{ padding: '12px 16px' }}>
             <Row gutter={16} align="middle">
+              <Col span={6}>
+                <label>Dataset:</label>
+                <Select
+                  value={selectedDatasetId}
+                  onChange={setSelectedDatasetId}
+                  style={{ width: '100%', marginTop: 4 }}
+                  loading={datasetsQuery.isFetching}
+                >
+                  {datasets.map(dataset => (
+                    <Option key={dataset.id} value={dataset.id}>
+                      {dataset.name} ({dataset.count} items)
+                    </Option>
+                  ))}
+                </Select>
+              </Col>
               <Col span={6}>
                 <label>Algorithm:</label>
                 <Select
                   value={algorithm}
-                  onChange={setAlgorithm}
+                  onChange={(value) => setAlgorithm(value)}
                   style={{ width: '100%', marginTop: 4 }}
-                  size="small"
                 >
                   <Option value="pca">PCA (2D)</Option>
-                  <Option value="pca3d" disabled>PCA (3D) - Phase 4</Option>
-                  <Option value="tsne" disabled>t-SNE - Phase 3</Option>
+                  <Option value="pca3d" disabled>
+                    PCA (3D) – Coming soon
+                  </Option>
+                  <Option value="tsne" disabled>t-SNE – Roadmap</Option>
                 </Select>
               </Col>
-              <Col span={10}>
+              <Col span={8}>
                 <label>Sample Size: {sampleSize}</label>
                 <Slider
-                  min={50}
-                  max={1000}
-                  step={50}
+                  min={100}
+                  max={2000}
+                  step={100}
                   value={sampleSize}
-                  onChange={setSampleSize}
-                  style={{ marginTop: 4 }}
+                  onChange={value => setSampleSize(value)}
                 />
               </Col>
-              <Col span={8}>
-                {projectionData && (
-                  <Row gutter={8}>
-                    <Col span={12}>
-                      <Statistic
-                        title="Points"
-                        value={projectionData.points.length}
-                        style={{ textAlign: 'center' }}
-                      />
-                    </Col>
-                    <Col span={12}>
-                      <Statistic
-                        title="Variance"
-                        value={`${(totalVarianceExplained * 100).toFixed(1)}%`}
-                        style={{ textAlign: 'center' }}
-                      />
-                    </Col>
-                  </Row>
-                )}
+              <Col span={4}>
+                <Space direction="vertical" size={4}>
+                  <Statistic
+                    title="Point Count"
+                    value={projectionData?.points.length ?? 0}
+                  />
+                  <Statistic
+                    title="Variance Captured"
+                    value={fmtPercentage(totalVariance)}
+                  />
+                </Space>
               </Col>
             </Row>
           </Card>
 
-          {/* Visualization */}
-          {error && (
-            <Alert
-              message="Error Loading Projection"
-              description={error}
-              type="error"
-              showIcon
-              style={{ marginBottom: 16 }}
-              action={
-                <Button size="small" onClick={handleRefresh}>
-                  Retry
-                </Button>
-              }
-            />
-          )}
-
-          {loading && (
-            <div style={{ textAlign: 'center', padding: '100px 0' }}>
+          {projectionData ? <Scatter {...config} /> : (
+            <div style={{ textAlign: 'center', padding: '40px 0' }}>
               <Spin size="large" />
-              <div style={{ marginTop: 16 }}>Computing projection...</div>
-            </div>
-          )}
-
-          {!loading && !error && projectionData && (
-            <div style={{ height: 500 }}>
-              <Scatter {...config} />
-            </div>
-          )}
-
-          {!loading && !error && !projectionData && (
-            <div style={{ textAlign: 'center', padding: '100px 0', color: '#999' }}>
-              No projection data available. Click refresh to compute.
             </div>
           )}
         </Card>
       </Col>
-
-      {/* Side Panel for Selected Point */}
       {selectedPoint && (
         <Col span={8}>
-          <Card 
-            title="Selected Point" 
-            bordered={false}
-            size="small"
-            extra={
-              <Button 
-                type="text" 
-                size="small"
-                onClick={() => setSelectedPoint(null)}
-              >
-                ×
-              </Button>
-            }
-          >
-            <div style={{ marginBottom: 12 }}>
-              <strong>Label:</strong> {selectedPoint.label}
-            </div>
-            
-            <div style={{ marginBottom: 12 }}>
-              <strong>Coordinates:</strong><br />
-              X: {selectedPoint.x.toFixed(4)}<br />
-              Y: {selectedPoint.y.toFixed(4)}
-            </div>
-
-            <Divider size="small" />
-            
-            <div>
-              <strong>Content Preview:</strong>
-              <div style={{ 
-                marginTop: 8,
-                padding: 8, 
-                backgroundColor: '#fafafa', 
-                borderRadius: 4,
-                fontSize: '12px',
-                lineHeight: 1.4,
-                maxHeight: 200,
-                overflow: 'auto'
-              }}>
-                {selectedPoint.content}
+          <Card title="Point Details" bordered={false}>
+            <Space direction="vertical" size="small">
+              <Statistic title="Label" value={selectedPoint.label} />
+              <Statistic
+                title="Coordinates"
+                value={`(${selectedPoint.x.toFixed(3)}, ${selectedPoint.y.toFixed(3)})`}
+              />
+              <Divider />
+              <div>
+                <strong>Content Preview</strong>
+                <p style={{ marginTop: 8 }}>{selectedPoint.content}</p>
               </div>
-            </div>
+              <Button onClick={() => setSelectedPoint(null)}>Clear Selection</Button>
+            </Space>
           </Card>
         </Col>
       )}

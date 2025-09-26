@@ -7,7 +7,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { sessionRecovery } from '../services/sessionRecovery';
-import { Session } from '../services/projectApi';
+import type { Session } from '../types/session';
 
 interface SessionRecoveryState {
   currentSession: Session | null;

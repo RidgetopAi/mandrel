@@ -8,7 +8,8 @@ import {
   DownloadOutlined
 } from '@ant-design/icons';
 import { useContextSelection } from '../../stores/contextStore';
-import { ContextApi } from '../../services/contextApi';
+import { useBulkDeleteContexts } from '../../hooks/useContexts';
+import contextsClient from '../../api/contextsClient';
 
 const { Text } = Typography;
 const { Option } = Select;
@@ -35,10 +36,11 @@ const BulkActions: React.FC<BulkActionsProps> = ({
     hasSelection
   } = useContextSelection();
 
+  const bulkDeleteMutation = useBulkDeleteContexts();
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [exportModalVisible, setExportModalVisible] = useState(false);
-  const [actionLoading, setActionLoading] = useState(false);
   const [exportFormat, setExportFormat] = useState<'json' | 'csv'>('json');
+  const [exporting, setExporting] = useState(false);
 
   // Handle select all/none
   const handleSelectAll = () => {
@@ -49,40 +51,28 @@ const BulkActions: React.FC<BulkActionsProps> = ({
   const handleBulkDelete = async () => {
     if (selectedCount === 0) return;
 
-    setActionLoading(true);
     try {
-      const result = await ContextApi.bulkDeleteContexts(selectedContexts);
+      const result = await bulkDeleteMutation.mutateAsync(selectedContexts);
       message.success(`Successfully deleted ${result.deleted} contexts`);
       onBulkDelete?.(result.deleted);
       setDeleteModalVisible(false);
     } catch (error) {
       console.error('Bulk delete failed:', error);
       message.error('Failed to delete contexts');
-    } finally {
-      setActionLoading(false);
     }
   };
 
   // Handle export
   const handleExport = async () => {
-    setActionLoading(true);
+    setExporting(true);
     try {
-      // If contexts are selected, export only those
-      // Otherwise export all with current search filters
-      let exportParams = { ...searchParams };
-      
-      if (hasSelection) {
-        // For selected contexts, we need to adjust the search to only include those IDs
-        // This is a simplified approach - in a real app you might want to export selected IDs directly
-        exportParams = { 
-          ...exportParams,
-          limit: 10000 // Ensure we get all
-        };
-      }
+      const exportParams = hasSelection
+        ? { ...searchParams, limit: 10000 }
+        : { ...searchParams };
 
-      const blob = await ContextApi.exportContexts(exportParams, exportFormat);
+      const blob = await contextsClient.exportContexts(exportParams, exportFormat);
       const filename = `contexts-export-${new Date().toISOString().slice(0, 10)}.${exportFormat}`;
-      ContextApi.downloadBlob(blob, filename);
+      contextsClient.downloadBlob(blob, filename);
       
       message.success(`Exported ${hasSelection ? selectedCount : 'all filtered'} contexts as ${exportFormat.toUpperCase()}`);
       setExportModalVisible(false);
@@ -90,7 +80,7 @@ const BulkActions: React.FC<BulkActionsProps> = ({
       console.error('Export failed:', error);
       message.error('Failed to export contexts');
     } finally {
-      setActionLoading(false);
+      setExporting(false);
     }
   };
 
@@ -118,9 +108,9 @@ const BulkActions: React.FC<BulkActionsProps> = ({
 
   return (
     <>
-      <div style={{ 
-        display: 'flex', 
-        justifyContent: 'space-between', 
+      <div className="bulk-actions-container" style={{
+        display: 'flex',
+        justifyContent: 'space-between',
         alignItems: 'center',
         padding: '12px 16px',
         background: '#fafafa',
@@ -156,14 +146,15 @@ const BulkActions: React.FC<BulkActionsProps> = ({
             />
           )}
           
-          <Dropdown 
-            overlay={bulkActionsMenu} 
+          <Dropdown
+            overlay={bulkActionsMenu}
             trigger={['click']}
             disabled={loading}
+            overlayClassName="bulk-actions-dropdown"
           >
             <Button 
               icon={<MoreOutlined />}
-              loading={actionLoading}
+              loading={bulkDeleteMutation.isPending || exporting}
             >
               Actions
             </Button>
@@ -184,7 +175,7 @@ const BulkActions: React.FC<BulkActionsProps> = ({
             key="delete"
             type="primary"
             danger
-            loading={actionLoading}
+            loading={bulkDeleteMutation.isPending}
             onClick={handleBulkDelete}
             icon={<DeleteOutlined />}
           >
@@ -214,7 +205,7 @@ const BulkActions: React.FC<BulkActionsProps> = ({
           <Button
             key="export"
             type="primary"
-            loading={actionLoading}
+            loading={exporting}
             onClick={handleExport}
             icon={<DownloadOutlined />}
           >

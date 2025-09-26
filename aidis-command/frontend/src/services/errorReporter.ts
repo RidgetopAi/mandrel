@@ -1,4 +1,5 @@
 import type { ErrorInfo } from 'react';
+import { reportError as sentryReportError, addBreadcrumb } from '../config/sentry';
 
 export interface ErrorReportContext {
   componentStack?: string;
@@ -26,6 +27,31 @@ export const reportError = async (
   // Always log locally for immediate debugging visibility
   // eslint-disable-next-line no-console
   console.error('AIDIS UI Error Captured', payload);
+
+  // QA Finding #3: Report to Sentry with enhanced context
+  try {
+    // Add breadcrumb for error context
+    addBreadcrumb(
+      `Error in ${context.section || 'unknown'} section`,
+      'error',
+      {
+        severity: context.severity,
+        componentStack: info?.componentStack,
+        ...context.metadata,
+      }
+    );
+
+    // Report to Sentry with additional context
+    sentryReportError(error, {
+      section: context.section,
+      severity: context.severity,
+      componentStack: info?.componentStack,
+      ...context.metadata,
+    });
+  } catch (sentryError) {
+    // eslint-disable-next-line no-console
+    console.warn('Failed to report error to Sentry:', sentryError);
+  }
 
   if (!REPORT_ENDPOINT) {
     return;

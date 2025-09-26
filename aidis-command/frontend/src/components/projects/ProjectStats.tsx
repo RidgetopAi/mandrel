@@ -1,12 +1,24 @@
 import React from 'react';
 import { Card, Row, Col, Statistic, Typography, Divider, Progress } from 'antd';
-import { 
-  FolderOutlined, 
-  FileTextOutlined, 
+import {
+  FolderOutlined,
+  FileTextOutlined,
   ClockCircleOutlined,
   TeamOutlined
 } from '@ant-design/icons';
-import { ProjectStats as ProjectStatsType } from '../../services/projectApi';
+
+// Define the ProjectStats type based on what the component expects
+interface ProjectStatsType {
+  total_projects?: number;
+  active_projects?: number;
+  total_contexts?: number;
+  total_sessions?: number;
+  contexts_by_type?: Record<string, number>;
+  recent_activity?: {
+    contexts_last_week?: number;
+    sessions_last_week?: number;
+  };
+}
 
 const { Title } = Typography;
 
@@ -39,7 +51,7 @@ const ProjectStats: React.FC<ProjectStatsProps> = ({ stats, loading = false }) =
           <Card>
             <Statistic
               title="Total Projects"
-              value={stats.total_projects}
+              value={stats.total_projects ?? 0}
               prefix={<FolderOutlined />}
               loading={loading}
             />
@@ -49,7 +61,7 @@ const ProjectStats: React.FC<ProjectStatsProps> = ({ stats, loading = false }) =
           <Card>
             <Statistic
               title="Active Projects"
-              value={stats.active_projects}
+              value={stats.active_projects ?? 0}
               prefix={<FolderOutlined />}
               loading={loading}
               valueStyle={{ color: '#3f8600' }}
@@ -60,7 +72,7 @@ const ProjectStats: React.FC<ProjectStatsProps> = ({ stats, loading = false }) =
           <Card>
             <Statistic
               title="Total Contexts"
-              value={stats.total_contexts}
+              value={stats.total_contexts ?? 0}
               prefix={<FileTextOutlined />}
               loading={loading}
             />
@@ -70,7 +82,7 @@ const ProjectStats: React.FC<ProjectStatsProps> = ({ stats, loading = false }) =
           <Card>
             <Statistic
               title="Total Sessions"
-              value={stats.total_sessions}
+              value={stats.total_sessions ?? 0}
               prefix={<TeamOutlined />}
               loading={loading}
             />
@@ -114,7 +126,7 @@ const ProjectStats: React.FC<ProjectStatsProps> = ({ stats, loading = false }) =
               <Col span={12}>
                 <Statistic
                   title="New Contexts"
-                  value={stats.recent_activity?.contexts_last_week || 0}
+                value={stats.recent_activity?.contexts_last_week ?? 0}
                   prefix={<FileTextOutlined />}
                   suffix="contexts"
                 />
@@ -122,7 +134,7 @@ const ProjectStats: React.FC<ProjectStatsProps> = ({ stats, loading = false }) =
               <Col span={12}>
                 <Statistic
                   title="New Sessions"
-                  value={stats.recent_activity?.sessions_last_week || 0}
+                value={stats.recent_activity?.sessions_last_week ?? 0}
                   prefix={<ClockCircleOutlined />}
                   suffix="sessions"
                 />
@@ -133,8 +145,8 @@ const ProjectStats: React.FC<ProjectStatsProps> = ({ stats, loading = false }) =
 
             <div style={{ textAlign: 'center' }}>
               <Title level={4} style={{ margin: 0 }}>
-                {stats.total_projects > 0 && stats.total_contexts > 0
-                  ? Math.round(stats.total_contexts / stats.total_projects)
+                {stats.total_projects && stats.total_projects > 0 && stats.total_contexts
+                  ? Math.round((stats.total_contexts ?? 0) / stats.total_projects)
                   : 0}
               </Title>
               <div style={{ color: '#999' }}>Average contexts per project</div>

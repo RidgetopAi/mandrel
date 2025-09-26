@@ -1,48 +1,12 @@
 import { create } from 'zustand';
+import type {
+  Context,
+  ContextSearchParams,
+  ContextSearchResult,
+  ContextStats,
+} from '../types/context';
 
-export interface Context {
-  id: string;
-  project_id: string;
-  project_name?: string;
-  type: 'code' | 'decision' | 'error' | 'discussion' | 'planning' | 'completion';
-  content: string;
-  metadata?: Record<string, any>;
-  tags?: string[];
-  relevance_score?: number;
-  session_id?: string;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface ContextSearchParams {
-  query?: string;
-  project_id?: string;
-  session_id?: string;
-  type?: string;
-  tags?: string[];
-  min_similarity?: number;
-  date_from?: string;
-  date_to?: string;
-  limit?: number;
-  offset?: number;
-  sort_by?: 'created_at' | 'relevance' | 'updated_at';
-  sort_order?: 'asc' | 'desc';
-}
-
-export interface ContextStats {
-  total_contexts: number;
-  by_type: Record<string, number>;
-  by_project: Record<string, number>;
-  recent_contexts: number;
-  total_projects: number;
-}
-
-export interface ContextSearchResult {
-  contexts: Context[];
-  total: number;
-  page: number;
-  limit: number;
-}
+export type { Context, ContextSearchParams, ContextSearchResult, ContextStats } from '../types/context';
 
 interface ContextState {
   // Data
@@ -187,7 +151,6 @@ export const useContextSearch = () => {
     const params = store.searchParams;
     return !!(
       params.query ||
-      params.project_id ||
       params.type ||
       (params.tags && params.tags.length > 0) ||
       params.date_from ||

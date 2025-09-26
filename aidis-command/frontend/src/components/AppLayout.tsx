@@ -18,6 +18,7 @@ import {
   ProjectOutlined,
   FolderOutlined,
   BulbOutlined,
+  DotChartOutlined,
   TagOutlined,
   SettingOutlined,
   UserOutlined,
@@ -67,6 +68,11 @@ const AppLayout: React.FC = () => {
       key: '/naming',
       icon: <TagOutlined />,
       label: 'Naming Registry',
+    },
+    {
+      key: '/embedding',
+      icon: <DotChartOutlined />,
+      label: 'Embedding Analytics',
     },
     {
       key: '/projects',
@@ -223,7 +229,7 @@ const AppLayout: React.FC = () => {
                 <Space style={{ cursor: 'pointer' }}>
                   <Avatar size="small" icon={<UserOutlined />} />
                   <Text>
-                    {user?.firstName || user?.username || 'User'}
+                    {user?.username || 'User'}
                   </Text>
                 </Space>
               </Dropdown>

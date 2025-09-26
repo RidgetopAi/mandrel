@@ -49,43 +49,71 @@ const Tasks: React.FC = () => {
   const backendPort = process.env.REACT_APP_BACKEND_PORT || '5001';
   const wsUrl = token ? `ws://localhost:${backendPort}/ws?token=${encodeURIComponent(token)}` : null;
   
+  const projectId = currentProject?.id;
+
   const { isConnected } = useWebSocketSingleton(wsUrl, {
     onMessage: (message) => {
       console.log('Received WebSocket message:', message.type);
+
+      const taskPayload: Task | undefined = message.data?.task;
+      const isProjectMatch = (task: Task | undefined) => Boolean(projectId && task && task.project_id === projectId);
+
       switch (message.type) {
         case 'connection_established':
           console.log('✅ WebSocket connection established');
           break;
           
         case 'task_created':
-          setTasks(prev => [message.data.task, ...prev]);
-          notification.success({
-            message: 'Task Created',
-            description: `New task "${message.data.task.title}" has been created.`
-          });
+          if (taskPayload && isProjectMatch(taskPayload)) {
+            setTasks(prev => {
+              if (prev.some(task => task.id === taskPayload.id)) {
+                return prev.map(task => (task.id === taskPayload.id ? taskPayload : task));
+              }
+              return [taskPayload, ...prev];
+            });
+            notification.success({
+              message: 'Task Created',
+              description: `New task "${taskPayload.title}" has been created.`
+            });
+          }
           break;
-        
+       
         case 'task_updated':
         case 'task_status_changed':
         case 'task_assigned':
-          setTasks(prev => prev.map(task => 
-            task.id === message.data.task.id ? message.data.task : task
-          ));
+          if (taskPayload && isProjectMatch(taskPayload)) {
+            setTasks(prev => prev.map(task => 
+              task.id === taskPayload.id ? taskPayload : task
+            ));
+          }
           break;
         
         case 'task_deleted':
-          setTasks(prev => prev.filter(task => task.id !== message.data.taskId));
-          notification.info({
-            message: 'Task Deleted',
-            description: 'A task has been deleted.'
-          });
+          if (projectId) {
+            setTasks(prev => {
+              const taskId = message.data?.taskId as string | undefined;
+              if (!taskId || !prev.some(task => task.id === taskId)) {
+                return prev;
+              }
+              notification.info({
+                message: 'Task Deleted',
+                description: 'A task has been deleted.'
+              });
+              return prev.filter(task => task.id !== taskId);
+            });
+          }
           break;
         
         case 'tasks_bulk_updated':
-          setTasks(prev => prev.map(task => {
-            const updated = message.data.tasks.find((t: Task) => t.id === task.id);
-            return updated || task;
-          }));
+          if (projectId && Array.isArray(message.data?.tasks)) {
+            setTasks(prev => prev.map(task => {
+              if (task.project_id !== projectId) {
+                return task;
+              }
+              const updated = message.data.tasks.find((t: Task) => t.id === task.id && t.project_id === projectId);
+              return updated || task;
+            }));
+          }
           break;
       }
     },
@@ -102,12 +130,15 @@ const Tasks: React.FC = () => {
 
   // Load initial data
   const loadTasks = useCallback(async () => {
-    if (!currentProject) return;
+    if (!projectId) {
+      setTasks([]);
+      return;
+    }
     
     setLoading(true);
     try {
       const response = await apiService.get<{success: boolean; data: {tasks: Task[]}}>('/tasks', {
-        params: { project_id: currentProject.id }
+        params: { project_id: projectId }
       });
       setTasks(response.data.tasks || []);
     } catch (error) {
@@ -119,12 +150,12 @@ const Tasks: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [currentProject]);
+  }, [projectId]);
 
   const loadInitialData = useCallback(async () => {
     setLoading(true);
     try {
-      if (currentProject) {
+      if (projectId) {
         await loadTasks();
       }
     } catch (error) {
@@ -136,7 +167,7 @@ const Tasks: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [currentProject, loadTasks]);
+  }, [projectId, loadTasks]);
 
   useEffect(() => {
     loadInitialData();
@@ -144,10 +175,13 @@ const Tasks: React.FC = () => {
 
   // Reload tasks when project selection changes
   useEffect(() => {
-    if (currentProject) {
-      loadTasks();
+    if (!projectId) {
+      setTasks([]);
+      setLoading(false);
+      return;
     }
-  }, [currentProject, loadTasks]);
+    loadTasks();
+  }, [projectId, loadTasks]);
 
   // Cleanup effect for component unmounting
   useEffect(() => {
@@ -163,13 +197,23 @@ const Tasks: React.FC = () => {
   const handleCreateTask = async (taskData: any) => {
     setCreating(true);
     try {
+      if (!projectId) {
+        notification.error({
+          message: 'Creation Error',
+          description: 'Select a project before creating tasks.'
+        });
+        return;
+      }
+
       const response = await apiService.post<{success: boolean; data: {task: Task}}>('/tasks', {
         ...taskData,
-        project_id: currentProject?.id
+        project_id: projectId
       });
       
       // Task will be added via WebSocket, but add immediately for better UX
-      setTasks(prev => [response.data.task, ...prev]);
+      if (response.data.task.project_id === projectId) {
+        setTasks(prev => [response.data.task, ...prev]);
+      }
       setShowCreateForm(false);
       
       notification.success({

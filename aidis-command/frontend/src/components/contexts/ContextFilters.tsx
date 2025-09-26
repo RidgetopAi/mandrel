@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Card, Space, Input, Select, DatePicker, Button, Row, Col,
   Slider, Typography, Tag, Collapse
@@ -9,7 +9,7 @@ import {
 } from '@ant-design/icons';
 import { useContextSearch } from '../../stores/contextStore';
 // Oracle Phase 1: Removed useProjectContext - project scoping handled by API interceptor
-import { ContextApi } from '../../services/contextApi';
+import { getTypeColor } from '../../utils/contextHelpers';
 import dayjs, { Dayjs } from 'dayjs';
 
 const { RangePicker } = DatePicker;
@@ -41,28 +41,44 @@ const ContextFilters: React.FC<ContextFiltersProps> = ({ onSearch, loading }) =>
   const { searchParams, updateSearchParam, clearFilters, isFiltered } = useContextSearch();
   // Oracle Phase 1: Removed currentProject - project scoping handled by API interceptor
   const [localQuery, setLocalQuery] = useState(searchParams.query || '');
+  const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Sync local query with global state when query is cleared externally
   useEffect(() => {
     if (!searchParams.query && localQuery) {
       setLocalQuery('');
     }
-  }, [searchParams.query, localQuery]);
+  }, [searchParams.query]); // Remove localQuery from dependencies to prevent circular updates
 
-  // Debounced search
-  useEffect(() => {
-    const timeout = setTimeout(() => {
-      if (localQuery !== searchParams.query) {
-        updateSearchParam('query', localQuery || undefined);
-        updateSearchParam('offset', 0);
-        onSearch?.();
-      }
+  // Optimized debounced search with useCallback and useRef
+  const debouncedSearch = useCallback((query: string) => {
+    if (debounceTimeoutRef.current) {
+      clearTimeout(debounceTimeoutRef.current);
+    }
+    debounceTimeoutRef.current = setTimeout(() => {
+      updateSearchParam('query', query || undefined);
+      updateSearchParam('offset', 0);
+      onSearch?.();
     }, 300);
+  }, [updateSearchParam, onSearch]);
 
-    return () => clearTimeout(timeout);
-  }, [localQuery, searchParams.query, updateSearchParam, onSearch]);
+  // Trigger debounced search when local query changes
+  useEffect(() => {
+    if (localQuery !== searchParams.query) {
+      debouncedSearch(localQuery);
+    }
+  }, [localQuery, searchParams.query, debouncedSearch]);
 
-  const handleDateRangeChange = (dates: [Dayjs | null, Dayjs | null] | null) => {
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceTimeoutRef.current) {
+        clearTimeout(debounceTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  const handleDateRangeChange = useCallback((dates: [Dayjs | null, Dayjs | null] | null) => {
     if (dates && dates[0] && dates[1]) {
       updateSearchParam('date_from', dates[0].toISOString());
       updateSearchParam('date_to', dates[1].toISOString());
@@ -72,33 +88,33 @@ const ContextFilters: React.FC<ContextFiltersProps> = ({ onSearch, loading }) =>
     }
     updateSearchParam('offset', 0);
     onSearch?.();
-  };
+  }, [updateSearchParam, onSearch]);
 
-  const handleTagsChange = (tags: string[]) => {
+  const handleTagsChange = useCallback((tags: string[]) => {
     updateSearchParam('tags', tags.length > 0 ? tags : undefined);
     updateSearchParam('offset', 0);
     onSearch?.();
-  };
+  }, [updateSearchParam, onSearch]);
 
-  const handleClearFilters = () => {
+  const handleClearFilters = useCallback(() => {
     setLocalQuery('');
     clearFilters();
     // Oracle Phase 1: Removed manual project_id manipulation - handled by API interceptor
     onSearch?.();
-  };
+  }, [clearFilters, onSearch]);
 
-  const handleSortChange = (value: string) => {
+  const handleSortChange = useCallback((value: string) => {
     const [sortBy, sortOrder] = value.split('-');
     updateSearchParam('sort_by', sortBy as any);
     updateSearchParam('sort_order', sortOrder as any);
     updateSearchParam('offset', 0);
     onSearch?.();
-  };
+  }, [updateSearchParam, onSearch]);
 
-  const handleMinSimilarityChange = (value: number) => {
+  const handleMinSimilarityChange = useCallback((value: number) => {
     updateSearchParam('min_similarity', value / 100);
     updateSearchParam('offset', 0);
-  };
+  }, [updateSearchParam]);
 
   const getSortValue = () => {
     return `${searchParams.sort_by || 'created_at'}-${searchParams.sort_order || 'desc'}`;
@@ -118,7 +134,8 @@ const ContextFilters: React.FC<ContextFiltersProps> = ({ onSearch, loading }) =>
   const activeFiltersCount = getActiveFiltersCount();
 
   return (
-    <Card 
+    <Card
+      className="context-filters"
       title={
         <Space>
           <FilterOutlined />
@@ -168,7 +185,7 @@ const ContextFilters: React.FC<ContextFiltersProps> = ({ onSearch, loading }) =>
             >
               {CONTEXT_TYPES.map(type => (
                 <Option key={type.value} value={type.value}>
-                  <Tag color={ContextApi.getTypeColor(type.value)} style={{ margin: 0 }}>
+                  <Tag color={getTypeColor(type.value)} style={{ margin: 0 }}>
                     {type.label}
                   </Tag>
                 </Option>

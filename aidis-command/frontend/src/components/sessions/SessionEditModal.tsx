@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import {
   Modal,
   Form,
@@ -10,7 +10,8 @@ import {
   Divider
 } from 'antd';
 import { EditOutlined, SaveOutlined, CloseOutlined } from '@ant-design/icons';
-import { ProjectApi, Session, UpdateSessionRequest } from '../../services/projectApi';
+import type { Session, UpdateSessionRequest } from '../../types/session';
+import { useUpdateSession } from '../../hooks/useProjects';
 
 const { Text, Title } = Typography;
 const { TextArea } = Input;
@@ -34,7 +35,7 @@ const SessionEditModal: React.FC<SessionEditModalProps> = ({
   onSuccess
 }) => {
   const [form] = Form.useForm<SessionEditForm>();
-  const [loading, setLoading] = useState(false);
+  const updateSessionMutation = useUpdateSession();
 
   useEffect(() => {
     if (visible && session) {
@@ -51,39 +52,38 @@ const SessionEditModal: React.FC<SessionEditModalProps> = ({
   const handleSubmit = async (values: SessionEditForm) => {
     if (!session) return;
 
-    try {
-      setLoading(true);
+    // Only send fields that have values or have changed
+    const updates: UpdateSessionRequest = {};
 
-      // Only send fields that have values or have changed
-      const updates: UpdateSessionRequest = {};
-      
-      if (values.title && values.title.trim() !== (session.title || '')) {
-        updates.title = values.title.trim();
-      }
-      
-      if (values.description && values.description.trim() !== (session.description || '')) {
-        updates.description = values.description.trim();
-      }
-
-      // If no changes, just close
-      if (Object.keys(updates).length === 0) {
-        message.info('No changes to save');
-        onClose();
-        return;
-      }
-
-      const updatedSession = await ProjectApi.updateSession(session.id, updates);
-      
-      message.success('Session updated successfully');
-      onSuccess(updatedSession);
-      onClose();
-      
-    } catch (error: any) {
-      console.error('Failed to update session:', error);
-      message.error(error.message || 'Failed to update session');
-    } finally {
-      setLoading(false);
+    if (values.title && values.title.trim() !== (session.title || '')) {
+      updates.title = values.title.trim();
     }
+
+    if (values.description && values.description.trim() !== (session.description || '')) {
+      updates.description = values.description.trim();
+    }
+
+    // If no changes, just close
+    if (Object.keys(updates).length === 0) {
+      message.info('No changes to save');
+      onClose();
+      return;
+    }
+
+    updateSessionMutation.mutate(
+      { sessionId: session.id, updates },
+      {
+        onSuccess: (updatedSession) => {
+          message.success('Session updated successfully');
+          onSuccess(updatedSession);
+          onClose();
+        },
+        onError: (error: any) => {
+          console.error('Failed to update session:', error);
+          message.error(error.message || 'Failed to update session');
+        }
+      }
+    );
   };
 
   const handleCancel = () => {
@@ -111,7 +111,7 @@ const SessionEditModal: React.FC<SessionEditModalProps> = ({
         <Button
           key="submit"
           type="primary"
-          loading={loading}
+          loading={updateSessionMutation.isPending}
           onClick={() => form.submit()}
           icon={<SaveOutlined />}
         >

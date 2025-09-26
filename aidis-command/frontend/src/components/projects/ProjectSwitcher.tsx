@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Select, Space, Tag, Avatar, Spin } from 'antd';
 import { FolderOutlined, CheckCircleOutlined } from '@ant-design/icons';
-import { Project } from '../../services/projectApi';
-import ProjectApi from '../../services/projectApi';
+import { useProjects } from '../../hooks/useProjects';
+import type { Project } from '../../types/project';
 import { useAuthContext } from '../../contexts/AuthContext';
 
 const { Option } = Select;
@@ -21,26 +21,21 @@ const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({
   style
 }) => {
   const { isAuthenticated, isLoading: authLoading } = useAuthContext();
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    if (isAuthenticated && !authLoading) {
-      loadProjects();
-    }
-  }, [isAuthenticated, authLoading]);
+  // Use React Query to fetch projects (only when authenticated)
+  const { data: projectsData, isLoading: loading, error } = useProjects(
+    { page: 1, limit: 100 },
+    { enabled: isAuthenticated && !authLoading }
+  );
 
-  const loadProjects = async () => {
-    setLoading(true);
-    try {
-      const response = await ProjectApi.getAllProjects();
-      setProjects(response.projects.filter(p => p.status === 'active'));
-    } catch (error) {
-      console.error('Failed to load projects:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+
+  // Extract and filter active projects
+  const projectsArray = projectsData?.projects?.length
+    ? projectsData.projects
+    : projectsData?.data?.projects ?? [];
+
+  const projects: Project[] = (projectsArray ?? [])
+    .filter((p) => (p.status ?? 'active') === 'active');
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -100,7 +95,7 @@ const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({
                   )}
                 </div>
                 <div style={{ fontSize: '12px', color: '#999' }}>
-                  {project.context_count} contexts • {formatLastActivity(project.last_activity)}
+                  {(project as any).context_count || 0} contexts • {formatLastActivity((project as any).last_activity)}
                 </div>
               </div>
             </Space>

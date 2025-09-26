@@ -96,5 +96,8 @@ test-*.js
 debug-*.js
 verify-*.js
 
+# Generated OpenAPI artifacts
+aidis-command/frontend/.openapi/
+
 # WSL path references
 \\wsl.localhost\Ubuntu\home\ridgetop\aidis\aidis-command\.env.example

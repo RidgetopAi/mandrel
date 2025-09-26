@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { Table, Tag, Typography, Space, Button, Card } from 'antd';
 import { EyeOutlined, FileTextOutlined, EditOutlined } from '@ant-design/icons';
-import { Session } from '../../services/projectApi';
 import SessionEditModal from '../sessions/SessionEditModal';
 import type { ColumnsType } from 'antd/es/table';
+import type { Session } from '../../types/session';
 
 const { Text } = Typography;
 

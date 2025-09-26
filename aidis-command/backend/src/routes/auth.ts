@@ -4,6 +4,153 @@ import { AuthService } from '../services/auth';
 import { authenticateToken, requireAdmin } from '../middleware/auth';
 import { LoginRequest, RegisterRequest, AuthenticatedRequest } from '../types/auth';
 
+/**
+ * @swagger
+ * components:
+ *   schemas:
+ *     User:
+ *       type: object
+ *       required:
+ *         - id
+ *         - username
+ *         - email
+ *         - role
+ *         - is_active
+ *         - created_at
+ *         - updated_at
+ *       properties:
+ *         id:
+ *           type: string
+ *           format: uuid
+ *           description: Unique user identifier
+ *         username:
+ *           type: string
+ *           description: Unique username
+ *         email:
+ *           type: string
+ *           format: email
+ *           description: User email address
+ *         role:
+ *           type: string
+ *           enum: [admin, user]
+ *           description: User role
+ *         is_active:
+ *           type: boolean
+ *           description: Whether the user account is active
+ *         created_at:
+ *           type: string
+ *           format: date-time
+ *           description: Account creation timestamp
+ *         updated_at:
+ *           type: string
+ *           format: date-time
+ *           description: Last update timestamp
+ *         last_login:
+ *           type: string
+ *           format: date-time
+ *           description: Last login timestamp
+ *     LoginRequest:
+ *       type: object
+ *       required:
+ *         - username
+ *         - password
+ *       properties:
+ *         username:
+ *           type: string
+ *           description: Username
+ *           example: admin
+ *         password:
+ *           type: string
+ *           format: password
+ *           description: Password
+ *           example: password123
+ *     LoginResponse:
+ *       type: object
+ *       required:
+ *         - user
+ *         - token
+ *         - expires
+ *       properties:
+ *         user:
+ *           $ref: '#/components/schemas/User'
+ *         token:
+ *           type: string
+ *           description: JWT authentication token
+ *         expires:
+ *           type: string
+ *           format: date-time
+ *           description: Token expiration timestamp
+ *     RegisterRequest:
+ *       type: object
+ *       required:
+ *         - username
+ *         - email
+ *         - password
+ *       properties:
+ *         username:
+ *           type: string
+ *           minLength: 3
+ *           description: Unique username
+ *         email:
+ *           type: string
+ *           format: email
+ *           description: User email address
+ *         password:
+ *           type: string
+ *           format: password
+ *           minLength: 6
+ *           description: Password (minimum 6 characters)
+ *         role:
+ *           type: string
+ *           enum: [admin, user]
+ *           default: admin
+ *           description: User role
+ *     ProfileResponse:
+ *       type: object
+ *       properties:
+ *         success:
+ *           type: boolean
+ *         data:
+ *           type: object
+ *           properties:
+ *             user:
+ *               $ref: '#/components/schemas/User'
+ *     RefreshTokenResponse:
+ *       type: object
+ *       properties:
+ *         success:
+ *           type: boolean
+ *         message:
+ *           type: string
+ *         data:
+ *           type: object
+ *           properties:
+ *             token:
+ *               type: string
+ *               description: New JWT token
+ *             expires_at:
+ *               type: string
+ *               format: date-time
+ *               description: New token expiration timestamp
+ *     ErrorResponse:
+ *       type: object
+ *       properties:
+ *         error:
+ *           type: string
+ *           description: Error type
+ *         message:
+ *           type: string
+ *           description: Human-readable error message
+ *   securitySchemes:
+ *     bearerAuth:
+ *       type: http
+ *       scheme: bearer
+ *       bearerFormat: JWT
+ * tags:
+ *   - name: Authentication
+ *     description: User authentication and authorization endpoints
+ */
+
 const router = Router();
 
 // Rate limiting for auth endpoints - Production-safe with admin considerations
@@ -64,6 +211,51 @@ const validateRegisterRequest = (body: any): body is RegisterRequest => {
          body.password.length >= 6;
 };
 
+/**
+ * @swagger
+ * /auth/login:
+ *   post:
+ *     summary: User login
+ *     description: Authenticate a user with username and password
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/LoginRequest'
+ *     responses:
+ *       200:
+ *         description: Login successful
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/LoginResponse'
+ *       400:
+ *         description: Invalid request
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       401:
+ *         description: Invalid credentials
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       429:
+ *         description: Too many login attempts
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
 // POST /api/auth/login
 router.post('/login', authLimiter, async (req: Request, res: Response): Promise<void> => {
   try {
@@ -100,6 +292,40 @@ router.post('/login', authLimiter, async (req: Request, res: Response): Promise<
   }
 });
 
+/**
+ * @swagger
+ * /auth/logout:
+ *   post:
+ *     summary: User logout
+ *     description: Logout the authenticated user and invalidate their token
+ *     tags: [Authentication]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Logout successful
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *       401:
+ *         description: Unauthorized - invalid or missing token
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
 // POST /api/auth/logout
 router.post('/logout', generalLimiter, authenticateToken, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
@@ -120,6 +346,35 @@ router.post('/logout', generalLimiter, authenticateToken, async (req: Authentica
   }
 });
 
+/**
+ * @swagger
+ * /auth/profile:
+ *   get:
+ *     summary: Get user profile
+ *     description: Get the profile of the authenticated user
+ *     tags: [Authentication]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Profile retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ProfileResponse'
+ *       401:
+ *         description: Unauthorized - invalid or missing token
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
 // GET /api/auth/profile
 router.get('/profile', generalLimiter, authenticateToken, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
@@ -146,6 +401,35 @@ router.get('/profile', generalLimiter, authenticateToken, async (req: Authentica
   }
 });
 
+/**
+ * @swagger
+ * /auth/refresh:
+ *   post:
+ *     summary: Refresh authentication token
+ *     description: Refresh the JWT token for the authenticated user
+ *     tags: [Authentication]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Token refreshed successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/RefreshTokenResponse'
+ *       401:
+ *         description: Unauthorized - invalid or missing token
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
 // POST /api/auth/refresh
 router.post('/refresh', generalLimiter, authenticateToken, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
@@ -184,6 +468,75 @@ router.post('/refresh', generalLimiter, authenticateToken, async (req: Authentic
   }
 });
 
+/**
+ * @swagger
+ * /auth/register:
+ *   post:
+ *     summary: Register new user (Admin only)
+ *     description: Register a new user account. Requires admin privileges.
+ *     tags: [Authentication]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/RegisterRequest'
+ *     responses:
+ *       201:
+ *         description: User created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     user:
+ *                       $ref: '#/components/schemas/User'
+ *       400:
+ *         description: Invalid request
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       401:
+ *         description: Unauthorized - invalid or missing token
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       403:
+ *         description: Forbidden - admin privileges required
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       409:
+ *         description: Conflict - username or email already exists
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       429:
+ *         description: Too many registration attempts
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
 // POST /api/auth/register (Admin only)
 router.post('/register', authLimiter, authenticateToken, requireAdmin, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {

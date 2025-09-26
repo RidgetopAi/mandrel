@@ -1,20 +1,20 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  Typography, 
-  Card, 
-  Empty, 
-  Button, 
-  Space, 
-  message, 
-  Modal, 
+import {
+  Typography,
+  Card,
+  Empty,
+  Button,
+  Space,
+  message,
+  Modal,
   Tabs,
   Spin,
   Input
 } from 'antd';
-import { 
-  FolderOutlined, 
-  PlusOutlined, 
+import {
+  FolderOutlined,
+  PlusOutlined,
   SearchOutlined,
   BarChartOutlined,
   ClockCircleOutlined,
@@ -24,13 +24,17 @@ import ProjectCard from '../components/projects/ProjectCard';
 import ProjectForm from '../components/projects/ProjectForm';
 import ProjectStats from '../components/projects/ProjectStats';
 import SessionList from '../components/projects/SessionList';
-import ProjectApi, { 
-  Project, 
-  Session, 
-  ProjectStats as ProjectStatsType,
-  CreateProjectRequest,
-  UpdateProjectRequest
-} from '../services/projectApi';
+import {
+  useProjects,
+  useProjectStats,
+  useAllSessions,
+  useCreateProject,
+  useUpdateProject,
+  useDeleteProject
+} from '../hooks/useProjects';
+import type { Project, ProjectStats as ProjectStatsType } from '../types/project';
+import type { Session } from '../types/session';
+import type { CreateProjectRequest, UpdateProjectRequest } from '../api/generated';
 import '../components/projects/projects.css';
 
 const { Title, Text } = Typography;
@@ -39,59 +43,36 @@ const { TabPane } = Tabs;
 
 const Projects: React.FC = () => {
   const navigate = useNavigate();
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [stats, setStats] = useState<ProjectStatsType | null>(null);
-  const [sessions, setSessions] = useState<Session[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [statsLoading, setStatsLoading] = useState(false);
-  const [sessionsLoading, setSessionsLoading] = useState(false);
+
+  // React Query hooks for data fetching
+  const { data: projectsData, isLoading: loading, refetch: refetchProjects } = useProjects({ page: 1, limit: 100 });
+  const { data: statsData, isLoading: statsLoading, refetch: refetchStats } = useProjectStats();
+  const { data: sessionsData, isLoading: sessionsLoading, refetch: refetchSessions } = useAllSessions();
+
+  // Mutations
+  const createProjectMutation = useCreateProject();
+  const updateProjectMutation = useUpdateProject();
+  const deleteProjectMutation = useDeleteProject();
+
+  // Local UI state
   const [formVisible, setFormVisible] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | undefined>(undefined);
-  const [formLoading, setFormLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState('projects');
 
-  useEffect(() => {
-    loadProjects();
-    loadStats();
-    loadSessions();
-  }, []);
+  // Extract data from React Query responses
+  const projects: Project[] = (projectsData?.projects && projectsData.projects.length > 0)
+    ? projectsData.projects
+    : projectsData?.data?.projects ?? [];
+  const stats: ProjectStatsType | null = statsData ?? null;
+  const sessions: Session[] = sessionsData?.sessions ?? [];
+  const formLoading = createProjectMutation.isPending || updateProjectMutation.isPending;
 
-  const loadProjects = async () => {
-    setLoading(true);
-    try {
-      const response = await ProjectApi.getAllProjects();
-      setProjects(response.projects);
-    } catch (error) {
-      message.error('Failed to load projects');
-      console.error('Load projects error:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const loadStats = async () => {
-    setStatsLoading(true);
-    try {
-      const stats = await ProjectApi.getProjectStats();
-      setStats(stats);
-    } catch (error) {
-      console.error('Load stats error:', error);
-    } finally {
-      setStatsLoading(false);
-    }
-  };
-
-  const loadSessions = async () => {
-    setSessionsLoading(true);
-    try {
-      const response = await ProjectApi.getAllSessions();
-      setSessions(response.sessions);
-    } catch (error) {
-      console.error('Load sessions error:', error);
-    } finally {
-      setSessionsLoading(false);
-    }
+  // Refetch helper to refresh all data
+  const refetchAllData = () => {
+    refetchProjects();
+    refetchStats();
+    refetchSessions();
   };
 
   const handleCreateProject = () => {
@@ -124,11 +105,9 @@ const Projects: React.FC = () => {
       cancelText: 'Cancel',
       onOk: async () => {
         try {
-          await ProjectApi.deleteProject(project.id);
+          await deleteProjectMutation.mutateAsync(project.id);
           message.success('Project deleted successfully');
-          loadProjects();
-          loadStats();
-          loadSessions();
+          refetchAllData();
         } catch (error) {
           message.error('Failed to delete project');
           console.error('Delete project error:', error);
@@ -142,25 +121,24 @@ const Projects: React.FC = () => {
   };
 
   const handleFormSubmit = async (data: CreateProjectRequest | UpdateProjectRequest) => {
-    setFormLoading(true);
     try {
       if (editingProject) {
-        await ProjectApi.updateProject(editingProject.id, data);
+        await updateProjectMutation.mutateAsync({
+          id: editingProject.id,
+          data: data as UpdateProjectRequest
+        });
         message.success('Project updated successfully');
       } else {
-        await ProjectApi.createProject(data as CreateProjectRequest);
+        await createProjectMutation.mutateAsync(data as CreateProjectRequest);
         message.success('Project created successfully');
       }
-      
+
       setFormVisible(false);
       setEditingProject(undefined);
-      loadProjects();
-      loadStats();
+      refetchAllData();
     } catch (error) {
       message.error(editingProject ? 'Failed to update project' : 'Failed to create project');
       console.error('Form submit error:', error);
-    } finally {
-      setFormLoading(false);
     }
   };
 

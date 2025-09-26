@@ -34,6 +34,8 @@
   background: #fafafa;
   border-radius: 8px;
   padding: 16px;
+  position: relative;
+  z-index: 999;
 }
 
 .context-filters .ant-collapse > .ant-collapse-item > .ant-collapse-header {
@@ -46,6 +48,19 @@
   border: 1px solid #91d5ff;
   border-radius: 8px;
   padding: 12px 16px;
+  position: relative;
+  z-index: 1000;
+}
+
+/* Bulk Actions Dropdown - Ensure proper layering */
+.bulk-actions-container {
+  position: relative;
+  z-index: 1000;
+}
+
+.bulk-actions-dropdown {
+  position: absolute;
+  z-index: 1001;
 }
 
 /* Context Detail Drawer */

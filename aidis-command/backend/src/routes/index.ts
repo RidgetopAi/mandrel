@@ -10,11 +10,16 @@ import decisionRoutes from './decisions';
 import namingRoutes from './naming';
 import dashboardRoutes from './dashboard';
 import monitoringRoutes from './monitoring';
+import validationRoutes from './validation';
+import typeSafetyRoutes from './typeSafety';
+import openApiRoutes from './openapi';
+import embeddingRoutes from './embedding';
 
 const router = Router();
 
 // Mount route modules
 router.use('/', healthRoutes);
+router.use('/openapi', openApiRoutes);
 router.use('/auth', authRoutes);
 router.use('/contexts', contextRoutes);
 router.use('/projects', projectRoutes);
@@ -25,5 +30,8 @@ router.use('/decisions', decisionRoutes);
 router.use('/naming', namingRoutes);
 router.use('/dashboard', dashboardRoutes);
 router.use('/monitoring', monitoringRoutes);
+router.use('/validation', validationRoutes);
+router.use('/type-safety', typeSafetyRoutes);
+router.use('/embedding', embeddingRoutes);
 
 export default router;

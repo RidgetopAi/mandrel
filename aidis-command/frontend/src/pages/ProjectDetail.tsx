@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
   Typography, 
@@ -26,8 +26,9 @@ import {
   EditOutlined,
   BarChartOutlined
 } from '@ant-design/icons';
-import ProjectApi, { Project, Session } from '../services/projectApi';
+import { useProject, useProjectSessions } from '../hooks/useProjects';
 import SessionList from '../components/projects/SessionList';
+import type { Session } from '../types/session';
 
 const { Title, Text, Paragraph } = Typography;
 const { TabPane } = Tabs;
@@ -35,48 +36,39 @@ const { TabPane } = Tabs;
 const ProjectDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [project, setProject] = useState<Project | null>(null);
-  const [sessions, setSessions] = useState<Session[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [sessionsLoading, setSessionsLoading] = useState(false);
 
-  const loadProject = useCallback(async () => {
-    if (!id) return;
-    
-    setLoading(true);
-    try {
-      const project = await ProjectApi.getProject(id);
-      setProject(project);
-    } catch (error) {
-      console.error('Load project error:', error);
+  // React Query hooks for data fetching
+  const {
+    data: projectResponse,
+    isLoading: projectLoading,
+    error: projectError
+  } = useProject(id);
+
+  const {
+    data: sessionsResponse,
+    isLoading: sessionsLoading,
+    error: sessionsError
+  } = useProjectSessions(id);
+
+  // Extract data from API responses
+  const project = projectResponse?.data;
+  const sessions = (sessionsResponse?.data as any)?.sessions || [];
+
+  // Handle errors
+  React.useEffect(() => {
+    if (projectError) {
+      console.error('Load project error:', projectError);
       message.error('Failed to load project details');
       navigate('/projects');
-    } finally {
-      setLoading(false);
     }
-  }, [id, navigate]);
+  }, [projectError, navigate]);
 
-  const loadSessions = useCallback(async () => {
-    if (!id) return;
-    
-    setSessionsLoading(true);
-    try {
-      const response = await ProjectApi.getProjectSessions(id);
-      setSessions(response.sessions);
-    } catch (error) {
-      console.error('Load sessions error:', error);
+  React.useEffect(() => {
+    if (sessionsError) {
+      console.error('Load sessions error:', sessionsError);
       message.error('Failed to load project sessions');
-    } finally {
-      setSessionsLoading(false);
     }
-  }, [id]);
-
-  useEffect(() => {
-    if (id) {
-      loadProject();
-      loadSessions();
-    }
-  }, [id, loadProject, loadSessions]);
+  }, [sessionsError]);
 
   const handleViewSession = (session: Session) => {
     message.info(`Viewing session: ${session.id.slice(0, 8)}...`);
@@ -107,7 +99,7 @@ const ProjectDetail: React.FC = () => {
     });
   };
 
-  if (loading) {
+  if (projectLoading) {
     return (
       <div style={{ textAlign: 'center', padding: '50px' }}>
         <Spin size="large" tip="Loading project details..." />
@@ -146,18 +138,18 @@ const ProjectDetail: React.FC = () => {
             <FolderOutlined style={{ fontSize: '32px', color: '#722ed1' }} />
             <div>
               <Title level={2} style={{ margin: 0 }}>
-                {project.name}
+                {project?.name}
               </Title>
               <Space size="small" style={{ marginTop: '8px' }}>
-                <Tag color={getStatusColor(project.status)}>
-                  {project.status.toUpperCase()}
+                <Tag color={getStatusColor(project?.status || 'inactive')}>
+                  {project?.status?.toUpperCase()}
                 </Tag>
-                {project.git_repo_url && (
+                {project?.git_repo_url && (
                   <Tag icon={<GithubOutlined />} color="blue">
                     Git Repository
                   </Tag>
                 )}
-                {project.root_directory && (
+                {project?.root_directory && (
                   <Tag icon={<FolderOpenOutlined />} color="purple">
                     Local Directory
                   </Tag>
@@ -173,32 +165,32 @@ const ProjectDetail: React.FC = () => {
 
       {/* Project Overview */}
       <Card title="Project Overview">
-        {project.description && (
+        {project?.description && (
           <Paragraph style={{ fontSize: '16px', marginBottom: '24px' }}>
             {project.description}
           </Paragraph>
         )}
-        
+
         <Descriptions column={2} bordered>
           <Descriptions.Item label="Created">
-            {formatDate(project.created_at)}
+            {project?.created_at ? formatDate(project.created_at) : 'Unknown'}
           </Descriptions.Item>
           <Descriptions.Item label="Last Updated">
-            {project.updated_at ? formatDate(project.updated_at) : 'Never'}
+            {project?.updated_at ? formatDate(project.updated_at) : 'Never'}
           </Descriptions.Item>
-          {project.git_repo_url && (
+          {project?.git_repo_url && (
             <Descriptions.Item label="Git Repository" span={2}>
               <a href={project.git_repo_url} target="_blank" rel="noopener noreferrer">
                 {project.git_repo_url}
               </a>
             </Descriptions.Item>
           )}
-          {project.root_directory && (
+          {project?.root_directory && (
             <Descriptions.Item label="Root Directory" span={2}>
               <Text code>{project.root_directory}</Text>
             </Descriptions.Item>
           )}
-          {project.metadata && Object.keys(project.metadata).length > 0 && (
+          {project?.metadata && Object.keys(project.metadata).length > 0 && (
             <Descriptions.Item label="Metadata" span={2}>
               <pre style={{ background: '#f5f5f5', padding: '8px', borderRadius: '4px' }}>
                 {JSON.stringify(project.metadata, null, 2)}
@@ -214,7 +206,7 @@ const ProjectDetail: React.FC = () => {
           <Card>
             <Statistic
               title="Total Contexts"
-              value={project.context_count || 0}
+              value={(project as any)?.context_count || 0}
               prefix={<DatabaseOutlined />}
               valueStyle={{ color: '#1890ff' }}
             />
@@ -224,7 +216,7 @@ const ProjectDetail: React.FC = () => {
           <Card>
             <Statistic
               title="Total Sessions"
-              value={project.session_count || 0}
+              value={(project as any)?.session_count || 0}
               prefix={<ClockCircleOutlined />}
               valueStyle={{ color: '#52c41a' }}
             />
@@ -234,7 +226,7 @@ const ProjectDetail: React.FC = () => {
           <Card>
             <Statistic
               title="Days Active"
-              value={project.created_at ? Math.ceil((new Date().getTime() - new Date(project.created_at).getTime()) / (1000 * 60 * 60 * 24)) : 0}
+              value={project?.created_at ? Math.ceil((new Date().getTime() - new Date(project.created_at).getTime()) / (1000 * 60 * 60 * 24)) : 0}
               suffix="days"
               valueStyle={{ color: '#722ed1' }}
             />

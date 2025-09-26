@@ -5,7 +5,7 @@ import {
   ProjectOutlined, TagOutlined, TrophyOutlined
 } from '@ant-design/icons';
 import { ContextStats as ContextStatsType } from '../../stores/contextStore';
-import { ContextApi } from '../../services/contextApi';
+import { getTypeColor, getTypeDisplayName } from '../../utils/contextHelpers';
 
 interface ContextStatsProps {
   stats: ContextStatsType | null;
@@ -24,10 +24,13 @@ const ContextStats: React.FC<ContextStatsProps> = ({ stats, loading }) => {
   }
 
   // Calculate percentages for type distribution
-  const typeEntries = Object.entries(stats.by_type).sort(([,a], [,b]) => b - a);
+  const totalContexts = stats.total_contexts ?? 0;
+  const totalProjects = stats.total_projects ?? 0;
+  const recentContexts = stats.recent_contexts ?? 0;
+  const typeEntries = Object.entries(stats.by_type || {}).sort(([, a], [, b]) => b - a);
   // Calculate recent activity percentage
-  const recentPercentage = stats.total_contexts > 0 
-    ? Math.round((stats.recent_contexts / stats.total_contexts) * 100)
+  const recentPercentage = totalContexts > 0
+    ? Math.round((recentContexts / totalContexts) * 100)
     : 0;
 
   return (
@@ -38,7 +41,7 @@ const ContextStats: React.FC<ContextStatsProps> = ({ stats, loading }) => {
           <Card>
             <Statistic
               title="Total Contexts"
-              value={stats.total_contexts}
+              value={totalContexts}
               prefix={<DatabaseOutlined style={{ color: '#1890ff' }} />}
               loading={loading}
             />
@@ -48,7 +51,7 @@ const ContextStats: React.FC<ContextStatsProps> = ({ stats, loading }) => {
           <Card>
             <Statistic
               title="Projects"
-              value={stats.total_projects}
+              value={totalProjects}
               prefix={<ProjectOutlined style={{ color: '#52c41a' }} />}
               loading={loading}
             />
@@ -58,7 +61,7 @@ const ContextStats: React.FC<ContextStatsProps> = ({ stats, loading }) => {
           <Card>
             <Statistic
               title="Recent (7 days)"
-              value={stats.recent_contexts}
+              value={recentContexts}
               prefix={<ClockCircleOutlined style={{ color: '#fa8c16' }} />}
               suffix={`(${recentPercentage}%)`}
               loading={loading}
@@ -69,7 +72,7 @@ const ContextStats: React.FC<ContextStatsProps> = ({ stats, loading }) => {
           <Card>
             <Statistic
               title="Avg per Project"
-              value={stats.total_projects > 0 ? Math.round(stats.total_contexts / stats.total_projects) : 0}
+              value={totalProjects > 0 ? Math.round(totalContexts / totalProjects) : 0}
               prefix={<TrophyOutlined style={{ color: '#722ed1' }} />}
               loading={loading}
             />
@@ -93,16 +96,16 @@ const ContextStats: React.FC<ContextStatsProps> = ({ stats, loading }) => {
               <div key={type} style={{ width: '100%' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
                   <Space>
-                    <Tag color={ContextApi.getTypeColor(type)}>
-                      {ContextApi.getTypeDisplayName(type)}
+                    <Tag color={getTypeColor(type)}>
+                      {getTypeDisplayName(type)}
                     </Tag>
                     <span>{count} contexts</span>
                   </Space>
-                  <span>{Math.round((count / stats.total_contexts) * 100)}%</span>
+                  <span>{totalContexts > 0 ? Math.round((count / totalContexts) * 100) : 0}%</span>
                 </div>
                 <Progress
-                  percent={Math.round((count / stats.total_contexts) * 100)}
-                  strokeColor={ContextApi.getTypeColor(type)}
+                  percent={totalContexts > 0 ? Math.round((count / totalContexts) * 100) : 0}
+                  strokeColor={getTypeColor(type)}
                   showInfo={false}
                 />
               </div>
@@ -125,9 +128,9 @@ const ContextStats: React.FC<ContextStatsProps> = ({ stats, loading }) => {
         }
         loading={loading}
       >
-        {Object.keys(stats.by_project).length > 0 ? (
+        {Object.keys(stats.by_project || {}).length > 0 ? (
           <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-            {Object.entries(stats.by_project)
+            {Object.entries(stats.by_project || {})
               .sort(([,a], [,b]) => b - a)
               .slice(0, 10) // Top 10 projects
               .map(([project, count]) => (
@@ -140,12 +143,12 @@ const ContextStats: React.FC<ContextStatsProps> = ({ stats, loading }) => {
                     <Space>
                       <span>{count} contexts</span>
                       <span style={{ color: '#8c8c8c' }}>
-                        ({Math.round((count / stats.total_contexts) * 100)}%)
+                        ({totalContexts > 0 ? Math.round((count / totalContexts) * 100) : 0}%)
                       </span>
                     </Space>
                   </div>
                   <Progress
-                    percent={Math.round((count / stats.total_contexts) * 100)}
+                    percent={totalContexts > 0 ? Math.round((count / totalContexts) * 100) : 0}
                     strokeColor="#1890ff"
                     showInfo={false}
                   />
@@ -176,7 +179,7 @@ const ContextStats: React.FC<ContextStatsProps> = ({ stats, loading }) => {
           <Col span={8}>
             <div style={{ textAlign: 'center' }}>
               <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#1890ff' }}>
-                {stats.total_projects > 0 ? Math.round(stats.total_contexts / stats.total_projects) : 0}
+                {totalProjects > 0 ? Math.round(totalContexts / totalProjects) : 0}
               </div>
               <div style={{ color: '#8c8c8c' }}>Avg per Project</div>
               <div style={{ fontSize: '12px', color: '#8c8c8c' }}>

@@ -1,10 +1,13 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Card, Spin, Alert, Select, Space, InputNumber, Button } from 'antd';
 import { Heatmap } from '@ant-design/plots';
 import { ReloadOutlined, SettingOutlined } from '@ant-design/icons';
-import { useEmbeddingStore } from '../../stores/embeddingStore';
-import { EmbeddingService } from '../../services/embeddingService';
 import { useProjectContext } from '../../contexts/ProjectContext';
+import {
+  useSimilarityMatrixQuery,
+} from '../../hooks/useEmbeddings';
+import { useEmbeddingStore } from '../../stores/embeddingStore';
+import { useEmbeddingDatasetSelection } from '../../hooks/useEmbeddingDatasetSelection';
 
 const { Option } = Select;
 
@@ -15,75 +18,37 @@ interface HeatmapData {
 }
 
 const SimilarityHeatmap: React.FC = () => {
-  const {
-    datasets,
-    selectedDataset,
-    similarityMatrix,
-    isLoading,
-    error,
-    heatmapSize,
-    setDatasets,
-    setSelectedDataset,
-    setSimilarityMatrix,
-    setLoading,
-    setError,
-    updateHeatmapSize,
-  } = useEmbeddingStore();
-
   const { currentProject } = useProjectContext();
+  const projectId = currentProject?.id;
+
+  const { heatmapSize, updateHeatmapSize } = useEmbeddingStore();
   const [showSettings, setShowSettings] = useState(false);
 
-  // Load datasets on component mount
-  const loadDatasets = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const data = await EmbeddingService.getDatasets(currentProject?.name);
-      setDatasets(data);
-      
-      // Auto-select first dataset if available
-      if (data.length > 0 && !selectedDataset) {
-        setSelectedDataset(data[0].id);
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load datasets');
-    } finally {
-      setLoading(false);
+  const { datasetsQuery, datasets, selectedDatasetId, setSelectedDatasetId } =
+    useEmbeddingDatasetSelection(projectId);
+
+  const similarityQuery = useSimilarityMatrixQuery(
+    {
+      datasetId: selectedDatasetId ?? undefined,
+      rows: heatmapSize.rows,
+      cols: heatmapSize.cols,
+      projectId,
+    },
+    {
+      enabled: Boolean(projectId && selectedDatasetId),
+      refetchOnWindowFocus: false,
     }
-  }, [currentProject?.name, setDatasets, setError, setLoading, selectedDataset, setSelectedDataset]);
+  );
 
-  const loadSimilarityMatrix = useCallback(async () => {
-    if (!selectedDataset) return;
+  const loading = datasetsQuery.isLoading || similarityQuery.isLoading;
+  const fetching = datasetsQuery.isFetching || similarityQuery.isFetching;
+  const error = (datasetsQuery.error as Error) ?? (similarityQuery.error as Error) ?? null;
+  const similarityMatrix = similarityQuery.data ?? null;
 
-    try {
-      setLoading(true);
-      setError(null);
-      const data = await EmbeddingService.getSimilarityMatrix(
-        selectedDataset,
-        heatmapSize.rows,
-        heatmapSize.cols,
-        currentProject?.name
-      );
-      setSimilarityMatrix(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load similarity matrix');
-    } finally {
-      setLoading(false);
+  const heatmapData = useMemo<HeatmapData[]>(() => {
+    if (!similarityMatrix) {
+      return [];
     }
-  }, [selectedDataset, heatmapSize.rows, heatmapSize.cols, currentProject?.name, setError, setLoading, setSimilarityMatrix]);
-
-  useEffect(() => {
-    loadDatasets();
-  }, [loadDatasets]);
-
-  useEffect(() => {
-    if (selectedDataset) {
-      loadSimilarityMatrix();
-    }
-  }, [selectedDataset, heatmapSize, loadSimilarityMatrix]);
-
-  const formatHeatmapData = (): HeatmapData[] => {
-    if (!similarityMatrix) return [];
 
     const data: HeatmapData[] = [];
     const { matrix, labels } = similarityMatrix;
@@ -99,10 +64,18 @@ const SimilarityHeatmap: React.FC = () => {
     }
 
     return data;
+  }, [similarityMatrix]);
+
+  const handleRetry = () => {
+    void Promise.all([datasetsQuery.refetch(), similarityQuery.refetch()]);
+  };
+
+  const handleRefresh = () => {
+    void similarityQuery.refetch();
   };
 
   const heatmapConfig = {
-    data: formatHeatmapData(),
+    data: heatmapData,
     xField: 'x',
     yField: 'y',
     colorField: 'value',
@@ -133,7 +106,7 @@ const SimilarityHeatmap: React.FC = () => {
     },
     tooltip: {
       title: 'Similarity',
-      formatter: (datum: any) => ({
+      formatter: (datum: HeatmapData) => ({
         name: 'Cosine Similarity',
         value: datum.value.toFixed(3),
       }),
@@ -145,15 +118,40 @@ const SimilarityHeatmap: React.FC = () => {
     height: 500,
   };
 
+  if (!projectId) {
+    return (
+      <Card title="Embedding Similarity Heatmap">
+        <Alert
+          message="Select a project"
+          description="Choose a project to load embedding datasets and similarity analytics."
+          type="info"
+          showIcon
+        />
+      </Card>
+    );
+  }
+
+  if (loading && !similarityMatrix) {
+    return (
+      <Card title="Embedding Similarity Heatmap">
+        <div style={{ textAlign: 'center', padding: '24px' }}>
+          <Spin size="large" />
+          <div style={{ marginTop: 16 }}>Loading embedding datasets...</div>
+        </div>
+      </Card>
+    );
+  }
+
   if (error) {
     return (
-      <Card title="Similarity Heatmap">
-        <Alert message="Error" description={error} type="error" showIcon />
-        <Button 
-          onClick={loadDatasets} 
-          style={{ marginTop: 16 }}
-          icon={<ReloadOutlined />}
-        >
+      <Card title="Embedding Similarity Heatmap">
+        <Alert
+          message="Error"
+          description={error.message}
+          type="error"
+          showIcon
+        />
+        <Button onClick={handleRetry} style={{ marginTop: 16 }} icon={<ReloadOutlined />}>
           Retry
         </Button>
       </Card>
@@ -172,27 +170,28 @@ const SimilarityHeatmap: React.FC = () => {
           >
             Settings
           </Button>
-          <Button 
+          <Button
             icon={<ReloadOutlined />}
-            onClick={loadSimilarityMatrix}
-            disabled={!selectedDataset}
+            onClick={handleRefresh}
+            disabled={!selectedDatasetId}
+            loading={fetching && Boolean(selectedDatasetId)}
           >
             Refresh
           </Button>
         </Space>
       }
     >
-      {/* Settings Panel */}
       {showSettings && (
         <Card size="small" style={{ marginBottom: 16, backgroundColor: '#f9f9f9' }}>
           <Space wrap>
             <div>
               <label>Dataset: </label>
               <Select
-                value={selectedDataset}
-                onChange={setSelectedDataset}
-                style={{ width: 200 }}
+                value={selectedDatasetId ?? undefined}
+                onChange={setSelectedDatasetId}
+                style={{ width: 240 }}
                 placeholder="Select dataset"
+                loading={datasetsQuery.isFetching}
               >
                 {datasets.map(dataset => (
                   <Option key={dataset.id} value={dataset.id}>
@@ -201,52 +200,44 @@ const SimilarityHeatmap: React.FC = () => {
                 ))}
               </Select>
             </div>
-            
             <div>
-              <label>Matrix Size: </label>
-              <Space.Compact>
-                <InputNumber
-                  value={heatmapSize.rows}
-                  onChange={(value) => updateHeatmapSize({ ...heatmapSize, rows: value || 50 })}
-                  min={10}
-                  max={100}
-                  style={{ width: 80 }}
-                  placeholder="Rows"
-                />
-                <span style={{ padding: '0 4px' }}>×</span>
-                <InputNumber
-                  value={heatmapSize.cols}
-                  onChange={(value) => updateHeatmapSize({ ...heatmapSize, cols: value || 50 })}
-                  min={10}
-                  max={100}
-                  style={{ width: 80 }}
-                  placeholder="Cols"
-                />
-              </Space.Compact>
+              <label>Rows: </label>
+              <InputNumber
+                min={10}
+                max={200}
+                value={heatmapSize.rows}
+                onChange={(value) =>
+                  updateHeatmapSize({ rows: Number(value ?? 50), cols: heatmapSize.cols })
+                }
+              />
+            </div>
+            <div>
+              <label>Cols: </label>
+              <InputNumber
+                min={10}
+                max={200}
+                value={heatmapSize.cols}
+                onChange={(value) =>
+                  updateHeatmapSize({ rows: heatmapSize.rows, cols: Number(value ?? 50) })
+                }
+              />
             </div>
           </Space>
         </Card>
       )}
 
-      {/* Heatmap Visualization */}
-      <Spin spinning={isLoading} tip="Loading similarity matrix...">
-        {similarityMatrix ? (
-          <div style={{ width: '100%', height: '500px' }}>
-            <Heatmap {...heatmapConfig} />
-            <div style={{ marginTop: 16, fontSize: '12px', color: '#666' }}>
-              Showing {similarityMatrix.metadata.rows}×{similarityMatrix.metadata.cols} similarity matrix.
-              Values range from 0 (completely different) to 1 (identical).
-            </div>
-          </div>
-        ) : (
-          <div style={{ textAlign: 'center', padding: '60px 0', color: '#999' }}>
-            {datasets.length === 0 
-              ? 'No embedding datasets available. Create some contexts with embeddings first.'
-              : 'Select a dataset to view the similarity heatmap.'
-            }
-          </div>
-        )}
-      </Spin>
+      {!selectedDatasetId && (
+        <Alert
+          message="No dataset selected"
+          description="Choose an embedding dataset to visualize similarity scores."
+          type="info"
+          showIcon
+        />
+      )}
+
+      {selectedDatasetId && similarityMatrix && (
+        <Heatmap {...heatmapConfig} />
+      )}
     </Card>
   );
 };

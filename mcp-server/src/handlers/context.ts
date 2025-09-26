@@ -53,9 +53,35 @@ export interface SearchResult extends ContextEntry {
 }
 
 export class ContextHandler {
-  
+
   /**
-   * Store new context with automatic embedding generation
+   * Extract meaningful title from content for hybrid embeddings
+   */
+  private extractTitle(content: string): string {
+    const trimmed = content.trim();
+
+    // Look for markdown-style headers or bold text
+    const markdownTitleMatch = trimmed.match(/^#{1,6}\s*(.+)|^\*\*(.+?)\*\*/);
+    if (markdownTitleMatch) {
+      return markdownTitleMatch[1] || markdownTitleMatch[2];
+    }
+
+    // Look for lines that look like titles (short first lines)
+    const firstLine = trimmed.split('\n')[0];
+    if (firstLine && firstLine.length <= 100 && firstLine.length >= 10) {
+      // Check if it's likely a title (no punctuation at end except : or -)
+      if (!/[.!?]$/.test(firstLine) || /[:-]$/.test(firstLine)) {
+        return firstLine;
+      }
+    }
+
+    // Fall back to first 50 characters
+    return trimmed.substring(0, 50).replace(/\s+$/, '');
+  }
+
+  /**
+   * Store new context with automatic hybrid embedding generation
+   * Combines title + tags + type + content for better semantic search
    */
   async storeContext(request: StoreContextRequest): Promise<ContextEntry> {
     console.log(`📝 Storing ${request.type} context: "${request.content.substring(0, 60)}..."`);
@@ -74,10 +100,20 @@ export class ContextHandler {
       const projectId = await this.ensureProjectId(request.projectId);
       const sessionId = await this.ensureSessionId(request.sessionId, projectId);
 
-      // Generate embedding for the content
-      console.log('🔮 Generating embedding for context content...');
+      // Create hybrid embedding text combining title, tags, type, and content
+      const extractedTitle = this.extractTitle(request.content);
+      const embeddingText = [
+        `Type: ${request.type}`,
+        request.tags?.length ? `Tags: ${request.tags.join(', ')}` : '',
+        extractedTitle,
+        request.content.substring(0, 1000) // Limit content to avoid dilution
+      ].filter(Boolean).join('\n');
+
+      // Generate hybrid embedding
+      console.log('🔮 Generating hybrid embedding (title + tags + content)...');
+      console.log(`📋 Extracted title: "${extractedTitle}"`);
       const embeddingResult = await embeddingService.generateEmbedding({
-        text: request.content
+        text: embeddingText
       });
 
       // Prepare context data
@@ -171,15 +207,15 @@ export class ContextHandler {
 
       // Build search query with filters
       let sql = `
-        SELECT 
+        SELECT
           id, project_id, session_id, context_type, content,
           created_at, relevance_score, tags, metadata,
           1 - (embedding <=> $1::vector) as similarity
-        FROM contexts 
-        WHERE 1=1
+        FROM contexts
+        WHERE embedding IS NOT NULL
       `;
       
-      const params: any[] = [JSON.stringify(queryEmbedding.embedding)];
+      const params: any[] = [`[${queryEmbedding.embedding.join(',')}]`];
       let paramIndex = 2;
 
       // Add filters
@@ -208,12 +244,43 @@ export class ContextHandler {
       console.log('🔍 Executing vector similarity search...');
       const result = await db.query(sql, params);
 
-      // Convert results and calculate similarities
+      // Convert results and calculate similarities with substring boosting
       const results: SearchResult[] = result.rows.map(row => {
         // Handle potential null/undefined similarity values to prevent NaN
         const rawSimilarity = row.similarity;
-        const similarity = Math.max(0, (rawSimilarity && !isNaN(parseFloat(rawSimilarity))) ? parseFloat(rawSimilarity) : 0) * 100;
-        
+        let similarity = Math.max(0, (rawSimilarity && !isNaN(parseFloat(rawSimilarity))) ? parseFloat(rawSimilarity) : 0) * 100;
+
+        // Apply substring boosting for exact matches
+        const queryLower = request.query.toLowerCase();
+        const contentLower = row.content.toLowerCase();
+        const tagsLower = (row.tags || []).join(' ').toLowerCase();
+
+        let boost = 0;
+        let boostReason = '';
+
+        // +20% boost for content substring matches
+        if (contentLower.includes(queryLower)) {
+          boost += 20;
+          boostReason = 'Content substring match';
+        }
+
+        // +15% boost for tag substring matches
+        if (tagsLower.includes(queryLower)) {
+          boost += 15;
+          boostReason = boostReason ? boostReason + ' + Tag substring match' : 'Tag substring match';
+        }
+
+        // Apply boost
+        if (boost > 0) {
+          similarity = Math.min(100, similarity + boost); // Cap at 100%
+        }
+
+        const finalSearchReason = boostReason ?
+          `${similarity > 70 ? 'High' : similarity > 40 ? 'Moderate' : 'Low'} similarity match (${boostReason})` :
+          similarity > 70 ? 'High similarity match' :
+          similarity > 40 ? 'Moderate similarity match' :
+          'Low similarity match';
+
         return {
           id: row.id,
           projectId: row.project_id,
@@ -225,9 +292,7 @@ export class ContextHandler {
           tags: row.tags || [],
           metadata: typeof row.metadata === 'string' ? JSON.parse(row.metadata) : row.metadata,
           similarity: Math.round(similarity * 10) / 10, // Round to 1 decimal place
-          searchReason: similarity > 70 ? 'High similarity match' :
-                       similarity > 40 ? 'Moderate similarity match' :
-                       'Low similarity match'
+          searchReason: finalSearchReason
         };
       });
 

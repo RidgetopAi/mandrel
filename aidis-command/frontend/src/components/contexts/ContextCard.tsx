@@ -4,8 +4,13 @@ import {
   EyeOutlined, EditOutlined, DeleteOutlined, ShareAltOutlined,
   CalendarOutlined, FolderOutlined, TagsOutlined
 } from '@ant-design/icons';
-import { Context } from '../../stores/contextStore';
-import { ContextApi } from '../../services/contextApi';
+import type { Context } from '../../types/context';
+import {
+  getTypeColor,
+  getTypeDisplayName,
+  highlightSearchTerms,
+  truncateContent,
+} from '../../utils/contextHelpers';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import utc from 'dayjs/plugin/utc';
@@ -40,16 +45,16 @@ const ContextCard: React.FC<ContextCardProps> = ({
   onDelete,
   onShare
 }) => {
-  const typeColor = ContextApi.getTypeColor(context.type);
-  const typeDisplayName = ContextApi.getTypeDisplayName(context.type);
+  const typeColor = getTypeColor(context.type);
+  const typeDisplayName = getTypeDisplayName(context.type);
   
   const handleCheckboxChange = (e: any) => {
     onSelect?.(context.id, e.target.checked);
   };
 
-  const truncatedContent = ContextApi.truncateContent(context.content, 120);
+  const truncatedContent = truncateContent(context.content, 120);
   const highlightedContent = searchTerm 
-    ? ContextApi.highlightSearchTerms(truncatedContent, searchTerm)
+    ? highlightSearchTerms(truncatedContent, searchTerm)
     : truncatedContent;
 
   const actions = [

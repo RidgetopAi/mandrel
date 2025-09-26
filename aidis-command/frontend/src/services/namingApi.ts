@@ -1,95 +1,45 @@
-import apiClient from './api';
 import { NamingEntry, NamingSearchParams, NamingStats, NamingSearchResult, NamingSuggestion, NamingRegistrationData } from '../components/naming/types';
+import namingClient from '../api/namingClient';
+import type { UpdateNamingRequest } from '../api/generated';
 
 export class NamingApi {
   /**
    * Search naming entries with filters and pagination
    */
   static async searchEntries(params: NamingSearchParams): Promise<NamingSearchResult> {
-    // Convert params to query string
-    const queryParams = new URLSearchParams();
-    
-    Object.entries(params).forEach(([key, value]) => {
-      if (value !== undefined && value !== null) {
-        if (Array.isArray(value)) {
-          queryParams.set(key, value.join(','));
-        } else {
-          queryParams.set(key, String(value));
-        }
-      }
-    });
-
-    const response = await apiClient.get<{ success: boolean; data: NamingSearchResult }>(
-      `/naming?${queryParams.toString()}`
-    );
-
-    if (!response.success) {
-      throw new Error('Failed to search naming entries');
-    }
-
-    return response.data;
+    return namingClient.search(params);
   }
 
   /**
    * Get single naming entry by ID
    */
   static async getEntry(id: number): Promise<NamingEntry> {
-    const response = await apiClient.get<{ success: boolean; data: NamingEntry }>(
-      `/naming/${id}`
-    );
-
-    if (!response.success) {
-      throw new Error('Failed to get naming entry');
-    }
-
-    return response.data;
+    return namingClient.getEntry(String(id));
   }
 
   /**
    * Register a new name
    */
   static async registerName(data: NamingRegistrationData): Promise<NamingEntry> {
-    const response = await apiClient.post<{ success: boolean; data: NamingEntry }>(
-      '/naming/register',
-      data
-    );
-
-    if (!response.success) {
-      throw new Error('Failed to register name');
-    }
-
-    return response.data;
+    return namingClient.registerEntry({
+      name: data.name,
+      type: data.type as any,
+      context: data.context,
+    });
   }
 
   /**
    * Check name availability
    */
-  static async checkNameAvailability(name: string): Promise<{ available: boolean; conflicts?: NamingEntry[] }> {
-    const response = await apiClient.get<{ success: boolean; data: { available: boolean; conflicts?: NamingEntry[] } }>(
-      `/naming/check/${encodeURIComponent(name)}`
-    );
-
-    if (!response.success) {
-      throw new Error('Failed to check name availability');
-    }
-
-    return response.data;
+  static async checkNameAvailability(name: string): Promise<{ available: boolean; conflicts?: NamingEntry[]; message?: string }> {
+    return namingClient.checkName(name);
   }
 
   /**
    * Get naming suggestions
    */
   static async getSuggestions(baseName: string, type?: string): Promise<NamingSuggestion[]> {
-    const params = type ? `?type=${type}` : '';
-    const response = await apiClient.get<{ success: boolean; data: NamingSuggestion[] }>(
-      `/naming/suggest/${encodeURIComponent(baseName)}${params}`
-    );
-
-    if (!response.success) {
-      throw new Error('Failed to get naming suggestions');
-    }
-
-    return response.data;
+    return namingClient.getSuggestions(baseName, type);
   }
 
   /**
@@ -102,45 +52,26 @@ export class NamingApi {
       context?: string;
     }
   ): Promise<NamingEntry> {
-    const response = await apiClient.put<{ success: boolean; data: NamingEntry }>(
-      `/naming/${id}`,
-      updates
-    );
+    await namingClient.updateEntry(String(id), {
+      status: updates.status as any,
+      context: updates.context,
+    });
 
-    if (!response.success) {
-      throw new Error('Failed to update naming entry');
-    }
-
-    return response.data;
+    return namingClient.getEntry(String(id));
   }
 
   /**
    * Delete naming entry
    */
   static async deleteEntry(id: number): Promise<void> {
-    const response = await apiClient.delete<{ success: boolean }>(
-      `/naming/${id}`
-    );
-
-    if (!response.success) {
-      throw new Error('Failed to delete naming entry');
-    }
+    await namingClient.deleteEntry(String(id));
   }
 
   /**
    * Get naming statistics
    */
   static async getNamingStats(project_id?: string): Promise<NamingStats> {
-    const params = project_id ? `?project_id=${project_id}` : '';
-    const response = await apiClient.get<{ success: boolean; data: NamingStats }>(
-      `/naming/stats${params}`
-    );
-
-    if (!response.success) {
-      throw new Error('Failed to get naming statistics');
-    }
-
-    return response.data;
+    return namingClient.getStats(project_id);
   }
 
   /**

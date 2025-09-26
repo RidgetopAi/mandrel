@@ -1,6 +1,12 @@
 import { Router } from 'express';
 import { TaskController } from '../controllers/task';
 import { authenticateToken } from '../middleware/auth';
+import {
+  validateBody,
+  validateUUIDParam,
+  validatePagination,
+  contractEnforcementMiddleware
+} from '../middleware/validation';
 
 /**
  * Task Management Routes
@@ -12,17 +18,20 @@ const router = Router();
 // Apply authentication middleware to all task routes
 router.use(authenticateToken);
 
+// TR004-6: Apply contract enforcement middleware
+router.use(contractEnforcementMiddleware);
+
 // Core CRUD operations
-router.get('/', TaskController.getTasks);               // GET /tasks - List tasks with filtering
+router.get('/', validatePagination(), TaskController.getTasks);               // GET /tasks - List tasks with filtering
 router.get('/stats', TaskController.getTaskStats);     // GET /tasks/stats - Get statistics
 router.get('/lead-time', TaskController.getLeadTimeDistribution); // GET /tasks/lead-time - Lead time analytics
-router.post('/', TaskController.createTask);           // POST /tasks - Create task
+router.post('/', validateBody('CreateTask'), TaskController.createTask);           // POST /tasks - Create task
 router.post('/bulk-update', TaskController.bulkUpdateTasks); // POST /tasks/bulk-update - Bulk updates
 
 // Individual task operations
-router.get('/:id', TaskController.getTask);                    // GET /tasks/:id - Get task by ID
-router.put('/:id', TaskController.updateTask);                 // PUT /tasks/:id - Update task
-router.delete('/:id', TaskController.deleteTask);              // DELETE /tasks/:id - Delete task
+router.get('/:id', validateUUIDParam(), TaskController.getTask);                    // GET /tasks/:id - Get task by ID
+router.put('/:id', validateUUIDParam(), validateBody('UpdateTask'), TaskController.updateTask);                 // PUT /tasks/:id - Update task
+router.delete('/:id', validateUUIDParam(), TaskController.deleteTask);              // DELETE /tasks/:id - Delete task
 
 // Task management operations
 router.get('/:id/dependencies', TaskController.getTaskDependencies); // GET /tasks/:id/dependencies - Get dependencies

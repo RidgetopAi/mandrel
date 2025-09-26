@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Card,
   Table,
@@ -25,20 +25,15 @@ import {
   SearchOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import { Session } from '../services/projectApi';
-import { apiService } from '../services/api';
+import { useAllSessions } from '../hooks/useProjects';
 import SessionEditModal from '../components/sessions/SessionEditModal';
+import type { Session } from '../types/session';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
 const { Search } = Input;
 
-interface SessionItem extends Session {
-  project_name?: string;
-  session_type?: string;
-  context_count?: number;
-  last_context_at?: string;
-}
+type SessionItem = Session;
 
 interface SessionStats {
   totalSessions: number;
@@ -48,14 +43,16 @@ interface SessionStats {
 }
 
 const Sessions: React.FC = () => {
-  const [sessions, setSessions] = useState<SessionItem[]>([]);
   const [stats, setStats] = useState<SessionStats>({
     totalSessions: 0,
     activeSessions: 0,
     todaySessions: 0,
     averageDuration: 0,
   });
-  const [loading, setLoading] = useState(true);
+
+  // Use React Query hook for sessions data
+  const { data: sessionsResponse, isLoading: loading, error, refetch } = useAllSessions();
+  const sessions = useMemo(() => sessionsResponse?.sessions || [], [sessionsResponse]);
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [selectedSession, setSelectedSession] = useState<SessionItem | null>(null);
   const [searchText, setSearchText] = useState('');
@@ -65,45 +62,41 @@ const Sessions: React.FC = () => {
   const navigate = useNavigate();
   // const { currentProject } = useProjectContext(); // TODO: Use for project filtering
 
-  // Load sessions and stats
-  const loadSessions = useCallback(async () => {
-    setLoading(true);
-    try {
-      // Use same apiService as dashboard SessionSummaries
-      const response = await apiService.get<{success: boolean; data: {sessions: SessionItem[]}}>('/projects/sessions/all');
-      
-      const sessionsArray = response.data.sessions;
-      setSessions(sessionsArray);
-      
-      // Calculate basic stats from loaded sessions
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      
-      const todaysSessions = sessionsArray.filter((s: SessionItem) => 
-        new Date(s.created_at) >= today
-      ).length;
-      
-      const activeSessions = sessionsArray.filter((s: SessionItem) => 
-        s.last_context_at && new Date(s.last_context_at) > new Date(Date.now() - 60 * 60 * 1000)
-      ).length;
-      
-      setStats({
-        totalSessions: sessionsArray.length,
-        activeSessions,
-        todaySessions: todaysSessions,
-        averageDuration: 0, // TODO: Calculate when we have duration data
-      });
-    } catch (error: any) {
-      console.error('Error loading sessions:', error);
-      message.error(error.response?.data?.error || 'Failed to load sessions');
-    } finally {
-      setLoading(false);
-    }
+  // Calculate stats from sessions data
+  const calculateStats = useCallback((sessionsArray: SessionItem[]) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const todaysSessions = sessionsArray.filter((s: SessionItem) =>
+      new Date(s.created_at) >= today
+    ).length;
+
+    const activeSessions = sessionsArray.filter((s: SessionItem) =>
+      s.last_context_at && new Date(s.last_context_at) > new Date(Date.now() - 60 * 60 * 1000)
+    ).length;
+
+    setStats({
+      totalSessions: sessionsArray.length,
+      activeSessions,
+      todaySessions: todaysSessions,
+      averageDuration: 0, // TODO: Calculate when we have duration data
+    });
   }, []);
 
+  // Update stats when sessions data changes
   useEffect(() => {
-    loadSessions();
-  }, [loadSessions]);
+    if (sessions.length > 0) {
+      calculateStats(sessions);
+    }
+  }, [sessions, calculateStats]);
+
+  // Handle error state
+  useEffect(() => {
+    if (error) {
+      console.error('Error loading sessions:', error);
+      message.error('Failed to load sessions');
+    }
+  }, [error]);
 
   // Session type icons and colors  
   const getTypeIcon = (type?: string) => {
@@ -137,7 +130,7 @@ const Sessions: React.FC = () => {
   };
 
   // Filter sessions
-  const filteredSessions = sessions.filter(session => {
+  const filteredSessions = sessions.filter((session: SessionItem) => {
     const matchesSearch = !searchText || 
       (session.title?.toLowerCase().includes(searchText.toLowerCase())) ||
       (session.description?.toLowerCase().includes(searchText.toLowerCase())) ||
@@ -258,7 +251,7 @@ const Sessions: React.FC = () => {
           <Button
             type="primary"
             icon={<ReloadOutlined />}
-            onClick={loadSessions}
+            onClick={() => refetch()}
             loading={loading}
           >
             Refresh
@@ -380,7 +373,7 @@ const Sessions: React.FC = () => {
         onSuccess={() => {
           setEditModalVisible(false);
           setSelectedSession(null);
-          loadSessions(); // Refresh the list
+          refetch(); // Refresh the list
         }}
       />
     </div>

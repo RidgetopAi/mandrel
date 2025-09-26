@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import { AuthenticatedRequest } from '../types/auth';
 import { ContextService, ContextSearchParams } from '../services/context';
+import type { UpdateContextData } from '../validation/schemas';
 
 export class ContextController {
   /**
@@ -77,16 +78,21 @@ export class ContextController {
   static async updateContext(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
       const { id } = req.params;
-      const updates = req.body;
+      const updates = req.body as UpdateContextData;
 
-      // Validate updates
-      const allowedFields = ['content', 'tags', 'metadata', 'relevance_score'];
-      const filteredUpdates = Object.keys(updates)
-        .filter(key => allowedFields.includes(key))
-        .reduce((obj, key) => {
-          obj[key] = updates[key];
-          return obj;
-        }, {} as any);
+      const filteredUpdates: UpdateContextData = {};
+      if (typeof updates.content === 'string') {
+        filteredUpdates.content = updates.content;
+      }
+      if (Array.isArray(updates.tags)) {
+        filteredUpdates.tags = updates.tags;
+      }
+      if (updates.metadata && typeof updates.metadata === 'object') {
+        filteredUpdates.metadata = updates.metadata;
+      }
+      if (typeof updates.relevance_score === 'number') {
+        filteredUpdates.relevance_score = updates.relevance_score;
+      }
 
       if (Object.keys(filteredUpdates).length === 0) {
         res.status(400).json({

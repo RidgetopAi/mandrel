@@ -3,7 +3,7 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { Form, Input, Button, Card, Typography, Space, Alert } from 'antd';
 import { UserOutlined, LockOutlined, DatabaseOutlined } from '@ant-design/icons';
 import { useAuthContext } from '../contexts/AuthContext';
-import { LoginRequest } from '../services/api';
+import { LoginRequest } from '../api/generated/models/LoginRequest';
 
 const { Title, Text } = Typography;
 

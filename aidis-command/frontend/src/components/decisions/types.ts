@@ -16,6 +16,7 @@ export interface TechnicalDecision {
   // Deprecated fields for backward compatibility
   outcome?: string;
   lessons?: string;
+  tags?: string[];
   created_at: string;
   updated_at: string;
   created_by?: string;

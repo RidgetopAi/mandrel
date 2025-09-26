@@ -1,6 +1,8 @@
 import { Request, Response } from 'express';
 import { SessionAnalyticsService } from '../services/sessionAnalytics';
 import { SessionDetailService } from '../services/sessionDetail';
+import { db as pool } from '../database/connection';
+import type { UpdateSessionData } from '../validation/schemas';
 
 export class SessionController {
   /**
@@ -233,6 +235,75 @@ export class SessionController {
   }
 
   /**
+   * PUT /sessions/:id - Update session metadata
+   */
+  static async updateSession(req: Request, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+      const updates = req.body as UpdateSessionData;
+
+      const existingSession = await this.fetchSessionSummary(id);
+      if (!existingSession) {
+        res.status(404).json({
+          success: false,
+          error: {
+            type: 'not_found',
+            message: 'Session not found',
+          },
+        });
+        return;
+      }
+
+      const fields: string[] = [];
+      const values: Array<string> = [id];
+
+      if (typeof updates.title !== 'undefined') {
+        fields.push(`title = $${values.length + 1}`);
+        values.push(updates.title);
+      }
+
+      if (typeof updates.description !== 'undefined') {
+        fields.push(`description = $${values.length + 1}`);
+        values.push(updates.description);
+      }
+
+      if (fields.length > 0) {
+        fields.push('updated_at = NOW()');
+        const updateQuery = `UPDATE user_sessions SET ${fields.join(', ')} WHERE id = $1`;
+        await pool.query(updateQuery, values);
+      }
+
+      const updatedSession = await this.fetchSessionSummary(id);
+      if (!updatedSession) {
+        res.status(500).json({
+          success: false,
+          error: {
+            type: 'internal',
+            message: 'Failed to load updated session',
+          },
+        });
+        return;
+      }
+
+      res.json({
+        success: true,
+        data: {
+          session: updatedSession,
+        },
+      });
+    } catch (error) {
+      console.error('Update session error:', error);
+      res.status(500).json({
+        success: false,
+        error: {
+          type: 'internal',
+          message: error instanceof Error ? error.message : 'Failed to update session',
+        },
+      });
+    }
+  }
+
+  /**
    * GET /sessions - Get sessions list with filtering
    */
   static async getSessionsList(req: Request, res: Response): Promise<void> {
@@ -294,4 +365,76 @@ export class SessionController {
       });
     }
   }
+  private static async fetchSessionSummary(sessionId: string): Promise<SessionSummary | null> {
+    const query = `
+      SELECT
+        s.id,
+        s.project_id,
+        p.name AS project_name,
+        s.title,
+        s.description,
+        s.session_type,
+        s.status,
+        s.created_at,
+        s.updated_at,
+        ctx.total_contexts AS context_count,
+        ctx.last_context_at
+      FROM user_sessions s
+      LEFT JOIN projects p ON p.id = s.project_id
+      LEFT JOIN (
+        SELECT session_id, COUNT(*)::text AS total_contexts, MAX(created_at) AS last_context_at
+        FROM contexts
+        GROUP BY session_id
+      ) ctx ON ctx.session_id = s.id
+      WHERE s.id = $1
+    `;
+
+    const { rows } = await pool.query<SessionSummaryRow>(query, [sessionId]);
+    if (rows.length === 0) {
+      return null;
+    }
+
+    const row = rows[0];
+    return {
+      id: row.id,
+      project_id: row.project_id ?? undefined,
+      project_name: row.project_name,
+      title: row.title,
+      description: row.description,
+      session_type: row.session_type,
+      status: row.status,
+      created_at: row.created_at,
+      updated_at: row.updated_at,
+      context_count: row.context_count !== null ? Number(row.context_count) : undefined,
+      last_context_at: row.last_context_at,
+    };
+  }
+}
+
+interface SessionSummaryRow {
+  id: string;
+  project_id: string | null;
+  project_name: string | null;
+  title: string | null;
+  description: string | null;
+  session_type: string | null;
+  status: string | null;
+  created_at: string;
+  updated_at: string;
+  context_count: string | null;
+  last_context_at: string | null;
+}
+
+interface SessionSummary {
+  id: string;
+  project_id?: string;
+  project_name?: string | null;
+  title?: string | null;
+  description?: string | null;
+  session_type?: string | null;
+  status?: string | null;
+  created_at: string;
+  updated_at: string;
+  context_count?: number;
+  last_context_at?: string | null;
 }

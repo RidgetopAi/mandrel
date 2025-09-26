@@ -10,6 +10,8 @@ import {
 } from '@ant-design/icons';
 import { useNamingStore, useNamingSearch, useNamingSelection } from '../stores/namingStore';
 import { NamingApi } from '../services/namingApi';
+import { useNamingSearchQuery, useNamingStatsQuery } from '../hooks/useNaming';
+import { useProjectContext } from '../contexts/ProjectContext';
 import NamingCard from '../components/naming/NamingCard';
 import NamingFilters from '../components/naming/NamingFilters';
 import NamingDetail from '../components/naming/NamingDetail';
@@ -32,6 +34,7 @@ const Naming: React.FC = () => {
     setStats,
     setCurrentEntry,
     setSearching,
+    setLoading,
     setError,
     setShowDetail,
     setShowFilters,
@@ -42,53 +45,92 @@ const Naming: React.FC = () => {
     clearSelection
   } = useNamingStore();
 
-  const { 
+  const {
     searchParams, 
     updateSearchParam, 
     isFiltered 
   } = useNamingSearch();
 
   const namingSelection = useNamingSelection();
+  const { currentProject } = useProjectContext();
   const [showStatsModal, setShowStatsModal] = useState(false);
 
-  const loadEntries = useCallback(async () => {
-    setSearching(true);
-    setError(null);
-    
-    try {
-      const result = await NamingApi.searchEntries(searchParams);
-      setSearchResults(result);
-    } catch (err) {
-      console.error('Failed to load naming entries:', err);
-      setError('Failed to load naming entries. Please try again.');
-      message.error('Failed to load naming entries');
-    } finally {
-      setSearching(false);
+  useEffect(() => {
+    const newProjectId = currentProject?.id;
+    if (searchParams.project_id !== newProjectId) {
+      updateSearchParam('project_id', newProjectId);
+      clearSelection();
     }
-  }, [searchParams, setSearchResults, setSearching, setError]);
+  }, [currentProject?.id, searchParams.project_id, updateSearchParam, clearSelection]);
 
-  const loadStats = useCallback(async () => {
-    try {
-      const namingStats = await NamingApi.getNamingStats();
-      setStats(namingStats);
-    } catch (err) {
-      console.error('Failed to load naming stats:', err);
-    }
-  }, [setStats]);
+  const {
+    data: namingData,
+    isFetching: entriesFetching,
+    isLoading: entriesLoading,
+    error: entriesError,
+    refetch: refetchEntries,
+  } = useNamingSearchQuery(searchParams, {
+    placeholderData: (previous) => previous ?? undefined,
+  });
+
+  const {
+    data: statsData,
+    error: statsError,
+    refetch: refetchStats,
+  } = useNamingStatsQuery(currentProject?.id, { staleTime: 1000 * 60 * 5 });
 
   useEffect(() => {
-    loadEntries();
-    loadStats();
-  }, [loadEntries, loadStats]);
+    setSearching(entriesFetching);
+  }, [entriesFetching, setSearching]);
+
+  useEffect(() => {
+    setLoading(entriesLoading);
+  }, [entriesLoading, setLoading]);
+
+  useEffect(() => {
+    if (entriesError) {
+      console.error('Failed to load naming entries:', entriesError);
+      setError('Failed to load naming entries. Please try again.');
+      message.error('Failed to load naming entries');
+    } else {
+      setError(null);
+    }
+  }, [entriesError, setError]);
+
+  useEffect(() => {
+    if (namingData) {
+      const limit = namingData.limit ?? searchParams.limit ?? 20;
+      const page = namingData.page ?? Math.floor((searchParams.offset ?? 0) / limit) + 1;
+
+      setSearchResults({
+        entries: namingData.entries,
+        total: namingData.total,
+        limit,
+        page,
+      });
+    }
+  }, [namingData, searchParams.limit, searchParams.offset, setSearchResults]);
+
+  useEffect(() => {
+    if (statsData) {
+      setStats(statsData);
+    }
+  }, [statsData, setStats]);
+
+  useEffect(() => {
+    if (statsError) {
+      console.error('Failed to load naming stats:', statsError);
+    }
+  }, [statsError]);
 
   const handleSearch = useCallback(() => {
-    loadEntries();
-  }, [loadEntries]);
+    refetchEntries();
+  }, [refetchEntries]);
 
   const handleRefresh = () => {
     clearSelection();
-    loadEntries();
-    loadStats();
+    refetchEntries();
+    refetchStats();
   };
 
   const handleEntrySelect = (id: number, selected: boolean) => {
@@ -120,7 +162,8 @@ const Naming: React.FC = () => {
         try {
           await NamingApi.deleteEntry(entry.id);
           message.success('Naming entry deleted successfully');
-          loadEntries(); // Refresh the list
+          refetchEntries();
+          refetchStats();
         } catch (err) {
           console.error('Failed to delete naming entry:', err);
           message.error('Failed to delete naming entry');
@@ -155,13 +198,16 @@ const Naming: React.FC = () => {
         entries: updatedEntries
       });
     }
+
+    refetchEntries();
+    refetchStats();
   };
 
   const handleRegisterComplete = (newEntry: any) => {
     setShowRegister(false);
     message.success('Name registered successfully');
-    loadEntries(); // Refresh the list
-    loadStats(); // Update stats
+    refetchEntries();
+    refetchStats();
   };
 
   const handlePaginationChange = (page: number, pageSize?: number) => {
@@ -380,7 +426,8 @@ const Naming: React.FC = () => {
         onUpdate={handleEntryUpdate}
         onDelete={(entry) => {
           setShowDetail(false);
-          loadEntries();
+          refetchEntries();
+          refetchStats();
         }}
       />
 

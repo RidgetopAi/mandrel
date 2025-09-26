@@ -14,15 +14,121 @@ const router = Router();
 // router.use(authenticateToken);
 
 // Legacy monitoring routes (maintain backward compatibility)
+
+/**
+ * @swagger
+ * /monitoring/health:
+ *   get:
+ *     summary: Retrieve system health snapshot
+ *     tags: [Monitoring]
+ *     responses:
+ *       200:
+ *         description: Health payload returned
+ *         content:
+ *           application/json:
+ *             schema:
+ *               allOf:
+ *                 - $ref: '#/components/schemas/ApiSuccessResponse'
+ *                 - type: object
+ *                   properties:
+ *                     data:
+ *                       $ref: '#/components/schemas/MonitoringHealth'
+ */
 router.get('/health', MonitoringController.getSystemHealth);
+
+/**
+ * @swagger
+ * /monitoring/metrics:
+ *   get:
+ *     summary: Retrieve system metrics snapshot
+ *     tags: [Monitoring]
+ *     responses:
+ *       200:
+ *         description: Metrics payload returned
+ *         content:
+ *           application/json:
+ *             schema:
+ *               allOf:
+ *                 - $ref: '#/components/schemas/ApiSuccessResponse'
+ *                 - type: object
+ *                   properties:
+ *                     data:
+ *                       $ref: '#/components/schemas/MonitoringMetrics'
+ */
 router.get('/metrics', MonitoringController.getSystemMetrics);
+
+/**
+ * @swagger
+ * /monitoring/trends:
+ *   get:
+ *     summary: Retrieve performance trends
+ *     tags: [Monitoring]
+ *     parameters:
+ *       - in: query
+ *         name: minutes
+ *         schema:
+ *           type: integer
+ *           default: 5
+ *         description: Size of the sliding window (in minutes)
+ *     responses:
+ *       200:
+ *         description: Trend data returned
+ *         content:
+ *           application/json:
+ *             schema:
+ *               allOf:
+ *                 - $ref: '#/components/schemas/ApiSuccessResponse'
+ *                 - type: object
+ *                   properties:
+ *                     data:
+ *                       $ref: '#/components/schemas/MonitoringTrends'
+ */
 router.get('/trends', MonitoringController.getPerformanceTrends);
+
+/**
+ * @swagger
+ * /monitoring/errors:
+ *   post:
+ *     summary: Record UI error event
+ *     tags: [Monitoring]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             additionalProperties: true
+ *     responses:
+ *       201:
+ *         description: Error captured
+ */
 router.post('/errors', MonitoringController.recordUiError);
 
 // TR015-4: Service-specific monitoring routes
 /**
  * GET /api/monitoring/services
  * Get all monitored services status
+ */
+/**
+ * @swagger
+ * /monitoring/services:
+ *   get:
+ *     summary: Retrieve status for all monitored services
+ *     tags: [Monitoring]
+ *     responses:
+ *       200:
+ *         description: Service status list
+ *         content:
+ *           application/json:
+ *             schema:
+ *               allOf:
+ *                 - $ref: '#/components/schemas/ApiSuccessResponse'
+ *                 - type: object
+ *                   properties:
+ *                     data:
+ *                       type: array
+ *                       items:
+ *                         $ref: '#/components/schemas/MonitoringServiceStatus'
  */
 router.get('/services', async (_req: Request, res: Response) => {
   try {
@@ -44,6 +150,33 @@ router.get('/services', async (_req: Request, res: Response) => {
 /**
  * GET /api/monitoring/services/:serviceName
  * Get specific service health status
+ */
+/**
+ * @swagger
+ * /monitoring/services/{serviceName}:
+ *   get:
+ *     summary: Retrieve status for a specific service
+ *     tags: [Monitoring]
+ *     parameters:
+ *       - in: path
+ *         name: serviceName
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Service health returned
+ *         content:
+ *           application/json:
+ *             schema:
+ *               allOf:
+ *                 - $ref: '#/components/schemas/ApiSuccessResponse'
+ *                 - type: object
+ *                   properties:
+ *                     data:
+ *                       $ref: '#/components/schemas/MonitoringServiceStatus'
+ *       404:
+ *         description: Service not found
  */
 router.get('/services/:serviceName', async (req: Request, res: Response) => {
   try {
@@ -67,6 +200,25 @@ router.get('/services/:serviceName', async (req: Request, res: Response) => {
  * GET /api/monitoring/stats
  * Get monitoring statistics and SLA compliance
  */
+/**
+ * @swagger
+ * /monitoring/stats:
+ *   get:
+ *     summary: Retrieve monitoring statistics and SLA compliance
+ *     tags: [Monitoring]
+ *     responses:
+ *       200:
+ *         description: Monitoring statistics returned
+ *         content:
+ *           application/json:
+ *             schema:
+ *               allOf:
+ *                 - $ref: '#/components/schemas/ApiSuccessResponse'
+ *                 - type: object
+ *                   properties:
+ *                     data:
+ *                       $ref: '#/components/schemas/MonitoringStats'
+ */
 router.get('/stats', (_req: Request, res: Response) => {
   try {
     const stats = monitoringService.getServiceMonitoringStats();
@@ -87,6 +239,33 @@ router.get('/stats', (_req: Request, res: Response) => {
 /**
  * GET /api/monitoring/alerts
  * Get recent alerts
+ */
+/**
+ * @swagger
+ * /monitoring/alerts:
+ *   get:
+ *     summary: Retrieve recent monitoring alerts
+ *     tags: [Monitoring]
+ *     parameters:
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 50
+ *     responses:
+ *       200:
+ *         description: Alerts returned
+ *         content:
+ *           application/json:
+ *             schema:
+ *               allOf:
+ *                 - $ref: '#/components/schemas/ApiSuccessResponse'
+ *                 - type: object
+ *                   properties:
+ *                     data:
+ *                       type: array
+ *                       items:
+ *                         $ref: '#/components/schemas/MonitoringAlert'
  */
 router.get('/alerts', (req: Request, res: Response) => {
   try {

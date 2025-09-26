@@ -1,70 +1,41 @@
-import apiClient from './api';
 import { TechnicalDecision, DecisionSearchParams, DecisionStats, DecisionSearchResult } from '../components/decisions/types';
+import decisionsClient from '../api/decisionsClient';
+import type { CreateDecisionRequest, UpdateDecisionRequest } from '../api/generated';
 
 export class DecisionApi {
   /**
    * Record a new technical decision
-   */
+  */
   static async recordDecision(decision: {
     title: string;
     problem: string;
     decision: string;
     rationale?: string;
     alternatives?: string[];
-  }): Promise<TechnicalDecision> {
-    const response = await apiClient.post<{ success: boolean; data: TechnicalDecision }>(
-      '/decisions',
-      decision
-    );
+  }): Promise<void> {
+    const payload: CreateDecisionRequest = {
+      title: decision.title,
+      problem: decision.problem,
+      decision: decision.decision,
+      rationale: decision.rationale,
+      alternatives: decision.alternatives,
+    };
 
-    if (!response.success) {
-      throw new Error('Failed to record decision');
-    }
-
-    return response.data;
+    await decisionsClient.createDecision(payload);
   }
 
   /**
    * Search decisions with filters and pagination
    */
   static async searchDecisions(params: DecisionSearchParams): Promise<DecisionSearchResult> {
-    // Convert params to query string
-    const queryParams = new URLSearchParams();
-    
-    Object.entries(params).forEach(([key, value]) => {
-      if (value !== undefined && value !== null) {
-        if (Array.isArray(value)) {
-          queryParams.set(key, value.join(','));
-        } else {
-          queryParams.set(key, String(value));
-        }
-      }
-    });
-
-    const response = await apiClient.get<{ success: boolean; data: DecisionSearchResult }>(
-      `/decisions?${queryParams.toString()}`
-    );
-
-    if (!response.success) {
-      throw new Error('Failed to search decisions');
-    }
-
-    return response.data;
+    return decisionsClient.search(params);
   }
 
   /**
    * Get single decision by ID
    */
   static async getDecision(id: number): Promise<TechnicalDecision> {
-    const response = await apiClient.get<{ success: boolean; data: TechnicalDecision }>(
-      `/decisions/${id}`
-    );
-
-    if (!response.success) {
-      throw new Error('Failed to get decision');
-    }
-
-    return response.data;
+    return decisionsClient.getDecision(String(id));
   }
 
   /**
@@ -72,51 +43,24 @@ export class DecisionApi {
    */
   static async updateDecision(
     id: number, 
-    updates: {
-      outcome?: string;
-      lessons?: string;
-      status?: string;
-    }
+    updates: UpdateDecisionRequest
   ): Promise<TechnicalDecision> {
-    const response = await apiClient.put<{ success: boolean; data: TechnicalDecision }>(
-      `/decisions/${id}`,
-      updates
-    );
-
-    if (!response.success) {
-      throw new Error('Failed to update decision');
-    }
-
-    return response.data;
+    await decisionsClient.updateDecision(String(id), updates);
+    return decisionsClient.getDecision(String(id));
   }
 
   /**
    * Delete single decision
    */
   static async deleteDecision(id: number): Promise<void> {
-    const response = await apiClient.delete<{ success: boolean }>(
-      `/decisions/${id}`
-    );
-
-    if (!response.success) {
-      throw new Error('Failed to delete decision');
-    }
+    await decisionsClient.deleteDecision(String(id));
   }
 
   /**
    * Get decision statistics
    */
   static async getDecisionStats(project_id?: string): Promise<DecisionStats> {
-    const params = project_id ? `?project_id=${project_id}` : '';
-    const response = await apiClient.get<{ success: boolean; data: DecisionStats }>(
-      `/decisions/stats${params}`
-    );
-
-    if (!response.success) {
-      throw new Error('Failed to get decision statistics');
-    }
-
-    return response.data;
+    return decisionsClient.getDecisionStats(project_id);
   }
 
   /**
