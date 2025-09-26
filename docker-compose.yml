@@ -3,6 +3,30 @@
 
 version: '3.8'
 
+# Resource limits for optimization
+x-resource-limits: &resource-limits
+  deploy:
+    resources:
+      limits:
+        memory: 512M
+        cpus: '1.0'
+      reservations:
+        memory: 256M
+        cpus: '0.5'
+
+# Health check configuration template
+x-healthcheck-defaults: &healthcheck-defaults
+  interval: 30s
+  timeout: 10s
+  retries: 3
+  start_period: 15s
+
+# Common environment variables for Node.js services
+x-node-env: &node-env
+  NODE_ENV: production
+  NODE_OPTIONS: "--max-old-space-size=512"
+  NPM_CONFIG_LOGLEVEL: warn
+
 services:
   # Redis for BullMQ queue system
   aidis-redis:
@@ -13,14 +37,20 @@ services:
       - "6379:6379"
     volumes:
       - redis_data:/data
-    command: redis-server --appendonly yes
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
     networks:
       - aidis-network
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.5'
+        reservations:
+          memory: 128M
+          cpus: '0.25'
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD", "redis-cli", "ping"]
 
   # PostgreSQL database
   aidis-postgres:
@@ -31,27 +61,39 @@ services:
       POSTGRES_DB: aidis_production
       POSTGRES_USER: ridgetop
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-}
+      POSTGRES_SHARED_PRELOAD_LIBRARIES: 'pg_stat_statements'
+      POSTGRES_MAX_CONNECTIONS: '100'
+      POSTGRES_SHARED_BUFFERS: '256MB'
+      POSTGRES_EFFECTIVE_CACHE_SIZE: '1GB'
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ridgetop -d aidis_production"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
     networks:
       - aidis-network
+    deploy:
+      resources:
+        limits:
+          memory: 1024M
+          cpus: '1.0'
+        reservations:
+          memory: 512M
+          cpus: '0.5'
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD-SHELL", "pg_isready -U ridgetop -d aidis_production"]
 
   # AIDIS MCP Server
   aidis-mcp-server:
     build:
       context: ./mcp-server
       dockerfile: Dockerfile
+      args:
+        NODE_ENV: production
     container_name: aidis-mcp-server
     restart: unless-stopped
     environment:
-      NODE_ENV: production
+      <<: *node-env
       AIDIS_LOG_LEVEL: info
       DATABASE_URL: postgresql://ridgetop:${POSTGRES_PASSWORD:-}@aidis-postgres:5432/aidis_production
       REDIS_URL: redis://aidis-redis:6379
@@ -66,16 +108,22 @@ services:
       - mcp_logs:/app/logs
     networks:
       - aidis-network
+    <<: *resource-limits
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
 
   # AIDIS Command Backend
   aidis-command-backend:
     build:
       context: ./aidis-command/backend
       dockerfile: Dockerfile
+      args:
+        NODE_ENV: production
     container_name: aidis-command-backend
     restart: unless-stopped
     environment:
-      NODE_ENV: production
+      <<: *node-env
       PORT: 3001
       DATABASE_URL: postgresql://ridgetop:${POSTGRES_PASSWORD:-}@aidis-postgres:5432/aidis_production
       MCP_SERVER_URL: http://aidis-mcp-server:8080
@@ -85,26 +133,45 @@ services:
       aidis-postgres:
         condition: service_healthy
       aidis-mcp-server:
-        condition: service_started
+        condition: service_healthy
     volumes:
       - backend_logs:/app/logs
       - backend_uploads:/app/uploads
     networks:
       - aidis-network
+    <<: *resource-limits
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/health"]
 
   # AIDIS Command Frontend
   aidis-command-frontend:
     build:
       context: ./aidis-command/frontend
       dockerfile: Dockerfile
+      args:
+        NODE_ENV: production
+        GENERATE_SOURCEMAP: "false"
     container_name: aidis-command-frontend
     restart: unless-stopped
     ports:
       - "3000:3000"
     depends_on:
-      - aidis-command-backend
+      aidis-command-backend:
+        condition: service_healthy
     networks:
       - aidis-network
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.5'
+        reservations:
+          memory: 128M
+          cpus: '0.25'
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000"]
 
 volumes:
   redis_data:
@@ -121,12 +188,6 @@ volumes:
 networks:
   aidis-network:
     driver: bridge
-
-# Resource limits for optimization
-x-resource-limits: &resource-limits
-  deploy:
-    resources:
-      limits:
-        memory: 512M
-      reservations:
-        memory: 256M
+    ipam:
+      config:
+        - subnet: 172.18.0.0/16

@@ -24,7 +24,7 @@ AIDIS solves the fundamental problems that destroy AI development projects:
 ## 🎯 Core Components
 
 ### **AIDIS MCP Server**
-- **37 production-ready tools** via Model Context Protocol
+- **47 production-ready tools** via Model Context Protocol (post-TT009 consolidation)
 - **PostgreSQL + pgvector** for semantic search
 - **Local embeddings** (zero API costs)
 - **SystemD service** with enterprise stability
@@ -176,7 +176,7 @@ cd frontend && PORT=3001 npm start  # Start frontend (port 3001)
 
 ## 🏆 Technical Achievements
 
-- **37 MCP Tools** - Complete development intelligence suite
+- **47 MCP Tools** - Complete development intelligence suite (post-TT009 consolidation)
 - **Enterprise Architecture** - SystemD + HTTP proxy + PostgreSQL  
 - **Zero Ongoing Costs** - Local embeddings eliminate API fees
 - **Real-time Collaboration** - WebSocket infrastructure
@@ -201,6 +201,15 @@ This is a revolutionary system that changes how AI development works. Contributi
 3. Commit changes (`git commit -m 'Add amazing feature'`)
 4. Push to branch (`git push origin feature/amazing-feature`)
 5. Open Pull Request
+
+---
+
+## 📚 Documentation Archive
+
+Historical documentation from Oracle Refactor phases is preserved in:
+- **Location:** `docs/archive/2025-09-23-oracle-refactor/`
+- **Contains:** Removed API services, obsolete docs, legacy components
+- **Purpose:** Historical reference and system evolution tracking
 
 ---
 

@@ -6,7 +6,7 @@
 ## IMMEDIATE ESSENTIALS
 
 ### System Status
-**AIDIS: 47 MCP Tools - 100% Operational** *(Post TT009 Complete Consolidation)*
+**AIDIS: 47 MCP Tools - 100% Operational**
 - System Health: 2 tools
 - Context Management: 4 tools
 - Project Management: 6 tools
@@ -22,28 +22,21 @@
 - Git Integration: 3 tools
 
 ### TT009 Complete Tool Consolidation ✅
-**96 → 47 Tools: ~22,500 Token Savings Achieved**
 
-**Phase 1 - Complexity Tools (TT009-1)**
-- **16 → 3 Tools: ~6,000 Token Savings**
 - `complexity_analyze` - File/commit analysis (replaces 4 tools)
 - `complexity_insights` - Dashboard/hotspots/trends/debt/opportunities (replaces 5 tools)
 - `complexity_manage` - Tracking/alerts/thresholds/performance (replaces 7 tools)
 
 **Phase 2 - Metrics Tools (TT009-2)**
-- **17 → 3 Tools: ~6,500 Token Savings**
+
 - `metrics_collect` - Unified collection operations (replaces 6 tools)
 - `metrics_analyze` - Analysis/dashboard/trends/correlations (replaces 6 tools)
 - `metrics_control` - Control/alerts/performance/export (replaces 5 tools)
 
 **Phase 3 - Pattern Detection (TT009-3)**
-- **17 → 2 Tools: ~7,000 Token Savings**
+
 - `pattern_analyze` - Detection/analysis/tracking operations (replaces 10 tools)
 - `pattern_insights` - Insights/correlations/recommendations (replaces 7 tools)
-
-**Phase 4 - Academic Removal (TT009-4)**
-- **7 → 0 Tools: ~3,000 Token Savings**
-- Removed all outcome_* academic tools (not used for practical building)
 
 ### Navigation Tools - START HERE
 Essential tools for discovering AIDIS capabilities:
@@ -127,16 +120,6 @@ curl -X POST http://localhost:8080/mcp/tools/aidis_ping \
 3. Review before proceeding
 4. Fix issues before moving to next task
 
-### Agent Coordination
-**Two-Layer System**:
-1. **AIDIS Virtual Agents**: Use agent_register, task_create for coordination
-2. **Real Sub-Agents**: Use Task tool to spawn agents that create/edit files
-
-**Specialized Agents**:
-- **CodeAgent**: Primary development with naming compliance
-- **ProjectManager**: Coordination, planning, decision tracking  
-- **QaAgent**: Quality assurance, testing, validation
-
 ---
 
 ## TECHNICAL REFERENCE
@@ -144,8 +127,7 @@ curl -X POST http://localhost:8080/mcp/tools/aidis_ping \
 ### Database Configuration
 - **Database**: aidis_production
 - **Port**: 5432 
-- **Connection**: postgresql://ridgetop@localhost:5432/aidis_production
-- **Test**: `psql -h localhost -p 5432 -d aidis_production -c "SELECT current_database();"`
+- **Connection**: postgresql://ridgetop@localhost:5432/aidis_production- **Test**: `psql -h localhost -p 5432 -d aidis_production -c "SELECT current_database();"`
 
 ### Development Commands
 ```bash
@@ -208,6 +190,6 @@ project_list(includeStats?: boolean)
 ---
 
 **Last Updated**: 2025-09-20
-**Tools**: 47 total - *Post TT009 Complete Consolidation (96→47: 51% reduction)*
+**Tools**: 47 total - 
 **Status**: Production ready with streamlined tool architecture and full functionality preserved
-**Achievement**: ~22,500 token savings through systematic 4-phase consolidation
+

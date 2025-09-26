@@ -1,0 +1,12 @@
+-rw-r--r-- 1 ridgetop ridgetop 2373 Sep 23 20:25 /home/ridgetop/aidis/docs/archive/2025-09-23-oracle-refactor/phase-documentation/GPT5_PHASE6_PLAN.md
+-rw-r--r-- 1 ridgetop ridgetop 3734 Sep 23 20:25 /home/ridgetop/aidis/docs/archive/2025-09-23-oracle-refactor/phase-documentation/PHASE_6_COMPLETION_PLAN.md
+-rw-r--r-- 1 ridgetop ridgetop 307 Sep 23 20:26 /home/ridgetop/aidis/docs/archive/2025-09-23-oracle-refactor/ARCHIVE_INVENTORY.txt
+-rw-r--r-- 1 ridgetop ridgetop 7061 Sep 23 20:25 /home/ridgetop/aidis/docs/archive/2025-09-23-oracle-refactor/removed-api-services/projectApi.ts
+-rw-r--r-- 1 ridgetop ridgetop 3291 Sep 23 20:25 /home/ridgetop/aidis/docs/archive/2025-09-23-oracle-refactor/removed-api-services/embeddingService.ts
+-rw-r--r-- 1 ridgetop ridgetop 2385 Sep 23 20:25 /home/ridgetop/aidis/docs/archive/2025-09-23-oracle-refactor/removed-api-services/monitoringApi.ts
+-rw-r--r-- 1 ridgetop ridgetop 7110 Sep 23 20:25 /home/ridgetop/aidis/docs/archive/2025-09-23-oracle-refactor/removed-api-services/contextApi.ts
+-rw-r--r-- 1 ridgetop ridgetop 4948 Sep 23 20:26 /home/ridgetop/aidis/docs/archive/2025-09-23-oracle-refactor/README.md
+-rw-r--r-- 1 ridgetop ridgetop 1879 Sep 23 20:25 /home/ridgetop/aidis/docs/archive/2025-09-23-oracle-refactor/obsolete-docs/QA_FINDINGS_4_3.md
+-rw-r--r-- 1 ridgetop ridgetop 3042 Sep 23 20:25 /home/ridgetop/aidis/docs/archive/2025-09-23-oracle-refactor/obsolete-docs/PHASE_4_3_QA_FIXES.md
+-rw-r--r-- 1 ridgetop ridgetop 3709 Sep 23 20:25 /home/ridgetop/aidis/docs/archive/2025-09-23-oracle-refactor/legacy-components/aidis-command-dev-README.md
+-rw-r--r-- 1 ridgetop ridgetop 5464 Sep 23 20:25 /home/ridgetop/aidis/docs/archive/2025-09-23-oracle-refactor/legacy-components/aidis-command-dev-frontend-README.md
