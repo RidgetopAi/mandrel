@@ -35,6 +35,7 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 
 import { initializeDatabase, closeDatabase } from './config/database.js';
+import { AIDIS_TOOL_DEFINITIONS } from './config/toolDefinitions.js';
 import { contextHandler } from './handlers/context.js';
 import { projectHandler } from './handlers/project.js';
 import { namingHandler } from './handlers/naming.js';
@@ -290,21 +291,70 @@ class AIDISCoreServer {
         await this.handleToolRequest(req, res);
         
       } else if (req.url === '/mcp/tools' && req.method === 'GET') {
-        // List all available tools
-        res.writeHead(200);
-        res.end(JSON.stringify({
-          tools: this.getAvailableTools().map(name => ({
-            name,
-            description: this.getToolDescription(name),
-            endpoint: `/mcp/tools/${name}`
-          }))
-        }));
-        
+        // List all available tools with full schemas
+        // Filter out disabled tools (Token Optimization 2025-10-01)
+        const DISABLED_TOOLS = [
+          'code_analyze', 'code_components', 'code_dependencies', 'code_impact', 'code_stats',
+          'git_session_commits', 'git_commit_sessions', 'git_correlate_session',
+          'complexity_analyze', 'complexity_insights', 'complexity_manage'
+        ];
+        const activeTools = AIDIS_TOOL_DEFINITIONS.filter(tool => !DISABLED_TOOLS.includes(tool.name));
+
+        try {
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({
+            success: true,
+            tools: activeTools.map(tool => ({
+              name: tool.name,
+              description: tool.description,
+              inputSchema: tool.inputSchema,
+              endpoint: `/mcp/tools/${tool.name}`
+            })),
+            count: activeTools.length,
+            timestamp: new Date().toISOString()
+          }));
+        } catch (error) {
+          res.writeHead(500, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({
+            success: false,
+            error: 'Failed to retrieve tool definitions',
+            timestamp: new Date().toISOString()
+          }));
+        }
+
+      } else if (req.url === '/mcp/tools/schemas' && req.method === 'GET') {
+        // Get complete tool schemas (dedicated endpoint)
+        // Filter out disabled tools (Token Optimization 2025-10-01)
+        const DISABLED_TOOLS = [
+          'code_analyze', 'code_components', 'code_dependencies', 'code_impact', 'code_stats',
+          'git_session_commits', 'git_commit_sessions', 'git_correlate_session',
+          'complexity_analyze', 'complexity_insights', 'complexity_manage'
+        ];
+        const activeTools = AIDIS_TOOL_DEFINITIONS.filter(tool => !DISABLED_TOOLS.includes(tool.name));
+
+        try {
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({
+            success: true,
+            tools: activeTools,
+            count: activeTools.length,
+            timestamp: new Date().toISOString(),
+            note: 'Complete MCP tool definitions with inputSchema for all AIDIS tools'
+          }));
+        } catch (error) {
+          res.writeHead(500, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({
+            success: false,
+            error: 'Failed to retrieve tool schemas',
+            timestamp: new Date().toISOString()
+          }));
+        }
+
       } else {
         res.writeHead(404);
-        res.end(JSON.stringify({ 
+        res.end(JSON.stringify({
           error: 'Not found',
-          available_endpoints: ['/healthz', '/readyz', '/mcp/tools', '/mcp/tools/{toolName}']
+          available_endpoints: ['/healthz', '/readyz', '/mcp/tools', '/mcp/tools/schemas', '/mcp/tools/{toolName}']
         }));
       }
     });
@@ -506,39 +556,12 @@ class AIDISCoreServer {
   }
 
   private getAvailableTools(): string[] {
-    return [
-      'aidis_ping', 'aidis_status', 'aidis_help', 'aidis_explain', 'aidis_examples',
-      'context_store', 'context_search', 'context_get_recent', 'context_stats',
-      'project_list', 'project_create', 'project_switch', 'project_current', 'project_info',
-      'naming_register', 'naming_check', 'naming_suggest', 'naming_stats',
-      'decision_record', 'decision_search', 'decision_update', 'decision_stats',
-      'agent_register', 'agent_list', 'agent_status', 'task_create', 'task_list', 'task_update', 'task_details',
-      'agent_message', 'agent_messages', 'agent_join', 'agent_leave', 'agent_sessions',
-      'code_analyze', 'code_components', 'code_dependencies', 'code_impact', 'code_stats',
-      'smart_search', 'get_recommendations', 'project_insights'
-    ];
+    return AIDIS_TOOL_DEFINITIONS.map(tool => tool.name);
   }
 
   private getToolDescription(toolName: string): string {
-    const descriptions: { [key: string]: string } = {
-      'aidis_ping': 'Test AIDIS connection and responsiveness',
-      'aidis_status': 'Get AIDIS system status and health',
-      'aidis_help': 'List all available AIDIS tools',
-      'aidis_explain': 'Get detailed explanation for any tool',
-      'aidis_examples': 'Get usage examples for any tool',
-      'context_store': 'Store development context for AI agents',
-      'context_search': 'Search stored contexts semantically',
-      'context_get_recent': 'Get recent contexts for current project',
-      'context_stats': 'Get context storage statistics',
-      'project_list': 'List all available projects',
-      'project_create': 'Create a new project',
-      'project_switch': 'Switch to a different project',
-      'project_current': 'Get current active project',
-      'project_info': 'Get detailed project information',
-      // Add more descriptions as needed...
-    };
-    
-    return descriptions[toolName] || 'AIDIS tool';
+    const tool = AIDIS_TOOL_DEFINITIONS.find(t => t.name === toolName);
+    return tool?.description || 'AIDIS tool';
   }
 
   // Tool handler methods (copied from original server.ts)

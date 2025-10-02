@@ -968,20 +968,18 @@ class AIDISServer {
       case 'task_progress_summary':
         return await this.handleTaskProgressSummary(validatedArgs as any);
 
-      case 'code_analyze':
-        return await this.handleCodeAnalyze(validatedArgs as any);
-        
-      case 'code_components':
-        return await this.handleCodeComponents(validatedArgs as any);
-        
-      case 'code_dependencies':
-        return await this.handleCodeDependencies(validatedArgs as any);
-        
-      case 'code_impact':
-        return await this.handleCodeImpact(validatedArgs as any);
-        
-      case 'code_stats':
-        return await this.handleCodeStats(validatedArgs as any);
+      // Code Analysis Tools - DISABLED (Token Optimization 2025-10-01)
+      // Reason: Need to go through logic later, not currently used
+      // case 'code_analyze':
+      //   return await this.handleCodeAnalyze(validatedArgs as any);
+      // case 'code_components':
+      //   return await this.handleCodeComponents(validatedArgs as any);
+      // case 'code_dependencies':
+      //   return await this.handleCodeDependencies(validatedArgs as any);
+      // case 'code_impact':
+      //   return await this.handleCodeImpact(validatedArgs as any);
+      // case 'code_stats':
+      //   return await this.handleCodeStats(validatedArgs as any);
         
       case 'smart_search':
         return await this.handleSmartSearch(validatedArgs as any);
@@ -1008,15 +1006,14 @@ class AIDISServer {
       case 'session_details':
         return await this.handleSessionDetails(validatedArgs as any);
 
-      // Git Correlation Tools
-      case 'git_session_commits':
-        return await this.handleGitSessionCommits(validatedArgs as any);
-        
-      case 'git_commit_sessions':
-        return await this.handleGitCommitSessions(validatedArgs as any);
-        
-      case 'git_correlate_session':
-        return await this.handleGitCorrelateSession(validatedArgs as any);
+      // Git Correlation Tools - DISABLED (Token Optimization 2025-10-01)
+      // Reason: More than likely coming out, not currently needed
+      // case 'git_session_commits':
+      //   return await this.handleGitSessionCommits(validatedArgs as any);
+      // case 'git_commit_sessions':
+      //   return await this.handleGitCommitSessions(validatedArgs as any);
+      // case 'git_correlate_session':
+      //   return await this.handleGitCorrelateSession(validatedArgs as any);
 
       // TC013/TC017: Deprecated pattern tools removed - TT009-3 Complete
       // Old individual pattern tools consolidated into:
@@ -1043,13 +1040,14 @@ class AIDISServer {
       //   - metrics_analyze (analysis/dashboard/trends)
       //   - metrics_control (alerts/performance/export)
 
-      // TC015: Code Complexity Tracking tools
-      case 'complexity_analyze':
-        return await handleComplexityAnalyze(validatedArgs);
-      case 'complexity_insights':
-        return await handleComplexityInsights(validatedArgs);
-      case 'complexity_manage':
-        return await handleComplexityManage(validatedArgs);
+      // TC015: Code Complexity Tracking tools - DISABLED (Token Optimization 2025-10-01)
+      // Reason: Confirmed disable for token optimization
+      // case 'complexity_analyze':
+      //   return await handleComplexityAnalyze(validatedArgs);
+      // case 'complexity_insights':
+      //   return await handleComplexityInsights(validatedArgs);
+      // case 'complexity_manage':
+      //   return await handleComplexityManage(validatedArgs);
       // TC015: Deprecated complexity tools removed - TT009-1 Tool Consolidation Phase 1 Complete
       // 16 tools consolidated into complexity_analyze, complexity_insights, complexity_manage
         
@@ -1067,9 +1065,16 @@ class AIDISServer {
    */
   private setupHandlers(): void {
     // Handle tool listing requests - shows what tools are available
+    // Filter out disabled tools (Token Optimization 2025-10-01)
+    const DISABLED_TOOLS = [
+      'code_analyze', 'code_components', 'code_dependencies', 'code_impact', 'code_stats',
+      'git_session_commits', 'git_commit_sessions', 'git_correlate_session',
+      'complexity_analyze', 'complexity_insights', 'complexity_manage'
+    ];
+
     this.server.setRequestHandler(ListToolsRequestSchema, async () => {
       return {
-        tools: AIDIS_TOOL_DEFINITIONS
+        tools: AIDIS_TOOL_DEFINITIONS.filter(tool => !DISABLED_TOOLS.includes(tool.name))
       };
     });
 
