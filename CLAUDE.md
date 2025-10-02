@@ -1,4 +1,3 @@
-# AIDIS - AI Development Intelligence System
 ## Agent Configuration & Project Guide
 
 ---

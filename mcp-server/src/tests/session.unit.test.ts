@@ -83,57 +83,42 @@ describe('SessionTracker Unit Tests', () => {
   });
 
   describe('getActiveSession', () => {
-    it('should return cached active session if valid', async () => {
+    it('should return cached active session without database query', async () => {
       const cachedSessionId = 'cached-session-123';
       (SessionTracker as any).activeSessionId = cachedSessionId;
-      
-      mockDb.query.mockResolvedValueOnce({ rows: [{ id: cachedSessionId }] }); // sessionExists
-      
+
       const activeId = await SessionTracker.getActiveSession();
-      
+
       expect(activeId).toBe(cachedSessionId);
+      expect(mockDb.query).not.toHaveBeenCalled(); // TS003-1: No DB query for cached hits
     });
 
     it('should query database for active session if no cache', async () => {
       mockDb.query.mockResolvedValueOnce({ rows: [{ id: 'db-session-456' }] });
-      
+
       const activeId = await SessionTracker.getActiveSession();
-      
+
       expect(activeId).toBe('db-session-456');
       expect(mockDb.query).toHaveBeenCalledWith(
-        expect.stringContaining('SELECT id FROM sessions WHERE ended_at IS NULL'),
+        expect.stringContaining('SELECT id'),
         undefined
       );
     });
 
     it('should return null if no active session found', async () => {
       mockDb.query.mockResolvedValueOnce({ rows: [] });
-      
+
       const activeId = await SessionTracker.getActiveSession();
-      
+
       expect(activeId).toBeNull();
     });
 
     it('should handle database errors gracefully', async () => {
       mockDb.query.mockRejectedValueOnce(new Error('DB connection error'));
-      
-      const activeId = await SessionTracker.getActiveSession();
-      
-      expect(activeId).toBeNull();
-    });
 
-    it('should clear cache if cached session no longer exists', async () => {
-      const invalidSessionId = 'invalid-session-789';
-      (SessionTracker as any).activeSessionId = invalidSessionId;
-      
-      mockDb.query
-        .mockResolvedValueOnce({ rows: [] }) // sessionExists returns false
-        .mockResolvedValueOnce({ rows: [] }); // no active sessions in DB
-      
       const activeId = await SessionTracker.getActiveSession();
-      
+
       expect(activeId).toBeNull();
-      expect((SessionTracker as any).activeSessionId).toBeNull();
     });
   });
 
@@ -277,35 +262,7 @@ describe('SessionTracker Unit Tests', () => {
     });
   });
 
-  describe('sessionExists', () => {
-    it('should return true for existing active session', async () => {
-      mockDb.query.mockResolvedValueOnce({ rows: [{ id: 'session-123' }] });
-      
-      const exists = await SessionTracker.sessionExists('session-123');
-      
-      expect(exists).toBe(true);
-      expect(mockDb.query).toHaveBeenCalledWith(
-        expect.stringContaining('SELECT 1 FROM sessions WHERE id = $1 AND ended_at IS NULL'),
-        ['session-123']
-      );
-    });
-
-    it('should return false for non-existent session', async () => {
-      mockDb.query.mockResolvedValueOnce({ rows: [] });
-      
-      const exists = await SessionTracker.sessionExists('invalid-session');
-      
-      expect(exists).toBe(false);
-    });
-
-    it('should handle database errors', async () => {
-      mockDb.query.mockRejectedValueOnce(new Error('Query error'));
-      
-      const exists = await SessionTracker.sessionExists('test-session');
-      
-      expect(exists).toBe(false);
-    });
-  });
+  // TS003-1: sessionExists() method removed - no longer needed with simplified logic
 
   describe('getSessionStats', () => {
     it('should return comprehensive session statistics', async () => {

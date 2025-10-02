@@ -172,7 +172,7 @@ export class ProjectSwitchValidator {
     const transactionId = randomUUID();
     const switchContext: SwitchContext = {
       sessionId,
-      sourceProjectId: projectHandler.getCurrentProjectId(sessionId),
+      sourceProjectId: await projectHandler.getCurrentProjectId(sessionId),
       targetProjectId,
       timestamp: new Date(),
       transactionId
@@ -440,11 +440,11 @@ export class ProjectSwitchValidator {
     try {
       // Check if there are any recovery-incompatible operations
       // This would integrate with the session recovery system from TS008-TS010
-      
+
       // For now, we'll do a basic check for consistency
-      const currentProjectId = projectHandler.getCurrentProjectId(sessionId);
+      const currentProjectId = await projectHandler.getCurrentProjectId(sessionId);
       const targetProject = await projectHandler.getProject(targetIdentifier);
-      
+
       if (currentProjectId && targetProject && currentProjectId === targetProject.id) {
         result.warnings.push('Target project is the same as current project');
       }
@@ -538,7 +538,7 @@ export class ProjectSwitchValidator {
     const result: SwitchValidationResult = { isValid: true, errors: [], warnings: [], metadata: {} };
 
     try {
-      const currentProjectId = projectHandler.getCurrentProjectId(sessionId);
+      const currentProjectId = await projectHandler.getCurrentProjectId(sessionId);
       if (currentProjectId !== targetProjectId) {
         result.isValid = false;
         result.errors.push({
@@ -650,7 +650,7 @@ export class ProjectSwitchValidator {
 
   private static async prepareRollbackData(sessionId: string): Promise<any> {
     return {
-      previousProjectId: projectHandler.getCurrentProjectId(sessionId),
+      previousProjectId: await projectHandler.getCurrentProjectId(sessionId),
       sessionState: projectHandler.getSessionInfo(sessionId),
       timestamp: new Date()
     };

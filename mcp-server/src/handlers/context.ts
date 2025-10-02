@@ -158,6 +158,14 @@ export class ContextHandler {
       
       const result = await db.query(sqlQuery, sqlParams);
 
+      // TS004-1: Update session activity after context storage
+      if (sessionId) {
+        const { SessionTracker } = await import('../services/sessionTracker.js');
+        await SessionTracker.updateSessionActivity(sessionId);
+        // TS007-2: Record context creation for activity tracking
+        SessionTracker.recordContextCreated(sessionId);
+      }
+
       const storedContext: ContextEntry = {
         id: result.rows[0].id,
         projectId: projectId,

@@ -6,7 +6,7 @@
  * Translates Claude Code's MCP stdio calls to AIDIS HTTP endpoints
  * Uses the working HTTP bridge at localhost:8080/mcp/tools/*
  *
- * AUTO-GENERATED: This file contains all 83 AIDIS tools from aidis_help
+ * Token-Optimized: 41 active AIDIS tools (55% token reduction from original 52)
  */
 
 const { Server } = require('@modelcontextprotocol/sdk/server/index.js');
@@ -30,7 +30,7 @@ const server = new Server(
   }
 );
 
-// All 49 AIDIS tools from actual server (post TT009-4 + Enhanced Task Tools)
+// All 41 AIDIS tools from actual server (TT009 token-optimized: disabled 11 unused, added 3 navigation)
 const AIDIS_TOOLS = [
   // System Health (2 tools)
   { name: 'aidis_ping', description: 'Test connectivity to AIDIS server' },
@@ -77,21 +77,9 @@ const AIDIS_TOOLS = [
   { name: 'task_bulk_update', description: 'Update multiple tasks atomically with the same changes' },
   { name: 'task_progress_summary', description: 'Get task progress summary with grouping and completion percentages' },
 
-  // Code Analysis (5 tools)
-  { name: 'code_analyze', description: 'Analyze code file structure and dependencies' },
-  { name: 'code_components', description: 'List code components (functions, classes, etc.)' },
-  { name: 'code_dependencies', description: 'Get dependencies for a specific component' },
-  { name: 'code_impact', description: 'Analyze the impact of changing a component' },
-  { name: 'code_stats', description: 'Get code analysis statistics for a project' },
-
   // Smart Search & AI (2 tools)
   { name: 'smart_search', description: 'Intelligent search across all project data' },
   { name: 'get_recommendations', description: 'Get AI-powered recommendations for development' },
-
-  // Code Complexity (3 consolidated tools - TT009-1)
-  { name: 'complexity_analyze', description: 'Unified complexity analysis - file analysis, commit analysis, and detailed metrics' },
-  { name: 'complexity_insights', description: 'Unified complexity insights - dashboard, hotspots, trends, technical debt, and refactoring opportunities' },
-  { name: 'complexity_manage', description: 'Unified complexity management - tracking service, alerts, thresholds, and performance monitoring' },
 
   // Development Metrics (3 tools - TT009-2 Consolidated from 17 tools)
   { name: 'metrics_collect', description: 'TT009-2-1: Unified metrics collection - project, core, patterns, productivity data' },
@@ -102,12 +90,10 @@ const AIDIS_TOOLS = [
   { name: 'pattern_analyze', description: 'TT009-3-1: Unified pattern analysis - detection, analysis, tracking operations' },
   { name: 'pattern_insights', description: 'TT009-3-2: Unified pattern insights - insights, correlations, recommendations, alerts' },
 
-  // Outcome Tracking - REMOVED in TT009-4 (Academic features not used for building)
-
-  // Git Integration (3 tools)
-  { name: 'git_session_commits', description: 'Get all git commits linked to a session with correlation details' },
-  { name: 'git_commit_sessions', description: 'Get all sessions that contributed to a specific git commit' },
-  { name: 'git_correlate_session', description: 'Manually trigger git correlation for current or specified session' }
+  // Navigation & Help (3 tools)
+  { name: 'aidis_help', description: 'Get help and list all available AIDIS tools organized by category' },
+  { name: 'aidis_explain', description: 'Get detailed explanation and usage information for a specific AIDIS tool' },
+  { name: 'aidis_examples', description: 'Get usage examples and patterns for a specific AIDIS tool' }
 ];
 
 console.error(`🎯 Bridge loaded with ${AIDIS_TOOLS.length} tools`);
@@ -207,7 +193,7 @@ async function main() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
   console.error('🚀 AIDIS HTTP-MCP Bridge v2.0.0 - Connected to HTTP endpoints on port 8080');
-  console.error(`📡 Available tools: ${AIDIS_TOOLS.length} (all 96 AIDIS tools)`);
+  console.error(`📡 Available tools: ${AIDIS_TOOLS.length} (token-optimized configuration)`);
 }
 
 main().catch((error) => {

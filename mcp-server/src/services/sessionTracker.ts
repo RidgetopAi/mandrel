@@ -16,6 +16,7 @@
 import { db } from '../config/database.js';
 import { randomUUID } from 'crypto';
 import { projectHandler } from '../handlers/project.js';
+import { detectAgentType } from '../utils/agentDetection.js';
 
 export interface SessionData {
   session_id: string;
@@ -30,6 +31,11 @@ export interface SessionData {
   operations_count: number;
   productivity_score: number;
   success_status: 'active' | 'completed' | 'abandoned';
+  status: 'active' | 'inactive' | 'disconnected';  // TS004-1: Session status enum
+  last_activity_at?: Date;                          // TS004-1: Activity timeout tracking
+  input_tokens: number;                             // TS006-2: Input tokens consumed
+  output_tokens: number;                            // TS006-2: Output tokens generated
+  total_tokens: number;                             // TS006-2: Total tokens (input + output)
 }
 
 export interface SessionStats {
@@ -45,6 +51,15 @@ export interface SessionStats {
  */
 export class SessionTracker {
   private static activeSessionId: string | null = null;
+  // TS006-2: In-memory token tracking for active sessions
+  private static sessionTokens: Map<string, { input: number; output: number; total: number }> = new Map();
+  // TS007-2: In-memory activity tracking for active sessions
+  private static sessionActivity: Map<string, {
+    tasks_created: number;
+    tasks_updated: number;
+    tasks_completed: number;
+    contexts_created: number;
+  }> = new Map();
   
   /**
    * Start a new session with smart project inheritance
@@ -71,17 +86,23 @@ export class SessionTracker {
         RETURNING id, started_at
       `;
       
+      // Auto-detect agent type based on environment
+      const agentInfo = detectAgentType();
+
       const sessionParams = [
         sessionId,
         resolvedProjectId,
-        'claude-code-agent', // Identify this as a Claude Code session
+        agentInfo.type, // Auto-detected agent type (claude-code, cline, etc.)
         startTime,
         title || null,
         description || null,
-        JSON.stringify({ 
+        JSON.stringify({
           start_time: startTime.toISOString(),
           created_by: 'aidis-session-tracker',
           auto_created: true,
+          agent_display_name: agentInfo.displayName,
+          agent_detection_confidence: agentInfo.confidence,
+          agent_version: agentInfo.version,
           project_resolution_method: resolvedProjectId === projectId ? 'explicit' : 'inherited',
           title_provided: !!title,
           description_provided: !!description
@@ -146,27 +167,53 @@ export class SessionTracker {
         [sessionId]
       );
       const contextsCreated = parseInt(contextCountResult.rows[0].count) || 0;
-      
+
+      // TS006-2: Get token usage from memory
+      const tokenUsage = this.getTokenUsage(sessionId);
+
+      // TS007-2: Get activity counts from memory
+      const activityCounts = this.getActivityCounts(sessionId);
+
       // Update the sessions table with end time and stats
       const updateSessionSql = `
-        UPDATE sessions 
-        SET ended_at = $1, 
+        UPDATE sessions
+        SET ended_at = $1,
             tokens_used = $2,
-            context_summary = $3,
-            metadata = metadata || $4::jsonb
-        WHERE id = $5
+            input_tokens = $3,
+            output_tokens = $4,
+            total_tokens = $5,
+            tasks_created = $6,
+            tasks_updated = $7,
+            tasks_completed = $8,
+            contexts_created = $9,
+            context_summary = $10,
+            metadata = metadata || $11::jsonb
+        WHERE id = $12
       `;
-      
+
       const sessionUpdateParams = [
         endTime,
-        0, // TODO: Track actual tokens used if available
-        `Session completed with ${contextsCreated} contexts created`,
+        tokenUsage.total, // Backward compatibility with tokens_used
+        tokenUsage.input,  // TS006-2: Input tokens
+        tokenUsage.output, // TS006-2: Output tokens
+        tokenUsage.total,  // TS006-2: Total tokens
+        activityCounts.tasks_created,   // TS007-2: Tasks created
+        activityCounts.tasks_updated,   // TS007-2: Tasks updated
+        activityCounts.tasks_completed, // TS007-2: Tasks completed
+        activityCounts.contexts_created, // TS007-2: Contexts created (overrides COUNT query)
+        `Session completed with ${activityCounts.tasks_created} tasks and ${activityCounts.contexts_created} contexts`,
         JSON.stringify({
           end_time: endTime.toISOString(),
           duration_ms: durationMs,
-          contexts_created: contextsCreated,
+          contexts_created: activityCounts.contexts_created,
+          tasks_created: activityCounts.tasks_created,
+          tasks_updated: activityCounts.tasks_updated,
+          tasks_completed: activityCounts.tasks_completed,
           operations_count: sessionData.operations_count,
           productivity_score: sessionData.productivity_score,
+          input_tokens: tokenUsage.input,
+          output_tokens: tokenUsage.output,
+          total_tokens: tokenUsage.total,
           completed_by: 'aidis-session-tracker'
         }),
         sessionId
@@ -199,18 +246,27 @@ export class SessionTracker {
       ];
       
       await db.query(analyticsSql, analyticsParams);
-      
+
       // Clear active session if this was it
       if (this.activeSessionId === sessionId) {
         this.activeSessionId = null;
       }
-      
+
+      // TS006-2: Clean up in-memory token tracking
+      this.sessionTokens.delete(sessionId);
+
+      // TS007-2: Clean up in-memory activity tracking
+      this.sessionActivity.delete(sessionId);
+
       // Return final session data with calculated metrics
       const finalData: SessionData = {
         ...sessionData,
         end_time: endTime,
         duration_ms: durationMs,
-        success_status: sessionData.operations_count > 0 ? 'completed' : 'abandoned'
+        success_status: sessionData.operations_count > 0 ? 'completed' : 'abandoned',
+        input_tokens: tokenUsage.input,
+        output_tokens: tokenUsage.output,
+        total_tokens: tokenUsage.total
       };
       
       console.log(`✅ Session ended: ${sessionId.substring(0, 8)}... Duration: ${Math.round(durationMs/1000)}s`);
@@ -224,62 +280,39 @@ export class SessionTracker {
   
   /**
    * Get currently active session ID
-   * Fixed TS009: Improved session state consistency and dependency management
+   * TS003-1: Simplified logic - if server running → use memory, else last active session
    */
   static async getActiveSession(): Promise<string | null> {
     try {
-      // Check if we have an active session in memory
+      // If we have an active session in memory, return it
       if (this.activeSessionId) {
-        // Verify it still exists in database and is active
-        const exists = await this.sessionExists(this.activeSessionId);
-        if (exists) {
-          return this.activeSessionId;
-        } else {
-          console.log(`⚠️  Session ${this.activeSessionId.substring(0, 8)}... no longer exists, clearing from memory`);
-          this.activeSessionId = null;
-        }
+        return this.activeSessionId;
       }
-      
-      // Only look for database sessions if explicitly requested or during initialization
-      // This prevents unexpected session recovery during testing or when session is intentionally cleared
-      return await this.recoverActiveSessionFromDatabase();
-      
+
+      // Otherwise, get the last active session from database
+      const sql = `
+        SELECT id
+        FROM sessions
+        WHERE ended_at IS NULL
+        ORDER BY started_at DESC
+        LIMIT 1
+      `;
+
+      const result = await db.query(sql);
+
+      if (result.rows.length > 0) {
+        this.activeSessionId = result.rows[0].id;
+        return this.activeSessionId;
+      }
+
+      return null;
+
     } catch (error) {
       console.error('❌ Failed to get active session:', error);
       return null;
     }
   }
 
-  /**
-   * Recover active session from database (separate method for better dependency control)
-   * Fixed TS009: Explicit database recovery to prevent hidden dependencies
-   */
-  static async recoverActiveSessionFromDatabase(): Promise<string | null> {
-    try {
-      // Look for the most recent active session in sessions table (not ended)
-      const sql = `
-        SELECT id 
-        FROM sessions 
-        WHERE ended_at IS NULL 
-        ORDER BY started_at DESC 
-        LIMIT 1
-      `;
-      
-      const result = await db.query(sql);
-      
-      if (result.rows.length > 0) {
-        this.activeSessionId = result.rows[0].id;
-        console.log(`🔄 Recovered active session from database: ${this.activeSessionId.substring(0, 8)}...`);
-        return this.activeSessionId;
-      }
-      
-      return null;
-      
-    } catch (error) {
-      console.error('❌ Failed to recover active session from database:', error);
-      return null;
-    }
-  }
 
   /**
    * Clear active session from memory (for testing and explicit control)
@@ -304,6 +337,25 @@ export class SessionTracker {
     }
     this.activeSessionId = sessionId;
   }
+
+  /**
+   * Update session activity timestamp
+   * TS004-1: Track last activity for 2-hour timeout detection
+   */
+  static async updateSessionActivity(sessionId: string): Promise<void> {
+    try {
+      const sql = `
+        UPDATE sessions
+        SET last_activity_at = CURRENT_TIMESTAMP
+        WHERE id = $1 AND status = 'active'
+      `;
+
+      await db.query(sql, [sessionId]);
+    } catch (error) {
+      // Don't throw - activity tracking failures shouldn't break functionality
+      console.error('⚠️  Failed to update session activity:', error);
+    }
+  }
   
   /**
    * Record an operation within a session
@@ -327,15 +379,135 @@ export class SessionTracker {
       ];
       
       await db.query(sql, params);
-      
+
+      // TS004-1: Update session activity timestamp
+      await this.updateSessionActivity(sessionId);
+
       console.log(`✅ Operation recorded: ${operationType}`);
-      
+
     } catch (error) {
       console.error('❌ Failed to record operation:', error);
       // Don't throw - operation logging failures shouldn't break functionality
     }
   }
-  
+
+  /**
+   * Record token usage for a session
+   * TS006-2: Track input, output, and total tokens
+   */
+  static recordTokenUsage(sessionId: string, inputTokens: number, outputTokens: number): void {
+    try {
+      // Get or create token tracking for this session
+      let tokens = this.sessionTokens.get(sessionId);
+      if (!tokens) {
+        tokens = { input: 0, output: 0, total: 0 };
+        this.sessionTokens.set(sessionId, tokens);
+      }
+
+      // Increment token counts
+      tokens.input += inputTokens;
+      tokens.output += outputTokens;
+      tokens.total += inputTokens + outputTokens;
+
+      console.log(`📊 Session ${sessionId.substring(0, 8)}... tokens: +${inputTokens} input, +${outputTokens} output (total: ${tokens.total})`);
+    } catch (error) {
+      console.error('❌ Failed to record token usage:', error);
+      // Don't throw - token tracking failures shouldn't break functionality
+    }
+  }
+
+  /**
+   * Get current token usage for a session
+   * TS006-2: Retrieve in-memory token counts
+   */
+  static getTokenUsage(sessionId: string): { input: number; output: number; total: number } {
+    return this.sessionTokens.get(sessionId) || { input: 0, output: 0, total: 0 };
+  }
+
+  /**
+   * Record task creation
+   * TS007-2: Track when a task is created in this session
+   */
+  static recordTaskCreated(sessionId: string): void {
+    try {
+      const activity = this.sessionActivity.get(sessionId) || {
+        tasks_created: 0,
+        tasks_updated: 0,
+        tasks_completed: 0,
+        contexts_created: 0
+      };
+      activity.tasks_created += 1;
+      this.sessionActivity.set(sessionId, activity);
+      console.log(`📋 Session ${sessionId.substring(0, 8)}... task created (total: ${activity.tasks_created})`);
+    } catch (error) {
+      console.error('❌ Failed to record task creation:', error);
+      // Don't throw - activity tracking failures shouldn't break functionality
+    }
+  }
+
+  /**
+   * Record task update
+   * TS007-2: Track when a task is updated, including completion status
+   */
+  static recordTaskUpdated(sessionId: string, isCompleted: boolean = false): void {
+    try {
+      const activity = this.sessionActivity.get(sessionId) || {
+        tasks_created: 0,
+        tasks_updated: 0,
+        tasks_completed: 0,
+        contexts_created: 0
+      };
+      activity.tasks_updated += 1;
+      if (isCompleted) {
+        activity.tasks_completed += 1;
+      }
+      this.sessionActivity.set(sessionId, activity);
+      console.log(`📋 Session ${sessionId.substring(0, 8)}... task updated (total: ${activity.tasks_updated}, completed: ${activity.tasks_completed})`);
+    } catch (error) {
+      console.error('❌ Failed to record task update:', error);
+      // Don't throw - activity tracking failures shouldn't break functionality
+    }
+  }
+
+  /**
+   * Record context creation
+   * TS007-2: Track when a context is created in this session
+   */
+  static recordContextCreated(sessionId: string): void {
+    try {
+      const activity = this.sessionActivity.get(sessionId) || {
+        tasks_created: 0,
+        tasks_updated: 0,
+        tasks_completed: 0,
+        contexts_created: 0
+      };
+      activity.contexts_created += 1;
+      this.sessionActivity.set(sessionId, activity);
+      console.log(`💬 Session ${sessionId.substring(0, 8)}... context created (total: ${activity.contexts_created})`);
+    } catch (error) {
+      console.error('❌ Failed to record context creation:', error);
+      // Don't throw - activity tracking failures shouldn't break functionality
+    }
+  }
+
+  /**
+   * Get current activity counts for a session
+   * TS007-2: Retrieve in-memory activity counts
+   */
+  static getActivityCounts(sessionId: string): {
+    tasks_created: number;
+    tasks_updated: number;
+    tasks_completed: number;
+    contexts_created: number;
+  } {
+    return this.sessionActivity.get(sessionId) || {
+      tasks_created: 0,
+      tasks_updated: 0,
+      tasks_completed: 0,
+      contexts_created: 0
+    };
+  }
+
   /**
    * Calculate productivity score for a session
    * Formula: (contexts_created * 2 + decisions_created * 3) / (duration_hours + 1)
@@ -445,7 +617,10 @@ export class SessionTracker {
       } else {
         successStatus = 'abandoned';
       }
-      
+
+      // TS006-2: Get token usage (from memory for active sessions, or return zeros)
+      const tokenUsage = this.getTokenUsage(sessionId);
+
       return {
         session_id: sessionId,
         start_time: startTime,
@@ -456,7 +631,12 @@ export class SessionTracker {
         decisions_created: decisionsCreated,
         operations_count: operationsCount,
         productivity_score: productivityScore,
-        success_status: successStatus
+        success_status: successStatus,
+        status: !endTime ? 'active' : 'inactive',  // TS004-1: Add status field
+        last_activity_at: undefined,  // TS004-1: Not populated in this method
+        input_tokens: tokenUsage.input,   // TS006-2: Token tracking
+        output_tokens: tokenUsage.output, // TS006-2: Token tracking
+        total_tokens: tokenUsage.total    // TS006-2: Token tracking
       };
       
     } catch (error) {
@@ -647,33 +827,7 @@ export class SessionTracker {
     }
   }
 
-  /**
-   * Clear active session from memory (for testing/debugging)
-   */
-  static clearActiveSession(): void {
-    this.activeSessionId = null;
-    console.log('🧹 Cleared active session from memory');
-  }
 
-  /**
-   * Check if a session exists in the database
-   */
-  static async sessionExists(sessionId: string): Promise<boolean> {
-    try {
-      const sql = `
-        SELECT 1 FROM sessions 
-        WHERE id = $1 AND ended_at IS NULL
-        LIMIT 1
-      `;
-      
-      const result = await db.query(sql, [sessionId]);
-      return result.rows.length > 0;
-      
-    } catch (error) {
-      console.error('❌ Failed to check session existence:', error);
-      return false;
-    }
-  }
   
   /**
    * Get session statistics for analytics

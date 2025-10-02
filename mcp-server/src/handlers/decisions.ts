@@ -174,6 +174,12 @@ export class DecisionsHandler {
 
       const decision = this.mapDatabaseRowToDecision(result.rows[0]);
 
+      // TS004-1: Update session activity after decision recording
+      if (request.sessionId) {
+        const { SessionTracker } = await import('../services/sessionTracker.js');
+        await SessionTracker.updateSessionActivity(request.sessionId);
+      }
+
       console.log(`✅ Decision recorded: ${decision.id.substring(0, 8)}...`);
       console.log(`🎯 Impact: ${decision.impactLevel} | Type: ${decision.decisionType}`);
       console.log(`📊 Alternatives considered: ${decision.alternativesConsidered.length}`);

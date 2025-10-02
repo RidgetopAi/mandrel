@@ -646,9 +646,9 @@ export class SessionManagementHandler {
         };
       }
 
-      // Get session details with project info
+      // Get session details with project info (TS006-2: includes token columns, TS007-2: includes activity columns)
       const result = await db.query(`
-        SELECT 
+        SELECT
           s.id,
           s.agent_type,
           s.started_at,
@@ -656,6 +656,13 @@ export class SessionManagementHandler {
           s.project_id,
           p.name as project_name,
           s.metadata,
+          s.input_tokens,
+          s.output_tokens,
+          s.total_tokens,
+          s.tasks_created,
+          s.tasks_updated,
+          s.tasks_completed,
+          s.contexts_created,
           COALESCE((SELECT COUNT(*) FROM contexts c WHERE c.session_id = s.id), 0) as contexts_count,
           COALESCE((SELECT COUNT(*) FROM technical_decisions td WHERE td.session_id = s.id), 0) as decisions_count
         FROM sessions s
@@ -671,9 +678,15 @@ export class SessionManagementHandler {
       }
 
       const session = result.rows[0];
-      const duration = session.ended_at 
+      const duration = session.ended_at
         ? new Date(session.ended_at).getTime() - new Date(session.started_at).getTime()
         : Date.now() - new Date(session.started_at).getTime();
+
+      // TS006-2: Get in-memory token usage if session is active
+      const tokenUsage = SessionTracker.getTokenUsage(activeSessionId);
+
+      // TS007-2: Get in-memory activity counts if session is active
+      const activityCounts = SessionTracker.getActivityCounts(activeSessionId);
 
       return {
         success: true,
@@ -685,6 +698,13 @@ export class SessionManagementHandler {
           duration_minutes: Math.round(duration / 60000),
           contexts_created: parseInt(session.contexts_count),
           decisions_created: parseInt(session.decisions_count),
+          input_tokens: tokenUsage.input || parseInt(session.input_tokens) || 0,
+          output_tokens: tokenUsage.output || parseInt(session.output_tokens) || 0,
+          total_tokens: tokenUsage.total || parseInt(session.total_tokens) || 0,
+          tasks_created: activityCounts.tasks_created || parseInt(session.tasks_created) || 0,
+          tasks_updated: activityCounts.tasks_updated || parseInt(session.tasks_updated) || 0,
+          tasks_completed: activityCounts.tasks_completed || parseInt(session.tasks_completed) || 0,
+          contexts_created_tracked: activityCounts.contexts_created || parseInt(session.contexts_created) || 0,
           metadata: session.metadata || {}
         },
         message: `Current session: ${session.id.substring(0, 8)}...`
@@ -855,7 +875,7 @@ export class SessionManagementHandler {
       console.log(`🔍 Getting detailed session info for: ${sessionId.substring(0, 8)}...`);
 
       const result = await db.query(`
-        SELECT 
+        SELECT
           s.id,
           s.title,
           s.description,
@@ -866,6 +886,13 @@ export class SessionManagementHandler {
           s.context_summary,
           s.updated_at,
           s.metadata,
+          s.input_tokens,
+          s.output_tokens,
+          s.total_tokens,
+          s.tasks_created,
+          s.tasks_updated,
+          s.tasks_completed,
+          s.contexts_created,
           p.name as project_name,
           COALESCE((SELECT COUNT(*) FROM contexts c WHERE c.session_id = s.id), 0) as contexts_count,
           COALESCE((SELECT COUNT(*) FROM technical_decisions td WHERE td.session_id = s.id), 0) as decisions_count
@@ -902,6 +929,13 @@ export class SessionManagementHandler {
           duration_minutes: Math.round(duration / 60000),
           contexts_created: parseInt(session.contexts_count),
           decisions_created: parseInt(session.decisions_count),
+          input_tokens: parseInt(session.input_tokens) || 0,
+          output_tokens: parseInt(session.output_tokens) || 0,
+          total_tokens: parseInt(session.total_tokens) || 0,
+          tasks_created: parseInt(session.tasks_created) || 0,
+          tasks_updated: parseInt(session.tasks_updated) || 0,
+          tasks_completed: parseInt(session.tasks_completed) || 0,
+          contexts_created_tracked: parseInt(session.contexts_created) || 0,
           metadata: session.metadata || {}
         },
         message: `Session details retrieved successfully`

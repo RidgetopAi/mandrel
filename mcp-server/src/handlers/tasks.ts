@@ -4,6 +4,7 @@ import { db } from '../config/database.js';
 export interface Task {
     id: string;
     projectId: string;
+    sessionId?: string;  // TS005-1: Link to session where task was created
     title: string;
     description?: string;
     type: string;
@@ -13,7 +14,7 @@ export interface Task {
     tags: string[];
     metadata: Record<string, any>;
     assignedTo?: string;  // Simple string, no FK
-    createdBy?: string;   // Simple string, no FK  
+    createdBy?: string;   // Simple string, no FK
     progress: number;
     startedAt?: Date;
     completedAt?: Date;
@@ -36,15 +37,36 @@ export class TasksHandler {
         dependencies: string[] = [],
         metadata: Record<string, any> = {}
     ): Promise<Task> {
+        // Validate project exists before creating task
+        const projectExists = await this.pool.query(
+            'SELECT 1 FROM projects WHERE id = $1',
+            [projectId]
+        );
+        if (projectExists.rows.length === 0) {
+            throw new Error(`Cannot create task: Invalid project ID ${projectId}. Project does not exist.`);
+        }
+
         const client = await this.pool.connect();
         try {
+            // TS005-1: Capture active session_id for task-session linking
+            const { SessionTracker } = await import('../services/sessionTracker.js');
+            const sessionId = await SessionTracker.getActiveSession();
+
             const result = await client.query(
-                `INSERT INTO tasks 
-                 (project_id, title, description, type, priority, assigned_to, created_by, tags, dependencies, metadata)
-                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+                `INSERT INTO tasks
+                 (project_id, session_id, title, description, type, priority, assigned_to, created_by, tags, dependencies, metadata)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
                  RETURNING *`,
-                [projectId, title, description, type, priority, assignedTo, createdBy, tags, dependencies, metadata]
+                [projectId, sessionId, title, description, type, priority, assignedTo, createdBy, tags, dependencies, metadata]
             );
+
+            // TS004-1: Update session activity after task creation
+            if (sessionId) {
+                await SessionTracker.updateSessionActivity(sessionId);
+                // TS007-2: Record task creation for activity tracking
+                SessionTracker.recordTaskCreated(sessionId);
+            }
+
             return this.mapTask(result.rows[0]);
         } finally {
             client.release();
@@ -150,6 +172,16 @@ export class TasksHandler {
 
             params.push(taskId);
             await client.query(`UPDATE tasks SET ${updates.join(', ')} WHERE id = $${paramIndex}`, params);
+
+            // TS004-1: Update session activity after task update
+            const { SessionTracker } = await import('../services/sessionTracker.js');
+            const sessionId = await SessionTracker.getActiveSession();
+            if (sessionId) {
+                await SessionTracker.updateSessionActivity(sessionId);
+                // TS007-2: Record task update for activity tracking
+                const isCompleted = status === 'completed';
+                SessionTracker.recordTaskUpdated(sessionId, isCompleted);
+            }
         } finally {
             client.release();
         }
@@ -272,6 +304,17 @@ export class TasksHandler {
             const updatedTaskIds = updateResult.rows.map(row => row.id);
 
             await client.query('COMMIT');
+
+            // TS007-2: Record task updates for activity tracking (one per task)
+            const { SessionTracker } = await import('../services/sessionTracker.js');
+            const sessionId = await SessionTracker.getActiveSession();
+            if (sessionId && updatedTaskIds.length > 0) {
+                const isCompleted = updates.status === 'completed';
+                // Record one update per task that was successfully updated
+                for (let i = 0; i < updatedTaskIds.length; i++) {
+                    SessionTracker.recordTaskUpdated(sessionId, isCompleted);
+                }
+            }
 
             return {
                 totalRequested: taskIds.length,
@@ -451,6 +494,7 @@ export class TasksHandler {
         return {
             id: row.id,
             projectId: row.project_id,
+            sessionId: row.session_id,  // TS005-1: Include session_id in mapped task
             title: row.title,
             description: row.description,
             type: row.type,

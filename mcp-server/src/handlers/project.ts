@@ -74,6 +74,9 @@ export class ProjectHandler {
 
       const result = await db.query(sql);
 
+      // Get current project ID once before mapping (now async)
+      const currentProjectId = await this.getCurrentProjectId();
+
       const projects: ProjectInfo[] = result.rows.map(row => ({
         id: row.id,
         name: row.name,
@@ -85,7 +88,7 @@ export class ProjectHandler {
         rootDirectory: row.root_directory,
         metadata: typeof row.metadata === 'string' ? JSON.parse(row.metadata) : row.metadata,
         contextCount: includeStats ? parseInt(row.context_count || '0') : undefined,
-        isActive: this.getCurrentProjectId() === row.id
+        isActive: currentProjectId === row.id
       }));
 
       console.log(`✅ Found ${projects.length} projects`);
@@ -174,6 +177,10 @@ export class ProjectHandler {
       }
 
       const row = result.rows[0];
+
+      // Get current project ID (now async)
+      const currentProjectId = await this.getCurrentProjectId();
+
       const project: ProjectInfo = {
         id: row.id,
         name: row.name,
@@ -185,7 +192,7 @@ export class ProjectHandler {
         rootDirectory: row.root_directory,
         metadata: typeof row.metadata === 'string' ? JSON.parse(row.metadata) : row.metadata,
         contextCount: parseInt(row.context_count || '0'),
-        isActive: this.getCurrentProjectId() === row.id
+        isActive: currentProjectId === row.id
       };
 
       console.log(`✅ Found project: ${project.name} (${project.contextCount} contexts)`);
@@ -215,17 +222,37 @@ export class ProjectHandler {
 
   /**
    * Get the current active project ID
+   * Now async with cache validation to prevent stale project IDs
    */
-  getCurrentProjectId(sessionId: string = this.defaultSessionId): string | null {
+  async getCurrentProjectId(sessionId: string = this.defaultSessionId): Promise<string | null> {
     const state = this.sessionStates.get(sessionId);
-    return state?.currentProjectId || null;
+    const cachedId = state?.currentProjectId;
+
+    if (!cachedId) {
+      return null;
+    }
+
+    // Validate cached ID still exists in database
+    const result = await db.query(
+      'SELECT 1 FROM projects WHERE id = $1',
+      [cachedId]
+    );
+
+    if (result.rows.length === 0) {
+      // Clear invalid cached state
+      console.warn(`Clearing stale project cache for session ${sessionId}: project ${cachedId} no longer exists`);
+      this.sessionStates.delete(sessionId);
+      return null;
+    }
+
+    return cachedId;
   }
 
   /**
    * Get the current active project details
    */
   async getCurrentProject(sessionId: string = this.defaultSessionId): Promise<ProjectInfo | null> {
-    const projectId = this.getCurrentProjectId(sessionId);
+    const projectId = await this.getCurrentProjectId(sessionId);
     if (!projectId) {
       return null;
     }
@@ -294,13 +321,13 @@ export class ProjectHandler {
 
       // Step 4: Post-switch validation
       const postValidation = await ProjectSwitchValidator.validatePostSwitch(
-        sessionId, 
-        targetProject.id, 
-        { 
-          sessionId, 
-          sourceProjectId: this.getCurrentProjectId(sessionId), 
-          targetProjectId: targetProject.id, 
-          timestamp: new Date(), 
+        sessionId,
+        targetProject.id,
+        {
+          sessionId,
+          sourceProjectId: await this.getCurrentProjectId(sessionId),
+          targetProjectId: targetProject.id,
+          timestamp: new Date(),
           transactionId: 'post-validation' 
         }
       );
@@ -341,7 +368,7 @@ export class ProjectHandler {
     console.log(`🔄 Initializing session: ${sessionId}`);
 
     // Check if session already has a current project
-    const existing = this.getCurrentProjectId(sessionId);
+    const existing = await this.getCurrentProjectId(sessionId);
     if (existing) {
       const project = await this.getProject(existing);
       if (project) {
@@ -433,6 +460,10 @@ export class ProjectHandler {
       }
 
       const row = result.rows[0];
+
+      // Get current project ID (now async)
+      const currentProjectId = await this.getCurrentProjectId();
+
       const project: ProjectInfo = {
         id: row.id,
         name: row.name,
@@ -443,7 +474,7 @@ export class ProjectHandler {
         gitRepoUrl: row.git_repo_url,
         rootDirectory: row.root_directory,
         metadata: typeof row.metadata === 'string' ? JSON.parse(row.metadata) : row.metadata,
-        isActive: this.getCurrentProjectId() === row.id
+        isActive: currentProjectId === row.id
       };
 
       console.log(`✅ Updated project: ${project.name}`);

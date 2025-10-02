@@ -14,6 +14,180 @@ const BRIDGE_URL = 'http://localhost:8080/mcp/tools';
 class AidisStdioMock {
   constructor() {
     this.messageId = 1;
+    this.cachedTools = null; // Cache for discovered tools
+    this.toolsFetchAttempted = false; // Track if we've tried to fetch
+  }
+
+  /**
+   * Fetch available tools from aidis_help endpoint
+   * Returns array of tool definitions with proper MCP schema
+   */
+  async fetchAvailableTools() {
+    try {
+      console.error("🔍 Fetching tool schemas from HTTP bridge...");
+      const schemaResponse = await this.makeHttpSchemaCall();
+
+      if (!schemaResponse.success || !schemaResponse.tools) {
+        throw new Error('Schema endpoint returned invalid response');
+      }
+
+      console.error(`✅ Loaded ${schemaResponse.tools.length} tools with full schemas from /mcp/tools/schemas`);
+      return schemaResponse.tools;
+    } catch (error) {
+      console.error(`⚠️  Failed to fetch schemas: ${error.message}`);
+      console.error("📋 Falling back to essential tools with proper schemas");
+      return this.getEssentialTools();
+    }
+  }
+
+  /**
+   * Fetch tool schemas from HTTP bridge /mcp/tools/schemas endpoint
+   * Returns complete MCP tool definitions with full inputSchema objects
+   */
+  async makeHttpSchemaCall() {
+    return new Promise((resolve, reject) => {
+      const options = {
+        hostname: 'localhost',
+        port: 8080,
+        path: '/mcp/tools/schemas',
+        method: 'GET'
+      };
+
+      const req = http.request(options, (res) => {
+        let data = '';
+        res.on('data', (chunk) => data += chunk);
+        res.on('end', () => {
+          try {
+            const parsed = JSON.parse(data);
+            resolve(parsed);
+          } catch (e) {
+            reject(new Error(`Invalid JSON from schemas endpoint: ${data.substring(0, 100)}`));
+          }
+        });
+      });
+
+      req.on('error', (err) => reject(err));
+      req.setTimeout(5000, () => {
+        req.destroy();
+        reject(new Error('Schema fetch timeout'));
+      });
+      req.end();
+    });
+  }
+
+  /**
+   * Parse tool definitions from aidis_help text output
+   * Extracts tool names and descriptions using regex
+   */
+  parseToolsFromHelpText(helpText) {
+    const tools = [];
+    // Match pattern: • **tool_name** - Description
+    const toolRegex = /•\s+\*\*([a-z_]+)\*\*\s+-\s+(.+?)(?=\n|$)/g;
+
+    let match;
+    while ((match = toolRegex.exec(helpText)) !== null) {
+      const [, name, description] = match;
+
+      // Create MCP-compliant tool definition with generic schema
+      // All tools accept optional parameters as we can't determine exact schema from help text
+      tools.push({
+        name: name.trim(),
+        description: description.trim(),
+        inputSchema: {
+          type: "object",
+          properties: {},
+          additionalProperties: true // Allow any parameters
+        }
+      });
+    }
+
+    return tools;
+  }
+
+  /**
+   * Get essential fallback tools if dynamic discovery fails
+   * These 10 tools cover critical AIDIS functionality
+   */
+  getEssentialTools() {
+    return [
+      {
+        name: "aidis_help",
+        description: "List all AIDIS tools",
+        inputSchema: { type: "object", properties: {}, required: [] }
+      },
+      {
+        name: "aidis_ping",
+        description: "Test AIDIS connection",
+        inputSchema: { type: "object", properties: {}, required: [] }
+      },
+      {
+        name: "aidis_status",
+        description: "Get server status",
+        inputSchema: { type: "object", properties: {}, required: [] }
+      },
+      {
+        name: "context_store",
+        description: "Store context",
+        inputSchema: {
+          type: "object",
+          properties: {
+            content: { type: "string" },
+            type: { type: "string" },
+            tags: { type: "array", items: { type: "string" } }
+          },
+          required: ["content", "type"]
+        }
+      },
+      {
+        name: "context_search",
+        description: "Search contexts",
+        inputSchema: {
+          type: "object",
+          properties: {
+            query: { type: "string" },
+            limit: { type: "number" }
+          },
+          required: ["query"]
+        }
+      },
+      {
+        name: "context_get_recent",
+        description: "Get recent contexts",
+        inputSchema: {
+          type: "object",
+          properties: {
+            limit: { type: "number" }
+          },
+          required: []
+        }
+      },
+      {
+        name: "project_current",
+        description: "Get current project",
+        inputSchema: { type: "object", properties: {}, required: [] }
+      },
+      {
+        name: "project_list",
+        description: "List all projects",
+        inputSchema: { type: "object", properties: {}, required: [] }
+      },
+      {
+        name: "project_switch",
+        description: "Switch to a project",
+        inputSchema: {
+          type: "object",
+          properties: {
+            project: { type: "string" }
+          },
+          required: ["project"]
+        }
+      },
+      {
+        name: "session_status",
+        description: "Get session status",
+        inputSchema: { type: "object", properties: {}, required: [] }
+      }
+    ];
   }
 
   writeMessage(obj) {
@@ -103,53 +277,20 @@ class AidisStdioMock {
     }
 
     if (method === 'tools/list') {
-      // Return list of available tools with proper inputSchema
+      // Dynamically fetch and cache tool list from aidis_help
+      if (!this.cachedTools && !this.toolsFetchAttempted) {
+        this.toolsFetchAttempted = true;
+        this.cachedTools = await this.fetchAvailableTools();
+      }
+
+      // Use cached tools or fallback to essential if fetch failed
+      const tools = this.cachedTools || this.getEssentialTools();
+
       return {
         jsonrpc: "2.0",
         id: request.id,
         result: {
-          tools: [
-            { 
-              name: "aidis_help", 
-              description: "List all AIDIS tools",
-              inputSchema: { type: "object", properties: {}, required: [] }
-            },
-            { 
-              name: "aidis_ping", 
-              description: "Test AIDIS connection",
-              inputSchema: { type: "object", properties: {}, required: [] }
-            },
-            { 
-              name: "context_store", 
-              description: "Store context",
-              inputSchema: { 
-                type: "object", 
-                properties: { 
-                  content: { type: "string" }, 
-                  type: { type: "string" },
-                  tags: { type: "array", items: { type: "string" } }
-                }, 
-                required: ["content", "type"] 
-              }
-            },
-            { 
-              name: "context_search", 
-              description: "Search contexts",
-              inputSchema: { 
-                type: "object", 
-                properties: { 
-                  query: { type: "string" },
-                  limit: { type: "number" }
-                }, 
-                required: ["query"] 
-              }
-            },
-            { 
-              name: "project_current", 
-              description: "Get current project",
-              inputSchema: { type: "object", properties: {}, required: [] }
-            }
-          ]
+          tools: tools
         }
       };
     }
@@ -166,7 +307,7 @@ class AidisStdioMock {
           },
           serverInfo: {
             name: "aidis-stdio-mock",
-            version: "1.0.0"
+            version: "2.0.0" // v2.0.0: Dynamic tool discovery
           }
         }
       };
