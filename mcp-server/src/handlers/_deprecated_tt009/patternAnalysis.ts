@@ -18,18 +18,18 @@
  * Author: AIDIS Team - TC017 Implementation
  */
 
-import { db } from '../config/database.js';
-import { logEvent } from '../middleware/eventLogger.js';
-import { getCurrentSession } from '../services/sessionManager.js';
-import { 
-  PatternDetector, 
+import { db } from '../../config/database.js';
+import { logEvent } from '../../middleware/eventLogger.js';
+import { getCurrentSession } from '../../services/sessionManager.js';
+import {
+  PatternDetector,
   type PatternDetectionResult,
   type CooccurrencePattern,
   type TemporalPattern,
   type DeveloperPattern,
   type MagnitudePattern,
   type PatternInsight
-} from '../services/patternDetector.js';
+} from '../../services/patternDetector.js';
 
 /**
  * Pattern Analysis Result Interfaces

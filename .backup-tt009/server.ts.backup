@@ -56,16 +56,19 @@ import { SessionTracker, ensureActiveSession } from './services/sessionTracker.j
 import { SessionManagementHandler } from './handlers/sessionAnalytics.js';
 import { GitHandler } from './handlers/git.js';
 import { startGitTracking, stopGitTracking } from './services/gitTracker.js';
+import { patternDetectionHandlers } from './handlers/patternDetection.js';
+import { patternAnalysisHandlers } from './handlers/patternAnalysis.js';
 import { startPatternDetection, stopPatternDetection } from './services/patternDetector.js';
-import {
-  startMetricsCollection,
-  stopMetricsCollection,
+import { DevelopmentMetricsHandler } from './handlers/developmentMetrics.js';
+import { 
+  startMetricsCollection, 
+  stopMetricsCollection, 
   collectMetricsOnCommit,
-  collectMetricsOnPatternUpdate
+  collectMetricsOnPatternUpdate 
 } from './services/metricsCollector.js';
-import {
+import { 
   startMetricsIntegration,
-  stopMetricsIntegration
+  stopMetricsIntegration 
 } from './services/metricsIntegration.js';
 // TC015: Code Complexity Tracking imports
 import { CodeComplexityHandler } from './handlers/codeComplexity.js';
@@ -85,7 +88,8 @@ import {
 } from './services/complexityTracker.js';
 // TC016: Decision Outcome Tracking imports
 import { outcomeTrackingHandler } from './handlers/outcomeTracking.js';
-// TC014: Deprecated metrics handler imports removed - TT009-2 Complete
+// TC018: Metrics Aggregation imports
+import { MetricsAggregationHandler } from './handlers/metricsAggregation.js';
 import { ensureFeatureFlags } from './utils/featureFlags.js';
 import { portManager } from './utils/portManager.js';
 // Phase 5 Integration: V2 API Router
@@ -1018,11 +1022,62 @@ class AIDISServer {
       case 'git_correlate_session':
         return await this.handleGitCorrelateSession(validatedArgs as any);
 
-      // TC013/TC017: Deprecated pattern tools removed - TT009-3 Complete
-      // Old individual pattern tools consolidated into:
-      //   - pattern_analyze (detection/analysis/tracking operations)
-      //   - pattern_insights (insights/correlations/recommendations/alerts)
-
+      // TC013: Pattern Detection Tools
+      case 'pattern_detection_start':
+        return await patternDetectionHandlers.pattern_detection_start(validatedArgs as any);
+      
+      case 'pattern_detection_stop':
+        return await patternDetectionHandlers.pattern_detection_stop();
+      
+      case 'pattern_detect_commits':
+        return await patternDetectionHandlers.pattern_detect_commits(validatedArgs as any);
+      
+      case 'pattern_get_session_insights':
+        return await patternDetectionHandlers.pattern_get_session_insights(validatedArgs as any);
+      
+      case 'pattern_analyze_project':
+        return await patternDetectionHandlers.pattern_analyze_project(validatedArgs as any);
+      
+      case 'pattern_get_alerts':
+        return await patternDetectionHandlers.pattern_get_alerts(validatedArgs as any);
+      
+      case 'pattern_detection_status':
+        return await patternDetectionHandlers.pattern_detection_status();
+      
+      case 'pattern_track_git_activity':
+        return await patternDetectionHandlers.pattern_track_git_activity();
+      
+      // TC017: Pattern Analysis Tools - Comprehensive pattern intelligence API
+      case 'pattern_get_discovered':
+        return await patternAnalysisHandlers.pattern_get_discovered(validatedArgs as any);
+      
+      case 'pattern_get_trends':
+        return await patternAnalysisHandlers.pattern_get_trends(validatedArgs as any);
+      
+      case 'pattern_get_correlations':
+        return await patternAnalysisHandlers.pattern_get_correlations(validatedArgs as any);
+      
+      case 'pattern_get_insights':
+        return await patternAnalysisHandlers.pattern_get_insights(validatedArgs as any);
+      
+      case 'pattern_get_alerts':
+        return await patternAnalysisHandlers.pattern_get_alerts(validatedArgs as any);
+      
+      case 'pattern_get_anomalies':
+        return await patternAnalysisHandlers.pattern_get_anomalies(validatedArgs as any);
+      
+      case 'pattern_get_recommendations':
+        return await patternAnalysisHandlers.pattern_get_recommendations(validatedArgs as any);
+      
+      case 'pattern_analyze_session':
+        return await patternAnalysisHandlers.pattern_analyze_session(validatedArgs as any);
+      
+      case 'pattern_analyze_commit':
+        return await patternAnalysisHandlers.pattern_analyze_commit(validatedArgs as any);
+      
+      case 'pattern_get_performance':
+        return await patternAnalysisHandlers.pattern_get_performance(validatedArgs as any);
+      
       // TT009-2: Phase 2 Metrics Consolidation Tools
       case 'metrics_collect':
         return await handleMetricsCollect(validatedArgs);
@@ -1037,12 +1092,29 @@ class AIDISServer {
       case 'pattern_insights':
         return await handlePatternInsights(validatedArgs);
 
-      // TC014: Deprecated metrics tools removed - TT009-2 Complete
-      // Old individual metrics tools consolidated into:
-      //   - metrics_collect (collection operations)
-      //   - metrics_analyze (analysis/dashboard/trends)
-      //   - metrics_control (alerts/performance/export)
+      // Development Metrics Tools (to be consolidated in Phase 2)
+      case 'metrics_collect_project':
+      case 'metrics_get_dashboard':
+      case 'metrics_get_core_metrics':
+      case 'metrics_get_pattern_intelligence':
+      case 'metrics_get_productivity_health':
+      case 'metrics_get_alerts':
+      case 'metrics_acknowledge_alert':
+      case 'metrics_resolve_alert':
+      case 'metrics_get_trends':
+      case 'metrics_get_performance':
+      case 'metrics_start_collection':
+      case 'metrics_stop_collection':
+        return await DevelopmentMetricsHandler.handleTool(toolName, validatedArgs);
 
+      // TC018: Metrics Aggregation Tools
+      case 'metrics_aggregate_projects':
+      case 'metrics_aggregate_timeline':
+      case 'metrics_calculate_correlations':
+      case 'metrics_get_executive_summary':
+      case 'metrics_export_data':
+        return await MetricsAggregationHandler.handleTool(toolName, validatedArgs);
+        
       // TC015: Code Complexity Tracking tools
       case 'complexity_analyze':
         return await handleComplexityAnalyze(validatedArgs);

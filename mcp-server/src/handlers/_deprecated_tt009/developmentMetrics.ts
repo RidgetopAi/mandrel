@@ -11,17 +11,17 @@
  * Performance Target: Sub-100ms API response times for dashboard queries
  */
 
-import { db } from '../config/database.js';
-import { logEvent } from '../middleware/eventLogger.js';
-import { getCurrentSession } from '../services/sessionManager.js';
-import { 
-  MetricsCollector, 
-  startMetricsCollection, 
+import { db } from '../../config/database.js';
+import { logEvent } from '../../middleware/eventLogger.js';
+import { getCurrentSession } from '../../services/sessionManager.js';
+import {
+  MetricsCollector,
+  startMetricsCollection,
   stopMetricsCollection,
   collectProjectMetrics,
   getMetricsCollectionPerformance,
   MetricsCollectionResult
-} from '../services/metricsCollector.js';
+} from '../../services/metricsCollector.js';
 
 // MCP Tool Definitions for Development Metrics
 const DEVELOPMENT_METRICS_TOOLS = [

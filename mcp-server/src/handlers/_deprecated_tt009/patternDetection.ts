@@ -23,15 +23,15 @@ import {
   getPatternDetectionMetrics,
   type PatternDetectionResult,
   type PatternAlert
-} from '../services/patternDetector.js';
-import { 
+} from '../../services/patternDetector.js';
+import {
   detectPatternsForRecentCommits,
   getSessionPatternInsights,
   trackRealtimeGitActivityWithPatterns
-} from './git.js';
-import { db } from '../config/database.js';
-import { logEvent } from '../middleware/eventLogger.js';
-import { getCurrentSession } from '../services/sessionManager.js';
+} from '../git.js';
+import { db } from '../../config/database.js';
+import { logEvent } from '../../middleware/eventLogger.js';
+import { getCurrentSession } from '../../services/sessionManager.js';
 
 /**
  * Pattern Detection MCP Handler

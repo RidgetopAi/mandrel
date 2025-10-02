@@ -30,9 +30,9 @@ import {
   type PatternDetectionResult,
   type PatternAlert
 } from '../../services/patternDetector.js';
-import { PatternDetectionHandler } from '../patternDetection.js';
-import { PatternAnalysisHandler } from '../patternAnalysis.js';
-import * as patternDetectionHandlers from '../patternDetection.js';
+import { PatternDetectionHandler } from '../_deprecated_tt009/patternDetection.js';
+import { PatternAnalysisHandler } from '../_deprecated_tt009/patternAnalysis.js';
+import * as patternDetectionHandlers from '../_deprecated_tt009/patternDetection.js';
 
 /**
  * Unified pattern analysis interface

@@ -17,7 +17,7 @@
 import { db } from '../../config/database.js';
 import { logEvent } from '../../middleware/eventLogger.js';
 import { getCurrentSession } from '../../services/sessionManager.js';
-import { PatternAnalysisHandler } from '../patternAnalysis.js';
+import { PatternAnalysisHandler } from '../_deprecated_tt009/patternAnalysis.js';
 
 /**
  * Unified pattern insights interface
