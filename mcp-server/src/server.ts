@@ -550,10 +550,11 @@ class AIDISServer {
             timestamp: new Date().toISOString()
           }));
         } catch (error) {
+          const err = error as Error;
           res.writeHead(500);
           res.end(JSON.stringify({
             success: false,
-            error: error.message,
+            error: err.message,
             timestamp: new Date().toISOString()
           }));
         }
@@ -2366,12 +2367,13 @@ class AIDISServer {
       };
 
     } catch (error) {
+      const err = error as Error;
       return {
         content: [
           {
             type: 'text',
             text: `❌ Bulk update failed!\n\n` +
-                  `🚨 **Error:** ${error.message}\n\n` +
+                  `🚨 **Error:** ${err.message}\n\n` +
                   `📊 **Request Details:**\n` +
                   `   • Task Count: ${args.task_ids?.length || 0}\n` +
                   `   • Task IDs: ${args.task_ids?.slice(0, 5).join(', ')}${args.task_ids?.length > 5 ? '...' : ''}\n` +
@@ -2437,11 +2439,12 @@ class AIDISServer {
       };
 
     } catch (error) {
+      const err = error as Error;
       return {
         content: [{
           type: "text",
           text: `❌ Progress summary failed!\n\n` +
-                `🚨 **Error:** ${error.message}\n\n` +
+                `🚨 **Error:** ${err.message}\n\n` +
                 `💡 Try: task_progress_summary(groupBy="phase")`
         }]
       };

@@ -65,10 +65,11 @@ export class HttpMcpBridge {
         });
         
       } catch (error) {
-        console.error(`❌ MCP→HTTP: ${toolName} failed:`, error.message);
+        const err = error as Error;
+        console.error(`❌ MCP→HTTP: ${toolName} failed:`, err.message);
         res.status(500).json({
           success: false,
-          error: error.message,
+          error: err.message,
           tool: toolName,
           timestamp: new Date().toISOString()
         });
@@ -156,7 +157,8 @@ export class HttpMcpBridge {
               timestamp: new Date().toISOString()
             });
           } catch (parseError) {
-            reject(new Error(`Failed to parse MCP response: ${parseError.message}`));
+            const err = parseError as Error;
+            reject(new Error(`Failed to parse MCP response: ${err.message}`));
           }
         } else {
           reject(new Error(`MCP tool failed with code ${code}: ${errorOutput}`));

@@ -167,19 +167,21 @@ export class IngressValidator {
         };
 
       } catch (validationError) {
+        const err = validationError as Error;
         return {
           success: false,
-          errors: [`Schema validation failed: ${validationError.message}`],
+          errors: [`Schema validation failed: ${err.message}`],
           warnings
         };
       }
 
     } catch (error) {
+      const err = error as Error;
       logger.error('Critical error in ingress validation', {
         toolName,
         requestId: context.requestId,
-        error: error.message,
-        stack: error.stack
+        error: err.message,
+        stack: err.stack
       });
 
       return {
@@ -381,9 +383,10 @@ export class IngressValidator {
       };
 
     } catch (error) {
+      const err = error as Error;
       return {
         success: false,
-        errors: [`Runtime validation error: ${error.message}`]
+        errors: [`Runtime validation error: ${err.message}`]
       };
     }
   }

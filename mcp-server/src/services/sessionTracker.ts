@@ -664,7 +664,8 @@ export class SessionTracker {
           return currentProject.id;
         }
       } catch (error) {
-        console.log('⚠️  Could not access current project context:', error.message);
+        const err = error as Error;
+        console.log('⚠️  Could not access current project context:', err.message);
       }
       
       // 2. Check for user's primary project

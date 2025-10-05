@@ -212,7 +212,8 @@ class SimpleMonitoring {
       await pool.query('SELECT 1');
       this.recordHealthCheck('database', 'healthy', 'Database connection OK', Date.now() - startTime);
     } catch (error) {
-      this.recordHealthCheck('database', 'unhealthy', `Database error: ${error.message}`, Date.now() - startTime);
+      const err = error as Error;
+      this.recordHealthCheck('database', 'unhealthy', `Database error: ${err.message}`, Date.now() - startTime);
     }
 
     // Memory health check

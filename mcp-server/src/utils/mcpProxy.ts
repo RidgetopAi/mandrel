@@ -125,7 +125,7 @@ export class AIDISMCPProxy {
           content: [
             {
               type: 'text',
-              text: `🏓 AIDIS Pong! Message: "${args.message || 'Hello AIDIS!'}" | Time: ${new Date().toISOString()} | Status: Proxy Error - ${error.message}`
+              text: `🏓 AIDIS Pong! Message: "${args.message || 'Hello AIDIS!'}" | Time: ${new Date().toISOString()} | Status: Proxy Error - ${(error as Error).message}`
             }
           ]
         };
@@ -148,7 +148,7 @@ export class AIDISMCPProxy {
                       `Environment: development\n` +
                       `Started: ${healthData.timestamp}\n` +
                       `Mode: MCP Proxy → SystemD Service\n` +
-                      `⚠️  HTTP forwarding error: ${error.message}`
+                      `⚠️  HTTP forwarding error: ${(error as Error).message}`
               }
             ]
           };
@@ -159,7 +159,7 @@ export class AIDISMCPProxy {
 
       throw new McpError(
         ErrorCode.InternalError,
-        `Proxy forwarding failed for ${toolName}: ${error.message}`
+        `Proxy forwarding failed for ${toolName}: ${(error as Error).message}`
       );
     }
   }

@@ -528,10 +528,11 @@ export function validationMiddleware(toolName: string, args: any) {
       error: null
     };
   } catch (error) {
+    const err = error as Error;
     return {
       success: false,
       data: null,
-      error: error.message
+      error: err.message
     };
   }
 }
