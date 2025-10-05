@@ -52,7 +52,7 @@ import { smartSearchHandler } from './handlers/smartSearch.js';
 import { navigationHandler } from './handlers/navigation.js';
 import { agentsHandler } from './handlers/agents.js';
 import { validationMiddleware } from './middleware/validation.js';
-import { AIDISMCPProxy } from './utils/mcpProxy.js';
+// Unused: import { AIDISMCPProxy } from './utils/mcpProxy.js';
 import { SessionTracker, ensureActiveSession } from './services/sessionTracker.js';
 import { SessionManagementHandler } from './handlers/sessionAnalytics.js';
 import { GitHandler } from './handlers/git.js';
@@ -61,18 +61,18 @@ import { startPatternDetection, stopPatternDetection } from './services/patternD
 import {
   startMetricsCollection,
   stopMetricsCollection,
-  collectMetricsOnCommit,
-  collectMetricsOnPatternUpdate
+  // Unused: collectMetricsOnCommit,
+  // Unused: collectMetricsOnPatternUpdate
 } from './services/metricsCollector.js';
 import {
   startMetricsIntegration,
   stopMetricsIntegration
 } from './services/metricsIntegration.js';
-// TC015: Code Complexity Tracking imports
-import { CodeComplexityHandler } from './handlers/codeComplexity.js';
-import { handleComplexityAnalyze } from './handlers/complexity/complexityAnalyze.js';
-import { handleComplexityInsights } from './handlers/complexity/complexityInsights.js';
-import { handleComplexityManage } from './handlers/complexity/complexityManage.js';
+// TC015: Code Complexity Tracking imports - disabled (using TT009 consolidated tools)
+// Unused: import { CodeComplexityHandler } from './handlers/codeComplexity.js';
+// Unused: import { handleComplexityAnalyze } from './handlers/complexity/complexityAnalyze.js';
+// Unused: import { handleComplexityInsights } from './handlers/complexity/complexityInsights.js';
+// Unused: import { handleComplexityManage } from './handlers/complexity/complexityManage.js';
 // TT009-2: Phase 2 Metrics Consolidation imports
 import { handleMetricsCollect } from './handlers/metrics/metricsCollect.js';
 import { handleMetricsAnalyze } from './handlers/metrics/metricsAnalyze.js';
@@ -84,8 +84,8 @@ import {
   startComplexityTracking,
   stopComplexityTracking
 } from './services/complexityTracker.js';
-// TC016: Decision Outcome Tracking imports
-import { outcomeTrackingHandler } from './handlers/outcomeTracking.js';
+// TC016: Decision Outcome Tracking imports - disabled
+// Unused: import { outcomeTrackingHandler } from './handlers/outcomeTracking.js';
 // TC014: Deprecated metrics handler imports removed - TT009-2 Complete
 import { ensureFeatureFlags } from './utils/featureFlags.js';
 import { portManager } from './utils/portManager.js';
@@ -110,7 +110,7 @@ const SKIP_STDIO_TRANSPORT = getEnvVar('AIDIS_SKIP_STDIO', 'SKIP_STDIO', 'false'
 /**
  * Check if SystemD AIDIS service is already running
  */
-async function isSystemDServiceRunning(): Promise<boolean> {
+async function _isSystemDServiceRunning(): Promise<boolean> {
   try {
     // Try to discover the port from registry first
     const registeredPort = await portManager.discoverServicePort('aidis-mcp');
@@ -2149,12 +2149,13 @@ class AIDISServer {
   private async handleAgentStatus(args: any) {
     await agentsHandler.updateAgentStatus(args.agentId, args.status, args.metadata);
 
-    const statusIcon = {
+    const statusIconMap = {
       active: '🟢',
       busy: '🟡',
-      offline: '⚪', 
+      offline: '⚪',
       error: '🔴'
-    }[args.status] || '❓';
+    } as const;
+    const statusIcon = statusIconMap[args.status as keyof typeof statusIconMap] || '❓';
 
     return {
       content: [
@@ -2285,13 +2286,14 @@ class AIDISServer {
   private async handleTaskUpdate(args: any) {
     await tasksHandler.updateTaskStatus(args.taskId, args.status, args.assignedTo, args.metadata);
 
-    const statusIcon = {
+    const taskStatusIconMap = {
       todo: '⏰',
       in_progress: '🔄',
       blocked: '🚫',
       completed: '✅',
       cancelled: '❌'
-    }[args.status] || '❓';
+    } as const;
+    const statusIcon = taskStatusIconMap[args.status as keyof typeof taskStatusIconMap] || '❓';
 
     const assignedText = args.assignedTo ? `\n🤖 Assigned To: ${args.assignedTo}` : '';
 
@@ -2325,13 +2327,14 @@ class AIDISServer {
         projectId: projectId
       });
 
-      const statusIcon = args.status ? {
+      const taskBulkIconMap = {
         todo: '⏰',
         in_progress: '🔄',
         blocked: '🚫',
         completed: '✅',
         cancelled: '❌'
-      }[args.status] || '❓' : '';
+      } as const;
+      const statusIcon = args.status ? (taskBulkIconMap[args.status as keyof typeof taskBulkIconMap] || '❓') : '';
 
       const updates = [];
       if (args.status) updates.push(`Status: ${args.status} ${statusIcon}`);
@@ -2712,11 +2715,12 @@ class AIDISServer {
       const startTime = new Date(session.started_at).toISOString().split('T')[0];
       const lastActivity = new Date(session.last_activity).toISOString().split('T')[0];
       
-      const statusIcon = {
+      const sessionStatusIconMap = {
         active: '🟢',
         idle: '🟡',
         disconnected: '⚪'
-      }[session.status] || '❓';
+      } as const;
+      const statusIcon = sessionStatusIconMap[session.status as keyof typeof sessionStatusIconMap] || '❓';
 
       return `   ${index + 1}. **${session.agent_name}** ${statusIcon}\n` +
              `      🎯 Type: ${session.agent_type}\n` +
@@ -2898,12 +2902,13 @@ class AIDISServer {
     }
 
     const dependentsList = impact.dependents.map((dep, index) => {
-      const typeIcon = {
+      const componentTypeIconMap = {
         function: '⚡',
         class: '🏗️',
         interface: '📋',
         module: '📦'
-      }[dep.component_type] || '📝';
+      } as const;
+      const typeIcon = componentTypeIconMap[dep.component_type as keyof typeof componentTypeIconMap] || '📝';
       
       return `   ${index + 1}. **${dep.name}** ${typeIcon}\n` +
              `      📄 File: ${dep.file_path}\n` +
@@ -3071,19 +3076,21 @@ class AIDISServer {
     const projectId = args.projectId || await projectHandler.getCurrentProjectId('default-session');
     const insights = await smartSearchHandler.getProjectInsights(projectId);
 
-    const healthLevel = {
+    const healthLevelMap = {
       healthy: '🟢 HEALTHY',
-      moderate: '🟡 MODERATE', 
+      moderate: '🟡 MODERATE',
       needs_attention: '🔴 NEEDS ATTENTION',
       no_data: '⚪ NO DATA'
-    }[insights.insights.codeHealth.level] || '❓ UNKNOWN';
+    } as const;
+    const healthLevel = healthLevelMap[insights.insights.codeHealth.level as keyof typeof healthLevelMap] || '❓ UNKNOWN';
 
-    const efficiencyLevel = {
+    const efficiencyLevelMap = {
       efficient: '🟢 EFFICIENT',
       moderate: '🟡 MODERATE',
       needs_improvement: '🔴 NEEDS IMPROVEMENT',
       no_data: '⚪ NO DATA'
-    }[insights.insights.teamEfficiency.level] || '❓ UNKNOWN';
+    } as const;
+    const efficiencyLevel = efficiencyLevelMap[insights.insights.teamEfficiency.level as keyof typeof efficiencyLevelMap] || '❓ UNKNOWN';
 
     const gapsText = insights.insights.knowledgeGaps.length > 0
       ? `\n📋 Knowledge Gaps:\n` + insights.insights.knowledgeGaps.map((gap: string) => `   • ${gap}`).join('\n')
