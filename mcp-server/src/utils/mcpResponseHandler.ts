@@ -80,17 +80,18 @@ export class McpResponseHandler {
       };
 
     } catch (error) {
+      const err = error as Error;
       logger.error('Critical error in MCP response processing', {
         toolName,
         requestId,
-        error: error.message,
-        stack: error.stack,
+        error: err.message,
+        stack: err.stack,
         responseLength: rawResponse?.length || 0
       });
 
       return {
         success: false,
-        error: `Critical processing error: ${error.message}`,
+        error: `Critical processing error: ${err.message}`,
         originalResponse: rawResponse
       };
     }
@@ -154,7 +155,8 @@ export class McpResponseHandler {
     try {
       return McpParser.extractTextContent(mcpResponse);
     } catch (error) {
-      logger.error('Error extracting text content', { error: error.message });
+      const err = error as Error;
+      logger.error('Error extracting text content', { error: err.message });
       return [];
     }
   }
@@ -166,7 +168,8 @@ export class McpResponseHandler {
     try {
       return McpParser.extractAllContent(mcpResponse);
     } catch (error) {
-      logger.error('Error extracting all content', { error: error.message });
+      const err = error as Error;
+      logger.error('Error extracting all content', { error: err.message });
       return [];
     }
   }
@@ -215,11 +218,12 @@ export class McpResponseHandler {
         }
 
       } catch (error) {
-        lastError = error.message;
+        const err = error as Error;
+        lastError = err.message;
         logger.error('Critical error during retry attempt', {
           ...context,
           attempt,
-          error: error.message
+          error: err.message
         });
       }
     }
@@ -264,11 +268,12 @@ export class McpResponseHandler {
       return JSON.stringify(response);
 
     } catch (error) {
-      logger.error('Error creating tool response', { error: error.message, content });
+      const err = error as Error;
+      logger.error('Error creating tool response', { error: err.message, content });
       return JSON.stringify({
         content: [{
           type: 'text',
-          text: `Error creating response: ${error.message}`
+          text: `Error creating response: ${err.message}`
         }]
       });
     }
@@ -284,10 +289,11 @@ export class McpResponseHandler {
         data: data
       });
     } catch (error) {
-      logger.error('Error creating success response', { error: error.message, data });
+      const err = error as Error;
+      logger.error('Error creating success response', { error: err.message, data });
       return JSON.stringify({
         success: false,
-        error: `Error serializing response: ${error.message}`
+        error: `Error serializing response: ${err.message}`
       });
     }
   }
@@ -302,8 +308,9 @@ export class McpResponseHandler {
         error: error
       });
     } catch (serializationError) {
+      const err = serializationError as Error;
       logger.error('Error creating error response', {
-        error: serializationError.message,
+        error: err.message,
         originalError: error
       });
       return JSON.stringify({
