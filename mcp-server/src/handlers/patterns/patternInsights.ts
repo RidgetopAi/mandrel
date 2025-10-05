@@ -16,7 +16,6 @@
 
 import { db } from '../../config/database.js';
 import { logEvent } from '../../middleware/eventLogger.js';
-import { PatternAnalysisHandler } from '../_deprecated_tt009/patternAnalysis.js';
 
 /**
  * Unified pattern insights interface
@@ -346,16 +345,32 @@ async function getPatternRecommendations(options: any): Promise<any> {
 
   console.log(`🎯 Getting pattern recommendations`);
 
-  // Use existing pattern analysis handler
-  return await PatternAnalysisHandler.getPatternRecommendations({
-    // contextType, // Not in function signature
-    // includeActionItems, // Not in function signature
-    // includePrioritization, // Not in function signature
-    // includeRiskAssessment, // Not in function signature
-    // maxRecommendations, // Not in function signature
-    projectId,
-    sessionId
-  });
+  // Stub implementation - pattern recommendations deprecated
+  // Return structured response matching expected API format
+  return {
+    success: true,
+    projectId: projectId || null,
+    sessionId: sessionId || null,
+    recommendations: [],
+    actionItems: [],
+    prioritization: {
+      immediate: [],
+      shortTerm: [],
+      mediumTerm: [],
+      longTerm: []
+    },
+    riskAssessment: {
+      highPriority: [],
+      mediumPriority: [],
+      lowPriority: []
+    },
+    summary: {
+      totalRecommendations: 0,
+      implementationComplexity: 'low',
+      estimatedEffort: 'minimal'
+    },
+    message: 'Pattern recommendations analysis is deprecated. Use alternative pattern analysis tools.'
+  };
 }
 
 /**
