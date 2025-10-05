@@ -26,8 +26,6 @@ import { ErrorHandler } from './utils/errorHandler.js';
 
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-// import * as fs from 'fs'; // Commented out - currently unused (ProcessSingleton disabled)
-// import * as path from 'path'; // Commented out - currently unused (ProcessSingleton disabled)
 import * as http from 'http';
 import {
   CallToolRequestSchema,
@@ -50,26 +48,18 @@ import { getQueueManager, shutdownQueue } from './services/queueManager.js';
 import { smartSearchHandler } from './handlers/smartSearch.js';
 import { navigationHandler } from './handlers/navigation.js';
 import { validationMiddleware } from './middleware/validation.js';
-// Unused: import { AIDISMCPProxy } from './utils/mcpProxy.js';
 import { SessionTracker, ensureActiveSession } from './services/sessionTracker.js';
 import { SessionManagementHandler } from './handlers/sessionAnalytics.js';
 import { startGitTracking, stopGitTracking } from './services/gitTracker.js';
 import { startPatternDetection, stopPatternDetection } from './services/patternDetector.js';
 import {
   startMetricsCollection,
-  stopMetricsCollection,
-  // Unused: collectMetricsOnCommit,
-  // Unused: collectMetricsOnPatternUpdate
+  stopMetricsCollection
 } from './services/metricsCollector.js';
 import {
   startMetricsIntegration,
   stopMetricsIntegration
 } from './services/metricsIntegration.js';
-// TC015: Code Complexity Tracking imports - disabled (using TT009 consolidated tools)
-// Unused: import { CodeComplexityHandler } from './handlers/codeComplexity.js';
-// Unused: import { handleComplexityAnalyze } from './handlers/complexity/complexityAnalyze.js';
-// Unused: import { handleComplexityInsights } from './handlers/complexity/complexityInsights.js';
-// Unused: import { handleComplexityManage } from './handlers/complexity/complexityManage.js';
 // TT009-2: Phase 2 Metrics Consolidation imports
 import { handleMetricsCollect } from './handlers/metrics/metricsCollect.js';
 import { handleMetricsAnalyze } from './handlers/metrics/metricsAnalyze.js';
@@ -81,9 +71,6 @@ import {
   startComplexityTracking,
   stopComplexityTracking
 } from './services/complexityTracker.js';
-// TC016: Decision Outcome Tracking imports - disabled
-// Unused: import { outcomeTrackingHandler } from './handlers/outcomeTracking.js';
-// TC014: Deprecated metrics handler imports removed - TT009-2 Complete
 import { ensureFeatureFlags } from './utils/featureFlags.js';
 import { portManager } from './utils/portManager.js';
 // Phase 5 Integration: V2 API Router
@@ -129,72 +116,6 @@ if (mcpDebugValue) {
     metadata: { debugLevel: mcpDebugValue }
   });
 }
-
-/**
- * Process Singleton - Prevent multiple AIDIS instances
- * Note: Disabled for now - may be re-enabled in future
- */
-/*
-class ProcessSingleton {
-  private pidFile: string;
-  
-  constructor(pidFile: string = PID_FILE) {
-    this.pidFile = pidFile;
-  }
-  
-  ensureSingleInstance(): boolean {
-    try {
-      // Check if PID file exists
-      if (fs.existsSync(this.pidFile)) {
-        const existingPid = fs.readFileSync(this.pidFile, 'utf8').trim();
-        
-        // Check if process is still running
-        try {
-          process.kill(parseInt(existingPid), 0); // Signal 0 tests if process exists
-          console.error(`❌ AIDIS instance already running (PID: ${existingPid})`);
-          console.error(`🔧 To force restart: rm ${this.pidFile} && kill ${existingPid}`);
-          return false;
-        } catch (error) {
-          // Process not running, remove stale PID file
-          console.log(`🧹 Removing stale PID file (process ${existingPid} not found)`);
-          fs.unlinkSync(this.pidFile);
-        }
-      }
-      
-      // Create PID file
-      const pidDir = path.dirname(this.pidFile);
-      if (!fs.existsSync(pidDir)) {
-        fs.mkdirSync(pidDir, { recursive: true });
-      }
-      
-      fs.writeFileSync(this.pidFile, process.pid.toString());
-      console.log(`🔒 Process singleton active (PID: ${process.pid})`);
-      
-      // Clean up PID file on exit
-      const cleanup = () => {
-        try {
-          if (fs.existsSync(this.pidFile)) {
-            fs.unlinkSync(this.pidFile);
-            console.log('🧹 PID file cleaned up');
-          }
-        } catch (error) {
-          console.error('⚠️  Failed to clean up PID file:', error);
-        }
-      };
-      
-      process.on('exit', cleanup);
-      process.on('SIGINT', cleanup);
-      process.on('SIGTERM', cleanup);
-      
-      return true;
-      
-    } catch (error) {
-      console.error('❌ Failed to ensure singleton:', error);
-      return false;
-    }
-  }
-}
-*/
 
 /**
  * Circuit Breaker for Database Operations
