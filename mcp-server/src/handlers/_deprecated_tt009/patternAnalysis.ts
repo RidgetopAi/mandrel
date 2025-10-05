@@ -22,8 +22,8 @@ import { db } from '../../config/database.js';
 import { logEvent } from '../../middleware/eventLogger.js';
 import { getCurrentSession } from '../../services/sessionManager.js';
 import {
-  PatternDetector,
-  type PatternDetectionResult,
+  // PatternDetector,
+  // type PatternDetectionResult,
   type CooccurrencePattern,
   type TemporalPattern,
   type DeveloperPattern,
@@ -3217,11 +3217,11 @@ export class PatternAnalysisHandler {
   // Helper methods for recommendations and analysis
 
   private static async generateSessionRecommendations(
-    projectId: string,
+    _projectId: string,
     sessionId: string,
     criticalFiles: string[],
     knowledgeSilos: string[],
-    architecturalConcerns: string[]
+    _architecturalConcerns: string[]
   ): Promise<PatternRecommendation[]> {
     const recommendations: PatternRecommendation[] = [];
 

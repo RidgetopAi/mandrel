@@ -126,7 +126,7 @@ export class V2McpRouter {
     });
 
     // Request logging
-    this.router.use((req, res, next) => {
+    this.router.use((req, _res, next) => {
       const requestId = req.headers['x-request-id'] as string || `v2-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
       (req as any).requestId = requestId;
 
@@ -152,7 +152,7 @@ export class V2McpRouter {
    */
   private setupRoutes(): void {
     // API information endpoint
-    this.router.get('/', (req, res) => {
+    this.router.get('/', (_req, res) => {
       res.json({
         version: API_VERSION,
         compatibleVersions: API_COMPATIBILITY,
@@ -166,7 +166,7 @@ export class V2McpRouter {
     });
 
     // Health check endpoint
-    this.router.get('/health', (req, res) => {
+    this.router.get('/health', (_req, res) => {
       res.json({
         status: 'healthy',
         version: API_VERSION,
@@ -176,7 +176,7 @@ export class V2McpRouter {
     });
 
     // List available tools
-    this.router.get('/tools', (req, res) => {
+    this.router.get('/tools', (_req, res) => {
       const tools = Array.from(this.toolHandlers.keys()).map(tool => ({
         name: tool,
         endpoint: `/v2/mcp/tools/${tool}`,
@@ -198,7 +198,7 @@ export class V2McpRouter {
       const startTime = Date.now();
       const { tool } = req.params;
       const requestId = (req as any).requestId;
-      const apiVersion = (req as any).apiVersion;
+      const _apiVersion = (req as any).apiVersion;
 
       try {
         // Validate request structure
@@ -328,7 +328,7 @@ export class V2McpRouter {
   /**
    * Validate V2 request structure
    */
-  private validateV2Request(body: any, tool: string): { success: boolean; error?: string } {
+  private validateV2Request(body: any, _tool: string): { success: boolean; error?: string } {
     if (!body || typeof body !== 'object') {
       return {
         success: false,

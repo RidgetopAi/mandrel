@@ -15,12 +15,12 @@ import { db } from '../../config/database.js';
 import { logEvent } from '../../middleware/eventLogger.js';
 import { getCurrentSession } from '../../services/sessionManager.js';
 import {
-  MetricsCollector,
+  // MetricsCollector,
   startMetricsCollection,
   stopMetricsCollection,
   collectProjectMetrics,
   getMetricsCollectionPerformance,
-  MetricsCollectionResult
+  // MetricsCollectionResult
 } from '../../services/metricsCollector.js';
 
 // MCP Tool Definitions for Development Metrics
@@ -484,8 +484,8 @@ export class DevelopmentMetricsHandler {
 
     try {
       // Parse dates if provided
-      const analysisStartDate = startDate ? new Date(startDate) : undefined;
-      const analysisEndDate = endDate ? new Date(endDate) : undefined;
+      const _analysisStartDate = startDate ? new Date(startDate) : undefined;
+      const _analysisEndDate = endDate ? new Date(endDate) : undefined;
 
       // Trigger metrics collection
       const result = await collectProjectMetrics(projectId, trigger);
@@ -541,7 +541,7 @@ export class DevelopmentMetricsHandler {
 
     try {
       const timeframeDays = this.parseTimeframe(timeframe);
-      const startDate = new Date(Date.now() - (timeframeDays * 24 * 60 * 60 * 1000));
+      const _startDate = new Date(Date.now() - (timeframeDays * 24 * 60 * 60 * 1000));
 
       // Use materialized view for optimal performance
       const dashboardQuery = `

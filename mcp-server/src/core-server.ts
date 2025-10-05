@@ -21,17 +21,17 @@
 
 import { processLock } from './utils/processLock.js';
 
-import { Server } from '@modelcontextprotocol/sdk/server/index.js';
+// import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as http from 'http';
 import {
-  CallToolRequestSchema,
+  // CallToolRequestSchema,
   ErrorCode,
-  ListResourcesRequestSchema,
-  ListToolsRequestSchema,
+  // ListResourcesRequestSchema,
+  // ListToolsRequestSchema,
   McpError,
-  ReadResourceRequestSchema,
+  // ReadResourceRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
 
 import { initializeDatabase, closeDatabase } from './config/database.js';
@@ -40,10 +40,11 @@ import { contextHandler } from './handlers/context.js';
 import { projectHandler } from './handlers/project.js';
 import { namingHandler } from './handlers/naming.js';
 import { decisionsHandler } from './handlers/decisions.js';
-import { tasksHandler } from './handlers/tasks.js';
+// import { tasksHandler } from './handlers/tasks.js';
 import { codeAnalysisHandler } from './handlers/codeAnalysis.js';
 import { smartSearchHandler } from './handlers/smartSearch.js';
 import { navigationHandler } from './handlers/navigation.js';
+import { agentsHandler } from './handlers/agents.js';
 import { validationMiddleware } from './middleware/validation.js';
 
 // Enterprise hardening constants
@@ -55,7 +56,7 @@ const INITIAL_RETRY_DELAY = 1000;
 /**
  * Check if another AIDIS core service is already running
  */
-async function isAidisCoreRunning(): Promise<boolean> {
+async function _isAidisCoreRunning(): Promise<boolean> {
   try {
     return new Promise((resolve) => {
       const req = http.get(`http://localhost:${HTTP_PORT}/healthz`, (res) => {
@@ -235,12 +236,12 @@ class RetryHandler {
 class AIDISCoreServer {
   private httpServer: http.Server | null = null;
   private circuitBreaker: CircuitBreaker;
-  private singleton: ProcessSingleton;
+  private _singleton: ProcessSingleton;
   private dbHealthy: boolean = false;
 
   constructor() {
     this.circuitBreaker = new CircuitBreaker();
-    this.singleton = new ProcessSingleton();
+    this._singleton = new ProcessSingleton();
     
     this.setupHttpServer();
   }
@@ -559,7 +560,7 @@ class AIDISCoreServer {
     return AIDIS_TOOL_DEFINITIONS.map(tool => tool.name);
   }
 
-  private getToolDescription(toolName: string): string {
+  private _getToolDescription(toolName: string): string {
     const tool = AIDIS_TOOL_DEFINITIONS.find(t => t.name === toolName);
     return tool?.description || 'AIDIS tool';
   }
@@ -650,7 +651,7 @@ class AIDISCoreServer {
   }
 
   private async handleContextSearch(args: any) {
-    const results = await contextHandler.searchContexts({
+    const results = await contextHandler.searchContext({
       query: args.query,
       sessionId: args.sessionId || 'default-session',
       limit: args.limit,
@@ -695,7 +696,7 @@ class AIDISCoreServer {
   }
 
   private async handleContextGetRecent(args: any) {
-    return contextHandler.getRecentContexts(
+    return contextHandler.getRecentContext(
       args.sessionId || 'default-session',
       args.limit,
       args.projectId
@@ -731,14 +732,14 @@ class AIDISCoreServer {
   }
 
   private async handleProjectInfo(args: any) {
-    return projectHandler.getProjectInfo(
+    return projectHandler.getProject(
       args.projectId || await projectHandler.getCurrentProjectId('default-session')
     );
   }
 
   // Naming handlers
   private async handleNamingRegister(args: any) {
-    return namingHandler.registerNaming(
+    return namingHandler.registerName(
       args.name,
       args.type,
       args.context,
@@ -747,7 +748,7 @@ class AIDISCoreServer {
   }
 
   private async handleNamingCheck(args: any) {
-    return namingHandler.checkNaming(
+    return namingHandler.checkName(
       args.name,
       args.type,
       args.sessionId || 'default-session'

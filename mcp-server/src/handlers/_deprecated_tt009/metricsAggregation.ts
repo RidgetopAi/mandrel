@@ -15,9 +15,9 @@
  * Integration: MetricsAggregationService, MetricsCorrelationEngine
  */
 
-import { getMetricsAggregationService, ProjectAggregationRequest, TimeSeriesAggregationRequest, TeamMetricsRequest, ExecutiveSummaryRequest } from '../../services/metricsAggregator.js';
+import { getMetricsAggregationService, ProjectAggregationRequest, TimeSeriesAggregationRequest, /* TeamMetricsRequest, */ ExecutiveSummaryRequest } from '../../services/metricsAggregator.js';
 import { getMetricsCorrelationEngine, CorrelationRequest, LeadingIndicatorRequest, PerformanceDriverRequest } from '../../services/metricsCorrelation.js';
-import { getCurrentSession } from '../../services/sessionManager.js';
+// import { getCurrentSession } from '../../services/sessionManager.js';
 import { logEvent } from '../../middleware/eventLogger.js';
 
 // Tool parameter interfaces
