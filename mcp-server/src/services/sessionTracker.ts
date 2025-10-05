@@ -964,3 +964,10 @@ export async function recordSessionOperation(operationType: string, projectId?: 
   const sessionId = await ensureActiveSession(projectId);
   await SessionTracker.recordOperation(sessionId, operationType);
 }
+
+/**
+ * Get current session ID (utility wrapper)
+ */
+export async function getCurrentSession(): Promise<string | null> {
+  return SessionTracker.getActiveSession();
+}

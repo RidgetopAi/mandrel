@@ -16,7 +16,7 @@
 
 import { db } from '../config/database.js';
 import { logEvent } from '../middleware/eventLogger.js';
-import { getCurrentSession } from './sessionManager.js';
+import { getCurrentSession } from './sessionTracker.js';
 
 // Pattern Detection Configuration
 export interface PatternDetectorConfig {
