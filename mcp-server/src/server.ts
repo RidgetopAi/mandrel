@@ -319,12 +319,12 @@ class AIDISServer {
   private healthServer: http.Server | null = null;
   // private v2McpRouter: V2McpRouter; // Disabled - using direct integration
   private circuitBreaker: CircuitBreaker;
-  private singleton: ProcessSingleton;
+  private _singleton: ProcessSingleton;
   private dbHealthy: boolean = false;
 
   constructor() {
     this.circuitBreaker = new CircuitBreaker();
-    this.singleton = new ProcessSingleton();
+    this._singleton = new ProcessSingleton();
     // Phase 5 Integration: Initialize V2 API router
     // this.v2McpRouter = new V2McpRouter(); // Disabled - using direct integration
     
@@ -527,10 +527,11 @@ class AIDISServer {
             note: 'Complete MCP tool definitions with inputSchema for all AIDIS tools'
           }));
         } catch (error) {
+          const err = error as Error;
           res.writeHead(500);
           res.end(JSON.stringify({
             success: false,
-            error: error.message,
+            error: err.message,
             timestamp: new Date().toISOString()
           }));
         }
@@ -1444,7 +1445,7 @@ class AIDISServer {
       };
     }
 
-    const currentProject = await projectHandler.getCurrentProject();
+    const _currentProject = await projectHandler.getCurrentProject();
     const projectList = projects.map((project, index) => {
       const isActive = project.isActive ? ' 🟢 (CURRENT)' : '';
       const contextInfo = project.contextCount !== undefined ? ` (${project.contextCount} contexts)` : '';
@@ -1598,7 +1599,7 @@ class AIDISServer {
   /**
    * Handle current project requests
    */
-  private async handleProjectCurrent(args: any) {
+  private async handleProjectCurrent(_args: any) {
     console.log('🔍 Current project request received');
     
     const project = await projectHandler.getCurrentProject();
@@ -2070,7 +2071,7 @@ class AIDISServer {
   /**
    * Handle agent registration requests
    */
-  private async handleAgentRegister(args: any) {
+  private async _handleAgentRegister(args: any) {
     const agent = await agentsHandler.registerAgent(
       args.name,
       args.type,
@@ -2098,7 +2099,7 @@ class AIDISServer {
   /**
    * Handle agent list requests
    */
-  private async handleAgentList(args: any) {
+  private async _handleAgentList(args: any) {
     const projectId = args.projectId || await projectHandler.getCurrentProjectId('default-session');
     const agents = await agentsHandler.listAgents(projectId);
 
@@ -2146,7 +2147,7 @@ class AIDISServer {
   /**
    * Handle agent status update requests
    */
-  private async handleAgentStatus(args: any) {
+  private async _handleAgentStatus(args: any) {
     await agentsHandler.updateAgentStatus(args.agentId, args.status, args.metadata);
 
     const statusIconMap = {
@@ -2516,7 +2517,7 @@ class AIDISServer {
   /**
    * Handle agent message requests
    */
-  private async handleAgentMessage(args: any) {
+  private async _handleAgentMessage(args: any) {
     // Ensure session is initialized before getting project ID
     await projectHandler.initializeSession('default-session');
     const projectId = args.projectId || await projectHandler.getCurrentProjectId('default-session');
@@ -2558,7 +2559,7 @@ class AIDISServer {
   /**
    * Handle agent messages retrieval requests
    */
-  private async handleAgentMessages(args: any) {
+  private async _handleAgentMessages(args: any) {
     const projectId = args.projectId || await projectHandler.getCurrentProjectId('default-session');
     const messages = await agentsHandler.getMessages(
       projectId,
@@ -2613,7 +2614,7 @@ class AIDISServer {
   /**
    * Handle agent join project requests
    */
-  private async handleAgentJoin(args: any) {
+  private async _handleAgentJoin(args: any) {
     // Ensure session is initialized before getting project ID
     await projectHandler.initializeSession('default-session');
     const projectId = args.projectId || await projectHandler.getCurrentProjectId('default-session');
@@ -2655,7 +2656,7 @@ class AIDISServer {
   /**
    * Handle agent leave project requests
    */
-  private async handleAgentLeave(args: any) {
+  private async _handleAgentLeave(args: any) {
     const projectId = args.projectId || await projectHandler.getCurrentProjectId('default-session');
     const sessionId = args.sessionId || 'default-session';
     
@@ -2695,7 +2696,7 @@ class AIDISServer {
   /**
    * Handle agent sessions list requests
    */
-  private async handleAgentSessions(args: any) {
+  private async _handleAgentSessions(args: any) {
     const projectId = args.projectId || await projectHandler.getCurrentProjectId('default-session');
     const sessions = await agentsHandler.getActiveAgentSessions(projectId);
 
@@ -2750,7 +2751,7 @@ class AIDISServer {
   /**
    * Handle code analysis requests
    */
-  private async handleCodeAnalyze(args: any) {
+  private async _handleCodeAnalyze(args: any) {
     const projectId = args.projectId || await projectHandler.getCurrentProjectId('default-session');
     
     const analysis = await codeAnalysisHandler.analyzeFile(
@@ -2789,7 +2790,7 @@ class AIDISServer {
   /**
    * Handle code components list requests
    */
-  private async handleCodeComponents(args: any) {
+  private async _handleCodeComponents(args: any) {
     const projectId = args.projectId || await projectHandler.getCurrentProjectId('default-session');
     const components = await codeAnalysisHandler.getProjectComponents(
       projectId,
@@ -2837,7 +2838,7 @@ class AIDISServer {
   /**
    * Handle code dependencies requests
    */
-  private async handleCodeDependencies(args: any) {
+  private async _handleCodeDependencies(args: any) {
     const dependencies = await codeAnalysisHandler.getComponentDependencies(args.componentId);
 
     if (dependencies.length === 0) {
@@ -2878,7 +2879,7 @@ class AIDISServer {
   /**
    * Handle code impact analysis requests  
    */
-  private async handleCodeImpact(args: any) {
+  private async _handleCodeImpact(args: any) {
     const impact = await codeAnalysisHandler.analyzeImpact(
       await projectHandler.getCurrentProjectId('default-session'),
       args.componentId
@@ -2932,7 +2933,7 @@ class AIDISServer {
   /**
    * Handle code statistics requests
    */
-  private async handleCodeStats(args: any) {
+  private async _handleCodeStats(args: any) {
     const projectId = args.projectId || await projectHandler.getCurrentProjectId('default-session');
     const stats = await codeAnalysisHandler.getProjectAnalysisStats(projectId);
 
@@ -3752,7 +3753,7 @@ class AIDISServer {
   /**
    * Handle git session commits request
    */
-  private async handleGitSessionCommits(args: any) {
+  private async _handleGitSessionCommits(args: any) {
     console.log(`📊 Git session commits request: sessionId="${args.sessionId || 'current'}", includeDetails=${args.includeDetails || false}`);
     
     const result = await GitHandler.gitSessionCommits({
@@ -3822,7 +3823,7 @@ class AIDISServer {
   /**
    * Handle git commit sessions request
    */
-  private async handleGitCommitSessions(args: any) {
+  private async _handleGitCommitSessions(args: any) {
     console.log(`🔍 Git commit sessions request: commitSha="${args.commitSha}", includeDetails=${args.includeDetails || false}`);
     
     const result = await GitHandler.gitCommitSessions({
@@ -3898,7 +3899,7 @@ class AIDISServer {
   /**
    * Handle git correlation trigger request
    */
-  private async handleGitCorrelateSession(args: any) {
+  private async _handleGitCorrelateSession(args: any) {
     console.log(`🔗 Git correlate session request: sessionId="${args.sessionId || 'current'}", forceRefresh=${args.forceRefresh || false}`);
     
     const result = await GitHandler.gitCorrelateSession({
