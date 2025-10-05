@@ -52,18 +52,6 @@ import { SessionTracker, ensureActiveSession } from './services/sessionTracker.j
 import { SessionManagementHandler } from './handlers/sessionAnalytics.js';
 import { startGitTracking, stopGitTracking } from './services/gitTracker.js';
 import { startPatternDetection, stopPatternDetection } from './services/patternDetector.js';
-import {
-  startMetricsCollection,
-  stopMetricsCollection
-} from './services/metricsCollector.js';
-import {
-  startMetricsIntegration,
-  stopMetricsIntegration
-} from './services/metricsIntegration.js';
-// TT009-2: Phase 2 Metrics Consolidation imports
-import { handleMetricsCollect } from './handlers/metrics/metricsCollect.js';
-import { handleMetricsAnalyze } from './handlers/metrics/metricsAnalyze.js';
-import { handleMetricsControl } from './handlers/metrics/metricsControl.js';
 // TT009-3: Phase 3 Pattern Consolidation imports
 import { handlePatternAnalyze } from './handlers/patterns/patternAnalyze.js';
 import { handlePatternInsights } from './handlers/patterns/patternInsights.js';
@@ -908,25 +896,11 @@ class AIDISServer {
       //   - pattern_analyze (detection/analysis/tracking operations)
       //   - pattern_insights (insights/correlations/recommendations/alerts)
 
-      // TT009-2: Phase 2 Metrics Consolidation Tools
-      case 'metrics_collect':
-        return await handleMetricsCollect(validatedArgs);
-      case 'metrics_analyze':
-        return await handleMetricsAnalyze(validatedArgs);
-      case 'metrics_control':
-        return await handleMetricsControl(validatedArgs);
-
       // TT009-3: Phase 3 Pattern Consolidation Tools
       case 'pattern_analyze':
         return await handlePatternAnalyze(validatedArgs);
       case 'pattern_insights':
         return await handlePatternInsights(validatedArgs);
-
-      // TC014: Deprecated metrics tools removed - TT009-2 Complete
-      // Old individual metrics tools consolidated into:
-      //   - metrics_collect (collection operations)
-      //   - metrics_analyze (analysis/dashboard/trends)
-      //   - metrics_control (alerts/performance/export)
 
       // TC015: Code Complexity Tracking tools - DISABLED (Token Optimization 2025-10-01)
       // Reason: Confirmed disable for token optimization
@@ -2616,42 +2590,6 @@ class AIDISServer {
           console.warn('   Pattern detection will be manual only');
         }
 
-        // Initialize development metrics collection service
-        console.log('📊 Starting development metrics collection service...');
-        try {
-          await startMetricsCollection({
-            enableRealTimeCollection: true,
-            enableBatchProcessing: true,
-            collectionTimeoutMs: 100, // Sub-100ms target
-            autoCollectOnCommit: true,
-            autoCollectOnPatternUpdate: true,
-            autoCollectOnSessionEnd: true,
-            scheduledCollectionIntervalMs: 300000 // 5 minutes
-          });
-          console.log('✅ Metrics collection service initialized successfully');
-        } catch (error) {
-          console.warn('⚠️  Failed to initialize metrics collection:', error);
-          console.warn('   Metrics collection will be manual only');
-        }
-
-        // Initialize metrics integration service for real-time triggers
-        console.log('🔗 Starting metrics integration service...');
-        try {
-          await startMetricsIntegration({
-            enableGitTriggers: true,
-            enablePatternTriggers: true,
-            enableSessionTriggers: true,
-            enableAlertNotifications: true,
-            gitTriggerDelayMs: 5000,
-            patternTriggerDelayMs: 3000,
-            maxConcurrentCollections: 3
-          });
-          console.log('✅ Metrics integration service initialized successfully');
-        } catch (error) {
-          console.warn('⚠️  Failed to initialize metrics integration:', error);
-          console.warn('   Real-time metrics triggers will be disabled');
-        }
-
         // TS004-1: Initialize session timeout service (2-hour inactivity timeout)
         console.log('⏱️  Starting session timeout service...');
         try {
@@ -2737,9 +2675,7 @@ class AIDISServer {
       console.log('   📋 Tasks: task_create, task_list, task_update, task_bulk_update, task_details, task_progress_summary, agent_message, agent_messages');
       console.log('   📦 Code Analysis: code_analyze, code_components, code_dependencies, code_impact, code_stats');
       console.log('   🧠 Smart Search: smart_search, get_recommendations, project_insights');
-      console.log('   📊 Development Metrics: metrics_collect_project, metrics_get_dashboard, metrics_get_alerts, metrics_get_trends');
-      console.log('   📊 Metrics Aggregation: metrics_aggregate_projects, metrics_aggregate_timeline, metrics_calculate_correlations, metrics_get_executive_summary, metrics_export_data');
-      
+
       console.log('🚀 System Status:');
       console.log('🧠 AI Context Management: ONLINE');
       console.log('🔍 Semantic Search: READY');
@@ -2749,9 +2685,7 @@ class AIDISServer {
       console.log('🤖 Multi-Agent Coordination: READY');
       console.log('📦 Code Analysis: READY');
       console.log('🧠 Smart Search & AI Recommendations: READY');
-      console.log('📊 Development Metrics Collection: READY');
-      console.log('📊 Metrics Aggregation & Correlation: READY');
-      
+
     } catch (error) {
       // Enhanced error handling for startup failures
       ErrorHandler.handleError(error as Error, {
@@ -2825,24 +2759,6 @@ class AIDISServer {
           console.log('✅ Pattern detection service stopped gracefully');
         } catch (error) {
           console.warn('⚠️  Failed to stop pattern detection:', error);
-        }
-
-        // Stop metrics collection service
-        console.log('📊 Stopping metrics collection service...');
-        try {
-          await stopMetricsCollection();
-          console.log('✅ Metrics collection service stopped gracefully');
-        } catch (error) {
-          console.warn('⚠️  Failed to stop metrics collection:', error);
-        }
-
-        // Stop metrics integration service
-        console.log('🔗 Stopping metrics integration service...');
-        try {
-          await stopMetricsIntegration();
-          console.log('✅ Metrics integration service stopped gracefully');
-        } catch (error) {
-          console.warn('⚠️  Failed to stop metrics integration:', error);
         }
 
         // TS004-1: Stop session timeout service
