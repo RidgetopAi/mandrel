@@ -36,6 +36,15 @@ export interface SessionData {
   input_tokens: number;                             // TS006-2: Input tokens consumed
   output_tokens: number;                            // TS006-2: Output tokens generated
   total_tokens: number;                             // TS006-2: Total tokens (input + output)
+  // Phase 2 new fields - all optional for backward compatibility
+  session_goal?: string | null;                     // User-defined goal for session
+  tags?: string[];                                  // Array of tags (text[] in DB)
+  lines_added?: number;                             // LOC metrics from git/tool tracking
+  lines_deleted?: number;                           // LOC metrics from git/tool tracking
+  lines_net?: number;                               // Net LOC change (added - deleted)
+  ai_model?: string | null;                         // AI model identifier (e.g., 'claude-sonnet-4-5')
+  files_modified_count?: number;                    // Count of unique files modified
+  activity_count?: number;                          // Total activity events count
 }
 
 export interface SessionStats {
@@ -44,6 +53,53 @@ export interface SessionStats {
   productivityScore: number;
   retentionRate: number;
   sessionsByDay: Array<{date: string, count: number}>;
+}
+
+/**
+ * SessionActivity - Represents discrete activity events within a session
+ * Maps to: session_activities table
+ */
+export interface SessionActivity {
+  id: number;
+  session_id: string;
+  activity_type: string;                          // e.g., 'file_edit', 'context_create', 'decision_record'
+  activity_data: Record<string, any>;             // JSONB - flexible metadata
+  occurred_at: Date;                              // When the activity occurred
+  created_at: Date;                               // When the record was created
+}
+
+/**
+ * SessionFile - Tracks file modifications within a session
+ * Maps to: session_files table
+ */
+export interface SessionFile {
+  id: number;
+  session_id: string;
+  file_path: string;                              // Absolute or relative file path
+  lines_added: number;                            // Lines added to this file
+  lines_deleted: number;                          // Lines deleted from this file
+  source: 'tool' | 'git' | 'manual';              // How modification was detected
+  first_modified: Date;                           // First time file was touched
+  last_modified: Date;                            // Most recent modification
+}
+
+/**
+ * ProductivityConfig - Configurable productivity scoring formulas
+ * Maps to: productivity_config table
+ */
+export interface ProductivityConfig {
+  id: number;
+  config_name: string;                            // Unique config identifier
+  formula_weights: {
+    tasks?: number;                               // Weight for tasks completed
+    context?: number;                             // Weight for contexts created
+    decisions?: number;                           // Weight for decisions made
+    loc?: number;                                 // Weight for lines of code
+    time?: number;                                // Weight for time efficiency
+    [key: string]: number | undefined;            // Allow additional weights
+  };
+  created_at: Date;
+  updated_at: Date;
 }
 
 /**
@@ -63,8 +119,16 @@ export class SessionTracker {
   
   /**
    * Start a new session with smart project inheritance
+   * Phase 2: Added sessionGoal, tags, and aiModel parameters
    */
-  static async startSession(projectId?: string, title?: string, description?: string): Promise<string> {
+  static async startSession(
+    projectId?: string,
+    title?: string,
+    description?: string,
+    sessionGoal?: string,
+    tags?: string[],
+    aiModel?: string
+  ): Promise<string> {
     try {
       const sessionId = randomUUID();
       const startTime = new Date();
@@ -81,11 +145,12 @@ export class SessionTracker {
       // Create actual session record in sessions table
       const sessionSql = `
         INSERT INTO sessions (
-          id, project_id, agent_type, started_at, title, description, metadata
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+          id, project_id, agent_type, started_at, title, description,
+          session_goal, tags, ai_model, metadata
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
         RETURNING id, started_at
       `;
-      
+
       // Auto-detect agent type based on environment
       const agentInfo = detectAgentType();
 
@@ -96,6 +161,9 @@ export class SessionTracker {
         startTime,
         title || null,
         description || null,
+        sessionGoal || null,                           // Phase 2: Session goal
+        tags || [],                                    // Phase 2: Tags array
+        aiModel || null,                               // Phase 2: AI model
         JSON.stringify({
           start_time: startTime.toISOString(),
           created_by: 'aidis-session-tracker',
@@ -103,9 +171,12 @@ export class SessionTracker {
           agent_display_name: agentInfo.displayName,
           agent_detection_confidence: agentInfo.confidence,
           agent_version: agentInfo.version,
+          ai_model: aiModel || null,
           project_resolution_method: resolvedProjectId === projectId ? 'explicit' : 'inherited',
           title_provided: !!title,
-          description_provided: !!description
+          description_provided: !!description,
+          session_goal_provided: !!sessionGoal,
+          tags_provided: !!(tags && tags.length > 0)
         })
       ];
       
@@ -537,108 +608,97 @@ export class SessionTracker {
   
   /**
    * Get comprehensive session data with metrics
+   * Phase 2: Refactored to query sessions table directly for better performance
    */
   static async getSessionData(sessionId: string): Promise<SessionData | null> {
     try {
-      // Get session start time and project
-      const sessionStartSql = `
-        SELECT timestamp, project_id, metadata
-        FROM analytics_events 
-        WHERE session_id = $1 AND event_type = 'session_start'
-        ORDER BY timestamp ASC
-        LIMIT 1
+      // Query sessions table directly for better performance
+      const sessionQuery = `
+        SELECT
+          s.id,
+          s.project_id,
+          s.started_at,
+          s.ended_at,
+          s.title,
+          s.description,
+          s.session_goal,
+          s.tags,
+          s.lines_added,
+          s.lines_deleted,
+          s.lines_net,
+          s.productivity_score,
+          s.ai_model,
+          s.files_modified_count,
+          s.activity_count,
+          s.status,
+          s.last_activity_at,
+          s.input_tokens,
+          s.output_tokens,
+          s.total_tokens,
+          s.contexts_created,
+          s.tasks_created,
+          s.tasks_updated,
+          s.tasks_completed,
+          EXTRACT(EPOCH FROM (COALESCE(s.ended_at, NOW()) - s.started_at)) * 1000 as duration_ms
+        FROM sessions s
+        WHERE s.id = $1
       `;
-      
-      const startResult = await db.query(sessionStartSql, [sessionId]);
-      
-      if (startResult.rows.length === 0) {
+
+      const result = await db.query(sessionQuery, [sessionId]);
+
+      if (result.rows.length === 0) {
+        console.log(`⚠️  Session ${sessionId} not found in database`);
         return null;
       }
-      
-      const startRow = startResult.rows[0];
-      const startTime = startRow.timestamp;
-      const projectId = startRow.project_id;
-      
-      // Count contexts created in this session
-      const contextCountSql = `
-        SELECT COUNT(*) as count
-        FROM analytics_events 
-        WHERE session_id = $1 AND event_type LIKE 'context_%'
-      `;
-      
-      const contextResult = await db.query(contextCountSql, [sessionId]);
-      const contextsCreated = parseInt(contextResult.rows[0].count) || 0;
-      
-      // Count decisions created in this session
-      const decisionCountSql = `
-        SELECT COUNT(*) as count
-        FROM analytics_events 
-        WHERE session_id = $1 AND event_type LIKE 'decision_%'
-      `;
-      
-      const decisionResult = await db.query(decisionCountSql, [sessionId]);
-      const decisionsCreated = parseInt(decisionResult.rows[0].count) || 0;
-      
-      // Count total operations
-      const operationsCountSql = `
-        SELECT COUNT(*) as count
-        FROM analytics_events 
-        WHERE session_id = $1 AND event_type NOT LIKE 'session_%'
-      `;
-      
-      const operationsResult = await db.query(operationsCountSql, [sessionId]);
-      const operationsCount = parseInt(operationsResult.rows[0].count) || 0;
-      
-      // Check if session has ended
-      const sessionEndSql = `
-        SELECT timestamp, duration_ms
-        FROM analytics_events 
-        WHERE session_id = $1 AND event_type = 'session_end'
-        ORDER BY timestamp DESC
-        LIMIT 1
-      `;
-      
-      const endResult = await db.query(sessionEndSql, [sessionId]);
-      const endTime = endResult.rows.length > 0 ? endResult.rows[0].timestamp : null;
-      const durationMs = endResult.rows.length > 0 ? endResult.rows[0].duration_ms : null;
-      
-      // Calculate productivity score
-      const contextsWeight = contextsCreated * 2;
-      const decisionsWeight = decisionsCreated * 3;
-      const durationHours = durationMs ? durationMs / (1000 * 60 * 60) : 1;
-      const productivityScore = Math.round(((contextsWeight + decisionsWeight) / (durationHours + 1)) * 100) / 100;
-      
-      // Determine success status
-      let successStatus: 'active' | 'completed' | 'abandoned';
-      if (!endTime) {
-        successStatus = 'active';
-      } else if (operationsCount > 0) {
-        successStatus = 'completed';
-      } else {
-        successStatus = 'abandoned';
-      }
 
-      // TS006-2: Get token usage (from memory for active sessions, or return zeros)
+      const session = result.rows[0];
+
+      // Get in-memory token usage if session is active
       const tokenUsage = this.getTokenUsage(sessionId);
+      const activityCounts = this.getActivityCounts(sessionId);
+
+      // Count decisions from technical_decisions table
+      const decisionsResult = await db.query(
+        'SELECT COUNT(*) as count FROM technical_decisions WHERE session_id = $1',
+        [sessionId]
+      );
+      const decisionsCount = parseInt(decisionsResult.rows[0]?.count || '0');
 
       return {
-        session_id: sessionId,
-        start_time: startTime,
-        end_time: endTime,
-        duration_ms: durationMs,
-        project_id: projectId,
-        contexts_created: contextsCreated,
-        decisions_created: decisionsCreated,
-        operations_count: operationsCount,
-        productivity_score: productivityScore,
-        success_status: successStatus,
-        status: !endTime ? 'active' : 'inactive',  // TS004-1: Add status field
-        last_activity_at: undefined,  // TS004-1: Not populated in this method
-        input_tokens: tokenUsage.input,   // TS006-2: Token tracking
-        output_tokens: tokenUsage.output, // TS006-2: Token tracking
-        total_tokens: tokenUsage.total    // TS006-2: Token tracking
+        session_id: session.id,
+        start_time: session.started_at,
+        end_time: session.ended_at,
+        duration_ms: parseFloat(session.duration_ms) || 0,
+        project_id: session.project_id,
+        title: session.title,
+        description: session.description,
+
+        // Phase 2 new fields from database
+        session_goal: session.session_goal,
+        tags: session.tags || [],
+        lines_added: session.lines_added || 0,
+        lines_deleted: session.lines_deleted || 0,
+        lines_net: session.lines_net || 0,
+        productivity_score: parseFloat(session.productivity_score) || 0,
+        ai_model: session.ai_model,
+        files_modified_count: session.files_modified_count || 0,
+        activity_count: session.activity_count || 0,
+
+        // Existing fields - prefer in-memory counts for active sessions
+        contexts_created: activityCounts.contexts_created || session.contexts_created || 0,
+        decisions_created: decisionsCount,
+        operations_count: session.activity_count || 0,
+        success_status: !session.ended_at ? 'active' :
+                       (session.activity_count > 0 ? 'completed' : 'abandoned'),
+        status: session.status || 'active',
+        last_activity_at: session.last_activity_at,
+
+        // Token usage - prefer in-memory for active sessions
+        input_tokens: tokenUsage.input || session.input_tokens || 0,
+        output_tokens: tokenUsage.output || session.output_tokens || 0,
+        total_tokens: tokenUsage.total || session.total_tokens || 0
       };
-      
+
     } catch (error) {
       console.error('❌ Failed to get session data:', error);
       return null;
@@ -752,35 +812,48 @@ export class SessionTracker {
 
   /**
    * Update session title and description
+   * Phase 2: Added sessionGoal and tags parameters
    */
-  static async updateSessionDetails(sessionId: string, title?: string, description?: string): Promise<boolean> {
+  static async updateSessionDetails(
+    sessionId: string,
+    title?: string,
+    description?: string,
+    sessionGoal?: string,
+    tags?: string[]
+  ): Promise<boolean> {
     try {
       console.log(`✏️  Updating session details: ${sessionId.substring(0, 8)}...`);
-      
+
       const updateSql = `
-        UPDATE sessions 
+        UPDATE sessions
         SET title = COALESCE($2, title),
             description = COALESCE($3, description),
+            session_goal = COALESCE($4, session_goal),
+            tags = COALESCE($5, tags),
             updated_at = NOW(),
-            metadata = metadata || $4::jsonb
+            metadata = metadata || $6::jsonb
         WHERE id = $1
-        RETURNING id, title, description
+        RETURNING id, title, description, session_goal, tags
       `;
-      
+
       const updateParams = [
         sessionId,
         title || null,
         description || null,
+        sessionGoal || null,
+        tags || null,
         JSON.stringify({
           title_updated: !!title,
           description_updated: !!description,
+          session_goal_updated: !!sessionGoal,
+          tags_updated: !!(tags && tags.length > 0),
           updated_by: 'aidis-session-tracker',
           updated_at: new Date().toISOString()
         })
       ];
-      
+
       const result = await db.query(updateSql, updateParams);
-      
+
       if (result.rows.length > 0) {
         const updated = result.rows[0];
         console.log(`✅ Session details updated: "${updated.title}"`);
@@ -789,7 +862,7 @@ export class SessionTracker {
         console.log(`⚠️  Session ${sessionId} not found`);
         return false;
       }
-      
+
     } catch (error) {
       console.error('❌ Failed to update session details:', error);
       return false;
@@ -946,14 +1019,22 @@ export class SessionTracker {
 
 /**
  * Auto-start session if none exists
+ * Phase 2: Added sessionGoal, tags, and aiModel parameters
  */
-export async function ensureActiveSession(projectId?: string, title?: string, description?: string): Promise<string> {
+export async function ensureActiveSession(
+  projectId?: string,
+  title?: string,
+  description?: string,
+  sessionGoal?: string,
+  tags?: string[],
+  aiModel?: string
+): Promise<string> {
   let sessionId = await SessionTracker.getActiveSession();
-  
+
   if (!sessionId) {
-    sessionId = await SessionTracker.startSession(projectId, title, description);
+    sessionId = await SessionTracker.startSession(projectId, title, description, sessionGoal, tags, aiModel);
   }
-  
+
   return sessionId;
 }
 
