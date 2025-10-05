@@ -982,6 +982,55 @@ export const AIDIS_TOOL_DEFINITIONS: ToolDefinition[] = [
             additionalProperties: true
           }
         },
+        {
+          name: 'sessions_list',
+          description: 'Get filtered, searchable list of sessions with pagination. Filter by project, date range, tags, status, productivity score, or goal presence.',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              projectId: { type: 'string', description: 'Filter by project UUID' },
+              dateFrom: { type: 'string', description: 'Start date (ISO format YYYY-MM-DD)' },
+              dateTo: { type: 'string', description: 'End date (ISO format YYYY-MM-DD)' },
+              tags: { type: 'array', items: { type: 'string' }, description: 'Filter by tags (matches ANY tag in array)' },
+              status: { type: 'string', description: 'Filter by status (active, inactive, or all)' },
+              agentType: { type: 'string', description: 'Filter by agent type (claude-code, cline, etc.)' },
+              hasGoal: { type: 'boolean', description: 'Only sessions with goals (true) or without (false)' },
+              minProductivity: { type: 'number', description: 'Minimum productivity score (0-100)' },
+              sortBy: { type: 'string', description: 'Sort field: started_at, duration, productivity, or loc' },
+              sortOrder: { type: 'string', description: 'Sort order: asc or desc (default: desc)' },
+              limit: { type: 'number', description: 'Max results per page (default: 25)' },
+              offset: { type: 'number', description: 'Pagination offset (default: 0)' }
+            },
+            additionalProperties: true
+          }
+        },
+        {
+          name: 'sessions_stats',
+          description: 'Get aggregate session statistics with grouping and time-series data. Provides productivity insights, trends, and top tags/projects analysis.',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              projectId: { type: 'string', description: 'Filter by project UUID' },
+              period: { type: 'string', description: 'Time period: day, week, month, or all (default: all)' },
+              groupBy: { type: 'string', description: 'Group dimension: project, agent, tag, or none (default: none)' },
+              phase2Only: { type: 'boolean', description: 'Only include sessions with Phase 2 tracking (default: false)' }
+            },
+            additionalProperties: true
+          }
+        },
+        {
+          name: 'sessions_compare',
+          description: 'Compare two sessions side-by-side with metrics analysis. Shows differences in productivity, code output, tasks, and AI usage.',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              sessionId1: { type: 'string', description: 'First session UUID (required)' },
+              sessionId2: { type: 'string', description: 'Second session UUID (required)' }
+            },
+            required: ['sessionId1', 'sessionId2'],
+            additionalProperties: true
+          }
+        },
 
         // Git Correlation Tools
 

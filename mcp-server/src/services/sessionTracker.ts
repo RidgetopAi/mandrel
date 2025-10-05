@@ -1347,6 +1347,248 @@ export class SessionTracker {
       throw error;
     }
   }
+  /**
+   * Generate comprehensive session summary (Phase 3)
+   */
+  static async generateSessionSummary(sessionId: string): Promise<string> {
+    try {
+      // Get session data
+      const sessionResult = await db.query(`
+        SELECT * FROM v_session_summaries WHERE id = $1
+      `, [sessionId]);
+
+      if (sessionResult.rows.length === 0) {
+        return `❌ Session not found: ${sessionId}`;
+      }
+
+      const session = sessionResult.rows[0];
+
+      // Get top 5 activities
+      const activities = await this.getSessionActivities(sessionId, undefined, 5);
+
+      // Get top 3 files
+      const filesResult = await db.query(`
+        SELECT file_path, lines_added, lines_deleted
+        FROM session_files
+        WHERE session_id = $1
+        ORDER BY (lines_added + lines_deleted) DESC
+        LIMIT 3
+      `, [sessionId]);
+
+      // Get decisions count
+      const decisionsResult = await db.query(`
+        SELECT COUNT(*) as count
+        FROM technical_decisions
+        WHERE session_id = $1
+      `, [sessionId]);
+
+      const decisionsCount = parseInt(decisionsResult.rows[0]?.count || '0');
+
+      // Format and return
+      const { formatSessionSummary } = await import('../utils/sessionFormatters.js');
+      return formatSessionSummary(session, activities, filesResult.rows, decisionsCount);
+    } catch (error) {
+      logger.error('Failed to generate session summary', error instanceof Error ? error : new Error('Unknown error'), {
+        component: 'SessionTracker',
+        operation: 'generateSessionSummary',
+        metadata: { sessionId }
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Get enhanced session statistics with grouping (Phase 3)
+   */
+  static async getSessionStatsEnhanced(options: {
+    projectId?: string;
+    period?: 'day' | 'week' | 'month' | 'all';
+    groupBy?: 'project' | 'agent' | 'tag' | 'none';
+    phase2Only?: boolean;
+  } = {}): Promise<any> {
+    try {
+      const { projectId, period = 'all', groupBy = 'none', phase2Only = false } = options;
+
+      // Calculate date filter based on period
+      let dateFilter = '';
+      let dateParam: Date | null = null;
+      if (period === 'day') {
+        dateParam = new Date(Date.now() - 24 * 60 * 60 * 1000);
+        dateFilter = 'AND s.started_at >= $2';
+      } else if (period === 'week') {
+        dateParam = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+        dateFilter = 'AND s.started_at >= $2';
+      } else if (period === 'month') {
+        dateParam = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+        dateFilter = 'AND s.started_at >= $2';
+      }
+
+      // Phase 2 filter
+      const phase2Filter = phase2Only ? 'AND s.productivity_score IS NOT NULL' : '';
+
+      // Build params array
+      const params: any[] = [];
+      let paramIndex = 1;
+      if (projectId) {
+        params.push(projectId);
+        paramIndex++;
+      }
+      if (dateParam) {
+        params.push(dateParam);
+        paramIndex++;
+      }
+
+      // Overall stats query
+      const overallStatsSQL = `
+        SELECT
+          COUNT(*) as total_sessions,
+          ROUND(AVG(EXTRACT(EPOCH FROM (COALESCE(s.ended_at, NOW()) - s.started_at)) / 60)::numeric, 2) as avg_duration,
+          ROUND(AVG(s.productivity_score)::numeric, 2) as avg_productivity,
+          SUM(s.tasks_created) as total_tasks_created,
+          SUM(s.tasks_completed) as total_tasks_completed,
+          SUM(s.contexts_created) as total_contexts_created,
+          SUM(COALESCE(s.lines_added, 0)) as total_loc_added,
+          SUM(COALESCE(s.lines_deleted, 0)) as total_loc_deleted,
+          SUM(COALESCE(s.lines_net, 0)) as total_net_loc,
+          SUM(s.total_tokens) as total_tokens
+        FROM sessions s
+        WHERE ${projectId ? `s.project_id = $1` : 'TRUE'}
+          ${dateFilter}
+          ${phase2Filter}
+      `;
+
+      // Get unfiltered count for phase2Only display
+      let unfilteredCount = null;
+      if (phase2Only) {
+        const unfilteredSQL = `
+          SELECT COUNT(*) as count
+          FROM sessions s
+          WHERE ${projectId ? `s.project_id = $1` : 'TRUE'}
+            ${dateFilter}
+        `;
+        const unfilteredResult = await db.query(unfilteredSQL, params.slice(0, projectId && dateParam ? 2 : projectId || dateParam ? 1 : 0));
+        unfilteredCount = parseInt(unfilteredResult.rows[0].count);
+      }
+
+      const overallResult = await db.query(overallStatsSQL, params);
+
+      // Grouped stats query (if requested)
+      let groupedResult = null;
+      if (groupBy === 'project') {
+        const groupedSQL = `
+          SELECT
+            p.name as group_key,
+            COUNT(s.id) as count,
+            ROUND(AVG(s.productivity_score)::numeric, 2) as avg_productivity,
+            SUM(COALESCE(s.lines_net, 0)) as total_loc
+          FROM sessions s
+          LEFT JOIN projects p ON s.project_id = p.id
+          WHERE ${projectId ? `s.project_id = $1` : 'TRUE'}
+            ${dateFilter}
+            ${phase2Filter}
+          GROUP BY p.id, p.name
+          ORDER BY count DESC
+        `;
+        groupedResult = await db.query(groupedSQL, params);
+      } else if (groupBy === 'agent') {
+        const groupedSQL = `
+          SELECT
+            s.agent_type as group_key,
+            COUNT(s.id) as count,
+            ROUND(AVG(s.productivity_score)::numeric, 2) as avg_productivity
+          FROM sessions s
+          WHERE ${projectId ? `s.project_id = $1` : 'TRUE'}
+            ${dateFilter}
+            ${phase2Filter}
+          GROUP BY s.agent_type
+          ORDER BY count DESC
+        `;
+        groupedResult = await db.query(groupedSQL, params);
+      } else if (groupBy === 'tag') {
+        const groupedSQL = `
+          SELECT
+            tag as group_key,
+            COUNT(*) as count,
+            ROUND(AVG(productivity_score)::numeric, 2) as avg_productivity
+          FROM sessions s, UNNEST(s.tags) as tag
+          WHERE s.tags IS NOT NULL AND array_length(s.tags, 1) > 0
+            ${projectId ? `AND s.project_id = $${params.indexOf(projectId) + 1}` : ''}
+            ${dateFilter.replace('s.started_at', 'started_at')}
+            ${phase2Filter.replace('s.productivity_score', 'productivity_score')}
+          GROUP BY tag
+          ORDER BY count DESC
+          LIMIT 10
+        `;
+        groupedResult = await db.query(groupedSQL, params);
+      }
+
+      // Time series query (if period specified)
+      let timeSeriesResult = null;
+      if (period !== 'all') {
+        const timeSeriesSQL = `
+          SELECT
+            DATE(s.started_at) as date,
+            COUNT(*) as session_count,
+            ROUND(AVG(s.productivity_score)::numeric, 2) as avg_productivity
+          FROM sessions s
+          WHERE ${projectId ? `s.project_id = $1` : 'TRUE'}
+            ${dateFilter}
+            ${phase2Filter}
+          GROUP BY DATE(s.started_at)
+          ORDER BY date DESC
+          LIMIT 30
+        `;
+        timeSeriesResult = await db.query(timeSeriesSQL, params);
+      }
+
+      // Top tags query
+      const topTagsSQL = `
+        SELECT tag
+        FROM sessions s, UNNEST(s.tags) as tag
+        WHERE s.tags IS NOT NULL AND array_length(s.tags, 1) > 0
+          ${projectId ? `AND s.project_id = $${params.indexOf(projectId) + 1}` : ''}
+          ${dateFilter.replace('s.started_at', 'started_at')}
+          ${phase2Filter.replace('s.productivity_score', 'productivity_score')}
+        GROUP BY tag
+        ORDER BY COUNT(*) DESC
+        LIMIT 10
+      `;
+      const topTagsResult = await db.query(topTagsSQL, params);
+
+      // Build response
+      return {
+        overall: {
+          totalSessions: parseInt(overallResult.rows[0].total_sessions),
+          totalSessionsUnfiltered: unfilteredCount,
+          avgDuration: parseFloat(overallResult.rows[0].avg_duration) || null,
+          avgProductivity: parseFloat(overallResult.rows[0].avg_productivity) || null,
+          totalTasksCreated: parseInt(overallResult.rows[0].total_tasks_created),
+          totalTasksCompleted: parseInt(overallResult.rows[0].total_tasks_completed),
+          totalContextsCreated: parseInt(overallResult.rows[0].total_contexts_created),
+          totalLOC: parseInt(overallResult.rows[0].total_net_loc),
+          totalTokens: parseInt(overallResult.rows[0].total_tokens)
+        },
+        groups: groupedResult?.rows.map(r => ({
+          groupKey: r.group_key || 'Unknown',
+          count: parseInt(r.count),
+          avgProductivity: parseFloat(r.avg_productivity) || null
+        })),
+        timeSeries: timeSeriesResult?.rows.map(r => ({
+          date: r.date,
+          sessionCount: parseInt(r.session_count),
+          avgProductivity: parseFloat(r.avg_productivity) || null
+        })),
+        topTags: topTagsResult.rows.map(r => r.tag)
+      };
+    } catch (error) {
+      logger.error('Failed to get enhanced session stats', error instanceof Error ? error : new Error('Unknown error'), {
+        component: 'SessionTracker',
+        operation: 'getSessionStatsEnhanced',
+        metadata: options
+      });
+      throw error;
+    }
+  }
 }
 
 /**

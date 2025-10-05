@@ -38,6 +38,7 @@ import {
 
 import { initializeDatabase, closeDatabase } from './config/database.js';
 import { dbPool, poolHealthCheck } from './services/databasePool.js';
+import { db } from './config/database.js';
 import { AIDIS_TOOL_DEFINITIONS } from './config/toolDefinitions.js';
 import { contextHandler } from './handlers/context.js';
 import { projectHandler } from './handlers/project.js';
@@ -50,6 +51,7 @@ import { navigationHandler } from './handlers/navigation.js';
 import { validationMiddleware } from './middleware/validation.js';
 import { SessionTracker, ensureActiveSession } from './services/sessionTracker.js';
 import { SessionManagementHandler } from './handlers/sessionAnalytics.js';
+import { formatSessionsList, formatSessionStats, formatSessionComparison } from './utils/sessionFormatters.js';
 import { startGitTracking, stopGitTracking } from './services/gitTracker.js';
 import { startPatternDetection, stopPatternDetection } from './services/patternDetector.js';
 // TT009-3: Phase 3 Pattern Consolidation imports
@@ -892,6 +894,15 @@ class AIDISServer {
 
       case 'session_calculate_productivity':
         return await this.handleSessionCalculateProductivity(validatedArgs as any);
+
+      case 'sessions_list':
+        return await this.handleSessionsList(validatedArgs as any);
+
+      case 'sessions_stats':
+        return await this.handleSessionsStats(validatedArgs as any);
+
+      case 'sessions_compare':
+        return await this.handleSessionsCompare(validatedArgs as any);
 
       // Git Correlation Tools - DISABLED (Token Optimization 2025-10-01)
       // Reason: More than likely coming out, not currently needed
@@ -3230,6 +3241,229 @@ class AIDISServer {
     }
 
     return await SessionManagementHandler.calculateSessionProductivity(sessionId, configName);
+  }
+
+  /**
+   * Handle sessions list (Phase 3)
+   */
+  private async handleSessionsList(args: any) {
+    try {
+      const {
+        projectId,
+        dateFrom,
+        dateTo,
+        tags,
+        status,
+        agentType,
+        hasGoal,
+        minProductivity,
+        sortBy = 'started_at',
+        sortOrder = 'desc',
+        limit = 25,
+        offset = 0
+      } = args;
+
+      // Build WHERE clauses dynamically
+      const whereConditions: string[] = [];
+      const queryParams: any[] = [];
+      let paramIndex = 1;
+
+      if (projectId) {
+        whereConditions.push(`s.project_id = $${paramIndex++}`);
+        queryParams.push(projectId);
+      }
+
+      if (dateFrom) {
+        whereConditions.push(`s.started_at >= $${paramIndex++}`);
+        queryParams.push(dateFrom);
+      }
+
+      if (dateTo) {
+        whereConditions.push(`s.started_at <= $${paramIndex++}`);
+        queryParams.push(dateTo);
+      }
+
+      if (tags && tags.length > 0) {
+        whereConditions.push(`s.tags && $${paramIndex++}::text[]`);
+        queryParams.push(tags);
+      }
+
+      if (status && status !== 'all') {
+        whereConditions.push(`s.status = $${paramIndex++}`);
+        queryParams.push(status);
+      }
+
+      if (agentType) {
+        whereConditions.push(`s.agent_type = $${paramIndex++}`);
+        queryParams.push(agentType);
+      }
+
+      if (hasGoal === true) {
+        whereConditions.push(`s.session_goal IS NOT NULL`);
+      } else if (hasGoal === false) {
+        whereConditions.push(`s.session_goal IS NULL`);
+      }
+
+      if (minProductivity !== undefined) {
+        whereConditions.push(`s.productivity_score >= $${paramIndex++}`);
+        queryParams.push(minProductivity);
+      }
+
+      const whereClause = whereConditions.length > 0
+        ? 'WHERE ' + whereConditions.join(' AND ')
+        : '';
+
+      // Validate sortBy
+      const validSortFields = ['started_at', 'duration', 'productivity', 'loc'];
+      const safeSortBy = validSortFields.includes(sortBy) ? sortBy : 'started_at';
+      const safeSortOrder = sortOrder === 'asc' ? 'ASC' : 'DESC';
+
+      // Build ORDER BY clause
+      let orderByClause = '';
+      if (safeSortBy === 'started_at') {
+        orderByClause = `ORDER BY s.started_at ${safeSortOrder}`;
+      } else if (safeSortBy === 'duration') {
+        orderByClause = `ORDER BY s.duration_minutes ${safeSortOrder}`;
+      } else if (safeSortBy === 'productivity') {
+        orderByClause = `ORDER BY s.productivity_score ${safeSortOrder} NULLS LAST`;
+      } else if (safeSortBy === 'loc') {
+        orderByClause = `ORDER BY s.lines_net ${safeSortOrder} NULLS LAST`;
+      }
+
+      // Main query
+      const query = `
+        SELECT * FROM v_session_summaries s
+        ${whereClause}
+        ${orderByClause}
+        LIMIT $${paramIndex++} OFFSET $${paramIndex++}
+      `;
+
+      queryParams.push(limit, offset);
+
+      const result = await db.query(query, queryParams);
+
+      // Get total count
+      const countQuery = `
+        SELECT COUNT(*) as count FROM v_session_summaries s
+        ${whereClause}
+      `;
+
+      const countResult = await db.query(countQuery, queryParams.slice(0, -2));
+      const totalCount = parseInt(countResult.rows[0].count);
+
+      // Format output
+      const output = formatSessionsList(result.rows, totalCount, args, limit, offset);
+
+      return {
+        content: [{
+          type: 'text',
+          text: output
+        }]
+      };
+    } catch (error) {
+      console.error('❌ Failed to list sessions:', error);
+      return {
+        content: [{
+          type: 'text',
+          text: `❌ Error listing sessions: ${error instanceof Error ? error.message : 'Unknown error'}`
+        }]
+      };
+    }
+  }
+
+  /**
+   * Handle sessions stats (Phase 3)
+   */
+  private async handleSessionsStats(args: any) {
+    try {
+      const {
+        projectId,
+        period = 'all',
+        groupBy = 'none',
+        phase2Only = false
+      } = args;
+
+      // Get enhanced stats
+      const stats = await SessionTracker.getSessionStatsEnhanced({
+        projectId,
+        period,
+        groupBy,
+        phase2Only
+      });
+
+      // Format output
+      const output = formatSessionStats(stats, { projectId, period, groupBy, phase2Only });
+
+      return {
+        content: [{
+          type: 'text',
+          text: output
+        }]
+      };
+    } catch (error) {
+      console.error('❌ Failed to get session stats:', error);
+      return {
+        content: [{
+          type: 'text',
+          text: `❌ Error getting session stats: ${error instanceof Error ? error.message : 'Unknown error'}`
+        }]
+      };
+    }
+  }
+
+  /**
+   * Handle sessions compare (Phase 3)
+   */
+  private async handleSessionsCompare(args: any) {
+    try {
+      const { sessionId1, sessionId2 } = args;
+
+      if (!sessionId1 || !sessionId2) {
+        return {
+          content: [{
+            type: 'text',
+            text: '❌ Both sessionId1 and sessionId2 are required'
+          }]
+        };
+      }
+
+      // Fetch both sessions
+      const result = await db.query(`
+        SELECT * FROM v_session_summaries
+        WHERE id IN ($1, $2)
+      `, [sessionId1, sessionId2]);
+
+      if (result.rows.length !== 2) {
+        return {
+          content: [{
+            type: 'text',
+            text: `❌ One or both sessions not found.\nSession 1: ${sessionId1}\nSession 2: ${sessionId2}`
+          }]
+        };
+      }
+
+      // Find which is which
+      const session1 = result.rows.find((r: any) => r.id === sessionId1);
+      const session2 = result.rows.find((r: any) => r.id === sessionId2);
+
+      // Format output
+      const output = formatSessionComparison(session1!, session2!);
+
+      return {
+        content: [{
+          type: 'text',
+          text: output
+        }]
+      };
+    } catch (error) {
+      console.error('❌ Failed to compare sessions:', error);
+      return {
+        content: [{
+          type: 'text',
+          text: `❌ Error comparing sessions: ${error instanceof Error ? error.message : 'Unknown error'}`
+        }]
+      };
+    }
   }
 
   // Git Correlation Handler Methods
