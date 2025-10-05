@@ -17,6 +17,7 @@ import { db } from '../config/database.js';
 import { randomUUID } from 'crypto';
 import { projectHandler } from '../handlers/project.js';
 import { detectAgentType } from '../utils/agentDetection.js';
+import { logger } from '../utils/logger.js';
 
 export interface SessionData {
   session_id: string;
@@ -704,7 +705,342 @@ export class SessionTracker {
       return null;
     }
   }
-  
+
+  /**
+   * Record activity event in session_activities table
+   * Automatically updates session.activity_count
+   */
+  static async recordActivity(
+    sessionId: string,
+    activityType: string,
+    activityData: Record<string, any> = {}
+  ): Promise<void> {
+    try {
+      // Insert activity record
+      const insertSql = `
+        INSERT INTO session_activities (
+          session_id, activity_type, activity_data, occurred_at
+        ) VALUES ($1, $2, $3, NOW())
+        RETURNING id
+      `;
+
+      await db.query(insertSql, [sessionId, activityType, JSON.stringify(activityData)]);
+
+      // Update session activity count
+      const updateSql = `
+        UPDATE sessions
+        SET activity_count = (SELECT COUNT(*) FROM session_activities WHERE session_id = $1),
+            last_activity_at = NOW()
+        WHERE id = $1
+      `;
+
+      await db.query(updateSql, [sessionId]);
+
+      logger.debug(`Activity recorded: ${activityType}`, {
+        component: 'SessionTracker',
+        operation: 'recordActivity',
+        metadata: {
+          sessionId: sessionId.substring(0, 8),
+          activityType
+        }
+      });
+
+    } catch (error) {
+      logger.error('Failed to record activity', error instanceof Error ? error : new Error('Unknown error'), {
+        component: 'SessionTracker',
+        operation: 'recordActivity',
+        metadata: {
+          sessionId,
+          activityType
+        }
+      });
+      // Don't throw - activity recording shouldn't break main flow
+    }
+  }
+
+  /**
+   * Get all activities for a session with optional type filtering
+   */
+  static async getSessionActivities(
+    sessionId: string,
+    activityType?: string,
+    limit: number = 100
+  ): Promise<SessionActivity[]> {
+    try {
+      const sql = activityType
+        ? `SELECT id, session_id, activity_type, activity_data, occurred_at, created_at
+           FROM session_activities
+           WHERE session_id = $1 AND activity_type = $2
+           ORDER BY occurred_at DESC
+           LIMIT $3`
+        : `SELECT id, session_id, activity_type, activity_data, occurred_at, created_at
+           FROM session_activities
+           WHERE session_id = $1
+           ORDER BY occurred_at DESC
+           LIMIT $2`;
+
+      const params = activityType
+        ? [sessionId, activityType, limit]
+        : [sessionId, limit];
+
+      const result = await db.query(sql, params);
+
+      return result.rows.map(row => ({
+        id: row.id,
+        session_id: row.session_id,
+        activity_type: row.activity_type,
+        activity_data: row.activity_data,
+        occurred_at: row.occurred_at,
+        created_at: row.created_at
+      }));
+
+    } catch (error) {
+      logger.error('Failed to get session activities', error instanceof Error ? error : new Error('Unknown error'), {
+        component: 'SessionTracker',
+        operation: 'getSessionActivities',
+        metadata: {
+          sessionId
+        }
+      });
+      return [];
+    }
+  }
+
+  /**
+   * Record file modification in session_files table
+   * Uses UPSERT pattern - adds lines to existing file records
+   */
+  static async recordFileModification(
+    sessionId: string,
+    filePath: string,
+    linesAdded: number,
+    linesDeleted: number,
+    source: 'tool' | 'git' | 'manual' = 'tool'
+  ): Promise<void> {
+    try {
+      // Upsert into session_files table
+      const upsertSql = `
+        INSERT INTO session_files (
+          session_id, file_path, lines_added, lines_deleted, source, first_modified, last_modified
+        ) VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
+        ON CONFLICT (session_id, file_path)
+        DO UPDATE SET
+          lines_added = session_files.lines_added + EXCLUDED.lines_added,
+          lines_deleted = session_files.lines_deleted + EXCLUDED.lines_deleted,
+          last_modified = NOW()
+        RETURNING id
+      `;
+
+      await db.query(upsertSql, [sessionId, filePath, linesAdded, linesDeleted, source]);
+
+      // Update session-level aggregates
+      await this.updateSessionFileMetrics(sessionId);
+
+      logger.debug(`File modification recorded: ${filePath}`, {
+        component: 'SessionTracker',
+        operation: 'recordFileModification',
+        metadata: {
+          sessionId: sessionId.substring(0, 8),
+          filePath,
+          linesAdded,
+          linesDeleted,
+          source
+        }
+      });
+
+    } catch (error) {
+      logger.error('Failed to record file modification', error instanceof Error ? error : new Error('Unknown error'), {
+        component: 'SessionTracker',
+        operation: 'recordFileModification',
+        metadata: {
+          sessionId,
+          filePath
+        }
+      });
+      // Don't throw - file tracking shouldn't break main flow
+    }
+  }
+
+  /**
+   * Update session-level file and LOC metrics from session_files table
+   * Private helper method for recordFileModification
+   */
+  private static async updateSessionFileMetrics(sessionId: string): Promise<void> {
+    try {
+      const updateSql = `
+        UPDATE sessions
+        SET
+          files_modified_count = (SELECT COUNT(DISTINCT file_path) FROM session_files WHERE session_id = $1),
+          lines_added = (SELECT COALESCE(SUM(lines_added), 0) FROM session_files WHERE session_id = $1),
+          lines_deleted = (SELECT COALESCE(SUM(lines_deleted), 0) FROM session_files WHERE session_id = $1),
+          lines_net = (SELECT COALESCE(SUM(lines_added - lines_deleted), 0) FROM session_files WHERE session_id = $1)
+        WHERE id = $1
+      `;
+
+      await db.query(updateSql, [sessionId]);
+
+    } catch (error) {
+      logger.error('Failed to update session file metrics', error instanceof Error ? error : new Error('Unknown error'), {
+        component: 'SessionTracker',
+        operation: 'updateSessionFileMetrics',
+        metadata: {
+          sessionId
+        }
+      });
+    }
+  }
+
+  /**
+   * Get all files modified in a session
+   */
+  static async getSessionFiles(sessionId: string): Promise<SessionFile[]> {
+    try {
+      const sql = `
+        SELECT
+          id, session_id, file_path, lines_added, lines_deleted,
+          source, first_modified, last_modified
+        FROM session_files
+        WHERE session_id = $1
+        ORDER BY last_modified DESC
+      `;
+
+      const result = await db.query(sql, [sessionId]);
+
+      return result.rows.map(row => ({
+        id: row.id,
+        session_id: row.session_id,
+        file_path: row.file_path,
+        lines_added: row.lines_added,
+        lines_deleted: row.lines_deleted,
+        source: row.source,
+        first_modified: row.first_modified,
+        last_modified: row.last_modified
+      }));
+
+    } catch (error) {
+      logger.error('Failed to get session files', error instanceof Error ? error : new Error('Unknown error'), {
+        component: 'SessionTracker',
+        operation: 'getSessionFiles',
+        metadata: {
+          sessionId
+        }
+      });
+      return [];
+    }
+  }
+
+  /**
+   * Calculate productivity score using configurable formula
+   * Supports custom formulas from productivity_config table
+   */
+  static async calculateProductivityScore(
+    sessionId: string,
+    configName: string = 'default'
+  ): Promise<number> {
+    try {
+      // Get productivity config
+      const configResult = await db.query(
+        'SELECT formula_weights FROM productivity_config WHERE config_name = $1',
+        [configName]
+      );
+
+      if (configResult.rows.length === 0) {
+        logger.warn(`Productivity config '${configName}' not found, using fallback calculation`, {
+          component: 'SessionTracker',
+          operation: 'calculateProductivityScore'
+        });
+        // Fallback to existing calculateProductivity method
+        return this.calculateProductivity(sessionId);
+      }
+
+      const weights = configResult.rows[0].formula_weights;
+
+      // Get session data
+      const sessionData = await this.getSessionData(sessionId);
+      if (!sessionData) {
+        logger.warn(`Session ${sessionId} not found for productivity calculation`, {
+          component: 'SessionTracker',
+          operation: 'calculateProductivityScore'
+        });
+        return 0;
+      }
+
+      // Calculate weighted score
+      let score = 0;
+      let totalWeight = 0;
+
+      // Tasks component (tasks completed)
+      if (weights.tasks !== undefined) {
+        const tasksCompleted = sessionData.contexts_created || 0; // Using contexts as proxy
+        score += weights.tasks * tasksCompleted * 10; // Scale factor
+        totalWeight += weights.tasks;
+      }
+
+      // Context component (contexts created)
+      if (weights.context !== undefined) {
+        const contextsCreated = sessionData.contexts_created || 0;
+        score += weights.context * contextsCreated * 10; // Scale factor
+        totalWeight += weights.context;
+      }
+
+      // Decisions component (technical decisions)
+      if (weights.decisions !== undefined) {
+        const decisionsCreated = sessionData.decisions_created || 0;
+        score += weights.decisions * decisionsCreated * 15; // Higher value per decision
+        totalWeight += weights.decisions;
+      }
+
+      // LOC component (lines of code)
+      if (weights.loc !== undefined) {
+        const linesNet = sessionData.lines_net || 0;
+        // Positive LOC weighted higher than negative
+        const locScore = linesNet > 0 ? linesNet / 10 : linesNet / 20;
+        score += weights.loc * locScore;
+        totalWeight += weights.loc;
+      }
+
+      // Time component (efficiency - inverse of duration)
+      if (weights.time !== undefined && sessionData.duration_ms) {
+        const hours = sessionData.duration_ms / (1000 * 60 * 60);
+        // Efficiency: more output in less time = higher score
+        const timeEfficiency = totalWeight > 0 ? score / (hours + 1) : 0;
+        score = score * (1 + weights.time * (timeEfficiency / 100));
+      }
+
+      // Normalize to 0-100 scale
+      const finalScore = Math.min(Math.max(score, 0), 100);
+      const roundedScore = Math.round(finalScore * 100) / 100;
+
+      // Update session with calculated score
+      await db.query(
+        'UPDATE sessions SET productivity_score = $1 WHERE id = $2',
+        [roundedScore, sessionId]
+      );
+
+      logger.debug(`Productivity score calculated: ${roundedScore}`, {
+        component: 'SessionTracker',
+        operation: 'calculateProductivityScore',
+        metadata: {
+          sessionId: sessionId.substring(0, 8),
+          configName,
+          score: roundedScore
+        }
+      });
+
+      return roundedScore;
+
+    } catch (error) {
+      logger.error('Failed to calculate productivity score', error instanceof Error ? error : new Error('Unknown error'), {
+        component: 'SessionTracker',
+        operation: 'calculateProductivityScore',
+        metadata: {
+          sessionId
+        }
+      });
+      return 0;
+    }
+  }
+
   /**
    * Resolve project for new session using TS010 hierarchy:
    * 1. Current project (from project handler context)
