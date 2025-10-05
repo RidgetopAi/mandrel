@@ -55,10 +55,6 @@ import { startPatternDetection, stopPatternDetection } from './services/patternD
 // TT009-3: Phase 3 Pattern Consolidation imports
 import { handlePatternAnalyze } from './handlers/patterns/patternAnalyze.js';
 import { handlePatternInsights } from './handlers/patterns/patternInsights.js';
-import {
-  startComplexityTracking,
-  stopComplexityTracking
-} from './services/complexityTracker.js';
 import { ensureFeatureFlags } from './utils/featureFlags.js';
 import { portManager } from './utils/portManager.js';
 // Phase 5 Integration: V2 API Router
@@ -2601,22 +2597,6 @@ class AIDISServer {
           console.warn('   Session timeouts will not be automatic');
         }
 
-        // TC015: Initialize code complexity tracking service
-        console.log('🧮 Starting complexity tracking service...');
-        try {
-          await startComplexityTracking({
-            enableRealTimeAnalysis: true,
-            enableBatchProcessing: true,
-            analysisTimeoutMs: 100, // Sub-100ms target
-            autoAnalyzeOnCommit: true,
-            autoAnalyzeOnThresholdBreach: true,
-            scheduledAnalysisIntervalMs: 600000 // 10 minutes
-          });
-          console.log('✅ Complexity tracking service initialized successfully');
-        } catch (error) {
-          console.warn('⚠️  Failed to initialize complexity tracking:', error);
-          console.warn('   Complexity tracking will be manual only');
-        }
       } else {
         console.log('🧪 Skipping background services (AIDIS_SKIP_BACKGROUND=true)');
       }
@@ -2771,14 +2751,6 @@ class AIDISServer {
           console.warn('⚠️  Failed to stop session timeout service:', error);
         }
 
-        // TC015: Stop complexity tracking service
-        console.log('🧮 Stopping complexity tracking service...');
-        try {
-          await stopComplexityTracking();
-          console.log('✅ Complexity tracking service stopped gracefully');
-        } catch (error) {
-          console.warn('⚠️  Failed to stop complexity tracking:', error);
-        }
       } else {
         console.log('🧪 Background services disabled; skipping shutdown hooks');
       }
