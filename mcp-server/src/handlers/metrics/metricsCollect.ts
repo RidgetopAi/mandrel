@@ -305,7 +305,7 @@ function generateCoreMetricsSummary(metrics: any[]): any {
     totalMetrics: metrics.length,
     metricTypes: [...new Set(metrics.map(m => m.metric_type))],
     latestTimestamp: metrics[0]?.timestamp,
-    averageValues: {}
+    averageValues: {} as Record<string, number>
   };
 
   // Calculate averages by metric type
@@ -324,7 +324,7 @@ function generateCoreMetricsSummary(metrics: any[]): any {
  * Generate summary for pattern intelligence
  */
 function generatePatternIntelligenceSummary(patterns: any[]): any {
-  const riskDistribution = {};
+  const riskDistribution: Record<string, number> = {};
   for (const p of patterns) {
     riskDistribution[p.risk_level] = (riskDistribution[p.risk_level] || 0) + 1;
   }
