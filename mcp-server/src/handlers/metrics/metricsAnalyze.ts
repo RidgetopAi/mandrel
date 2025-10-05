@@ -168,7 +168,7 @@ async function analyzeDashboard(options: any): Promise<any> {
     };
   }
 
-  const result = {
+  const result: Record<string, any> = {
     projectId,
     timeframe,
     dashboard,
@@ -478,7 +478,7 @@ function parseTimeframe(timeframe: string): number {
  * Generate summary for trends data
  */
 function generateTrendsSummary(trends: any[]): any {
-  const trendDirections = {};
+  const trendDirections: Record<string, number> = {};
   let totalConfidence = 0;
 
   for (const trend of trends) {
