@@ -335,11 +335,11 @@ async function getPatternAnomalies(options: any): Promise<any> {
  */
 async function getPatternRecommendations(options: any): Promise<any> {
   const {
-    contextType = 'development',
-    includeActionItems = true,
-    includePrioritization = true,
-    includeRiskAssessment = true,
-    maxRecommendations = 20,
+    contextType: _contextType = 'development',
+    includeActionItems: _includeActionItems = true,
+    includePrioritization: _includePrioritization = true,
+    includeRiskAssessment: _includeRiskAssessment = true,
+    maxRecommendations: _maxRecommendations = 20,
     projectId,
     sessionId
   } = options;

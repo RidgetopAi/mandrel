@@ -221,6 +221,10 @@ describe('SessionTracker Unit Tests', () => {
         operations_count: 10,
         productivity_score: 0,
         success_status: 'active',
+        status: 'active',
+        input_tokens: 0,
+        output_tokens: 0,
+        total_tokens: 0,
         duration_ms: 3600000 // 1 hour
       };
       
@@ -249,7 +253,11 @@ describe('SessionTracker Unit Tests', () => {
         decisions_created: 1,
         operations_count: 5,
         productivity_score: 0,
-        success_status: 'active'
+        success_status: 'active',
+        status: 'active',
+        input_tokens: 0,
+        output_tokens: 0,
+        total_tokens: 0
         // No duration_ms
       };
       
@@ -299,7 +307,7 @@ describe('SessionTracker Unit Tests', () => {
       
       // Verify project filter was used
       const calls = mockDb.query.mock.calls;
-      calls.forEach(call => {
+      calls.forEach((call: any) => {
         if (call[0].includes('WHERE')) {
           expect(call[1]).toEqual([projectId]);
         }

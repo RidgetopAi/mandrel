@@ -965,9 +965,9 @@ export class SessionManagementHandler {
       // Find project if specified
       if (projectName) {
         const projects = await projectHandler.listProjects();
-        const project = projects.find(p => 
-          p.name.toLowerCase() === projectName.toLowerCase() ||
-          p.name.toLowerCase().includes(projectName.toLowerCase())
+        const project = projects.find(p =>
+          p.name.toLowerCase() === projectName?.toLowerCase() ||
+          p.name.toLowerCase().includes(projectName?.toLowerCase() || '')
         );
 
         if (!project) {

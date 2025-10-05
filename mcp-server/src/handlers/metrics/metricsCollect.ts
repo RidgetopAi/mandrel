@@ -134,8 +134,8 @@ export async function handleMetricsCollect(args: any): Promise<any> {
 async function collectProjectMetrics(projectId: string, options: any): Promise<any> {
   const {
     trigger = 'manual',
-    startDate,
-    endDate
+    startDate: _startDate,
+    endDate: _endDate
   } = options;
 
   console.log(`📊 Collecting project metrics for: ${projectId}`);

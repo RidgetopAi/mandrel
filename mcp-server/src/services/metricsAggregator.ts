@@ -776,7 +776,7 @@ export class MetricsAggregationService {
     let params = [metricType];
 
     if (options.projectIds && options.projectIds.length > 0) {
-      const projectPlaceholders = options.projectIds.map((_, i) => `$${i + 2}`).join(',');
+      const projectPlaceholders = options.projectIds.map((_: any, i: number) => `$${i + 2}`).join(',');
       whereClause += ` AND project_id IN (${projectPlaceholders})`;
       params.push(...options.projectIds);
     }

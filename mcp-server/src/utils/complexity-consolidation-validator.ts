@@ -451,7 +451,7 @@ function validateAnalyzeParams(params: ComplexityAnalyzeParams, errors: string[]
     errors.push('Invalid or missing field: type');
   }
   if (params.type === 'files' && typeof params.target === 'string') {
-    warnings.push('Type is "files" but target is a single string, consider using "file" type');
+    _warnings.push('Type is "files" but target is a single string, consider using "file" type');
   }
   if (params.type === 'file' && Array.isArray(params.target)) {
     _warnings.push('Type is "file" but target is an array, consider using "files" type');

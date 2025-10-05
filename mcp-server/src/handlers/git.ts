@@ -812,8 +812,8 @@ export async function detectPatternsForRecentCommits(params: {
         projectId,
         commitsAnalyzed: commitShas.length,
         realTime: params.realTime,
-        patternsFound: detectionResult.totalPatternsFound || 0,
-        executionTimeMs: detectionResult.executionTimeMs || 0
+        patternsFound: detectionResult.patternsFound || 0,
+        executionTimeMs: 0
       },
       tags: ['pattern_detection', 'git_integration', 'tc013']
     });

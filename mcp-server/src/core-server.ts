@@ -22,8 +22,8 @@
 import { processLock } from './utils/processLock.js';
 
 // import { Server } from '@modelcontextprotocol/sdk/server/index.js';
-import * as fs from 'fs';
-import * as path from 'path';
+// import * as fs from 'fs'; // Commented out - currently unused (ProcessSingleton disabled)
+// import * as path from 'path'; // Commented out - currently unused (ProcessSingleton disabled)
 import * as http from 'http';
 import {
   // CallToolRequestSchema,
@@ -48,7 +48,7 @@ import { agentsHandler } from './handlers/agents.js';
 import { validationMiddleware } from './middleware/validation.js';
 
 // Enterprise hardening constants
-const PID_FILE = '/home/ridgetop/aidis/run/aidis-core.pid';
+// const PID_FILE = '/home/ridgetop/aidis/run/aidis-core.pid'; // Commented out - ProcessSingleton disabled
 const HTTP_PORT = process.env.AIDIS_HTTP_PORT || 8080;
 const MAX_RETRIES = 3;
 const INITIAL_RETRY_DELAY = 1000;
@@ -60,21 +60,22 @@ if (process.env.AIDIS_DEBUG) {
 
 /**
  * Process Singleton - Prevent multiple AIDIS core instances
+ * Note: Disabled for now - may be re-enabled in future
  */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+/*
 class _ProcessSingleton {
   private pidFile: string;
 
   constructor(pidFile: string = PID_FILE) {
     this.pidFile = pidFile;
   }
-  
+
   ensureSingleInstance(): boolean {
     try {
       // Check if PID file exists
       if (fs.existsSync(this.pidFile)) {
         const existingPid = fs.readFileSync(this.pidFile, 'utf8').trim();
-        
+
         // Check if process is still running
         try {
           process.kill(parseInt(existingPid), 0); // Signal 0 tests if process exists
@@ -87,16 +88,16 @@ class _ProcessSingleton {
           fs.unlinkSync(this.pidFile);
         }
       }
-      
+
       // Create PID file
       const pidDir = path.dirname(this.pidFile);
       if (!fs.existsSync(pidDir)) {
         fs.mkdirSync(pidDir, { recursive: true });
       }
-      
+
       fs.writeFileSync(this.pidFile, process.pid.toString());
       console.log(`🔒 Process singleton active (PID: ${process.pid})`);
-      
+
       // Clean up PID file on exit
       const cleanup = () => {
         try {
@@ -108,19 +109,20 @@ class _ProcessSingleton {
           console.error('⚠️  Failed to clean up PID file:', error);
         }
       };
-      
+
       process.on('exit', cleanup);
       process.on('SIGINT', cleanup);
       process.on('SIGTERM', cleanup);
-      
+
       return true;
-      
+
     } catch (error) {
       console.error('❌ Failed to ensure singleton:', error);
       return false;
     }
   }
 }
+*/
 
 /**
  * Circuit Breaker for Database Operations
@@ -707,11 +709,12 @@ class AIDISCoreServer {
 
   // Naming handlers
   private async handleNamingRegister(args: any) {
-    return namingHandler.registerName(
-      args.name,
-      args.type,
-      args.context
-    );
+    return namingHandler.registerName({
+      canonicalName: args.name,
+      entityType: args.type,
+      description: args.context,
+      projectId: args.projectId
+    });
   }
 
   private async handleNamingCheck(args: any) {
@@ -724,10 +727,11 @@ class AIDISCoreServer {
   }
 
   private async handleNamingSuggest(args: any) {
-    return namingHandler.suggestNames(
-      args.type,
-      args.context
-    );
+    return namingHandler.suggestNames({
+      entityType: args.type,
+      description: args.context,
+      projectId: args.projectId
+    });
   }
 
   private async handleNamingStats(args: any) {
@@ -736,29 +740,37 @@ class AIDISCoreServer {
 
   // Decision handlers
   private async handleDecisionRecord(args: any) {
-    return decisionsHandler.recordDecision(
-      args.title,
-      args.description,
-      args.alternatives,
-      args.reasoning,
-      args.sessionId || 'default-session'
-    );
+    return decisionsHandler.recordDecision({
+      title: args.title,
+      description: args.description,
+      rationale: args.reasoning || '',
+      alternativesConsidered: args.alternatives ?
+        (Array.isArray(args.alternatives) ? args.alternatives.map((alt: any) => ({
+          name: typeof alt === 'string' ? alt : (alt.name || 'Alternative'),
+          description: typeof alt === 'string' ? alt : (alt.description || ''),
+          pros: typeof alt === 'object' && alt.pros ? alt.pros : [],
+          cons: typeof alt === 'object' && alt.cons ? alt.cons : []
+        })) : []) : [],
+      decisionType: args.decisionType || 'technical',
+      impactLevel: args.impactLevel || 'medium',
+      projectId: args.projectId
+    });
   }
 
   private async handleDecisionSearch(args: any) {
-    return decisionsHandler.searchDecisions(
-      args.query,
-      args.sessionId || 'default-session',
-      args.limit
-    );
+    return decisionsHandler.searchDecisions({
+      query: args.query,
+      limit: args.limit,
+      projectId: args.projectId
+    });
   }
 
   private async handleDecisionUpdate(args: any) {
-    return decisionsHandler.updateDecision(
-      args.decisionId,
-      args.status,
-      args.outcome
-    );
+    return decisionsHandler.updateDecision({
+      decisionId: args.decisionId,
+      status: args.status,
+      outcomeNotes: args.outcome
+    });
   }
 
   private async handleDecisionStats(args: any) {

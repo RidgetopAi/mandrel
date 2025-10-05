@@ -47,7 +47,7 @@ export class SessionMonitoring {
   private static instance: SessionMonitoring | null = null;
   private monitoring = false;
   private alerts: Alert[] = [];
-  private checkInterval: NodeJS.Timer | null = null;
+  private checkInterval: NodeJS.Timeout | null = null;
   private consecutiveFailures = 0;
 
   private config: MonitoringConfig = {

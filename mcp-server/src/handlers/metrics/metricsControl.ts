@@ -143,7 +143,7 @@ export async function handleMetricsControl(args: any): Promise<any> {
  */
 async function controlStart(options: any): Promise<any> {
   const {
-    projectId,
+    projectId: _projectId,
     sessionId,
     intervalMs = 300000,
     autoCollectGit = true

@@ -288,15 +288,15 @@ async function analyzeCorrelations(options: any): Promise<any> {
     metric1,
     metric2,
     timeframe: {
-      startDate: new Date(Date.now() - (parseTimeframe(timeframe) * 24 * 60 * 60 * 1000)).toISOString(),
-      endDate: new Date().toISOString()
+      startDate: new Date(Date.now() - (parseTimeframe(timeframe) * 24 * 60 * 60 * 1000)),
+      endDate: new Date()
     },
     correlationType,
     includeLagAnalysis,
     maxLag
   };
 
-  const correlationResult = await correlationEngine.calculateCorrelation(correlationRequest);
+  const correlationResult = await correlationEngine.calculateCorrelations(correlationRequest);
 
   return {
     projectId,

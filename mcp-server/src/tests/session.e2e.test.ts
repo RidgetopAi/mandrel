@@ -13,13 +13,13 @@ import { describe, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import { db } from '../config/database.js';
 import { SessionTracker } from '../services/sessionTracker.js';
 import { projectHandler } from '../handlers/project.js';
-import { SessionManagementHandler } from '../handlers/session.js';
+import { SessionManagementHandler } from '../handlers/sessionAnalytics.js';
 
 describe('Session Management E2E Tests', () => {
   let testProjectId: string;
   let testProjectName: string;
   let originalActiveSession: string | null = null;
-  let sessionHandler: SessionManagementHandler;
+  // SessionManagementHandler is imported but not used in current test implementation
   
   beforeAll(async () => {
     // Store original active session to restore later
@@ -27,12 +27,12 @@ describe('Session Management E2E Tests', () => {
     
     // Create test project
     testProjectName = 'QA-Test-Session-' + Date.now();
-    const project = await projectHandler.createProject({ 
+    const project = await projectHandler.createProject({
       name: testProjectName,
       description: 'Test project for session management'
     });
     testProjectId = project.id;
-    sessionHandler = new SessionManagementHandler();
+    // Note: SessionManagementHandler instantiation removed as it's not used in current tests
     
     console.log(`Created test project: ${testProjectName} (${testProjectId})`);
   });

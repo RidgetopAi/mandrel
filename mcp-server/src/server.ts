@@ -19,15 +19,15 @@
  * - Circuit breaker pattern
  */
 
-import { processLock } from './utils/processLock.ts';
+import { processLock } from './utils/processLock.js';
 import { logger, CorrelationIdManager } from './utils/logger.js';
 import { RequestLogger } from './middleware/requestLogger.js';
 import { ErrorHandler } from './utils/errorHandler.js';
 
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import * as fs from 'fs';
-import * as path from 'path';
+// import * as fs from 'fs'; // Commented out - currently unused (ProcessSingleton disabled)
+// import * as path from 'path'; // Commented out - currently unused (ProcessSingleton disabled)
 import * as http from 'http';
 import {
   CallToolRequestSchema,
@@ -92,7 +92,7 @@ import { IngressValidator } from './middleware/ingressValidation.js';
 import { McpResponseHandler } from './utils/mcpResponseHandler.js';
 
 // Enterprise hardening constants
-const PID_FILE = '/home/ridgetop/aidis/run/aidis.pid';
+// const PID_FILE = '/home/ridgetop/aidis/run/aidis.pid'; // Commented out - ProcessSingleton disabled
 const MAX_RETRIES = 3;
 const INITIAL_RETRY_DELAY = 1000;
 // Helper function to get environment variable with AIDIS_ prefix and fallback
@@ -132,8 +132,9 @@ if (mcpDebugValue) {
 
 /**
  * Process Singleton - Prevent multiple AIDIS instances
+ * Note: Disabled for now - may be re-enabled in future
  */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+/*
 class ProcessSingleton {
   private pidFile: string;
   
@@ -193,6 +194,7 @@ class ProcessSingleton {
     }
   }
 }
+*/
 
 /**
  * Circuit Breaker for Database Operations

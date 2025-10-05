@@ -47,7 +47,8 @@ export class SessionRouter {
       // Get feature flag configuration
       const enableV2 = await isFeatureEnabled('phase4.sessionManagementV2', false);
       const fallbackEnabled = await isFeatureEnabled('phase4.legacySessionFallback', true);
-      const trafficSplit = await isFeatureEnabled('phase4.sessionTrafficSplit', false);
+      // Note: trafficSplit should be a number (0-100), defaulting to 0 means no traffic to V2
+      const trafficSplit = 0; // TODO: Replace with numeric feature flag when available
 
       // If V2 is disabled globally, use legacy
       if (!enableV2) {

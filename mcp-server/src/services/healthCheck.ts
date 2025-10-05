@@ -348,7 +348,16 @@ export function createHealthCheckMiddleware() {
  * Create standalone health check server
  */
 export function createHealthCheckServer(port: number = 9090): http.Server {
-  const server = http.createServer(createHealthCheckMiddleware());
+  const middleware = createHealthCheckMiddleware();
+
+  // Wrap middleware to work with http.createServer (2-param signature)
+  const server = http.createServer(async (req, res) => {
+    await middleware(req, res, () => {
+      // No-op next function for standalone server
+      res.statusCode = 404;
+      res.end(JSON.stringify({ error: 'Not Found' }));
+    });
+  });
 
   server.listen(port, () => {
     console.log(`🏥 Health check server listening on port ${port}`);

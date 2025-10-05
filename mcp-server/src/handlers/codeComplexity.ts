@@ -35,7 +35,7 @@ import { logEvent } from '../middleware/eventLogger.js';
 //
 // This consolidation reduces token usage by ~6,000 tokens while maintaining 100% functionality.
 // All deprecated tools have been removed as of Phase 1 Tool Consolidation completion.
-const CODE_COMPLEXITY_TOOLS = [
+const CODE_COMPLEXITY_TOOLS: any[] = [
   // All 16 deprecated complexity tools have been removed and consolidated into 3 unified tools
   // registered directly in server.ts (complexity_analyze, complexity_insights, complexity_manage)
 ];
