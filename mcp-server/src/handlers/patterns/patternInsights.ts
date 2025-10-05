@@ -384,9 +384,9 @@ async function getPatternRecommendations(options: any): Promise<any> {
  * Generate summary for alerts
  */
 function generateAlertsSummary(alerts: any[]): any {
-  const severityCount = {};
-  const statusCount = {};
-  const patternTypeCount = {};
+  const severityCount: Record<string, number> = {};
+  const statusCount: Record<string, number> = {};
+  const patternTypeCount: Record<string, number> = {};
 
   for (const alert of alerts) {
     severityCount[alert.severity] = (severityCount[alert.severity] || 0) + 1;
