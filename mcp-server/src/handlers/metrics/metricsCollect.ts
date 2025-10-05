@@ -71,7 +71,7 @@ export async function handleMetricsCollect(args: any): Promise<any> {
     await logEvent({
       actor: 'ai',
       event_type: 'metrics_collection_consolidated',
-      status: 'info',
+      status: 'closed',
       metadata: {
         scope,
         target,

@@ -16,8 +16,6 @@
  */
 
 import { db } from '../config/database.js';
-import { logEvent } from '../middleware/eventLogger.js';
-import { getCurrentSession } from './sessionManager.js';
 
 // Aggregation Configuration
 export interface MetricsAggregationConfig {
@@ -364,8 +362,6 @@ export class MetricsAggregationService {
    * Aggregate metrics by time period with specified granularity
    */
   async aggregateByTimePeriod(request: TimeSeriesAggregationRequest): Promise<TimeSeriesDataPoint[]> {
-    const startTime = Date.now();
-    
     try {
       console.log(`📈 Aggregating time series for project ${request.projectId.substring(0, 8)}...`);
 
@@ -854,10 +850,10 @@ export class MetricsAggregationService {
   }
 
   private async processTimeSeriesResults(
-    rows: any[], 
-    request: TimeSeriesAggregationRequest
+    rows: any[],
+    _request: TimeSeriesAggregationRequest
   ): Promise<TimeSeriesDataPoint[]> {
-    
+
     return rows.map(row => ({
       timestamp: new Date(row.time_bucket),
       value: parseFloat(row.avg_value) || 0,
@@ -927,17 +923,17 @@ export class MetricsAggregationService {
   }
 
   // Additional helper methods for team metrics, health aggregation, etc.
-  private async aggregateProductivityMetrics(request: TeamMetricsRequest): Promise<AggregatedMetric[]> {
+  private async aggregateProductivityMetrics(_request: TeamMetricsRequest): Promise<AggregatedMetric[]> {
     // Implementation for productivity metrics aggregation
     return [];
   }
 
-  private async aggregateHealthMetrics(request: TeamMetricsRequest): Promise<AggregatedMetric[]> {
+  private async aggregateHealthMetrics(_request: TeamMetricsRequest): Promise<AggregatedMetric[]> {
     // Implementation for health metrics aggregation
     return [];
   }
 
-  private async aggregateCollaborationMetrics(request: TeamMetricsRequest): Promise<AggregatedMetric[]> {
+  private async aggregateCollaborationMetrics(_request: TeamMetricsRequest): Promise<AggregatedMetric[]> {
     // Implementation for collaboration metrics aggregation
     return [];
   }
@@ -958,7 +954,7 @@ export class MetricsAggregationService {
     return result.rows[0] || { name: 'Unknown Project' };
   }
 
-  private async calculateExecutiveCoreMetrics(request: ExecutiveSummaryRequest): Promise<any> {
+  private async calculateExecutiveCoreMetrics(_request: ExecutiveSummaryRequest): Promise<any> {
     // Implementation for calculating core executive metrics
     return {
       codeVelocity: { current: 0, change: 0, trend: 'stable' },
@@ -968,7 +964,7 @@ export class MetricsAggregationService {
     };
   }
 
-  private calculateOverallScores(coreMetrics: any): any {
+  private calculateOverallScores(_coreMetrics: any): any {
     return {
       health: 75,
       velocity: 80,
@@ -978,7 +974,7 @@ export class MetricsAggregationService {
     };
   }
 
-  private async performRiskAssessment(request: ExecutiveSummaryRequest): Promise<any> {
+  private async performRiskAssessment(_request: ExecutiveSummaryRequest): Promise<any> {
     return {
       level: 'medium' as const,
       factors: ['Technical debt accumulation', 'Velocity decline'],
@@ -986,7 +982,7 @@ export class MetricsAggregationService {
     };
   }
 
-  private async generateForecasts(request: ExecutiveSummaryRequest): Promise<any> {
+  private async generateForecasts(_request: ExecutiveSummaryRequest): Promise<any> {
     return {
       velocityForecast: { nextMonth: 85, confidence: 0.7 },
       qualityForecast: { nextMonth: 88, confidence: 0.8 },
@@ -994,7 +990,7 @@ export class MetricsAggregationService {
     };
   }
 
-  private async generateRecommendations(request: ExecutiveSummaryRequest, coreMetrics: any, risks: any): Promise<any> {
+  private async generateRecommendations(_request: ExecutiveSummaryRequest, _coreMetrics: any, _risks: any): Promise<any> {
     return {
       immediate: ['Address critical alerts', 'Review high-risk files'],
       shortTerm: ['Implement automated testing', 'Refactor complex components'],
@@ -1065,7 +1061,7 @@ export class MetricsAggregationService {
     }
   }
 
-  private fillTimeSeriesGaps(dataPoints: TimeSeriesDataPoint[], request: TimeSeriesAggregationRequest): void {
+  private fillTimeSeriesGaps(_dataPoints: TimeSeriesDataPoint[], _request: TimeSeriesAggregationRequest): void {
     // Implementation for filling time series gaps with interpolated values
     // This would analyze the time series and fill missing periods with interpolated data
   }

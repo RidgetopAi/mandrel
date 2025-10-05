@@ -252,9 +252,8 @@ export class NamingHandler {
       const commonPatterns = new Map<string, number>();
 
       patterns.rows.forEach(row => {
-        const _name = row.canonical_name;
-        const convention = typeof row.naming_convention === 'string' 
-          ? JSON.parse(row.naming_convention) 
+        const convention = typeof row.naming_convention === 'string'
+          ? JSON.parse(row.naming_convention)
           : row.naming_convention;
 
         // Track patterns

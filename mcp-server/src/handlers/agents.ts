@@ -212,7 +212,7 @@ export class AgentsHandler {
                     console.log(`🔍 Resolved agent "${assignedTo}" to ID: ${assignedToId}`);
                 } else {
                     console.log(`⚠️  Agent "${assignedTo}" not found, leaving unassigned`);
-                    assignedToId = null;
+                    assignedToId = undefined;
                 }
             }
 
@@ -222,7 +222,7 @@ export class AgentsHandler {
                     createdById = agentResult.rows[0].id;
                     console.log(`🔍 Resolved creator "${createdBy}" to ID: ${createdById}`);
                 } else {
-                    createdById = null;
+                    createdById = undefined;
                 }
             }
 

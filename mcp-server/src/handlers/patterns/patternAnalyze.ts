@@ -90,7 +90,7 @@ export async function handlePatternAnalyze(args: any): Promise<any> {
     await logEvent({
       actor: 'ai',
       event_type: 'pattern_analysis_consolidated',
-      status: 'info',
+      status: 'closed',
       metadata: {
         target,
         action,
@@ -293,8 +293,6 @@ async function analyzeCommit(action: string, options: any): Promise<any> {
  */
 async function analyzeGit(action: string, options: any): Promise<any> {
   const {
-    enableRealTimeTracking = true,
-    trackingIntervalMs = 30000,
     patternTypes = ['all'],
     minConfidence = 0.6,
     includeMetadata = true,

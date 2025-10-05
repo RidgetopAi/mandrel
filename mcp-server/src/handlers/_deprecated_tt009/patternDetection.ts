@@ -14,8 +14,7 @@
  * - Integration with existing AIDIS tools
  */
 
-import { 
-  PatternDetector,
+import {
   startPatternDetection,
   stopPatternDetection,
   detectPatterns,
@@ -714,7 +713,6 @@ export class PatternDetectionHandler {
       const metrics = getPatternDetectionMetrics();
 
       // Get service status from PatternDetector
-      const _detector = PatternDetector.getInstance();
       const status = {
         isActive: true, // This would come from detector status
         lastAnalysisTime: metrics.lastPerformanceCheck,

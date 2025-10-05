@@ -66,7 +66,6 @@ export class GitTracker {
   private pollingTimer: NodeJS.Timeout | null = null;
   private watchers: Map<string, () => void> = new Map();
   private status: GitTrackingStatus;
-  private lastCommitHashes: Set<string> = new Set();
 
   private constructor(config: Partial<GitTrackingConfig> = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config };
@@ -229,8 +228,6 @@ export class GitTracker {
           correlationTriggered: false
         };
       }
-
-      const projectId = sessionResult.rows[0].project_id;
 
       // Check for new commits using GitHandler
       const result = await GitHandler.trackRealtimeGitActivity();

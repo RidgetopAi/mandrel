@@ -147,7 +147,7 @@ export class HealthCheckService {
         await fs.writeFile(testFile, 'health check test');
 
         // Test read
-        const content = await fs.readFile(testFile, 'utf-8');
+        await fs.readFile(testFile, 'utf-8');
 
         // Test delete
         await fs.unlink(testFile);

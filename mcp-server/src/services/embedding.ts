@@ -11,7 +11,7 @@
  * 3. Mock embeddings (development/testing)
  */
 
-import { pipeline, Pipeline } from '@xenova/transformers';
+import { pipeline } from '@xenova/transformers';
 
 // Error types for better error handling
 export enum EmbeddingErrorType {
@@ -80,7 +80,6 @@ export class EmbeddingService {
   private metrics: EmbeddingMetrics;
   private maxTextLength: number = 8000; // Reasonable limit for embedding models
   private modelInitialized: boolean = false;
-  private modelInitializationPromise: Promise<any> | null = null;
 
   constructor() {
     this.model = process.env.EMBEDDING_MODEL || 'text-embedding-ada-002';
