@@ -16,7 +16,6 @@
  */
 
 import { db } from '../config/database.js';
-import { logEvent } from '../middleware/eventLogger.js';
 
 // Correlation Configuration
 export interface MetricsCorrelationConfig {
@@ -412,8 +411,6 @@ export class MetricsCorrelationEngine {
    * Detect leading indicators for a target metric
    */
   async detectLeadingIndicators(request: LeadingIndicatorRequest): Promise<LeadingIndicator[]> {
-    const startTime = Date.now();
-    
     try {
       console.log(`🔮 Detecting leading indicators for ${request.targetMetric.type}...`);
 
@@ -474,8 +471,6 @@ export class MetricsCorrelationEngine {
    * Identify performance drivers for an outcome metric
    */
   async identifyPerformanceDrivers(request: PerformanceDriverRequest): Promise<PerformanceDriver[]> {
-    const startTime = Date.now();
-    
     try {
       console.log(`⚡ Identifying performance drivers for ${request.outcomeMetric.type}...`);
 
@@ -531,8 +526,6 @@ export class MetricsCorrelationEngine {
    * Find metric relationships across the project
    */
   async findMetricRelationships(request: RelationshipRequest): Promise<MetricRelationship[]> {
-    const startTime = Date.now();
-    
     try {
       console.log(`🕸️ Finding metric relationships for project ${request.projectId.substring(0, 8)}...`);
 
@@ -590,8 +583,6 @@ export class MetricsCorrelationEngine {
    * Predict metric trends using historical data
    */
   async predictMetricTrends(request: TrendPredictionRequest): Promise<TrendPrediction> {
-    const startTime = Date.now();
-    
     try {
       console.log(`📈 Predicting trends for ${request.metricType}...`);
 
@@ -940,9 +931,9 @@ export class MetricsCorrelationEngine {
   // Additional helper methods for leading indicators, performance drivers, etc.
   
   private async performLagAnalysis(
-    data: Array<{ timestamp: Date; value1: number; value2: number }>,
-    correlationType: string,
-    maxLag: number
+    _data: Array<{ timestamp: Date; value1: number; value2: number }>,
+    _correlationType: string,
+    _maxLag: number
   ): Promise<any> {
     // Implementation for lag analysis
     return {
@@ -952,9 +943,9 @@ export class MetricsCorrelationEngine {
   }
 
   private async calculateLeadingCorrelation(
-    candidateData: any[],
-    targetData: any[],
-    leadTime: number
+    _candidateData: any[],
+    _targetData: any[],
+    _leadTime: number
   ): Promise<{ coefficient: number; pValue: number }> {
     // Implementation for leading correlation calculation
     return { coefficient: 0, pValue: 1 };
@@ -965,8 +956,8 @@ export class MetricsCorrelationEngine {
     target: any,
     leadTime: number,
     correlation: any,
-    candidateData: any[],
-    targetData: any[]
+    _candidateData: any[],
+    _targetData: any[]
   ): Promise<LeadingIndicator> {
     // Implementation for creating leading indicator
     return {
@@ -1005,7 +996,7 @@ export class MetricsCorrelationEngine {
     return result.rows;
   }
 
-  private async calculateImpactCorrelation(candidateData: any[], outcomeData: any[]): Promise<number> {
+  private async calculateImpactCorrelation(_candidateData: any[], _outcomeData: any[]): Promise<number> {
     // Simplified impact correlation calculation
     return 0.5;
   }
@@ -1014,8 +1005,8 @@ export class MetricsCorrelationEngine {
     candidate: any,
     outcome: any,
     correlation: number,
-    candidateData: any[],
-    outcomeData: any[]
+    _candidateData: any[],
+    _outcomeData: any[]
   ): Promise<PerformanceDriver> {
     return {
       driverMetric: { type: candidate.metricType, scope: candidate.metricScope, unit: 'units' },
@@ -1052,10 +1043,10 @@ export class MetricsCorrelationEngine {
   }
 
   private async calculateQuickCorrelation(
-    metric1: any,
-    metric2: any,
-    projectId: string,
-    timeframe: any
+    _metric1: any,
+    _metric2: any,
+    _projectId: string,
+    _timeframe: any
   ): Promise<{ coefficient: number; pValue: number }> {
     // Simplified quick correlation calculation
     return { coefficient: 0.4, pValue: 0.03 };
@@ -1078,7 +1069,7 @@ export class MetricsCorrelationEngine {
     };
   }
 
-  private analyzeHistoricalTrend(data: any[]): any {
+  private analyzeHistoricalTrend(_data: any[]): any {
     // Simplified trend analysis
     return {
       direction: 'increasing' as const,
@@ -1089,16 +1080,16 @@ export class MetricsCorrelationEngine {
   }
 
   private async generatePredictions(
-    historicalData: any[],
-    forecastDays: number,
-    confidenceInterval: number,
-    includeSeasonality: boolean
+    _historicalData: any[],
+    _forecastDays: number,
+    _confidenceInterval: number,
+    _includeSeasonality: boolean
   ): Promise<any[]> {
     // Simplified prediction generation
     return [];
   }
 
-  private assessModelQuality(historicalData: any[], predictions: any[]): any {
+  private assessModelQuality(_historicalData: any[], _predictions: any[]): any {
     return {
       accuracy: 0.8,
       r2: 0.75,
@@ -1106,15 +1097,15 @@ export class MetricsCorrelationEngine {
     };
   }
 
-  private assessTrendRisks(historicalTrend: any, predictions: any[]): string[] {
+  private assessTrendRisks(_historicalTrend: any, _predictions: any[]): string[] {
     return ['Market volatility', 'Resource constraints'];
   }
 
   private generateTrendInsights(
     metricType: string,
-    historicalTrend: any,
-    predictions: any[],
-    riskFactors: string[]
+    _historicalTrend: any,
+    _predictions: any[],
+    _riskFactors: string[]
   ): any {
     return {
       implications: [`${metricType} is trending upward`],
