@@ -646,7 +646,7 @@ export class SessionManagementHandler {
         };
       }
 
-      // Get session details with project info (TS006-2: includes token columns, TS007-2: includes activity columns)
+      // Get session details with project info (TS006-2: includes token columns, TS007-2: includes activity columns, Phase 2: enhanced fields)
       const result = await db.query(`
         SELECT
           s.id,
@@ -663,6 +663,15 @@ export class SessionManagementHandler {
           s.tasks_updated,
           s.tasks_completed,
           s.contexts_created,
+          s.session_goal,
+          s.tags,
+          s.lines_added,
+          s.lines_deleted,
+          s.lines_net,
+          s.productivity_score,
+          s.ai_model,
+          s.files_modified_count,
+          s.activity_count,
           COALESCE((SELECT COUNT(*) FROM contexts c WHERE c.session_id = s.id), 0) as contexts_count,
           COALESCE((SELECT COUNT(*) FROM technical_decisions td WHERE td.session_id = s.id), 0) as decisions_count
         FROM sessions s
@@ -720,12 +729,14 @@ export class SessionManagementHandler {
   }
 
   /**
-   * Update session title and description
+   * Update session title, description, goal, and tags (Phase 2 enhanced)
    */
   static async updateSessionDetails(
-    sessionId: string, 
-    title?: string, 
-    description?: string
+    sessionId: string,
+    title?: string,
+    description?: string,
+    sessionGoal?: string,
+    tags?: string[]
   ): Promise<{
     success: boolean;
     session?: any;
@@ -734,10 +745,13 @@ export class SessionManagementHandler {
     try {
       console.log(`✏️  Updating session ${sessionId.substring(0, 8)}... with title: "${title || ''}" description: "${description ? description.substring(0, 50) + '...' : ''}"`);
 
+      // Validate Phase 2 parameters
+      this.validateSessionParams({ sessionGoal, tags, aiModel: undefined });
+
       // Verify session exists
       const sessionCheck = await db.query(`
-        SELECT id, title, description, project_id 
-        FROM sessions 
+        SELECT id, title, description, session_goal, tags, project_id
+        FROM sessions
         WHERE id = $1
       `, [sessionId]);
 
@@ -767,6 +781,18 @@ export class SessionManagementHandler {
         paramIndex++;
       }
 
+      if (sessionGoal !== undefined) {
+        updates.push(`session_goal = $${paramIndex}`);
+        values.push(sessionGoal.trim() || null);
+        paramIndex++;
+      }
+
+      if (tags !== undefined) {
+        updates.push(`tags = $${paramIndex}`);
+        values.push(tags);
+        paramIndex++;
+      }
+
       // Always update the updated_at timestamp and metadata
       updates.push(`updated_at = NOW()`);
       updates.push(`metadata = COALESCE(metadata, '{}') || $${paramIndex}`);
@@ -774,7 +800,9 @@ export class SessionManagementHandler {
         last_updated: new Date().toISOString(),
         updated_fields: {
           title: title !== undefined,
-          description: description !== undefined
+          description: description !== undefined,
+          session_goal: sessionGoal !== undefined,
+          tags: tags !== undefined
         },
         updated_by: 'session_management'
       }));
@@ -784,10 +812,10 @@ export class SessionManagementHandler {
       values.push(sessionId);
 
       const updateQuery = `
-        UPDATE sessions 
+        UPDATE sessions
         SET ${updates.join(', ')}
         WHERE id = $${paramIndex}
-        RETURNING id, title, description, project_id, updated_at
+        RETURNING id, title, description, session_goal, tags, project_id, updated_at
       `;
 
       const updateResult = await db.query(updateQuery, values);
@@ -816,9 +844,15 @@ export class SessionManagementHandler {
           new_title: updatedSession.title,
           previous_description: currentSession.description,
           new_description: updatedSession.description,
+          previous_goal: currentSession.session_goal,
+          new_goal: updatedSession.session_goal,
+          previous_tags: currentSession.tags,
+          new_tags: updatedSession.tags,
           fields_updated: {
             title: title !== undefined,
-            description: description !== undefined
+            description: description !== undefined,
+            session_goal: sessionGoal !== undefined,
+            tags: tags !== undefined
           }
         },
         tags: ['session', 'update', 'management']
@@ -832,6 +866,8 @@ export class SessionManagementHandler {
           id: updatedSession.id,
           title: updatedSession.title,
           description: updatedSession.description,
+          session_goal: updatedSession.session_goal,
+          tags: updatedSession.tags,
           project_id: updatedSession.project_id,
           project_name: projectName,
           updated_at: updatedSession.updated_at
@@ -841,7 +877,7 @@ export class SessionManagementHandler {
 
     } catch (error) {
       console.error('❌ Session update error:', error);
-      
+
       // Log the error
       await logEvent({
         actor: 'ai',
@@ -851,7 +887,9 @@ export class SessionManagementHandler {
         metadata: {
           error: error instanceof Error ? error.message : 'Unknown error',
           attempted_title: title,
-          attempted_description: description
+          attempted_description: description,
+          attempted_goal: sessionGoal,
+          attempted_tags: tags
         },
         tags: ['session', 'update', 'error']
       });
@@ -893,6 +931,15 @@ export class SessionManagementHandler {
           s.tasks_updated,
           s.tasks_completed,
           s.contexts_created,
+          s.session_goal,
+          s.tags,
+          s.lines_added,
+          s.lines_deleted,
+          s.lines_net,
+          s.productivity_score,
+          s.ai_model,
+          s.files_modified_count,
+          s.activity_count,
           p.name as project_name,
           COALESCE((SELECT COUNT(*) FROM contexts c WHERE c.session_id = s.id), 0) as contexts_count,
           COALESCE((SELECT COUNT(*) FROM technical_decisions td WHERE td.session_id = s.id), 0) as decisions_count
@@ -951,15 +998,69 @@ export class SessionManagementHandler {
   }
 
   /**
-   * Create new session with custom title and project
+   * Validate Phase 2 session parameters
    */
-  static async createNewSession(title?: string, projectName?: string): Promise<{
+  private static validateSessionParams(params: {
+    sessionGoal?: string;
+    tags?: string[];
+    aiModel?: string;
+  }): void {
+    const { sessionGoal, tags, aiModel } = params;
+
+    // Validate tags
+    if (tags !== undefined) {
+      if (!Array.isArray(tags)) {
+        throw new Error('tags must be an array of strings');
+      }
+      tags.forEach((tag, index) => {
+        if (typeof tag !== 'string') {
+          throw new Error(`Tag at index ${index} must be a string`);
+        }
+        if (tag.trim().length === 0) {
+          throw new Error(`Tag at index ${index} cannot be empty`);
+        }
+        if (tag.length > 50) {
+          throw new Error(`Tag at index ${index} exceeds max length of 50 characters`);
+        }
+      });
+    }
+
+    // Validate sessionGoal
+    if (sessionGoal !== undefined && sessionGoal.length > 1000) {
+      throw new Error('sessionGoal must be 1000 characters or less');
+    }
+
+    // Validate aiModel
+    if (aiModel !== undefined) {
+      if (aiModel.trim().length === 0) {
+        throw new Error('aiModel cannot be empty');
+      }
+      if (aiModel.length > 100) {
+        throw new Error('aiModel must be 100 characters or less');
+      }
+    }
+  }
+
+  /**
+   * Create new session with custom title and project (Phase 2 enhanced)
+   */
+  static async createNewSession(
+    title?: string,
+    projectName?: string,
+    description?: string,
+    sessionGoal?: string,
+    tags?: string[],
+    aiModel?: string
+  ): Promise<{
     success: boolean;
     sessionId?: string;
     projectName?: string;
     message: string;
   }> {
     try {
+      // Validate Phase 2 parameters
+      this.validateSessionParams({ sessionGoal, tags, aiModel });
+
       let projectId = null;
 
       // Find project if specified
@@ -985,7 +1086,7 @@ export class SessionManagementHandler {
       const currentSessionId = await SessionTracker.getActiveSession();
       if (currentSessionId) {
         await db.query(`
-          UPDATE sessions 
+          UPDATE sessions
           SET ended_at = NOW(),
               metadata = COALESCE(metadata, '{}') || $1
           WHERE id = $2 AND ended_at IS NULL
@@ -995,17 +1096,31 @@ export class SessionManagementHandler {
         ]);
       }
 
-      // Create new session with title
-      const newSessionId = await SessionTracker.startSession(projectId || undefined, title);
+      // Create new session with all Phase 2 parameters
+      const newSessionId = await SessionTracker.startSession(
+        projectId || undefined,
+        title,
+        description,
+        sessionGoal,
+        tags,
+        aiModel
+      );
 
       // Update with custom metadata
-      if (title) {
+      if (title || description || sessionGoal || tags || aiModel) {
         await db.query(`
-          UPDATE sessions 
+          UPDATE sessions
           SET metadata = COALESCE(metadata, '{}') || $1
           WHERE id = $2
         `, [
-          JSON.stringify({ custom_title: true, session_type: 'manual' }),
+          JSON.stringify({
+            custom_title: !!title,
+            session_type: 'manual',
+            phase2_enhanced: true,
+            has_goal: !!sessionGoal,
+            has_tags: tags && tags.length > 0,
+            has_ai_model: !!aiModel
+          }),
           newSessionId
         ]);
       }

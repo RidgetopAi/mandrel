@@ -2836,18 +2836,50 @@ class AIDISServer {
     }
 
     const session = result.session!;
-    const statusText = `📋 Current Session Status\n\n` +
-      `🆔 Session ID: ${session.id.substring(0, 8)}...\n` +
-      `🏷️  Type: ${session.type}\n` +
-      `🏢 Project: ${session.project_name}\n` +
-      `⏰ Started: ${new Date(session.started_at).toLocaleString()}\n` +
-      `⏱️  Duration: ${session.duration_minutes} minutes\n` +
-      `📝 Contexts: ${session.contexts_created}\n` +
-      `📋 Tasks: ${session.tasks_created || 0} created, ${session.tasks_updated || 0} updated, ${session.tasks_completed || 0} completed\n` +
-      `🎯 Decisions: ${session.decisions_created}\n` +
-      `🪙 Tokens: ${session.total_tokens?.toLocaleString() || 0} (↓${session.input_tokens?.toLocaleString() || 0} ↑${session.output_tokens?.toLocaleString() || 0})\n` +
-      (session.metadata.title ? `📌 Title: "${session.metadata.title}"\n` : '') +
-      (session.metadata.assigned_manually ? `🔧 Manually assigned at: ${new Date(session.metadata.assigned_at).toLocaleString()}\n` : '');
+    const statusLines: string[] = [];
+    statusLines.push('📋 Current Session Status\n');
+    statusLines.push(`🆔 Session ID: ${session.id.substring(0, 8)}...`);
+    statusLines.push(`🏷️  Type: ${session.type}`);
+    statusLines.push(`🏢 Project: ${session.project_name}`);
+    statusLines.push(`⏰ Started: ${new Date(session.started_at).toLocaleString()}`);
+    statusLines.push(`⏱️  Duration: ${session.duration_minutes} minutes`);
+    statusLines.push(`📝 Contexts: ${session.contexts_created}`);
+    statusLines.push(`📋 Tasks: ${session.tasks_created || 0} created, ${session.tasks_updated || 0} updated, ${session.tasks_completed || 0} completed`);
+    statusLines.push(`🎯 Decisions: ${session.decisions_created}`);
+    statusLines.push(`🪙 Tokens: ${session.total_tokens?.toLocaleString() || 0} (↓${session.input_tokens?.toLocaleString() || 0} ↑${session.output_tokens?.toLocaleString() || 0})`);
+
+    // Phase 2 enhanced fields (conditional display)
+    if (session.session_goal) {
+      statusLines.push(`📋 Goal: ${session.session_goal}`);
+    }
+    if (session.tags && session.tags.length > 0) {
+      statusLines.push(`🏷️  Tags: ${session.tags.join(', ')}`);
+    }
+    if (session.ai_model) {
+      statusLines.push(`🤖 AI Model: ${session.ai_model}`);
+    }
+    if (session.files_modified_count > 0) {
+      statusLines.push(`📁 Files Modified: ${session.files_modified_count}`);
+    }
+    if (session.lines_added !== undefined || session.lines_deleted !== undefined) {
+      statusLines.push(`📊 LOC: +${session.lines_added || 0} -${session.lines_deleted || 0} (net: ${session.lines_net || 0})`);
+    }
+    if (session.productivity_score !== null && session.productivity_score !== undefined) {
+      statusLines.push(`⭐ Productivity Score: ${session.productivity_score}/100`);
+    }
+    if (session.activity_count > 0) {
+      statusLines.push(`🔄 Activities: ${session.activity_count}`);
+    }
+
+    // Original metadata fields
+    if (session.metadata.title) {
+      statusLines.push(`📌 Title: "${session.metadata.title}"`);
+    }
+    if (session.metadata.assigned_manually) {
+      statusLines.push(`🔧 Manually assigned at: ${new Date(session.metadata.assigned_at).toLocaleString()}`);
+    }
+
+    const statusText = statusLines.join('\n');
 
     return {
       content: [
@@ -2860,13 +2892,20 @@ class AIDISServer {
   }
 
   /**
-   * Handle new session creation
+   * Handle new session creation (Phase 2 enhanced)
    */
   private async handleSessionNew(args: any) {
     console.log(`🆕 New session request: title="${args.title}", project="${args.projectName}"`);
-    
-    const result = await SessionManagementHandler.createNewSession(args.title, args.projectName);
-    
+
+    const result = await SessionManagementHandler.createNewSession(
+      args.title,
+      args.projectName,
+      args.description,
+      args.sessionGoal,
+      args.tags,
+      args.aiModel
+    );
+
     return {
       content: [
         {
@@ -2878,11 +2917,11 @@ class AIDISServer {
   }
 
   /**
-   * Handle session update (title and description)
+   * Handle session update (title, description, goal, and tags - Phase 2 enhanced)
    */
   private async handleSessionUpdate(args: any) {
     console.log(`✏️  Session update request: session="${args.sessionId?.substring(0, 8)}...", title="${args.title || 'unchanged'}", description="${args.description ? args.description.substring(0, 50) + '...' : 'unchanged'}"`);
-    
+
     if (!args.sessionId) {
       return {
         content: [
@@ -2894,23 +2933,25 @@ class AIDISServer {
       };
     }
 
-    if (!args.title && !args.description) {
+    if (!args.title && !args.description && !args.sessionGoal && !args.tags) {
       return {
         content: [
           {
             type: 'text',
-            text: '❌ At least one field (title or description) must be provided for update'
+            text: '❌ At least one field (title, description, sessionGoal, or tags) must be provided for update'
           }
         ]
       };
     }
-    
+
     const result = await SessionManagementHandler.updateSessionDetails(
-      args.sessionId, 
-      args.title, 
-      args.description
+      args.sessionId,
+      args.title,
+      args.description,
+      args.sessionGoal,
+      args.tags
     );
-    
+
     if (!result.success) {
       return {
         content: [
@@ -2925,15 +2966,23 @@ class AIDISServer {
     const session = result.session!;
     let updateText = `✅ Session Updated Successfully\n\n`;
     updateText += `🆔 Session ID: ${session.id.substring(0, 8)}...\n`;
-    
+
     if (session.title) {
       updateText += `📌 Title: "${session.title}"\n`;
     }
-    
+
     if (session.description) {
       updateText += `📝 Description: ${session.description.length > 100 ? session.description.substring(0, 100) + '...' : session.description}\n`;
     }
-    
+
+    if (session.session_goal) {
+      updateText += `📋 Goal: ${session.session_goal}\n`;
+    }
+
+    if (session.tags && session.tags.length > 0) {
+      updateText += `🏷️  Tags: ${session.tags.join(', ')}\n`;
+    }
+
     updateText += `🏢 Project: ${session.project_name || 'No project assigned'}\n`;
     updateText += `⏰ Updated: ${new Date(session.updated_at).toLocaleString()}`;
 
@@ -2978,40 +3027,76 @@ class AIDISServer {
     }
 
     const session = result.session!;
-    let detailsText = `📋 Session Details\n\n`;
-    detailsText += `🆔 Session ID: ${session.id.substring(0, 8)}...\n`;
-    
+    const details: string[] = [];
+    details.push('📋 Session Details\n');
+    details.push(`🆔 Session ID: ${session.id.substring(0, 8)}...`);
+
     if (session.title) {
-      detailsText += `📌 Title: "${session.title}"\n`;
+      details.push(`📌 Title: "${session.title}"`);
     } else {
-      detailsText += `📌 Title: (not set)\n`;
+      details.push(`📌 Title: (not set)`);
     }
-    
+
     if (session.description) {
-      detailsText += `📝 Description: ${session.description}\n`;
+      details.push(`📝 Description: ${session.description}`);
     } else {
-      detailsText += `📝 Description: (not set)\n`;
+      details.push(`📝 Description: (not set)`);
     }
-    
-    detailsText += `🏷️  Type: ${session.type}\n`;
-    detailsText += `🏢 Project: ${session.project_name}\n`;
-    detailsText += `⏰ Started: ${new Date(session.started_at).toLocaleString()}\n`;
-    
+
+    details.push(`🏷️  Type: ${session.type}`);
+    details.push(`🏢 Project: ${session.project_name}`);
+    details.push(`⏰ Started: ${new Date(session.started_at).toLocaleString()}`);
+
     if (session.ended_at) {
-      detailsText += `🏁 Ended: ${new Date(session.ended_at).toLocaleString()}\n`;
+      details.push(`🏁 Ended: ${new Date(session.ended_at).toLocaleString()}`);
     }
-    
-    detailsText += `⏱️  Duration: ${session.duration_minutes} minutes\n`;
-    detailsText += `📝 Contexts: ${session.contexts_created}\n`;
-    detailsText += `🎯 Decisions: ${session.decisions_created}\n`;
-    
+
+    details.push(`⏱️  Duration: ${session.duration_minutes} minutes`);
+    details.push(`📝 Contexts: ${session.contexts_created}`);
+    details.push(`🎯 Decisions: ${session.decisions_created}`);
+
     if (session.context_summary) {
-      detailsText += `\n📄 Summary: ${session.context_summary}\n`;
+      details.push(`\n📄 Summary: ${session.context_summary}`);
     }
-    
+
+    // Phase 2 Enhanced Fields
+    if (session.session_goal || session.tags?.length > 0 || session.productivity_score !== null) {
+      details.push('');
+      details.push('## 📊 Session Metrics (Phase 2)');
+      if (session.session_goal) {
+        details.push(`📋 **Goal**: ${session.session_goal}`);
+      }
+      if (session.tags && session.tags.length > 0) {
+        details.push(`🏷️  **Tags**: ${session.tags.join(', ')}`);
+      }
+      if (session.ai_model) {
+        details.push(`🤖 **AI Model**: ${session.ai_model}`);
+      }
+      if (session.files_modified_count > 0) {
+        details.push(`📁 **Files Modified**: ${session.files_modified_count}`);
+        details.push(`   ℹ️  _Use getSessionFiles("${args.sessionId}") to see file list_`);
+      }
+      if (session.lines_added !== undefined || session.lines_deleted !== undefined) {
+        details.push(`📊 **Lines of Code**:`);
+        details.push(`   • Added: ${session.lines_added || 0}`);
+        details.push(`   • Deleted: ${session.lines_deleted || 0}`);
+        details.push(`   • Net Change: ${session.lines_net || 0}`);
+      }
+      if (session.productivity_score !== null && session.productivity_score !== undefined) {
+        details.push(`⭐ **Productivity Score**: ${session.productivity_score}/100`);
+        details.push(`   ℹ️  _Recalculate with calculateProductivityScore("${args.sessionId}")_`);
+      }
+      if (session.activity_count > 0) {
+        details.push(`🔄 **Activity Events**: ${session.activity_count}`);
+        details.push(`   ℹ️  _Use getSessionActivities("${args.sessionId}") to see timeline_`);
+      }
+    }
+
     if (session.updated_at && session.updated_at !== session.started_at) {
-      detailsText += `\n🔄 Last Updated: ${new Date(session.updated_at).toLocaleString()}`;
+      details.push(`\n🔄 Last Updated: ${new Date(session.updated_at).toLocaleString()}`);
     }
+
+    const detailsText = details.join('\n');
 
     return {
       content: [
