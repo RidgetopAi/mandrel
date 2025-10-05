@@ -361,7 +361,7 @@ export class TasksHandler {
         const client = await this.pool.connect();
         try {
             let groupColumn: string;
-            let extractFunction: string = '';
+            let _extractFunction: string = '';
 
             switch (groupBy) {
                 case 'phase':

@@ -1019,7 +1019,7 @@ export class PatternAnalysisHandler {
       // Build dynamic filter conditions
       let filters = [`pds.project_id = $1`, `pi.is_active = TRUE`];
       let paramCount = 1;
-      const queryParams = [projectId];
+      const queryParams: any[] = [projectId];
 
       // Insight type filter
       if (params.insightTypes && params.insightTypes.length > 0) {

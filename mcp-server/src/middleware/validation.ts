@@ -8,7 +8,6 @@ import { z } from 'zod';
 
 // Base validation schemas
 const baseMetadata = z.record(z.any()).optional();
-const baseId = z.string().uuid().optional();
 const baseName = z.string().min(1).max(255);
 const baseDescription = z.string().max(2000).optional();
 const baseTags = z.array(z.string().max(50)).max(20).optional();

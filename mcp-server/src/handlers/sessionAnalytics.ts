@@ -996,7 +996,7 @@ export class SessionManagementHandler {
       }
 
       // Create new session with title
-      const newSessionId = await SessionTracker.startSession(projectId, title);
+      const newSessionId = await SessionTracker.startSession(projectId || undefined, title);
 
       // Update with custom metadata
       if (title) {

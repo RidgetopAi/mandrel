@@ -445,7 +445,7 @@ export class AgentsHandler {
                     break;
                     
                 case 'defer':
-                    await this.updateTaskStatus(taskId, 'todo', null, {
+                    await this.updateTaskStatus(taskId, 'todo', undefined, {
                         conflict_resolution: 'deferred',
                         defer_reason: metadata.reason,
                         defer_until: metadata.deferUntil,

@@ -21,7 +21,7 @@ import { getCurrentSession } from '../../services/sessionManager.js';
 import {
   startComplexityTracking,
   stopComplexityTracking,
-  getComplexityAlerts,
+  
   getComplexityTrackingPerformance
 } from '../../services/complexityTracker.js';
 import {
@@ -304,7 +304,6 @@ async function getAlertsFromService(args: any): Promise<any> {
   const {
     projectId,
     alertTypes,
-    complexityTypes,
     severities,
     statuses = ['open', 'acknowledged'],
     limit = 25,
@@ -666,18 +665,18 @@ async function getPerformanceData(performanceParams: any): Promise<any> {
       ...trackerStats,
       // Add mock performance data structure to match expected interface
       totalAnalyses: trackerStats.totalAnalyses || 0,
-      averageAnalysisTime: trackerStats.avgAnalysisTime || 0,
-      successfulAnalyses: trackerStats.successfulAnalyses || 0,
-      failedAnalyses: trackerStats.failedAnalyses || 0,
-      successRate: trackerStats.successRate || 1.0,
-      memoryUsage: trackerStats.memoryUsageMB || 0,
-      cpuUtilization: trackerStats.cpuUtilization || 0,
-      diskUsage: trackerStats.diskUsage || 0,
-      activeConnections: trackerStats.activeConnections || 0,
-      analysisCompleteness: trackerStats.analysisCompleteness || 1.0,
-      confidenceScore: trackerStats.confidenceScore || 1.0,
-      dataFreshnessHours: trackerStats.dataFreshnessHours || 0,
-      coveragePercentage: trackerStats.coveragePercentage || 100,
+      averageAnalysisTime: trackerStats.averageExecutionTime || 0,
+      successfulAnalyses: trackerStats.totalAnalyses || 0,
+      failedAnalyses: 0,
+      successRate: 1.0,
+      memoryUsage: 0,
+      cpuUtilization: 0,
+      diskUsage: 0,
+      activeConnections: 0,
+      analysisCompleteness: 1.0,
+      confidenceScore: 1.0,
+      dataFreshnessHours: 0,
+      coveragePercentage: 100,
       trends: performanceParams.includeHistory ? [] : undefined
     };
 

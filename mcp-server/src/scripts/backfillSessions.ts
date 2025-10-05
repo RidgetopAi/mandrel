@@ -11,7 +11,6 @@
  * - Comprehensive audit trails and reporting
  * - Integration with TS012 validation framework
  */
-import { db } from '../config/database.js';
 import { SessionMigrator } from '../services/sessionMigrator.js';
 import { writeFileSync } from 'fs';
 import { join } from 'path';

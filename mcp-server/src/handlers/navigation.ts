@@ -738,7 +738,7 @@ export class NavigationHandler {
     
     // First check if the tool exists in our catalog
     let toolExists = false;
-    for (const [category, tools] of Object.entries(this.toolCatalog)) {
+    for (const [_category, tools] of Object.entries(this.toolCatalog)) {
       if (tools.find(t => t.name === toolName)) {
         toolExists = true;
         break;

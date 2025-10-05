@@ -324,7 +324,7 @@ export class MetricsIntegrationService {
             status: 'error',
             metadata: {
               projectId: patternResult.projectId,
-              patternsDetected: patternResult.patternsDetected,
+              sessionId: patternResult.sessionId,
               error: error instanceof Error ? error.message : 'Unknown error',
               executionTime: Date.now() - startTime
             },

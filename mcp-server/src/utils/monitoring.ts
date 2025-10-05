@@ -208,8 +208,8 @@ class SimpleMonitoring {
     
     try {
       // Database health check
-      const { pool } = await import('../config/database.js');
-      await pool.query('SELECT 1');
+      const { db } = await import('../config/database.js');
+      await db.query('SELECT 1');
       this.recordHealthCheck('database', 'healthy', 'Database connection OK', Date.now() - startTime);
     } catch (error) {
       const err = error as Error;

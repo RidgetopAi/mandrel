@@ -53,30 +53,6 @@ const HTTP_PORT = process.env.AIDIS_HTTP_PORT || 8080;
 const MAX_RETRIES = 3;
 const INITIAL_RETRY_DELAY = 1000;
 
-/**
- * Check if another AIDIS core service is already running
- */
-async function _isAidisCoreRunning(): Promise<boolean> {
-  try {
-    return new Promise((resolve) => {
-      const req = http.get(`http://localhost:${HTTP_PORT}/healthz`, (res) => {
-        let data = '';
-        res.on('data', (chunk) => data += chunk);
-        res.on('end', () => {
-          resolve(data.includes('"status":"healthy"'));
-        });
-      });
-      req.on('error', () => resolve(false));
-      req.setTimeout(2000, () => {
-        req.destroy();
-        resolve(false);
-      });
-    });
-  } catch {
-    return false;
-  }
-}
-
 // Enable debug logging if needed
 if (process.env.AIDIS_DEBUG) {
   console.log('🐛 AIDIS Core debug logging enabled:', process.env.AIDIS_DEBUG);
@@ -236,12 +212,10 @@ class RetryHandler {
 class AIDISCoreServer {
   private httpServer: http.Server | null = null;
   private circuitBreaker: CircuitBreaker;
-  private _singleton: ProcessSingleton;
   private dbHealthy: boolean = false;
 
   constructor() {
     this.circuitBreaker = new CircuitBreaker();
-    this._singleton = new ProcessSingleton();
     
     this.setupHttpServer();
   }
@@ -560,10 +534,6 @@ class AIDISCoreServer {
     return AIDIS_TOOL_DEFINITIONS.map(tool => tool.name);
   }
 
-  private _getToolDescription(toolName: string): string {
-    const tool = AIDIS_TOOL_DEFINITIONS.find(t => t.name === toolName);
-    return tool?.description || 'AIDIS tool';
-  }
 
   // Tool handler methods (copied from original server.ts)
   private async handlePing(args: { message?: string }) {
@@ -640,7 +610,7 @@ class AIDISCoreServer {
           type: 'text',
           text: `📝 Context stored successfully!\n\n` +
                 `🆔 ID: ${result.id}\n` +
-                `📝 Type: ${result.type}\n` +
+                `📝 Type: ${result.contextType}\n` +
                 `📏 Content: ${result.content.substring(0, 100)}${result.content.length > 100 ? '...' : ''}\n` +
                 `🏷️  Tags: ${result.tags.length > 0 ? result.tags.join(', ') : 'none'}\n` +
                 `📊 Relevance: ${result.relevanceScore || 'auto-calculated'}\n` +
@@ -748,11 +718,12 @@ class AIDISCoreServer {
   }
 
   private async handleNamingCheck(args: any) {
-    return namingHandler.checkName(
-      args.name,
-      args.type,
-      args.sessionId || 'default-session'
-    );
+    return namingHandler.checkNameConflicts({
+      projectId: args.projectId,
+      entityType: args.type,
+      canonicalName: args.name,
+      alternateNames: args.alternateNames
+    });
   }
 
   private async handleNamingSuggest(args: any) {
@@ -814,10 +785,10 @@ class AIDISCoreServer {
   }
 
   private async handleAgentStatus(args: any) {
-    return agentsHandler.getAgentStatus(
-      args.agentId,
-      args.sessionId || 'default-session'
-    );
+    // Get agent list and filter by agentId
+    const agents = await agentsHandler.listAgents(args.projectId);
+    const agent = agents.find(a => a.id === args.agentId || a.name === args.agentId);
+    return agent || { error: 'Agent not found' };
   }
 
   private async handleTaskCreate(args: any) {
@@ -840,12 +811,11 @@ class AIDISCoreServer {
   }
 
   private async handleTaskUpdate(args: any) {
-    return agentsHandler.updateTask(
+    return agentsHandler.updateTaskStatus(
       args.taskId,
       args.status,
-      args.progress,
-      args.sessionId || 'default-session',
-      args.result
+      args.assignedTo,
+      args.metadata || {}
     );
   }
 
@@ -931,31 +901,31 @@ class AIDISCoreServer {
   }
 
   private async handleAgentJoin(args: any) {
-    return agentsHandler.joinSession(
+    return agentsHandler.joinProject(
       args.agentId,
       args.sessionId,
-      args.currentSession || 'default-session'
+      args.projectId || await projectHandler.getCurrentProjectId('default-session')
     );
   }
 
   private async handleAgentLeave(args: any) {
-    return agentsHandler.leaveSession(
+    return agentsHandler.leaveProject(
       args.agentId,
-      args.sessionId || 'default-session'
+      args.sessionId || 'default-session',
+      args.projectId || await projectHandler.getCurrentProjectId('default-session')
     );
   }
 
   private async handleAgentSessions(args: any) {
-    return agentsHandler.getAgentSessions(
-      args.agentId,
-      args.sessionId || 'default-session'
+    return agentsHandler.getActiveAgentSessions(
+      args.projectId || await projectHandler.getCurrentProjectId('default-session')
     );
   }
 
   // Code analysis handlers
   private async handleCodeAnalyze(args: any) {
     const projectId = args.projectId || await projectHandler.getCurrentProjectId('default-session');
-    return codeAnalysisHandler.analyzeCode(
+    return codeAnalysisHandler.analyzeFile(
       projectId,
       args.filePath,
       args.fileContent,
@@ -1047,8 +1017,9 @@ class AIDISCoreServer {
   }
 
   private async handleCodeImpact(args: any) {
+    const projectId = await projectHandler.getCurrentProjectId('default-session');
     const impact = await codeAnalysisHandler.analyzeImpact(
-      await projectHandler.getCurrentProjectId('default-session'),
+      projectId || 'default-project',
       args.componentId
     );
 

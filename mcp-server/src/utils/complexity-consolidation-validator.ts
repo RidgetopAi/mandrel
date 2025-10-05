@@ -529,8 +529,8 @@ export function runCompatibilityTests(): {
 
   for (const test of tests) {
     try {
-      const newParams = test.mapper(test.oldParams);
-      const validation = validateParameterMapping(test.tool, test.oldParams, newParams);
+      const newParams = test.mapper(test.oldParams as any);
+      const validation = validateParameterMapping(test.tool, test.oldParams, newParams as any);
 
       if (validation.valid) {
         passed++;

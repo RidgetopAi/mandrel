@@ -13,13 +13,8 @@
 
 import { db } from '../../config/database.js';
 import { logEvent } from '../../middleware/eventLogger.js';
-import { getCurrentSession } from '../../services/sessionManager.js';
 import {
-  startMetricsCollection,
-  stopMetricsCollection,
   collectProjectMetrics as collectProjectMetricsService,
-  getMetricsCollectionPerformance,
-  MetricsCollectionResult
 } from '../../services/metricsCollector.js';
 
 /**
@@ -146,11 +141,12 @@ async function collectProjectMetrics(projectId: string, options: any): Promise<a
   console.log(`📊 Collecting project metrics for: ${projectId}`);
 
   // Use existing service - need to check correct function signature
-  return await collectProjectMetricsService(projectId, {
-    trigger,
+  return await collectProjectMetricsService(
+    projectId,
+    trigger as 'manual' | 'git_commit' | 'scheduled' | 'pattern_update' | 'session_end',
     startDate,
     endDate
-  });
+  );
 }
 
 /**

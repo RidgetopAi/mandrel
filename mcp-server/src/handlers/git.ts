@@ -17,7 +17,6 @@ import { SessionDetailService } from '../../../aidis-command/backend/dist/servic
 import { db } from '../config/database.js';
 import { logEvent } from '../middleware/eventLogger.js';
 import { getCurrentSession } from '../services/sessionManager.js';
-import { PatternDetector, detectPatterns, bufferCommitsForProcessing } from '../services/patternDetector.js';
 
 // The compiled gitService module exports both `GitService` and `default` in CommonJS format.
 // When imported from ESM (the MCP server), Node returns the module namespace object.
@@ -170,8 +169,8 @@ export class GitHandler {
         WHERE csl.session_id = $1
       `;
 
-      const queryParams = [sessionId];
-      
+      const queryParams: (string | number)[] = [sessionId];
+
       if (confidenceThreshold > 0) {
         commitsQuery += ` AND csl.confidence_score >= $2`;
         queryParams.push(confidenceThreshold);

@@ -13,9 +13,7 @@
  * Integration: Git tracking, pattern detection, development metrics
  */
 
-import { db } from '../config/database.js';
 import { logEvent } from '../middleware/eventLogger.js';
-import { getCurrentSession } from '../services/sessionManager.js';
 import {
   ComplexityTracker,
   startComplexityTracking,
