@@ -878,6 +878,21 @@ class AIDISServer {
       case 'session_details':
         return await this.handleSessionDetails(validatedArgs as any);
 
+      case 'session_record_activity':
+        return await this.handleSessionRecordActivity(validatedArgs as any);
+
+      case 'session_get_activities':
+        return await this.handleSessionGetActivities(validatedArgs as any);
+
+      case 'session_record_file_edit':
+        return await this.handleSessionRecordFileEdit(validatedArgs as any);
+
+      case 'session_get_files':
+        return await this.handleSessionGetFiles(validatedArgs as any);
+
+      case 'session_calculate_productivity':
+        return await this.handleSessionCalculateProductivity(validatedArgs as any);
+
       // Git Correlation Tools - DISABLED (Token Optimization 2025-10-01)
       // Reason: More than likely coming out, not currently needed
       // case 'git_session_commits':
@@ -3106,6 +3121,115 @@ class AIDISServer {
         }
       ]
     };
+  }
+
+  /**
+   * Handle session record activity (Phase 2D/2E)
+   */
+  private async handleSessionRecordActivity(args: any) {
+    const sessionId = args.sessionId as string;
+    const activityType = args.activityType as string;
+    const activityData = args.activityData || {};
+
+    if (!sessionId || !activityType) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: '❌ sessionId and activityType are required'
+          }
+        ]
+      };
+    }
+
+    return await SessionManagementHandler.recordSessionActivity(sessionId, activityType, activityData);
+  }
+
+  /**
+   * Handle session get activities (Phase 2D/2E)
+   */
+  private async handleSessionGetActivities(args: any) {
+    const sessionId = args.sessionId as string;
+    const activityType = args.activityType as string | undefined;
+    const limit = args.limit ? Number(args.limit) : 100;
+
+    if (!sessionId) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: '❌ sessionId is required'
+          }
+        ]
+      };
+    }
+
+    return await SessionManagementHandler.getSessionActivitiesHandler(sessionId, activityType, limit);
+  }
+
+  /**
+   * Handle session record file edit (Phase 2D/2E)
+   */
+  private async handleSessionRecordFileEdit(args: any) {
+    const sessionId = args.sessionId as string;
+    const filePath = args.filePath as string;
+    const linesAdded = Number(args.linesAdded);
+    const linesDeleted = Number(args.linesDeleted);
+    const source = (args.source || 'tool') as 'tool' | 'git' | 'manual';
+
+    if (!sessionId || !filePath || isNaN(linesAdded) || isNaN(linesDeleted)) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: '❌ sessionId, filePath, linesAdded, and linesDeleted are required'
+          }
+        ]
+      };
+    }
+
+    return await SessionManagementHandler.recordFileEdit(sessionId, filePath, linesAdded, linesDeleted, source);
+  }
+
+  /**
+   * Handle session get files (Phase 2D/2E)
+   */
+  private async handleSessionGetFiles(args: any) {
+    const sessionId = args.sessionId as string;
+
+    if (!sessionId) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: '❌ sessionId is required'
+          }
+        ]
+      };
+    }
+
+    return await SessionManagementHandler.getSessionFilesHandler(sessionId);
+  }
+
+  /**
+   * Handle session calculate productivity (Phase 2D/2E)
+   */
+  private async handleSessionCalculateProductivity(args: any) {
+    const sessionId = args.sessionId as string;
+    const configName = args.configName || 'default';
+
+    if (!sessionId) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: '❌ sessionId is required'
+          }
+        ]
+      };
+    }
+
+    return await SessionManagementHandler.calculateSessionProductivity(sessionId, configName);
   }
 
   // Git Correlation Handler Methods
