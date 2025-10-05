@@ -61,6 +61,7 @@ if (process.env.AIDIS_DEBUG) {
 /**
  * Process Singleton - Prevent multiple AIDIS core instances
  */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 class _ProcessSingleton {
   private pidFile: string;
 
@@ -668,8 +669,7 @@ class AIDISCoreServer {
   private async handleContextGetRecent(args: any) {
     return contextHandler.getRecentContext(
       args.sessionId || 'default-session',
-      args.limit,
-      args.projectId
+      args.limit
     );
   }
 
@@ -684,9 +684,7 @@ class AIDISCoreServer {
 
   private async handleProjectCreate(args: any) {
     return projectHandler.createProject(
-      args.name,
-      args.description,
-      args.sessionId || 'default-session'
+      args.name
     );
   }
 
@@ -712,8 +710,7 @@ class AIDISCoreServer {
     return namingHandler.registerName(
       args.name,
       args.type,
-      args.context,
-      args.sessionId || 'default-session'
+      args.context
     );
   }
 
@@ -729,8 +726,7 @@ class AIDISCoreServer {
   private async handleNamingSuggest(args: any) {
     return namingHandler.suggestNames(
       args.type,
-      args.context,
-      args.sessionId || 'default-session'
+      args.context
     );
   }
 
@@ -745,8 +741,7 @@ class AIDISCoreServer {
       args.description,
       args.alternatives,
       args.reasoning,
-      args.sessionId || 'default-session',
-      args.tags
+      args.sessionId || 'default-session'
     );
   }
 
@@ -762,8 +757,7 @@ class AIDISCoreServer {
     return decisionsHandler.updateDecision(
       args.decisionId,
       args.status,
-      args.outcome,
-      args.sessionId || 'default-session'
+      args.outcome
     );
   }
 

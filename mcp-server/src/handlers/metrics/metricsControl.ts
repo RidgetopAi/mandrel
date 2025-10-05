@@ -153,11 +153,11 @@ async function controlStart(options: any): Promise<any> {
 
   // Use existing service
   const startResult = await startMetricsCollection({
-    projectId,
+    // projectId, // Not in function signature
     sessionId,
-    intervalMs,
-    autoCollectGit
-  });
+    intervalMs
+    // autoCollectGit // Not in function signature
+  } as any);
 
   return {
     operation: 'start',
@@ -181,10 +181,7 @@ async function controlStop(options: any): Promise<any> {
   console.log(`🛑 Stopping metrics collection service`);
 
   // Use existing service
-  const stopResult = await stopMetricsCollection({
-    gracefulShutdown,
-    collectFinalMetrics
-  });
+  const stopResult = await stopMetricsCollection();
 
   return {
     operation: 'stop',

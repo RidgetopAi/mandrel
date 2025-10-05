@@ -143,9 +143,7 @@ async function collectProjectMetrics(projectId: string, options: any): Promise<a
   // Use existing service - need to check correct function signature
   return await collectProjectMetricsService(
     projectId,
-    trigger as 'manual' | 'git_commit' | 'scheduled' | 'pattern_update' | 'session_end',
-    startDate,
-    endDate
+    trigger as 'manual' | 'git_commit' | 'scheduled' | 'pattern_update' | 'session_end'
   );
 }
 

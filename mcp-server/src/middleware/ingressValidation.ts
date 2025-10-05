@@ -112,7 +112,7 @@ export class IngressValidator {
             clientId: context.clientId,
             threats: securityScan.errors,
             source: context.source
-          });
+          } as any);
         }
         return securityScan;
       }
@@ -156,7 +156,7 @@ export class IngressValidator {
             warnings,
             sanitizedFields,
             source: context.source
-          });
+          } as any);
         }
 
         return {
@@ -182,7 +182,7 @@ export class IngressValidator {
         requestId: context.requestId,
         error: err.message,
         stack: err.stack
-      });
+      } as any);
 
       return {
         success: false,

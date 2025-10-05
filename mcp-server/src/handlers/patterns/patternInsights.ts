@@ -235,12 +235,12 @@ async function getSessionInsights(options: any): Promise<any> {
  */
 async function getActionableInsights(options: any): Promise<any> {
   const {
-    patternTypes = ['all'],
-    riskLevels = ['medium', 'high', 'critical'],
-    minConfidence = 0.7,
-    maxAge = '30d',
-    includeRecommendations = true,
-    limitResults = 100
+    patternTypes: _patternTypes = ['all'],
+    riskLevels: _riskLevels = ['medium', 'high', 'critical'],
+    minConfidence: _minConfidence = 0.7,
+    maxAge: _maxAge = '30d',
+    includeRecommendations: _includeRecommendations = true,
+    limitResults: _limitResults = 100
   } = options;
 
   console.log(`💡 Getting actionable insights`);
@@ -259,13 +259,13 @@ async function getActionableInsights(options: any): Promise<any> {
  */
 async function getPatternTrends(options: any): Promise<any> {
   const {
-    patternTypes = ['all'],
-    timeframe = '30d',
-    includeForecast = true,
-    forecastPeriods = 7,
-    granularity = 'daily',
-    smoothing = 'moving_average',
-    projectId
+    patternTypes: _patternTypes = ['all'],
+    timeframe: _timeframe = '30d',
+    includeForecast: _includeForecast = true,
+    forecastPeriods: _forecastPeriods = 7,
+    granularity: _granularity = 'daily',
+    smoothing: _smoothing = 'moving_average',
+    projectId: _projectId
   } = options;
 
   console.log(`📈 Getting pattern trends`);
@@ -284,14 +284,14 @@ async function getPatternTrends(options: any): Promise<any> {
  */
 async function getPatternCorrelations(options: any): Promise<any> {
   const {
-    patternType1,
-    patternType2,
-    correlationType = 'pearson',
-    timeframe = '30d',
-    minConfidence = 0.5,
-    includeLagAnalysis = false,
-    maxLag = 7,
-    projectId
+    patternType1: _patternType1,
+    patternType2: _patternType2,
+    correlationType: _correlationType = 'pearson',
+    timeframe: _timeframe = '30d',
+    minConfidence: _minConfidence = 0.5,
+    includeLagAnalysis: _includeLagAnalysis = false,
+    maxLag: _maxLag = 7,
+    projectId: _projectId
   } = options;
 
   console.log(`🔗 Getting pattern correlations`);
@@ -310,13 +310,13 @@ async function getPatternCorrelations(options: any): Promise<any> {
  */
 async function getPatternAnomalies(options: any): Promise<any> {
   const {
-    patternTypes = ['all'],
-    detectionMethod = 'statistical',
-    sensitivityLevel = 'medium',
-    timeframe = '30d',
-    includeContext = true,
-    projectId,
-    limitResults = 50
+    patternTypes: _patternTypes = ['all'],
+    detectionMethod: _detectionMethod = 'statistical',
+    sensitivityLevel: _sensitivityLevel = 'medium',
+    timeframe: _timeframe = '30d',
+    includeContext: _includeContext = true,
+    projectId: _projectId,
+    limitResults: _limitResults = 50
   } = options;
 
   console.log(`🔍 Getting pattern anomalies`);
@@ -348,11 +348,11 @@ async function getPatternRecommendations(options: any): Promise<any> {
 
   // Use existing pattern analysis handler
   return await PatternAnalysisHandler.getPatternRecommendations({
-    contextType,
-    includeActionItems,
-    includePrioritization,
-    includeRiskAssessment,
-    maxRecommendations,
+    // contextType, // Not in function signature
+    // includeActionItems, // Not in function signature
+    // includePrioritization, // Not in function signature
+    // includeRiskAssessment, // Not in function signature
+    // maxRecommendations, // Not in function signature
     projectId,
     sessionId
   });

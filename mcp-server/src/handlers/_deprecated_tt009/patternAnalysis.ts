@@ -1913,7 +1913,7 @@ export class PatternAnalysisHandler {
 
       const totalAnomalies = anomalies.length;
       const statisticalAnomalies = anomalies.filter(a => a.anomalyType === 'outlier').length;
-      // behavioralAnomalies check removed - 'behavioral' is not a valid anomalyType
+      const behavioralAnomalies = 0; // 'behavioral' is not a valid anomalyType
 
       // Sort by confidence/severity
       anomalies.sort((a, b) => {

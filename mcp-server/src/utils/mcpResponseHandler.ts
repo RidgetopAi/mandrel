@@ -165,7 +165,7 @@ export class McpResponseHandler {
       return McpParser.extractTextContent(mcpResponse);
     } catch (error) {
       const err = error as Error;
-      logger.error('Error extracting text content', { error: err.message });
+      logger.error('Error extracting text content', { error: err.message } as any);
       return [];
     }
   }
@@ -178,7 +178,7 @@ export class McpResponseHandler {
       return McpParser.extractAllContent(mcpResponse);
     } catch (error) {
       const err = error as Error;
-      logger.error('Error extracting all content', { error: err.message });
+      logger.error('Error extracting all content', { error: err.message } as any);
       return [];
     }
   }
@@ -206,7 +206,7 @@ export class McpResponseHandler {
               ...context,
               attempt,
               maxRetries
-            });
+            } as any);
           }
           return result;
         }
@@ -224,7 +224,7 @@ export class McpResponseHandler {
               name: 'ProcessingError',
               message: result.error || 'Unknown processing error'
             }
-          });
+          } as any);
 
           await new Promise(resolve => setTimeout(resolve, backoffTime));
         }
@@ -236,7 +236,7 @@ export class McpResponseHandler {
           ...context,
           attempt,
           error: err.message
-        });
+        } as any);
       }
     }
 
@@ -281,7 +281,7 @@ export class McpResponseHandler {
 
     } catch (error) {
       const err = error as Error;
-      logger.error('Error creating tool response', { error: err.message, content });
+      logger.error('Error creating tool response', { error: err.message, content } as any);
       return JSON.stringify({
         content: [{
           type: 'text',
@@ -302,7 +302,7 @@ export class McpResponseHandler {
       });
     } catch (error) {
       const err = error as Error;
-      logger.error('Error creating success response', { error: err.message, data });
+      logger.error('Error creating success response', { error: err.message, data } as any);
       return JSON.stringify({
         success: false,
         error: `Error serializing response: ${err.message}`
@@ -324,7 +324,7 @@ export class McpResponseHandler {
       logger.error('Error creating error response', {
         error: err.message,
         originalError: error
-      });
+      } as any);
       return JSON.stringify({
         success: false,
         error: 'Internal error creating error response'

@@ -53,7 +53,7 @@ export class EnhancedRetryLogic {
       }
     }
 
-    let lastError: Error;
+    let lastError: Error = new Error('No attempts made');
     let delay = this.options.initialDelay;
 
     for (let attempt = 1; attempt <= this.options.maxRetries; attempt++) {

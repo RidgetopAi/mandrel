@@ -14,7 +14,8 @@
  */
 
 import { logEvent } from '../middleware/eventLogger.js';
-import {
+// Unused imports - complexity features are disabled
+/* import {
   ComplexityTracker,
   startComplexityTracking,
   stopComplexityTracking,
@@ -25,7 +26,7 @@ import {
   getRefactoringOpportunities,
   getComplexityTrackingPerformance,
   ComplexityAnalysisResult
-} from '../services/complexityTracker.js';
+} from '../services/complexityTracker.js'; */
 
 // TT009-1: All 16 deprecated complexity tools removed and consolidated into 3 unified tools in server.ts:
 // - complexity_analyze: Replaces analyze_files, analyze_commit, get_file_metrics, get_function_metrics

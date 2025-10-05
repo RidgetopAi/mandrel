@@ -294,7 +294,7 @@ export class EmbeddingService {
 
       console.log(`📝 Generating embedding for text (${text.length} chars): "${text.substring(0, 60)}..."`);
 
-      let result: EmbeddingVector;
+      let result: EmbeddingVector | undefined;
       let errors: EmbeddingError[] = [];
 
       // Try local model first (if preferred)

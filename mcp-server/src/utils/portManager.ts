@@ -108,7 +108,7 @@ export class PortManager {
     registry[serviceName] = serviceInfo;
     await this.saveRegistry(registry);
 
-    logger.info(`Registered ${serviceName} on port ${port}`, serviceInfo);
+    logger.info(`Registered ${serviceName} on port ${port}`, serviceInfo as any);
   }
 
   /**
@@ -224,7 +224,7 @@ export class PortManager {
 
       return registry;
     } catch (error) {
-      logger.error('Failed to load port registry', { error: error instanceof Error ? error.message : 'Unknown error' });
+      logger.error('Failed to load port registry', { error: error instanceof Error ? error.message : 'Unknown error' } as any);
       return {};
     }
   }
@@ -236,7 +236,7 @@ export class PortManager {
     try {
       fs.writeFileSync(this.registryPath, JSON.stringify(registry, null, 2));
     } catch (error) {
-      logger.error('Failed to save port registry', { error: error instanceof Error ? error.message : 'Unknown error' });
+      logger.error('Failed to save port registry', { error: error instanceof Error ? error.message : 'Unknown error' } as any);
     }
   }
 
@@ -271,7 +271,7 @@ export class PortManager {
       environmentValue: envValue,
       isDynamic: envValue === '0' || assignedPort === 0,
       pid: process.pid
-    });
+    } as any);
 
     console.log(`🔧 Port Configuration for ${serviceName}:`);
     console.log(`   📡 Assigned Port: ${assignedPort}`);

@@ -133,6 +133,7 @@ if (mcpDebugValue) {
 /**
  * Process Singleton - Prevent multiple AIDIS instances
  */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 class ProcessSingleton {
   private pidFile: string;
   
@@ -658,7 +659,7 @@ class AIDISServer {
         error: error.message,
         url: req.url,
         method: req.method
-      });
+      } as any);
 
       res.setHeader('Content-Type', 'application/json');
       res.writeHead(500);
