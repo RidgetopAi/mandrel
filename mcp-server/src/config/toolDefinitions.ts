@@ -791,7 +791,7 @@ export const AIDIS_TOOL_DEFINITIONS: ToolDefinition[] = [
         },
         {
           name: 'session_new',
-          description: 'Create a new session with optional title and project assignment',
+          description: 'Create a new session with optional title, project assignment, goal, tags, and AI model tracking (Phase 2 enhanced)',
           inputSchema: {
             type: 'object',
             properties: {
@@ -801,7 +801,24 @@ export const AIDIS_TOOL_DEFINITIONS: ToolDefinition[] = [
               },
               projectName: {
                 type: 'string',
-                description: 'Project to assign to'
+                description: 'Project to assign session to'
+              },
+              description: {
+                type: 'string',
+                description: 'Detailed session description'
+              },
+              sessionGoal: {
+                type: 'string',
+                description: 'Session objective (e.g., "Implement user auth", "Fix payment bug")'
+              },
+              tags: {
+                type: 'array',
+                items: { type: 'string' },
+                description: 'Tags for categorization (e.g., ["bug-fix", "frontend"])'
+              },
+              aiModel: {
+                type: 'string',
+                description: 'AI model identifier (e.g., "claude-sonnet-4-5")'
               }
             },
             additionalProperties: true
@@ -809,21 +826,30 @@ export const AIDIS_TOOL_DEFINITIONS: ToolDefinition[] = [
         },
         {
           name: 'session_update',
-          description: 'Update session title and description for better organization',
+          description: 'Update session title, description, goal, and tags for better organization (Phase 2 enhanced)',
           inputSchema: {
             type: 'object',
             properties: {
               sessionId: {
                 type: 'string',
-                description: 'Session ID'
+                description: 'Session ID to update'
               },
               title: {
                 type: 'string',
-                description: 'New title'
+                description: 'New session title'
               },
               description: {
                 type: 'string',
-                description: 'New description'
+                description: 'New session description'
+              },
+              sessionGoal: {
+                type: 'string',
+                description: 'New session goal/objective'
+              },
+              tags: {
+                type: 'array',
+                items: { type: 'string' },
+                description: 'New tags array (replaces existing)'
               }
             },
             required: ['sessionId'],
