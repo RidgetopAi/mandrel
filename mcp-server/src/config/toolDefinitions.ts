@@ -2,10 +2,11 @@
  * AIDIS Tool Definitions
  *
  * Shared module containing all 41 AIDIS MCP tool definitions.
+ * (8 session analytics tools migrated to REST API on 2025-10-05)
  * This module serves as the single source of truth for tool schemas
  * used by both the main MCP server and the HTTP bridge.
  *
- * Last Updated: 2025-10-01
+ * Last Updated: 2025-10-05
  */
 
 /**
@@ -25,6 +26,7 @@ export interface ToolDefinition {
 
 /**
  * Complete array of all 41 AIDIS tool definitions
+ * (8 session analytics tools migrated to REST API on 2025-10-05)
  */
 export const AIDIS_TOOL_DEFINITIONS: ToolDefinition[] = [
           {
@@ -871,166 +873,18 @@ export const AIDIS_TOOL_DEFINITIONS: ToolDefinition[] = [
             additionalProperties: true
           }
         },
-        {
-          name: 'session_record_activity',
-          description: 'Record a session activity event for detailed timeline tracking',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              sessionId: {
-                type: 'string',
-                description: 'Session ID to record activity for'
-              },
-              activityType: {
-                type: 'string',
-                description: 'Activity type (e.g., "context_stored", "task_created", "file_edited", "decision_recorded")'
-              },
-              activityData: {
-                type: 'object',
-                description: 'Flexible JSONB metadata (e.g., {"file_path": "src/foo.ts", "action": "created"})'
-              }
-            },
-            required: ['sessionId', 'activityType'],
-            additionalProperties: true
-          }
-        },
-        {
-          name: 'session_get_activities',
-          description: 'Get session activity timeline with optional filtering by activity type',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              sessionId: {
-                type: 'string',
-                description: 'Session ID to query activities for'
-              },
-              activityType: {
-                type: 'string',
-                description: 'Optional filter by activity type (e.g., "context_stored", "file_edited")'
-              },
-              limit: {
-                type: 'number',
-                description: 'Maximum number of activities to return (default: 100)'
-              }
-            },
-            required: ['sessionId'],
-            additionalProperties: true
-          }
-        },
-        {
-          name: 'session_record_file_edit',
-          description: 'Record a file modification in the session for LOC tracking and file timeline',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              sessionId: {
-                type: 'string',
-                description: 'Session ID to record file modification for'
-              },
-              filePath: {
-                type: 'string',
-                description: 'File path (relative or absolute)'
-              },
-              linesAdded: {
-                type: 'number',
-                description: 'Number of lines added'
-              },
-              linesDeleted: {
-                type: 'number',
-                description: 'Number of lines deleted'
-              },
-              source: {
-                type: 'string',
-                description: 'Source of modification: "tool", "git", or "manual" (default: "tool")'
-              }
-            },
-            required: ['sessionId', 'filePath', 'linesAdded', 'linesDeleted'],
-            additionalProperties: true
-          }
-        },
-        {
-          name: 'session_get_files',
-          description: 'Get all files modified during a session with LOC statistics',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              sessionId: {
-                type: 'string',
-                description: 'Session ID to query files for'
-              }
-            },
-            required: ['sessionId'],
-            additionalProperties: true
-          }
-        },
-        {
-          name: 'session_calculate_productivity',
-          description: 'Calculate productivity score for a session using configurable formula weights',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              sessionId: {
-                type: 'string',
-                description: 'Session ID to calculate productivity score for'
-              },
-              configName: {
-                type: 'string',
-                description: 'Productivity config name (default: "default")'
-              }
-            },
-            required: ['sessionId'],
-            additionalProperties: true
-          }
-        },
-        {
-          name: 'sessions_list',
-          description: 'Get filtered, searchable list of sessions with pagination. Filter by project, date range, tags, status, productivity score, or goal presence.',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              projectId: { type: 'string', description: 'Filter by project UUID' },
-              dateFrom: { type: 'string', description: 'Start date (ISO format YYYY-MM-DD)' },
-              dateTo: { type: 'string', description: 'End date (ISO format YYYY-MM-DD)' },
-              tags: { type: 'array', items: { type: 'string' }, description: 'Filter by tags (matches ANY tag in array)' },
-              status: { type: 'string', description: 'Filter by status (active, inactive, or all)' },
-              agentType: { type: 'string', description: 'Filter by agent type (claude-code, cline, etc.)' },
-              hasGoal: { type: 'boolean', description: 'Only sessions with goals (true) or without (false)' },
-              minProductivity: { type: 'number', description: 'Minimum productivity score (0-100)' },
-              sortBy: { type: 'string', description: 'Sort field: started_at, duration, productivity, or loc' },
-              sortOrder: { type: 'string', description: 'Sort order: asc or desc (default: desc)' },
-              limit: { type: 'number', description: 'Max results per page (default: 25)' },
-              offset: { type: 'number', description: 'Pagination offset (default: 0)' }
-            },
-            additionalProperties: true
-          }
-        },
-        {
-          name: 'sessions_stats',
-          description: 'Get aggregate session statistics with grouping and time-series data. Provides productivity insights, trends, and top tags/projects analysis.',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              projectId: { type: 'string', description: 'Filter by project UUID' },
-              period: { type: 'string', description: 'Time period: day, week, month, or all (default: all)' },
-              groupBy: { type: 'string', description: 'Group dimension: project, agent, tag, or none (default: none)' },
-              phase2Only: { type: 'boolean', description: 'Only include sessions with Phase 2 tracking (default: false)' }
-            },
-            additionalProperties: true
-          }
-        },
-        {
-          name: 'sessions_compare',
-          description: 'Compare two sessions side-by-side with metrics analysis. Shows differences in productivity, code output, tasks, and AI usage.',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              sessionId1: { type: 'string', description: 'First session UUID (required)' },
-              sessionId2: { type: 'string', description: 'Second session UUID (required)' }
-            },
-            required: ['sessionId1', 'sessionId2'],
-            additionalProperties: true
-          }
-        },
+
+        // Session Analytics Tools - MIGRATED TO REST API (2025-10-05)
+        // The following 8 tools have been migrated to REST API endpoints at /api/v2/sessions/*
+        // - session_record_activity → POST /api/v2/sessions/:sessionId/activities
+        // - session_get_activities → GET /api/v2/sessions/:sessionId/activities
+        // - session_record_file_edit → POST /api/v2/sessions/:sessionId/files
+        // - session_get_files → GET /api/v2/sessions/:sessionId/files
+        // - session_calculate_productivity → POST /api/v2/sessions/:sessionId/productivity
+        // - sessions_list → GET /api/v2/sessions
+        // - sessions_stats → GET /api/v2/sessions/stats
+        // - sessions_compare → GET /api/v2/sessions/compare
+        // See: src/api/controllers/sessionAnalyticsController.ts
 
         // Git Correlation Tools
 

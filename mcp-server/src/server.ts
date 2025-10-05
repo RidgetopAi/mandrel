@@ -38,7 +38,6 @@ import {
 
 import { initializeDatabase, closeDatabase } from './config/database.js';
 import { dbPool, poolHealthCheck } from './services/databasePool.js';
-import { db } from './config/database.js';
 import { AIDIS_TOOL_DEFINITIONS } from './config/toolDefinitions.js';
 import { contextHandler } from './handlers/context.js';
 import { projectHandler } from './handlers/project.js';
@@ -51,7 +50,7 @@ import { navigationHandler } from './handlers/navigation.js';
 import { validationMiddleware } from './middleware/validation.js';
 import { SessionTracker, ensureActiveSession } from './services/sessionTracker.js';
 import { SessionManagementHandler } from './handlers/sessionAnalytics.js';
-import { formatSessionsList, formatSessionStats, formatSessionComparison } from './utils/sessionFormatters.js';
+import { SessionTrackingMiddleware } from './api/middleware/sessionTracking.js';
 import { startGitTracking, stopGitTracking } from './services/gitTracker.js';
 import { startPatternDetection, stopPatternDetection } from './services/patternDetector.js';
 // TT009-3: Phase 3 Pattern Consolidation imports
@@ -880,29 +879,16 @@ class AIDISServer {
       case 'session_details':
         return await this.handleSessionDetails(validatedArgs as any);
 
-      case 'session_record_activity':
-        return await this.handleSessionRecordActivity(validatedArgs as any);
-
-      case 'session_get_activities':
-        return await this.handleSessionGetActivities(validatedArgs as any);
-
-      case 'session_record_file_edit':
-        return await this.handleSessionRecordFileEdit(validatedArgs as any);
-
-      case 'session_get_files':
-        return await this.handleSessionGetFiles(validatedArgs as any);
-
-      case 'session_calculate_productivity':
-        return await this.handleSessionCalculateProductivity(validatedArgs as any);
-
-      case 'sessions_list':
-        return await this.handleSessionsList(validatedArgs as any);
-
-      case 'sessions_stats':
-        return await this.handleSessionsStats(validatedArgs as any);
-
-      case 'sessions_compare':
-        return await this.handleSessionsCompare(validatedArgs as any);
+      // Session Analytics Tools - MIGRATED TO REST API (2025-10-05)
+      // The following 8 tools have been migrated to REST API endpoints at /api/v2/sessions/*
+      // - session_record_activity → POST /api/v2/sessions/:sessionId/activities
+      // - session_get_activities → GET /api/v2/sessions/:sessionId/activities
+      // - session_record_file_edit → POST /api/v2/sessions/:sessionId/files
+      // - session_get_files → GET /api/v2/sessions/:sessionId/files
+      // - session_calculate_productivity → POST /api/v2/sessions/:sessionId/productivity
+      // - sessions_list → GET /api/v2/sessions
+      // - sessions_stats → GET /api/v2/sessions/stats
+      // - sessions_compare → GET /api/v2/sessions/compare
 
       // Git Correlation Tools - DISABLED (Token Optimization 2025-10-01)
       // Reason: More than likely coming out, not currently needed
@@ -1140,7 +1126,7 @@ class AIDISServer {
    */
   private async handleContextStore(args: any) {
     console.log('📝 Context store request received');
-    
+
     const result = await contextHandler.storeContext({
       content: args.content,
       type: args.type,
@@ -1150,6 +1136,13 @@ class AIDISServer {
       projectId: args.projectId,
       sessionId: args.sessionId
     });
+
+    // Auto-track context_stored activity in session
+    await SessionTrackingMiddleware.trackContextStored(
+      result.id,
+      result.contextType,
+      result.tags
+    );
 
     return {
       content: [
@@ -1578,7 +1571,7 @@ class AIDISServer {
    */
   private async handleNamingRegister(args: any) {
     console.log('📝 Naming register request received');
-    
+
     const entry = await namingHandler.registerName({
       entityType: args.entityType,
       canonicalName: args.canonicalName,
@@ -1587,6 +1580,12 @@ class AIDISServer {
       contextTags: args.contextTags,
       projectId: args.projectId
     });
+
+    // Auto-track naming_registered activity in session
+    await SessionTrackingMiddleware.trackNamingRegistered(
+      entry.entityType,
+      entry.canonicalName
+    );
 
     return {
       content: [
@@ -1750,7 +1749,7 @@ class AIDISServer {
    */
   private async handleDecisionRecord(args: any) {
     console.log(`📝 Decision record request: ${args.decisionType}`);
-    
+
     const decision = await decisionsHandler.recordDecision({
       decisionType: args.decisionType,
       title: args.title,
@@ -1764,9 +1763,16 @@ class AIDISServer {
       projectId: args.projectId
     });
 
+    // Auto-track decision_recorded activity in session
+    await SessionTrackingMiddleware.trackDecisionRecorded(
+      decision.id,
+      decision.decisionType,
+      decision.impactLevel
+    );
+
     const alternativesText = decision.alternativesConsidered.length > 0
-      ? `\n📋 Alternatives Considered:\n` + 
-        decision.alternativesConsidered.map(alt => 
+      ? `\n📋 Alternatives Considered:\n` +
+        decision.alternativesConsidered.map(alt =>
           `   • ${alt.name}: ${alt.reasonRejected}`
         ).join('\n')
       : '';
@@ -1968,7 +1974,7 @@ class AIDISServer {
     // Ensure session is initialized before getting project ID
     await projectHandler.initializeSession('default-session');
     const projectId = args.projectId || await projectHandler.getCurrentProjectId('default-session');
-    
+
     const task = await tasksHandler.createTask(
       projectId,
       args.title,
@@ -1980,6 +1986,14 @@ class AIDISServer {
       args.tags,
       args.dependencies,
       args.metadata
+    );
+
+    // Auto-track task_created activity in session
+    await SessionTrackingMiddleware.trackTaskCreated(
+      task.id,
+      task.title,
+      task.type,
+      task.priority
     );
 
     const assignedText = task.assignedTo ? `\n🤖 Assigned To: ${task.assignedTo}` : '';
@@ -3134,337 +3148,10 @@ class AIDISServer {
     };
   }
 
-  /**
-   * Handle session record activity (Phase 2D/2E)
-   */
-  private async handleSessionRecordActivity(args: any) {
-    const sessionId = args.sessionId as string;
-    const activityType = args.activityType as string;
-    const activityData = args.activityData || {};
-
-    if (!sessionId || !activityType) {
-      return {
-        content: [
-          {
-            type: 'text',
-            text: '❌ sessionId and activityType are required'
-          }
-        ]
-      };
-    }
-
-    return await SessionManagementHandler.recordSessionActivity(sessionId, activityType, activityData);
-  }
-
-  /**
-   * Handle session get activities (Phase 2D/2E)
-   */
-  private async handleSessionGetActivities(args: any) {
-    const sessionId = args.sessionId as string;
-    const activityType = args.activityType as string | undefined;
-    const limit = args.limit ? Number(args.limit) : 100;
-
-    if (!sessionId) {
-      return {
-        content: [
-          {
-            type: 'text',
-            text: '❌ sessionId is required'
-          }
-        ]
-      };
-    }
-
-    return await SessionManagementHandler.getSessionActivitiesHandler(sessionId, activityType, limit);
-  }
-
-  /**
-   * Handle session record file edit (Phase 2D/2E)
-   */
-  private async handleSessionRecordFileEdit(args: any) {
-    const sessionId = args.sessionId as string;
-    const filePath = args.filePath as string;
-    const linesAdded = Number(args.linesAdded);
-    const linesDeleted = Number(args.linesDeleted);
-    const source = (args.source || 'tool') as 'tool' | 'git' | 'manual';
-
-    if (!sessionId || !filePath || isNaN(linesAdded) || isNaN(linesDeleted)) {
-      return {
-        content: [
-          {
-            type: 'text',
-            text: '❌ sessionId, filePath, linesAdded, and linesDeleted are required'
-          }
-        ]
-      };
-    }
-
-    return await SessionManagementHandler.recordFileEdit(sessionId, filePath, linesAdded, linesDeleted, source);
-  }
-
-  /**
-   * Handle session get files (Phase 2D/2E)
-   */
-  private async handleSessionGetFiles(args: any) {
-    const sessionId = args.sessionId as string;
-
-    if (!sessionId) {
-      return {
-        content: [
-          {
-            type: 'text',
-            text: '❌ sessionId is required'
-          }
-        ]
-      };
-    }
-
-    return await SessionManagementHandler.getSessionFilesHandler(sessionId);
-  }
-
-  /**
-   * Handle session calculate productivity (Phase 2D/2E)
-   */
-  private async handleSessionCalculateProductivity(args: any) {
-    const sessionId = args.sessionId as string;
-    const configName = args.configName || 'default';
-
-    if (!sessionId) {
-      return {
-        content: [
-          {
-            type: 'text',
-            text: '❌ sessionId is required'
-          }
-        ]
-      };
-    }
-
-    return await SessionManagementHandler.calculateSessionProductivity(sessionId, configName);
-  }
-
-  /**
-   * Handle sessions list (Phase 3)
-   */
-  private async handleSessionsList(args: any) {
-    try {
-      const {
-        projectId,
-        dateFrom,
-        dateTo,
-        tags,
-        status,
-        agentType,
-        hasGoal,
-        minProductivity,
-        sortBy = 'started_at',
-        sortOrder = 'desc',
-        limit = 25,
-        offset = 0
-      } = args;
-
-      // Build WHERE clauses dynamically
-      const whereConditions: string[] = [];
-      const queryParams: any[] = [];
-      let paramIndex = 1;
-
-      if (projectId) {
-        whereConditions.push(`s.project_id = $${paramIndex++}`);
-        queryParams.push(projectId);
-      }
-
-      if (dateFrom) {
-        whereConditions.push(`s.started_at >= $${paramIndex++}`);
-        queryParams.push(dateFrom);
-      }
-
-      if (dateTo) {
-        whereConditions.push(`s.started_at <= $${paramIndex++}`);
-        queryParams.push(dateTo);
-      }
-
-      if (tags && tags.length > 0) {
-        whereConditions.push(`s.tags && $${paramIndex++}::text[]`);
-        queryParams.push(tags);
-      }
-
-      if (status && status !== 'all') {
-        whereConditions.push(`s.status = $${paramIndex++}`);
-        queryParams.push(status);
-      }
-
-      if (agentType) {
-        whereConditions.push(`s.agent_type = $${paramIndex++}`);
-        queryParams.push(agentType);
-      }
-
-      if (hasGoal === true) {
-        whereConditions.push(`s.session_goal IS NOT NULL`);
-      } else if (hasGoal === false) {
-        whereConditions.push(`s.session_goal IS NULL`);
-      }
-
-      if (minProductivity !== undefined) {
-        whereConditions.push(`s.productivity_score >= $${paramIndex++}`);
-        queryParams.push(minProductivity);
-      }
-
-      const whereClause = whereConditions.length > 0
-        ? 'WHERE ' + whereConditions.join(' AND ')
-        : '';
-
-      // Validate sortBy
-      const validSortFields = ['started_at', 'duration', 'productivity', 'loc'];
-      const safeSortBy = validSortFields.includes(sortBy) ? sortBy : 'started_at';
-      const safeSortOrder = sortOrder === 'asc' ? 'ASC' : 'DESC';
-
-      // Build ORDER BY clause
-      let orderByClause = '';
-      if (safeSortBy === 'started_at') {
-        orderByClause = `ORDER BY s.started_at ${safeSortOrder}`;
-      } else if (safeSortBy === 'duration') {
-        orderByClause = `ORDER BY s.duration_minutes ${safeSortOrder}`;
-      } else if (safeSortBy === 'productivity') {
-        orderByClause = `ORDER BY s.productivity_score ${safeSortOrder} NULLS LAST`;
-      } else if (safeSortBy === 'loc') {
-        orderByClause = `ORDER BY s.lines_net ${safeSortOrder} NULLS LAST`;
-      }
-
-      // Main query
-      const query = `
-        SELECT * FROM v_session_summaries s
-        ${whereClause}
-        ${orderByClause}
-        LIMIT $${paramIndex++} OFFSET $${paramIndex++}
-      `;
-
-      queryParams.push(limit, offset);
-
-      const result = await db.query(query, queryParams);
-
-      // Get total count
-      const countQuery = `
-        SELECT COUNT(*) as count FROM v_session_summaries s
-        ${whereClause}
-      `;
-
-      const countResult = await db.query(countQuery, queryParams.slice(0, -2));
-      const totalCount = parseInt(countResult.rows[0].count);
-
-      // Format output
-      const output = formatSessionsList(result.rows, totalCount, args, limit, offset);
-
-      return {
-        content: [{
-          type: 'text',
-          text: output
-        }]
-      };
-    } catch (error) {
-      console.error('❌ Failed to list sessions:', error);
-      return {
-        content: [{
-          type: 'text',
-          text: `❌ Error listing sessions: ${error instanceof Error ? error.message : 'Unknown error'}`
-        }]
-      };
-    }
-  }
-
-  /**
-   * Handle sessions stats (Phase 3)
-   */
-  private async handleSessionsStats(args: any) {
-    try {
-      const {
-        projectId,
-        period = 'all',
-        groupBy = 'none',
-        phase2Only = false
-      } = args;
-
-      // Get enhanced stats
-      const stats = await SessionTracker.getSessionStatsEnhanced({
-        projectId,
-        period,
-        groupBy,
-        phase2Only
-      });
-
-      // Format output
-      const output = formatSessionStats(stats, { projectId, period, groupBy, phase2Only });
-
-      return {
-        content: [{
-          type: 'text',
-          text: output
-        }]
-      };
-    } catch (error) {
-      console.error('❌ Failed to get session stats:', error);
-      return {
-        content: [{
-          type: 'text',
-          text: `❌ Error getting session stats: ${error instanceof Error ? error.message : 'Unknown error'}`
-        }]
-      };
-    }
-  }
-
-  /**
-   * Handle sessions compare (Phase 3)
-   */
-  private async handleSessionsCompare(args: any) {
-    try {
-      const { sessionId1, sessionId2 } = args;
-
-      if (!sessionId1 || !sessionId2) {
-        return {
-          content: [{
-            type: 'text',
-            text: '❌ Both sessionId1 and sessionId2 are required'
-          }]
-        };
-      }
-
-      // Fetch both sessions
-      const result = await db.query(`
-        SELECT * FROM v_session_summaries
-        WHERE id IN ($1, $2)
-      `, [sessionId1, sessionId2]);
-
-      if (result.rows.length !== 2) {
-        return {
-          content: [{
-            type: 'text',
-            text: `❌ One or both sessions not found.\nSession 1: ${sessionId1}\nSession 2: ${sessionId2}`
-          }]
-        };
-      }
-
-      // Find which is which
-      const session1 = result.rows.find((r: any) => r.id === sessionId1);
-      const session2 = result.rows.find((r: any) => r.id === sessionId2);
-
-      // Format output
-      const output = formatSessionComparison(session1!, session2!);
-
-      return {
-        content: [{
-          type: 'text',
-          text: output
-        }]
-      };
-    } catch (error) {
-      console.error('❌ Failed to compare sessions:', error);
-      return {
-        content: [{
-          type: 'text',
-          text: `❌ Error comparing sessions: ${error instanceof Error ? error.message : 'Unknown error'}`
-        }]
-      };
-    }
-  }
+  // Session Analytics Handler Methods - MIGRATED TO REST API (2025-10-05)
+  // All 8 session analytics handlers have been migrated to REST API endpoints
+  // See: src/api/controllers/sessionAnalyticsController.ts
+  // Endpoints available at: /api/v2/sessions/* (8 endpoints)
 
   // Git Correlation Handler Methods
   

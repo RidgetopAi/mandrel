@@ -10,6 +10,7 @@ import cors from 'cors';
 import { spawn } from 'child_process';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import createSessionRouter from '../api/v2/sessionRoutes.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -38,13 +39,18 @@ export class HttpMcpBridge {
   private setupRoutes(): void {
     // Health check endpoint
     this.app.get('/health', (_req, res) => {
-      res.json({ 
-        status: 'healthy', 
+      res.json({
+        status: 'healthy',
         service: 'HTTP-MCP Bridge',
         port: this.port,
         timestamp: new Date().toISOString()
       });
     });
+
+    // Mount session analytics REST API routes
+    const sessionRouter = createSessionRouter();
+    this.app.use('/api/v2/sessions', sessionRouter);
+    console.log('📊 Session Analytics API mounted: /api/v2/sessions/* (8 endpoints)');
 
     // MCP tool forwarding endpoint
     this.app.post('/mcp/tools/:toolName', async (req, res) => {
