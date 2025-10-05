@@ -15,11 +15,11 @@
  */
 
 import { 
-  PatternDetector, 
-  startPatternDetection, 
+  PatternDetector,
+  startPatternDetection,
   stopPatternDetection,
   detectPatterns,
-  bufferCommitsForProcessing,
+  // bufferCommitsForProcessing,
   getPatternDetectionMetrics,
   type PatternDetectionResult,
   type PatternAlert
@@ -714,7 +714,7 @@ export class PatternDetectionHandler {
       const metrics = getPatternDetectionMetrics();
 
       // Get service status from PatternDetector
-      const detector = PatternDetector.getInstance();
+      const _detector = PatternDetector.getInstance();
       const status = {
         isActive: true, // This would come from detector status
         lastAnalysisTime: metrics.lastPerformanceCheck,

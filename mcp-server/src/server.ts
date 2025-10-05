@@ -50,6 +50,7 @@ import { getQueueManager, shutdownQueue } from './services/queueManager.js';
 import { codeAnalysisHandler } from './handlers/codeAnalysis.js';
 import { smartSearchHandler } from './handlers/smartSearch.js';
 import { navigationHandler } from './handlers/navigation.js';
+import { agentsHandler } from './handlers/agents.js';
 import { validationMiddleware } from './middleware/validation.js';
 import { AIDISMCPProxy } from './utils/mcpProxy.js';
 import { SessionTracker, ensureActiveSession } from './services/sessionTracker.js';

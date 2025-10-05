@@ -246,7 +246,7 @@ export const monitoring = new SimpleMonitoring();
  */
 export function withMonitoring(metricPrefix: string = 'method') {
   return function<T extends any[], R>(
-    target: any,
+    _target: any,
     propertyKey: string,
     descriptor: TypedPropertyDescriptor<(...args: T) => Promise<R>>
   ) {
