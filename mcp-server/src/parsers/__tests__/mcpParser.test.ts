@@ -264,7 +264,7 @@ describe('McpParser', () => {
         ]
       };
 
-      const texts = McpParser.extractTextContent(response);
+      const texts = McpParser.extractTextContent(response as any);
       expect(texts).toEqual(['First text', 'Second text']);
     });
 
@@ -274,7 +274,7 @@ describe('McpParser', () => {
         data: 'not a tool response'
       };
 
-      const texts = McpParser.extractTextContent(response);
+      const texts = McpParser.extractTextContent(response as any);
       expect(texts).toEqual([]);
     });
   });
@@ -289,7 +289,7 @@ describe('McpParser', () => {
         ]
       };
 
-      const allContent = McpParser.extractAllContent(response);
+      const allContent = McpParser.extractAllContent(response as any);
       expect(allContent).toHaveLength(3);
       expect(allContent[0]).toEqual({ type: 'text', content: 'Hello' });
       expect(allContent[1]).toEqual({

@@ -3,8 +3,6 @@
  * Comprehensive validation layer preventing malformed data entry
  */
 
-import { z } from 'zod';
-import { validationSchemas, validateToolArguments } from './validation.js';
 import { logger } from '../utils/logger.js';
 
 // Enhanced ingress validation options
@@ -112,7 +110,7 @@ export class IngressValidator {
             toolName,
             requestId: context.requestId,
             clientId: context.clientId,
-            threats: securityScan.threats,
+            threats: securityScan.errors,
             source: context.source
           });
         }

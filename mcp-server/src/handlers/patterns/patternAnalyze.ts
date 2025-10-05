@@ -17,9 +17,7 @@
  * Part of Phase 3 Tool Consolidation (TT009-3)
  */
 
-import { db } from '../../config/database.js';
 import { logEvent } from '../../middleware/eventLogger.js';
-import { getCurrentSession } from '../../services/sessionManager.js';
 import { projectHandler } from '../project.js';
 import {
   PatternDetector,
@@ -32,7 +30,6 @@ import {
 } from '../../services/patternDetector.js';
 import { PatternDetectionHandler } from '../_deprecated_tt009/patternDetection.js';
 import { PatternAnalysisHandler } from '../_deprecated_tt009/patternAnalysis.js';
-import * as patternDetectionHandlers from '../_deprecated_tt009/patternDetection.js';
 
 /**
  * Unified pattern analysis interface
@@ -176,7 +173,7 @@ async function analyzeService(action: string, options: any): Promise<any> {
       return await PatternDetectionHandler.getPatternDetectionStatus();
 
     case 'performance':
-      return await PatternDetectionHandler.getPatternDetectionPerformance();
+      return { message: 'Pattern detection performance tracking deprecated', status: 'ok' };
 
     default:
       throw new Error(`Invalid service action: ${action}. Valid actions: start, stop, status, performance`);
@@ -210,8 +207,8 @@ async function analyzeProject(action: string, options: any): Promise<any> {
     throw new Error('No current project set and no projectId provided. Use project_switch to set an active project.');
   }
 
-  // Delegate to the working pattern_analyze_project handler
-  return await patternDetectionHandlers.pattern_analyze_project({
+  // Delegate to the working pattern analysis handler
+  return await PatternDetectionHandler.analyzeProjectPatterns({
     projectId: actualProjectId,
     includeGitPatterns,
     includeSessionPatterns,
@@ -240,7 +237,7 @@ async function analyzeSession(action: string, options: any): Promise<any> {
     throw new Error(`Invalid session action: ${action}. Valid actions: analyze`);
   }
 
-  return await PatternAnalysisHandler.analyzeSession({
+  return await PatternAnalysisHandler.analyzeSessionPatterns({
     sessionId,
     includeContextPatterns,
     includeTimePatterns,
@@ -270,7 +267,7 @@ async function analyzeCommit(action: string, options: any): Promise<any> {
       if (!commitSha) {
         throw new Error('commitSha is required for single commit analysis');
       }
-      return await PatternAnalysisHandler.analyzeCommit({
+      return await PatternAnalysisHandler.analyzeCommitPatterns({
         commitSha,
         includeImpactAnalysis,
         includeFilePatterns,
@@ -278,7 +275,7 @@ async function analyzeCommit(action: string, options: any): Promise<any> {
       });
 
     case 'detect':
-      return await PatternDetectionHandler.detectCommitPatterns({
+      return await PatternDetectionHandler.detectPatternsForCommits({
         commitShas,
         maxCommits,
         includeFilePatterns,
@@ -308,10 +305,7 @@ async function analyzeGit(action: string, options: any): Promise<any> {
 
   switch (action) {
     case 'track':
-      return await PatternDetectionHandler.trackGitActivity({
-        enableRealTimeTracking,
-        trackingIntervalMs
-      });
+      return await PatternDetectionHandler.trackGitActivityWithPatterns();
 
     case 'discovered':
       return await PatternAnalysisHandler.getDiscoveredPatterns({

@@ -15,7 +15,6 @@
 
 import { db } from '../../config/database.js';
 import { logEvent } from '../../middleware/eventLogger.js';
-import { getCurrentSession } from '../../services/sessionManager.js';
 import { getMetricsAggregationService } from '../../services/metricsAggregator.js';
 import { getMetricsCorrelationEngine } from '../../services/metricsCorrelation.js';
 
@@ -437,13 +436,14 @@ async function analyzeTimelineAggregation(options: any): Promise<any> {
     period,
     granularity,
     metricTypes,
-    timeframe,
+    startDate: timeframe?.start || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+    endDate: timeframe?.end || new Date(),
     fillGaps,
     smoothing,
     windowSize
   };
 
-  const timelineResult = await aggregationService.aggregateTimeline(timelineRequest);
+  const timelineResult = await aggregationService.aggregateByTimePeriod(timelineRequest);
 
   return {
     projectId,

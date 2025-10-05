@@ -13,10 +13,8 @@
  * Zero functionality loss - routes to existing service methods
  */
 
-import { db } from '../../config/database.js';
 import { logEvent } from '../../middleware/eventLogger.js';
 import { getCurrentSession } from '../../services/sessionManager.js';
-import { getComplexityTrends } from '../../services/complexityTracker.js';
 import { CodeComplexityHandler } from '../codeComplexity.js';
 import {
   ComplexityInsightsParams,
@@ -193,7 +191,7 @@ async function routeInsightRequest(params: ComplexityInsightsParams): Promise<an
 /**
  * Format dashboard response to match consolidated interface
  */
-function formatDashboardInsightResponse(result: any, params: ComplexityInsightsParams, executionTimeMs: number): ComplexityInsightsResponse {
+function formatDashboardInsightResponse(result: any, _params: ComplexityInsightsParams, executionTimeMs: number): ComplexityInsightsResponse {
   return {
     metadata: {
       view: 'dashboard',
@@ -240,7 +238,7 @@ function formatDashboardInsightResponse(result: any, params: ComplexityInsightsP
 /**
  * Format hotspots response to match consolidated interface
  */
-function formatHotspotsInsightResponse(result: any, params: ComplexityInsightsParams, executionTimeMs: number): ComplexityInsightsResponse {
+function formatHotspotsInsightResponse(result: any, _params: ComplexityInsightsParams, executionTimeMs: number): ComplexityInsightsResponse {
   return {
     metadata: {
       view: 'hotspots',
@@ -271,7 +269,7 @@ function formatHotspotsInsightResponse(result: any, params: ComplexityInsightsPa
 /**
  * Format trends response to match consolidated interface
  */
-function formatTrendsInsightResponse(result: any, params: ComplexityInsightsParams, executionTimeMs: number): ComplexityInsightsResponse {
+function formatTrendsInsightResponse(result: any, _params: ComplexityInsightsParams, executionTimeMs: number): ComplexityInsightsResponse {
   return {
     metadata: {
       view: 'trends',
@@ -312,7 +310,7 @@ function formatTrendsInsightResponse(result: any, params: ComplexityInsightsPara
 /**
  * Format debt response to match consolidated interface
  */
-function formatDebtInsightResponse(result: any, params: ComplexityInsightsParams, executionTimeMs: number): ComplexityInsightsResponse {
+function formatDebtInsightResponse(result: any, _params: ComplexityInsightsParams, executionTimeMs: number): ComplexityInsightsResponse {
   return {
     metadata: {
       view: 'debt',
@@ -371,7 +369,7 @@ function formatDebtInsightResponse(result: any, params: ComplexityInsightsParams
 /**
  * Format refactoring response to match consolidated interface
  */
-function formatRefactoringInsightResponse(result: any, params: ComplexityInsightsParams, executionTimeMs: number): ComplexityInsightsResponse {
+function formatRefactoringInsightResponse(result: any, _params: ComplexityInsightsParams, executionTimeMs: number): ComplexityInsightsResponse {
   return {
     metadata: {
       view: 'refactoring',

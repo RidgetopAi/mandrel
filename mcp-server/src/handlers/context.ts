@@ -13,7 +13,6 @@ import { db } from '../config/database.js';
 import { embeddingService } from '../services/embedding.js';
 import { projectHandler } from './project.js';
 import { logContextEvent, logEvent } from '../middleware/eventLogger.js';
-import { SessionTracker, ensureActiveSession } from '../services/sessionTracker.js';
 
 export interface StoreContextRequest {
   projectId?: string;

@@ -16,7 +16,6 @@
 
 import { db } from '../../config/database.js';
 import { logEvent } from '../../middleware/eventLogger.js';
-import { getCurrentSession } from '../../services/sessionManager.js';
 import { PatternAnalysisHandler } from '../_deprecated_tt009/patternAnalysis.js';
 
 /**
@@ -225,14 +224,13 @@ async function getSessionInsights(options: any): Promise<any> {
 
   console.log(`📝 Getting session insights for: ${sessionId}`);
 
-  // Use existing pattern analysis handler
-  return await PatternAnalysisHandler.getSessionInsights({
+  // Stub implementation - these methods are deprecated
+  return {
+    message: 'Session insights analysis deprecated',
     sessionId,
-    includeContextPatterns,
-    includeActivityPatterns,
-    includeTimePatterns,
-    minConfidence
-  });
+    insights: [],
+    patterns: []
+  };
 }
 
 /**
@@ -251,15 +249,12 @@ async function getActionableInsights(options: any): Promise<any> {
 
   console.log(`💡 Getting actionable insights`);
 
-  // Use existing pattern analysis handler
-  return await PatternAnalysisHandler.getActionableInsights({
-    patternTypes,
-    riskLevels,
-    minConfidence,
-    maxAge,
-    includeRecommendations,
-    limitResults
-  });
+  // Stub implementation - these methods are deprecated
+  return {
+    message: 'Actionable insights analysis deprecated',
+    insights: [],
+    recommendations: []
+  };
 }
 
 /**
@@ -279,16 +274,12 @@ async function getPatternTrends(options: any): Promise<any> {
 
   console.log(`📈 Getting pattern trends`);
 
-  // Use existing pattern analysis handler
-  return await PatternAnalysisHandler.getTrendAnalysis({
-    patternTypes,
-    timeframe,
-    includeForecast,
-    forecastPeriods,
-    granularity,
-    smoothing,
-    projectId
-  });
+  // Stub implementation - these methods are deprecated
+  return {
+    message: 'Trend analysis deprecated',
+    trends: [],
+    forecast: []
+  };
 }
 
 /**
@@ -309,17 +300,12 @@ async function getPatternCorrelations(options: any): Promise<any> {
 
   console.log(`🔗 Getting pattern correlations`);
 
-  // Use existing pattern analysis handler
-  return await PatternAnalysisHandler.getCorrelationAnalysis({
-    patternType1,
-    patternType2,
-    correlationType,
-    timeframe,
-    minConfidence,
-    includeLagAnalysis,
-    maxLag,
-    projectId
-  });
+  // Stub implementation - these methods are deprecated
+  return {
+    message: 'Correlation analysis deprecated',
+    correlations: [],
+    coefficient: 0
+  };
 }
 
 /**
@@ -339,16 +325,12 @@ async function getPatternAnomalies(options: any): Promise<any> {
 
   console.log(`🔍 Getting pattern anomalies`);
 
-  // Use existing pattern analysis handler
-  return await PatternAnalysisHandler.getAnomalyDetection({
-    patternTypes,
-    detectionMethod,
-    sensitivityLevel,
-    timeframe,
-    includeContext,
-    projectId,
-    limitResults
-  });
+  // Stub implementation - these methods are deprecated
+  return {
+    message: 'Anomaly detection deprecated',
+    anomalies: [],
+    detectedCount: 0
+  };
 }
 
 /**

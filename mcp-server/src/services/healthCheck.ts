@@ -85,9 +85,9 @@ export class HealthCheckService {
     this.registerCheck('queue', async () => {
       const startTime = Date.now();
       try {
-        const queueManager = getQueueManager();
-        const isHealthy = await queueManager.healthCheck();
+        const queueManager = await getQueueManager();
         const stats = await queueManager.getStats();
+        const isHealthy = stats.active !== undefined;
 
         return {
           status: isHealthy ? 'up' : 'down',

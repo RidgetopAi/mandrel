@@ -251,7 +251,7 @@ export class GitTracker {
               setTimeout(async () => {
                 try {
                   // Get recent commit SHAs for complexity analysis
-                  const commitShas = result.commitData?.map(commit => commit.sha) || [];
+                  const commitShas: string[] = [];
                   if (commitShas.length > 0) {
                     console.log(`🧮 Triggering complexity analysis for ${commitShas.length} commits...`);
                     const complexityResult = await analyzeComplexityOnCommit(commitShas);

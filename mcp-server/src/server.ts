@@ -110,30 +110,6 @@ const SKIP_STDIO_TRANSPORT = getEnvVar('AIDIS_SKIP_STDIO', 'SKIP_STDIO', 'false'
 /**
  * Check if SystemD AIDIS service is already running
  */
-async function _isSystemDServiceRunning(): Promise<boolean> {
-  try {
-    // Try to discover the port from registry first
-    const registeredPort = await portManager.discoverServicePort('aidis-mcp');
-    const healthPort = registeredPort || (await portManager.assignPort('aidis-mcp'));
-
-    return new Promise((resolve) => {
-      const req = http.get(`http://localhost:${healthPort}/healthz`, (res) => {
-        let data = '';
-        res.on('data', (chunk) => data += chunk);
-        res.on('end', () => {
-          resolve(data.includes('"status":"healthy"'));
-        });
-      });
-      req.on('error', () => resolve(false));
-      req.setTimeout(2000, () => {
-        req.destroy();
-        resolve(false);
-      });
-    });
-  } catch {
-    return false;
-  }
-}
 
 // Initialize logging system
 logger.info('AIDIS MCP Server Starting', {
@@ -319,12 +295,10 @@ class AIDISServer {
   private healthServer: http.Server | null = null;
   // private v2McpRouter: V2McpRouter; // Disabled - using direct integration
   private circuitBreaker: CircuitBreaker;
-  private _singleton: ProcessSingleton;
   private dbHealthy: boolean = false;
 
   constructor() {
     this.circuitBreaker = new CircuitBreaker();
-    this._singleton = new ProcessSingleton();
     // Phase 5 Integration: Initialize V2 API router
     // this.v2McpRouter = new V2McpRouter(); // Disabled - using direct integration
     
@@ -346,17 +320,6 @@ class AIDISServer {
   }
 
   /**
-   * Get current session ID for logging context
-   */
-  private getCurrentSessionId(): string | undefined {
-    try {
-      return SessionTracker.getCurrentSessionId();
-    } catch {
-      return undefined;
-    }
-  }
-
-  /**
    * Get current project ID for logging context (synchronous, best-effort)
    * Note: Uses cached value only, doesn't validate against DB
    */
@@ -365,6 +328,7 @@ class AIDISServer {
       // Use the synchronous cached version (without DB validation)
       // This is acceptable for logging context as it's non-critical
       const sessionId = this.getCurrentSessionId();
+      if (!sessionId) return undefined;
       return projectHandler['sessionStates'].get(sessionId)?.currentProjectId;
     } catch {
       return undefined;
@@ -461,22 +425,22 @@ class AIDISServer {
         res.end(JSON.stringify(livenessData));
 
         // Log liveness check
-        RequestLogger.logHealthCheck('/livez', 'alive', Date.now() - startTime);
+        RequestLogger.logHealthCheck('/livez', 'healthy', Date.now() - startTime);
 
       } else if (req.url === '/health/mcp') {
         // MCP service health check
         const startTime = Date.now();
         const mcpHealth = {
           status: this.server ? 'healthy' : 'unhealthy',
-          transport: this.transport ? 'connected' : 'disconnected',
-          tools_available: this.server ? Object.keys(this.server.tools || {}).length : 0,
+          transport: 'stdio',
+          tools_available: AIDIS_TOOL_DEFINITIONS.length,
           timestamp: new Date().toISOString(),
           response_time_ms: Date.now() - startTime
         };
 
         res.writeHead(this.server ? 200 : 503);
         res.end(JSON.stringify(mcpHealth));
-        RequestLogger.logHealthCheck('/health/mcp', mcpHealth.status, Date.now() - startTime);
+        RequestLogger.logHealthCheck('/health/mcp', mcpHealth.status as 'healthy' | 'unhealthy', Date.now() - startTime);
 
       } else if (req.url === '/health/database') {
         // Database service health check
@@ -497,7 +461,7 @@ class AIDISServer {
 
         res.writeHead(this.dbHealthy ? 200 : 503);
         res.end(JSON.stringify(dbHealth));
-        RequestLogger.logHealthCheck('/health/database', dbHealth.status, Date.now() - startTime);
+        RequestLogger.logHealthCheck('/health/database', dbHealth.status as 'healthy' | 'unhealthy', Date.now() - startTime);
 
       } else if (req.url === '/health/embeddings') {
         // Embeddings service health check
@@ -513,7 +477,7 @@ class AIDISServer {
 
         res.writeHead(200);
         res.end(JSON.stringify(embeddingsHealth));
-        RequestLogger.logHealthCheck('/health/embeddings', embeddingsHealth.status, Date.now() - startTime);
+        RequestLogger.logHealthCheck('/health/embeddings', embeddingsHealth.status as 'healthy' | 'unhealthy', Date.now() - startTime);
 
       } else if (req.url === '/mcp/tools/schemas' && req.method === 'GET') {
         // GET /mcp/tools/schemas - Return all tool definitions with full inputSchemas
@@ -861,8 +825,8 @@ class AIDISServer {
       },
       {
         correlationId,
-        sessionId,
-        projectId: this.getCurrentProjectId()
+        sessionId: sessionId || 'unknown-session',
+        projectId: this.getCurrentProjectId() || undefined
       }
     );
 
@@ -871,7 +835,7 @@ class AIDISServer {
       const outputTokens = this.estimateTokenUsage(JSON.stringify(result));
 
       if (sessionId) {
-        SessionTracker.recordTokenUsage(sessionId, inputTokens, outputTokens);
+        SessionTracker.recordTokenUsage(sessionId || 'unknown-session', inputTokens, outputTokens);
       }
     } catch (error) {
       // Don't fail the request if token tracking fails
@@ -1058,7 +1022,7 @@ class AIDISServer {
       default:
         throw new McpError(
           ErrorCode.MethodNotFound,
-          `Unknown tool: ${toolName}. Available tools: ${this.getAvailableTools().join(', ')}`
+          `Unknown tool: ${toolName}. Available tools: ${AIDIS_TOOL_DEFINITIONS.map(t => t.name).join(', ')}`
         );
     }
   }
@@ -1510,9 +1474,9 @@ class AIDISServer {
     try {
       // Get current session ID (in future this could come from session tracking)
       const sessionId = this.getCurrentSessionId();
-      
+
       // Use enhanced validation switching
-      const project = await projectHandler.switchProjectWithValidation(args.project, sessionId);
+      const project = await projectHandler.switchProjectWithValidation(args.project, sessionId || 'default-session');
 
       // Log successful switch for metrics and monitoring
       const switchMetrics = {
@@ -2072,106 +2036,14 @@ class AIDISServer {
   /**
    * Handle agent registration requests
    */
-  private async _handleAgentRegister(args: any) {
-    const agent = await agentsHandler.registerAgent(
-      args.name,
-      args.type,
-      args.capabilities,
-      args.metadata
-    );
-
-    return {
-      content: [
-        {
-          type: 'text',
-          text: `✅ Agent registered successfully!\n\n` +
-                `🤖 Name: ${agent.name}\n` +
-                `🎯 Type: ${agent.type}\n` +
-                `⚡ Capabilities: [${agent.capabilities.join(', ')}]\n` +
-                `📊 Status: ${agent.status}\n` +
-                `⏰ Registered: ${agent.createdAt.toISOString().split('T')[0]}\n` +
-                `🆔 ID: ${agent.id}\n\n` +
-                `🤝 Agent is now ready for multi-agent coordination!`
-        },
-      ],
-    };
-  }
 
   /**
    * Handle agent list requests
    */
-  private async _handleAgentList(args: any) {
-    const projectId = args.projectId || await projectHandler.getCurrentProjectId('default-session');
-    const agents = await agentsHandler.listAgents(projectId);
-
-    if (agents.length === 0) {
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `🤖 No agents registered${projectId ? ' for this project' : ''}\n\n` +
-                  `💡 Register agents with: agent_register`
-          },
-        ],
-      };
-    }
-
-    const agentList = agents.map((agent, index) => {
-      const lastSeenTime = new Date(agent.lastSeen).toISOString().split('T')[0];
-      const statusIcon = {
-        active: '🟢',
-        busy: '🟡', 
-        offline: '⚪',
-        error: '🔴'
-      }[agent.status] || '❓';
-
-      return `   ${index + 1}. **${agent.name}** ${statusIcon}\n` +
-             `      🎯 Type: ${agent.type}\n` +
-             `      ⚡ Capabilities: [${agent.capabilities.join(', ')}]\n` +
-             `      📊 Status: ${agent.status}\n` +
-             `      ⏰ Last Seen: ${lastSeenTime}\n` +
-             `      🆔 ID: ${agent.id}`;
-    }).join('\n\n');
-
-    return {
-      content: [
-        {
-          type: 'text',
-          text: `🤖 Registered Agents (${agents.length})\n\n${agentList}\n\n` +
-                `💡 Update status with: agent_status\n` +
-                `💬 Send messages with: agent_message`
-        },
-      ],
-    };
-  }
 
   /**
    * Handle agent status update requests
    */
-  private async _handleAgentStatus(args: any) {
-    await agentsHandler.updateAgentStatus(args.agentId, args.status, args.metadata);
-
-    const statusIconMap = {
-      active: '🟢',
-      busy: '🟡',
-      offline: '⚪',
-      error: '🔴'
-    } as const;
-    const statusIcon = statusIconMap[args.status as keyof typeof statusIconMap] || '❓';
-
-    return {
-      content: [
-        {
-          type: 'text',
-          text: `✅ Agent status updated!\n\n` +
-                `🤖 Agent: ${args.agentId}\n` +
-                `📊 New Status: ${args.status} ${statusIcon}\n` +
-                `⏰ Updated: ${new Date().toISOString().split('T')[0]}\n\n` +
-                `🎯 Status change recorded for coordination!`
-        },
-      ],
-    };
-  }
 
   /**
    * Handle task creation requests
@@ -2520,231 +2392,22 @@ class AIDISServer {
   /**
    * Handle agent message requests
    */
-  private async _handleAgentMessage(args: any) {
-    // Ensure session is initialized before getting project ID
-    await projectHandler.initializeSession('default-session');
-    const projectId = args.projectId || await projectHandler.getCurrentProjectId('default-session');
-    
-    const message = await agentsHandler.sendMessage(
-      projectId,
-      args.fromAgentId,
-      args.content,
-      args.toAgentId,
-      args.messageType,
-      args.title,
-      args.contextRefs,
-      args.taskRefs,
-      args.metadata
-    );
-
-    const recipientText = message.toAgentId ? `to ${message.toAgentId}` : 'to all agents (broadcast)';
-    const titleText = message.title ? `\n📝 Title: ${message.title}` : '';
-    const refsText = message.contextRefs.length > 0 || message.taskRefs.length > 0 
-      ? `\n🔗 References: ${[...message.contextRefs, ...message.taskRefs].join(', ')}`
-      : '';
-
-    return {
-      content: [
-        {
-          type: 'text',
-          text: `✅ Message sent successfully!\n\n` +
-                `📨 From: ${message.fromAgentId}\n` +
-                `📬 To: ${recipientText}\n` +
-                `🏷️  Type: ${message.messageType}${titleText}${refsText}\n` +
-                `⏰ Sent: ${message.createdAt.toISOString().split('T')[0]}\n` +
-                `🆔 ID: ${message.id}\n\n` +
-                `💬 Message delivered to coordination system!`
-        },
-      ],
-    };
-  }
 
   /**
    * Handle agent messages retrieval requests
    */
-  private async _handleAgentMessages(args: any) {
-    const projectId = args.projectId || await projectHandler.getCurrentProjectId('default-session');
-    const messages = await agentsHandler.getMessages(
-      projectId,
-      args.agentId,
-      args.messageType,
-      args.unreadOnly
-    );
-
-    if (messages.length === 0) {
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `📨 No messages found\n\n` +
-                  `💡 Send messages with: agent_message`
-          },
-        ],
-      };
-    }
-
-    const messageList = messages.map((message, index) => {
-      const typeIcon = {
-        info: 'ℹ️',
-        request: '❓',
-        response: '💬',
-        alert: '⚠️',
-        coordination: '🤝'
-      }[message.messageType] || '📝';
-
-      const recipientText = message.toAgentId ? `to ${message.toAgentId}` : 'broadcast';
-      const titleText = message.title ? ` - ${message.title}` : '';
-      const unreadMarker = !message.readAt ? ' 🆕' : '';
-
-      return `   ${index + 1}. **${message.messageType}** ${typeIcon}${unreadMarker}\n` +
-             `      📨 From: ${message.fromAgentId} ${recipientText}${titleText}\n` +
-             `      💬 Content: ${message.content.substring(0, 100)}${message.content.length > 100 ? '...' : ''}\n` +
-             `      ⏰ Sent: ${message.createdAt.toISOString().split('T')[0]}\n` +
-             `      🆔 ID: ${message.id}`;
-    }).join('\n\n');
-
-    return {
-      content: [
-        {
-          type: 'text',
-          text: `📨 Agent Messages (${messages.length})\n\n${messageList}\n\n` +
-                `🆕 = Unread | 💬 Send with: agent_message`
-        },
-      ],
-    };
-  }
 
   /**
    * Handle agent join project requests
    */
-  private async _handleAgentJoin(args: any) {
-    // Ensure session is initialized before getting project ID
-    await projectHandler.initializeSession('default-session');
-    const projectId = args.projectId || await projectHandler.getCurrentProjectId('default-session');
-    const sessionId = args.sessionId || 'default-session';
-    
-    // Convert agent name to ID if needed
-    let agentId = args.agentId;
-    if (!this.isUUID(args.agentId)) {
-      const client = await agentsHandler['pool'].connect();
-      try {
-        const agentResult = await client.query('SELECT id FROM agents WHERE name = $1', [args.agentId]);
-        if (agentResult.rows.length > 0) {
-          agentId = agentResult.rows[0].id;
-        } else {
-          throw new Error(`Agent "${args.agentId}" not found`);
-        }
-      } finally {
-        client.release();
-      }
-    }
-
-    await agentsHandler.joinProject(agentId, sessionId, projectId);
-
-    return {
-      content: [
-        {
-          type: 'text',
-          text: `✅ Agent joined project session!\n\n` +
-                `🤖 Agent: ${args.agentId}\n` +
-                `📋 Project: ${projectId}\n` +
-                `🔗 Session: ${sessionId}\n` +
-                `⏰ Joined: ${new Date().toISOString().split('T')[0]}\n\n` +
-                `🤝 Agent is now active in this project!`
-        },
-      ],
-    };
-  }
 
   /**
    * Handle agent leave project requests
    */
-  private async _handleAgentLeave(args: any) {
-    const projectId = args.projectId || await projectHandler.getCurrentProjectId('default-session');
-    const sessionId = args.sessionId || 'default-session';
-    
-    // Convert agent name to ID if needed
-    let agentId = args.agentId;
-    if (!this.isUUID(args.agentId)) {
-      const client = await agentsHandler['pool'].connect();
-      try {
-        const agentResult = await client.query('SELECT id FROM agents WHERE name = $1', [args.agentId]);
-        if (agentResult.rows.length > 0) {
-          agentId = agentResult.rows[0].id;
-        } else {
-          throw new Error(`Agent "${args.agentId}" not found`);
-        }
-      } finally {
-        client.release();
-      }
-    }
-
-    await agentsHandler.leaveProject(agentId, sessionId, projectId);
-
-    return {
-      content: [
-        {
-          type: 'text',
-          text: `✅ Agent left project session!\n\n` +
-                `🤖 Agent: ${args.agentId}\n` +
-                `📋 Project: ${projectId}\n` +
-                `👋 Session ended: ${sessionId}\n` +
-                `⏰ Left: ${new Date().toISOString().split('T')[0]}\n\n` +
-                `🔌 Agent session disconnected from project!`
-        },
-      ],
-    };
-  }
 
   /**
    * Handle agent sessions list requests
    */
-  private async _handleAgentSessions(args: any) {
-    const projectId = args.projectId || await projectHandler.getCurrentProjectId('default-session');
-    const sessions = await agentsHandler.getActiveAgentSessions(projectId);
-
-    if (sessions.length === 0) {
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `🔗 No active agent sessions for this project\n\n` +
-                  `💡 Join agents with: agent_join`
-          },
-        ],
-      };
-    }
-
-    const sessionList = sessions.map((session, index) => {
-      const startTime = new Date(session.started_at).toISOString().split('T')[0];
-      const lastActivity = new Date(session.last_activity).toISOString().split('T')[0];
-      
-      const sessionStatusIconMap = {
-        active: '🟢',
-        idle: '🟡',
-        disconnected: '⚪'
-      } as const;
-      const statusIcon = sessionStatusIconMap[session.status as keyof typeof sessionStatusIconMap] || '❓';
-
-      return `   ${index + 1}. **${session.agent_name}** ${statusIcon}\n` +
-             `      🎯 Type: ${session.agent_type}\n` +
-             `      🔗 Session: ${session.session_name}\n` +
-             `      📊 Status: ${session.status} (agent: ${session.agent_status})\n` +
-             `      🏁 Started: ${startTime}\n` +
-             `      ⚡ Activity: ${lastActivity}\n` +
-             `      🆔 Agent ID: ${session.agent_id}`;
-    }).join('\n\n');
-
-    return {
-      content: [
-        {
-          type: 'text',
-          text: `🔗 Active Agent Sessions (${sessions.length})\n\n${sessionList}\n\n` +
-                `💡 Manage sessions with: agent_join, agent_leave`
-        },
-      ],
-    };
-  }
 
   private isUUID(str: string): boolean {
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -2754,216 +2417,22 @@ class AIDISServer {
   /**
    * Handle code analysis requests
    */
-  private async _handleCodeAnalyze(args: any) {
-    const projectId = args.projectId || await projectHandler.getCurrentProjectId('default-session');
-    
-    const analysis = await codeAnalysisHandler.analyzeFile(
-      projectId,
-      args.filePath,
-      args.content,
-      args.forceReanalyze
-    );
-
-    const componentsText = analysis.components.length > 0 
-      ? `\n📦 Components Found:\n` + analysis.components.map(c => 
-          `   • ${c.componentType}: ${c.name} (line ${c.startLine}, complexity: ${c.complexityScore})`
-        ).join('\n')
-      : '';
-
-    const depsText = analysis.dependencies.length > 0
-      ? `\n🔗 Dependencies Found:\n` + analysis.dependencies.map(d =>
-          `   • ${d.dependencyType}: ${d.importPath || 'internal'} ${d.isExternal ? '(external)' : ''}`
-        ).join('\n')
-      : '';
-
-    return {
-      content: [
-        {
-          type: 'text',
-          text: `✅ Code analysis completed!\n\n` +
-                `📄 File: ${args.filePath}\n` +
-                `📦 Components: ${analysis.components.length}\n` +
-                `🔗 Dependencies: ${analysis.dependencies.length}${componentsText}${depsText}\n\n` +
-                `🔍 Analysis cached for future use!`
-        },
-      ],
-    };
-  }
 
   /**
    * Handle code components list requests
    */
-  private async _handleCodeComponents(args: any) {
-    const projectId = args.projectId || await projectHandler.getCurrentProjectId('default-session');
-    const components = await codeAnalysisHandler.getProjectComponents(
-      projectId,
-      args.componentType,
-      args.filePath
-    );
-
-    if (components.length === 0) {
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `📦 No code components found\n\n` +
-                  `💡 Analyze files with: code_analyze`
-          },
-        ],
-      };
-    }
-
-    const componentList = components.map((comp, index) => {
-      const exportIcon = comp.isExported ? '🌍' : '🔒';
-      const deprecatedIcon = comp.isDeprecated ? '⚠️' : '';
-      const tagsText = comp.tags.length > 0 ? `\n      🏷️  Tags: [${comp.tags.join(', ')}]` : '';
-      
-      return `   ${index + 1}. **${comp.name}** ${exportIcon}${deprecatedIcon}\n` +
-             `      📝 Type: ${comp.componentType}\n` +
-             `      📄 File: ${comp.filePath} (lines ${comp.startLine}-${comp.endLine})\n` +
-             `      📊 Complexity: ${comp.complexityScore} | LOC: ${comp.linesOfCode}${tagsText}\n` +
-             `      🆔 ID: ${comp.id}`;
-    }).join('\n\n');
-
-    return {
-      content: [
-        {
-          type: 'text',
-          text: `📦 Code Components (${components.length})\n\n${componentList}\n\n` +
-                `🌍 = Exported | 🔒 = Private | ⚠️ = Deprecated\n` +
-                `💡 Get dependencies with: code_dependencies\n` +
-                `📊 Check impact with: code_impact`
-        },
-      ],
-    };
-  }
 
   /**
    * Handle code dependencies requests
    */
-  private async _handleCodeDependencies(args: any) {
-    const dependencies = await codeAnalysisHandler.getComponentDependencies(args.componentId);
-
-    if (dependencies.length === 0) {
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `🔗 No dependencies found for this component\n\n` +
-                  `💡 This component appears to be self-contained!`
-          },
-        ],
-      };
-    }
-
-    const depList = dependencies.map((dep, index) => {
-      const externalIcon = dep.isExternal ? '🌐' : '🏠';
-      const confidenceBar = '▓'.repeat(Math.round(dep.confidenceScore * 5));
-      const aliasText = dep.importAlias ? ` as ${dep.importAlias}` : '';
-      
-      return `   ${index + 1}. **${dep.dependencyType}** ${externalIcon}\n` +
-             `      📦 Path: ${dep.importPath || 'internal'}${aliasText}\n` +
-             `      📊 Confidence: ${confidenceBar} (${Math.round(dep.confidenceScore * 100)}%)\n` +
-             `      🆔 ID: ${dep.id}`;
-    }).join('\n\n');
-
-    return {
-      content: [
-        {
-          type: 'text',
-          text: `🔗 Component Dependencies (${dependencies.length})\n\n${depList}\n\n` +
-                `🌐 = External | 🏠 = Internal\n` +
-                `📊 Higher confidence = more certain dependency`
-        },
-      ],
-    };
-  }
 
   /**
    * Handle code impact analysis requests  
    */
-  private async _handleCodeImpact(args: any) {
-    const impact = await codeAnalysisHandler.analyzeImpact(
-      await projectHandler.getCurrentProjectId('default-session'),
-      args.componentId
-    );
-
-    const impactLevel = impact.impactScore >= 10 ? 'HIGH 🔴' : 
-                       impact.impactScore >= 5 ? 'MEDIUM 🟡' : 'LOW 🟢';
-
-    if (impact.dependents.length === 0) {
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `📊 Impact Analysis: ${impactLevel}\n\n` +
-                  `🔗 No dependents found - this component can be changed safely!\n` +
-                  `📊 Impact Score: ${impact.impactScore}/20\n\n` +
-                  `✅ Safe to modify without affecting other code`
-          },
-        ],
-      };
-    }
-
-    const dependentsList = impact.dependents.map((dep, index) => {
-      const componentTypeIconMap = {
-        function: '⚡',
-        class: '🏗️',
-        interface: '📋',
-        module: '📦'
-      } as const;
-      const typeIcon = componentTypeIconMap[dep.component_type as keyof typeof componentTypeIconMap] || '📝';
-      
-      return `   ${index + 1}. **${dep.name}** ${typeIcon}\n` +
-             `      📄 File: ${dep.file_path}\n` +
-             `      🔗 Dependency: ${dep.dependency_type}\n` +
-             `      📊 Confidence: ${Math.round(dep.confidence_score * 100)}%`;
-    }).join('\n\n');
-
-    return {
-      content: [
-        {
-          type: 'text',
-          text: `📊 Impact Analysis: ${impactLevel}\n\n` +
-                `🔗 ${impact.dependents.length} components depend on this:\n\n${dependentsList}\n\n` +
-                `📊 Impact Score: ${impact.impactScore}/20\n` +
-                `⚠️  Changes to this component will affect ${impact.dependents.length} other components!`
-        },
-      ],
-    };
-  }
 
   /**
    * Handle code statistics requests
    */
-  private async _handleCodeStats(args: any) {
-    const projectId = args.projectId || await projectHandler.getCurrentProjectId('default-session');
-    const stats = await codeAnalysisHandler.getProjectAnalysisStats(projectId);
-
-    const componentBreakdown = Object.entries(stats.componentsByType)
-      .map(([type, count]) => `   ${type}: ${count}`)
-      .join('\n') || '   (no components analyzed yet)';
-
-    const complexityLevel = stats.averageComplexity >= 5 ? 'HIGH 🔴' :
-                           stats.averageComplexity >= 3 ? 'MEDIUM 🟡' : 'LOW 🟢';
-
-    return {
-      content: [
-        {
-          type: 'text',
-          text: `📊 Code Analysis Statistics\n\n` +
-                `📦 Total Components: ${stats.totalComponents}\n` +
-                `📄 Files Analyzed: ${stats.filesAnalyzed}\n` +
-                `🔗 Dependencies: ${stats.totalDependencies} (${stats.externalDependencies} external)\n` +
-                `📏 Total Lines: ${stats.totalLinesOfCode.toLocaleString()}\n` +
-                `🧠 Avg Complexity: ${stats.averageComplexity.toFixed(1)} (${complexityLevel})\n` +
-                `⚡ Max Complexity: ${stats.maxComplexity}\n\n` +
-                `📋 Components by Type:\n${componentBreakdown}\n\n` +
-                `💡 Analyze more files with: code_analyze`
-        },
-      ],
-    };
-  }
 
   /**
    * Handle smart search requests
@@ -3756,214 +3225,14 @@ class AIDISServer {
   /**
    * Handle git session commits request
    */
-  private async _handleGitSessionCommits(args: any) {
-    console.log(`📊 Git session commits request: sessionId="${args.sessionId || 'current'}", includeDetails=${args.includeDetails || false}`);
-    
-    const result = await GitHandler.gitSessionCommits({
-      sessionId: args.sessionId,
-      includeDetails: args.includeDetails || false,
-      confidenceThreshold: args.confidenceThreshold || 0.0
-    });
-
-    if (!result.success) {
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `❌ Failed to get session commits: ${result.error}`
-          }
-        ]
-      };
-    }
-
-    let responseText = `📊 **Git Commits for Session ${result.sessionId.substring(0, 8)}...**\n\n`;
-    responseText += `**Summary:**\n`;
-    responseText += `• Total commits: ${result.totalCommits}\n`;
-    responseText += `• Average confidence: ${result.avgConfidence}%\n`;
-    
-    if (result.timeRange) {
-      responseText += `• Session timeframe: ${new Date(result.timeRange.start).toLocaleString()} - ${new Date(result.timeRange.end).toLocaleString()}\n`;
-    }
-
-    if (result.commits.length > 0) {
-      responseText += `\n**Linked Commits:**\n`;
-      result.commits.forEach((commit, index) => {
-        responseText += `\n${index + 1}. **${commit.short_sha}** (${Math.round(commit.confidence_score * 100)}% confidence)\n`;
-        responseText += `   📝 ${commit.message}\n`;
-        responseText += `   👤 ${commit.author_name} <${commit.author_email}>\n`;
-        responseText += `   📅 ${new Date(commit.author_date).toLocaleString()}\n`;
-        responseText += `   🔗 Link type: ${commit.link_type}`;
-        
-        if (commit.time_proximity_minutes !== null && commit.time_proximity_minutes !== undefined) {
-          responseText += ` (${commit.time_proximity_minutes} min proximity)`;
-        }
-        
-        if (commit.author_match) {
-          responseText += ` ✅ Author match`;
-        }
-        
-        if (args.includeDetails && commit.files_changed) {
-          responseText += `\n   📁 Files: ${commit.files_changed}, +${commit.insertions || 0}/-${commit.deletions || 0} lines`;
-        }
-      });
-    } else {
-      responseText += `\n🔍 No commits found linked to this session.`;
-      if (args.confidenceThreshold && args.confidenceThreshold > 0) {
-        responseText += ` Try lowering the confidence threshold (currently ${args.confidenceThreshold}).`;
-      }
-    }
-
-    return {
-      content: [
-        {
-          type: 'text',
-          text: responseText
-        }
-      ]
-    };
-  }
 
   /**
    * Handle git commit sessions request
    */
-  private async _handleGitCommitSessions(args: any) {
-    console.log(`🔍 Git commit sessions request: commitSha="${args.commitSha}", includeDetails=${args.includeDetails || false}`);
-    
-    const result = await GitHandler.gitCommitSessions({
-      commitSha: args.commitSha,
-      includeDetails: args.includeDetails || false
-    });
-
-    if (!result.success) {
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `❌ Failed to get commit sessions: ${result.error}`
-          }
-        ]
-      };
-    }
-
-    let responseText = `🔍 **Sessions for Git Commit ${result.commitSha}**\n\n`;
-    
-    if (result.commit) {
-      responseText += `**Commit Details:**\n`;
-      responseText += `• **${result.commit.short_sha}**: ${result.commit.message}\n`;
-      responseText += `• 👤 ${result.commit.author_name} <${result.commit.author_email}>\n`;
-      responseText += `• 📅 ${new Date(result.commit.author_date).toLocaleString()}\n`;
-      
-      if (result.commit.files_changed) {
-        responseText += `• 📁 ${result.commit.files_changed} files changed, +${result.commit.insertions || 0}/-${result.commit.deletions || 0} lines\n`;
-      }
-      
-      if (result.commit.branch_name) {
-        responseText += `• 🌿 Branch: ${result.commit.branch_name}\n`;
-      }
-    }
-
-    responseText += `\n**Session Correlation:**\n`;
-    responseText += `• Total sessions: ${result.totalSessions}\n`;
-    responseText += `• Average confidence: ${result.avgConfidence}%\n`;
-
-    if (result.sessions.length > 0) {
-      responseText += `\n**Linked Sessions:**\n`;
-      result.sessions.forEach((session, index) => {
-        responseText += `\n${index + 1}. **Session ${session.id.substring(0, 8)}...** (${Math.round(session.confidence_score * 100)}% confidence)\n`;
-        responseText += `   🎯 Type: ${session.session_type}\n`;
-        responseText += `   📅 Started: ${new Date(session.started_at).toLocaleString()}\n`;
-        responseText += `   ⏱️  Duration: ${session.duration_minutes} minutes\n`;
-        responseText += `   🔗 Link type: ${session.link_type}\n`;
-        
-        if (session.project_name) {
-          responseText += `   🏷️  Project: ${session.project_name}\n`;
-        }
-        
-        if (args.includeDetails) {
-          if (session.contexts_created !== undefined && session.decisions_created !== undefined) {
-            responseText += `   📝 Activity: ${session.contexts_created} contexts, ${session.decisions_created} decisions\n`;
-          }
-        }
-      });
-    } else {
-      responseText += `\n🔍 No sessions found linked to this commit.`;
-    }
-
-    return {
-      content: [
-        {
-          type: 'text',
-          text: responseText
-        }
-      ]
-    };
-  }
 
   /**
    * Handle git correlation trigger request
    */
-  private async _handleGitCorrelateSession(args: any) {
-    console.log(`🔗 Git correlate session request: sessionId="${args.sessionId || 'current'}", forceRefresh=${args.forceRefresh || false}`);
-    
-    const result = await GitHandler.gitCorrelateSession({
-      sessionId: args.sessionId,
-      projectId: args.projectId,
-      forceRefresh: args.forceRefresh || false,
-      confidenceThreshold: args.confidenceThreshold || 0.3
-    });
-
-    if (!result.success) {
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `❌ Failed to correlate session with git: ${result.error}`
-          }
-        ]
-      };
-    }
-
-    let responseText = `🔗 **Git Correlation Completed**\n\n`;
-    responseText += `**Session:** ${result.sessionId.substring(0, 8)}...\n`;
-    
-    if (result.projectId) {
-      responseText += `**Project:** ${result.projectId}\n`;
-    }
-    
-    responseText += `\n**Correlation Results:**\n`;
-    responseText += `• Links created: ${result.linksCreated}\n`;
-    responseText += `• Links updated: ${result.linksUpdated}\n`;
-    responseText += `• High confidence links: ${result.highConfidenceLinks}\n`;
-    responseText += `• Average confidence: ${result.avgConfidence}%\n`;
-    responseText += `• Processing time: ${result.processingTimeMs}ms\n`;
-
-    if (result.correlationStats) {
-      responseText += `\n**Correlation Analysis:**\n`;
-      responseText += `• Author matches: ${result.correlationStats.authorMatches}\n`;
-      responseText += `• Time proximity matches: ${result.correlationStats.timeProximityMatches}\n`;
-      responseText += `• Content similarity matches: ${result.correlationStats.contentSimilarityMatches}\n`;
-    }
-
-    if (result.linksCreated === 0 && result.linksUpdated === 0) {
-      responseText += `\n💡 **No new correlations found.** This could mean:\n`;
-      responseText += `• No recent commits in the session timeframe\n`;
-      responseText += `• Correlation confidence below threshold (${args.confidenceThreshold || 0.3})\n`;
-      responseText += `• Session not assigned to a project with git repository\n`;
-      responseText += `\nTry:\n`;
-      responseText += `• Lowering the confidence threshold\n`;
-      responseText += `• Checking if the session is assigned to the correct project\n`;
-      responseText += `• Using \`git_session_commits\` to see existing correlations\n`;
-    }
-
-    return {
-      content: [
-        {
-          type: 'text',
-          text: responseText
-        }
-      ]
-    };
-  }
 }
 
 /**

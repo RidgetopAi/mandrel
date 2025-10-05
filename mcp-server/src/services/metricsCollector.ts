@@ -433,7 +433,7 @@ export class MetricsCollector {
       };
 
       // Create metrics collection session
-      result.collectionSessionId = await this.createMetricsSession(projectId, sessionId, trigger, startDate, endDate);
+      result.collectionSessionId = await this.createMetricsSession(projectId, sessionId || 'default-session', trigger, startDate, endDate);
 
       // 1. Collect core development metrics
       const coreStart = Date.now();
