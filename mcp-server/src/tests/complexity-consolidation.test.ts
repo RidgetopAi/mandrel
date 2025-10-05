@@ -1099,7 +1099,7 @@ describe('Complexity Tools Consolidation Test Suite', () => {
         'complexity_get_performance'
       ];
 
-      const expectedMappings = {
+      const expectedMappings: Record<string, string> = {
         'complexity_analyze_files': 'complexity_analyze',
         'complexity_get_file_metrics': 'complexity_analyze',
         'complexity_get_function_metrics': 'complexity_analyze',

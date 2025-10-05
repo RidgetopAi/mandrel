@@ -707,9 +707,9 @@ export class EmbeddingService {
     const words = text.toLowerCase().split(/\s+/);
     
     // Add signals for common development terms
-    const signals = {
+    const signals: Record<string, number[]> = {
       'database': [0, 50, 100],
-      'postgresql': [1, 51, 101], 
+      'postgresql': [1, 51, 101],
       'mcp': [2, 52, 102],
       'server': [3, 53, 103],
       'typescript': [4, 54, 104],
