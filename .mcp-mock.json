@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "aidis-mock": {
+      "command": "node",
+      "args": ["/home/ridgetop/aidis/aidis-stdio-mock.js"],
+      "env": {}
+    }
+  }
+}

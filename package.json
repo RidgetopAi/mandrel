@@ -10,5 +10,8 @@
     "playwright": "^1.55.1",
     "typescript": "^5.9.2",
     "ws": "^8.18.3"
+  },
+  "devDependencies": {
+    "madge": "^8.0.0"
   }
 }
