@@ -98,9 +98,10 @@ export class McpFuzzTester {
         }
 
       } catch (error) {
-        if (error.message === 'Test timeout') {
+        const err = error as Error;
+        if (err.message === 'Test timeout') {
           timeouts++;
-        } else if (error.message.includes('crash') || error.message.includes('segfault')) {
+        } else if (err.message.includes('crash') || err.message.includes('segfault')) {
           crashed++;
         } else {
           failed++;
@@ -110,15 +111,15 @@ export class McpFuzzTester {
           testId,
           category: testConfig.testCategories[i % testConfig.testCategories.length],
           input: 'Generated fuzz input',
-          error: error.message,
-          stack: error.stack,
+          error: err.message,
+          stack: err.stack,
           timestamp: new Date()
         };
 
         failures.push(failure);
 
         if (testConfig.enableLogging) {
-          console.log(`❌ Test ${testId} failed: ${error.message}`);
+          console.log(`❌ Test ${testId} failed: ${err.message}`);
         }
 
         if (testConfig.stopOnFirstFailure) {
@@ -200,10 +201,11 @@ export class McpFuzzTester {
 
     } catch (error) {
       // Expected errors are OK, crashes are not
-      if (error.message.includes('Maximum call stack') ||
-          error.message.includes('out of memory') ||
-          error.name === 'RangeError') {
-        throw new Error(`Parser crash: ${error.message}`);
+      const err = error as Error & { name?: string };
+      if (err.message.includes('Maximum call stack') ||
+          err.message.includes('out of memory') ||
+          err.name === 'RangeError') {
+        throw new Error(`Parser crash: ${err.message}`);
       }
       // Validation errors are expected and OK
     }
@@ -242,9 +244,10 @@ export class McpFuzzTester {
       }
 
     } catch (error) {
-      if (error.message.includes('Maximum call stack') ||
-          error.message.includes('out of memory')) {
-        throw new Error(`Validator crash: ${error.message}`);
+      const err = error as Error;
+      if (err.message.includes('Maximum call stack') ||
+          err.message.includes('out of memory')) {
+        throw new Error(`Validator crash: ${err.message}`);
       }
     }
   }
@@ -264,9 +267,10 @@ export class McpFuzzTester {
       }
 
     } catch (error) {
-      if (error.message.includes('Maximum call stack') ||
-          error.message.includes('out of memory')) {
-        throw new Error(`Response handler crash: ${error.message}`);
+      const err = error as Error;
+      if (err.message.includes('Maximum call stack') ||
+          err.message.includes('out of memory')) {
+        throw new Error(`Response handler crash: ${err.message}`);
       }
     }
   }
