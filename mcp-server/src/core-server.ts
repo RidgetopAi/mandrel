@@ -1070,12 +1070,13 @@ class AIDISCoreServer {
     }
 
     const dependentsList = impact.dependents.map((dep, index) => {
-      const typeIcon = {
+      const componentTypeIconMap = {
         function: '⚡',
         class: '🏗️',
         interface: '📋',
         module: '📦'
-      }[dep.component_type] || '📝';
+      } as const;
+      const typeIcon = componentTypeIconMap[dep.component_type as keyof typeof componentTypeIconMap] || '📝';
       
       return `   ${index + 1}. **${dep.name}** ${typeIcon}\n` +
              `      📄 File: ${dep.file_path}\n` +
@@ -1232,19 +1233,21 @@ class AIDISCoreServer {
     const projectId = args.projectId || await projectHandler.getCurrentProjectId('default-session');
     const insights = await smartSearchHandler.getProjectInsights(projectId);
 
-    const healthLevel = {
+    const healthLevelMap = {
       healthy: '🟢 HEALTHY',
-      moderate: '🟡 MODERATE', 
+      moderate: '🟡 MODERATE',
       needs_attention: '🔴 NEEDS ATTENTION',
       no_data: '⚪ NO DATA'
-    }[insights.insights.codeHealth.level] || '❓ UNKNOWN';
+    } as const;
+    const healthLevel = healthLevelMap[insights.insights.codeHealth.level as keyof typeof healthLevelMap] || '❓ UNKNOWN';
 
-    const efficiencyLevel = {
+    const efficiencyLevelMap = {
       efficient: '🟢 EFFICIENT',
       moderate: '🟡 MODERATE',
       needs_improvement: '🔴 NEEDS IMPROVEMENT',
       no_data: '⚪ NO DATA'
-    }[insights.insights.teamEfficiency.level] || '❓ UNKNOWN';
+    } as const;
+    const efficiencyLevel = efficiencyLevelMap[insights.insights.teamEfficiency.level as keyof typeof efficiencyLevelMap] || '❓ UNKNOWN';
 
     const gapsText = insights.insights.knowledgeGaps.length > 0
       ? `\n📋 Knowledge Gaps:\n` + insights.insights.knowledgeGaps.map((gap: string) => `   • ${gap}`).join('\n')
