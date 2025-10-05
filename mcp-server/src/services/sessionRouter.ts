@@ -6,7 +6,7 @@
  */
 
 import { isFeatureEnabled } from '../utils/featureFlags.js';
-import { SessionManagementHandler, SessionAnalyticsHandler } from '../handlers/sessionAnalytics.js';
+import { SessionManagementHandler } from '../handlers/sessionAnalytics.js';
 import { logEvent } from '../middleware/eventLogger.js';
 
 export interface SessionRouterConfig {
@@ -267,7 +267,7 @@ export class SessionRouter {
   /**
    * Legacy session assignment (placeholder for existing implementation)
    */
-  private static async legacySessionAssignment(projectName: string, userId?: string): Promise<{
+  private static async legacySessionAssignment(projectName: string, _userId?: string): Promise<{
     success: boolean;
     sessionId?: string;
     projectName?: string;
@@ -287,7 +287,7 @@ export class SessionRouter {
   /**
    * Legacy session status (placeholder for existing implementation)
    */
-  private static async legacySessionStatus(userId?: string): Promise<{
+  private static async legacySessionStatus(_userId?: string): Promise<{
     success: boolean;
     session?: any;
     message: string;

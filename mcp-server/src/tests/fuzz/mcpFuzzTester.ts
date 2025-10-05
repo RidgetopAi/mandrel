@@ -6,7 +6,6 @@
 import { McpParser } from '../../parsers/mcpParser.js';
 import { IngressValidator } from '../../middleware/ingressValidation.js';
 import { McpResponseHandler } from '../../utils/mcpResponseHandler.js';
-import { logger } from '../../utils/logger.js';
 import * as crypto from 'crypto';
 
 export interface FuzzTestConfig {
@@ -149,7 +148,7 @@ export class McpFuzzTester {
   /**
    * Execute individual fuzz test
    */
-  private static async executeFuzzTest(testId: string, category: string, input: string): Promise<void> {
+  private static async executeFuzzTest(_testId: string, category: string, input: string): Promise<void> {
     switch (category) {
       case 'parser':
         await this.testMcpParser(input);
@@ -300,7 +299,7 @@ export class McpFuzzTester {
   /**
    * Test with extreme inputs
    */
-  private static async testExtremeInputs(input: string): Promise<void> {
+  private static async testExtremeInputs(_input: string): Promise<void> {
     const extremeInputs = [
       '', // Empty
       ' '.repeat(1000000), // Large whitespace
@@ -321,7 +320,7 @@ export class McpFuzzTester {
   /**
    * Test with attack vectors
    */
-  private static async testAttackVectors(input: string): Promise<void> {
+  private static async testAttackVectors(_input: string): Promise<void> {
     const attackVectors = [
       '{"__proto__":{"polluted":true}}',
       '{"constructor":{"prototype":{"polluted":true}}}',

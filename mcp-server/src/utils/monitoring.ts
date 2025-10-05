@@ -282,10 +282,10 @@ export function withMonitoring(metricPrefix: string = 'method') {
 export function createMonitoringEndpoints() {
   return {
     // Health endpoint
-    health: (req: any, res: any) => {
+    health: (_req: any, res: any) => {
       const health = monitoring.getSystemHealth();
       const statusCode = health.status === 'healthy' ? 200 : health.status === 'degraded' ? 200 : 503;
-      
+
       res.writeHead(statusCode, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({
         status: health.status,
@@ -302,7 +302,7 @@ export function createMonitoringEndpoints() {
     },
 
     // Metrics endpoint
-    metrics: (req: any, res: any) => {
+    metrics: (_req: any, res: any) => {
       const dashboard = monitoring.getDashboardData();
       
       res.writeHead(200, { 'Content-Type': 'application/json' });

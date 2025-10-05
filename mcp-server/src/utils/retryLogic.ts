@@ -110,8 +110,8 @@ export class EnhancedRetryLogic {
   ): Promise<T> {
     return Promise.race([
       operation(),
-      this.createTimeoutPromise(timeoutMs, operationName)
-    ]);
+      this.createTimeoutPromise<T>(timeoutMs, operationName)
+    ]) as Promise<T>;
   }
 
   /**

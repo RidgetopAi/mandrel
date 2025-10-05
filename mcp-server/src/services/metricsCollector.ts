@@ -31,7 +31,7 @@
 import { db } from '../config/database.js';
 import { logEvent } from '../middleware/eventLogger.js';
 import { getCurrentSession } from './sessionManager.js';
-import { PatternDetector, PatternDetectionResult } from './patternDetector.js';
+import { PatternDetectionResult } from './patternDetector.js';
 
 // Metrics Collection Configuration
 export interface MetricsCollectorConfig {
@@ -991,17 +991,17 @@ export class MetricsCollector {
   }
 
   // Placeholder methods for completeness - full implementation would continue
-  private async calculateChangeFrequencyMetrics(projectId: string, startDate: Date, endDate: Date): Promise<CoreDevelopmentMetric[]> {
+  private async calculateChangeFrequencyMetrics(_projectId: string, _startDate: Date, _endDate: Date): Promise<CoreDevelopmentMetric[]> {
     // Implementation for change frequency analysis
     return [];
   }
 
-  private async calculateVolatilityMetrics(projectId: string, startDate: Date, endDate: Date): Promise<CoreDevelopmentMetric[]> {
+  private async calculateVolatilityMetrics(_projectId: string, _startDate: Date, _endDate: Date): Promise<CoreDevelopmentMetric[]> {
     // Implementation for code volatility analysis
     return [];
   }
 
-  private async calculateQualityTrendMetrics(projectId: string, startDate: Date, endDate: Date): Promise<CoreDevelopmentMetric[]> {
+  private async calculateQualityTrendMetrics(_projectId: string, _startDate: Date, _endDate: Date): Promise<CoreDevelopmentMetric[]> {
     // Implementation for quality trend analysis
     return [];
   }
@@ -1010,10 +1010,10 @@ export class MetricsCollector {
    * Collect pattern-based intelligence metrics
    */
   private async collectPatternIntelligenceMetrics(
-    projectId: string, 
-    collectionSessionId: string, 
-    startDate: Date, 
-    endDate: Date
+    _projectId: string,
+    _collectionSessionId: string,
+    _startDate: Date,
+    _endDate: Date
   ): Promise<PatternIntelligenceMetric[]> {
     
     // Implementation would extract intelligence from pattern detection results
@@ -1025,10 +1025,10 @@ export class MetricsCollector {
    * Collect productivity and health metrics
    */
   private async collectProductivityHealthMetrics(
-    projectId: string, 
-    collectionSessionId: string, 
-    startDate: Date, 
-    endDate: Date
+    _projectId: string,
+    _collectionSessionId: string,
+    _startDate: Date,
+    _endDate: Date
   ): Promise<ProductivityHealthMetric[]> {
     
     // Implementation would analyze session data and developer behavior
@@ -1071,7 +1071,7 @@ export class MetricsCollector {
   /**
    * Update metric trends with new data
    */
-  private async updateMetricTrends(result: MetricsCollectionResult): Promise<MetricTrend[]> {
+  private async updateMetricTrends(_result: MetricsCollectionResult): Promise<MetricTrend[]> {
     // Implementation would update trend analysis with new metric values
     return [];
   }

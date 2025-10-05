@@ -340,8 +340,8 @@ export class MetricsAggregationHandler {
       const correlationEngine = getMetricsCorrelationEngine();
       const correlationResult = await correlationEngine.calculateCorrelations(correlationRequest);
 
-      let leadingIndicators = [];
-      let performanceDrivers = [];
+      let leadingIndicators: any[] = [];
+      let performanceDrivers: any[] = [];
 
       // Optional: Calculate leading indicators
       if (params.includeLeadingIndicators) {

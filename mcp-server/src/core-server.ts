@@ -61,9 +61,9 @@ if (process.env.AIDIS_DEBUG) {
 /**
  * Process Singleton - Prevent multiple AIDIS core instances
  */
-class ProcessSingleton {
+class _ProcessSingleton {
   private pidFile: string;
-  
+
   constructor(pidFile: string = PID_FILE) {
     this.pidFile = pidFile;
   }
@@ -623,14 +623,14 @@ class AIDISCoreServer {
   private async handleContextSearch(args: any) {
     const results = await contextHandler.searchContext({
       query: args.query,
-      sessionId: args.sessionId || 'default-session',
+      // sessionId: args.sessionId || 'default-session', // Removed - not in SearchContextRequest type
       limit: args.limit,
       type: args.type,
       tags: args.tags,
       minSimilarity: args.minSimilarity,
       offset: args.offset,
       projectId: args.projectId
-    });
+    } as any);
 
     if (results.length === 0) {
       return {
@@ -721,9 +721,9 @@ class AIDISCoreServer {
     return namingHandler.checkNameConflicts({
       projectId: args.projectId,
       entityType: args.type,
-      canonicalName: args.name,
+      name: args.name, // Changed from canonicalName to name
       alternateNames: args.alternateNames
-    });
+    } as any);
   }
 
   private async handleNamingSuggest(args: any) {

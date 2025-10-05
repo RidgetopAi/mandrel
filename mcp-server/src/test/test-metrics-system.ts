@@ -14,7 +14,7 @@
 
 import { db } from '../config/database.js';
 import { MetricsCollector, collectProjectMetrics } from '../services/metricsCollector.js';
-import { DevelopmentMetricsHandler } from '../handlers/developmentMetrics.js';
+import { DevelopmentMetricsHandler } from '../handlers/_deprecated_tt009/developmentMetrics.js';
 import { MetricsIntegrationService } from '../services/metricsIntegration.js';
 
 // Test configuration
@@ -460,7 +460,7 @@ export class MetricsSystemTestSuite {
         ];
 
         const expectedTotalLines = testCommits.reduce((sum, c) => sum + c.insertions + c.deletions, 0);
-        const expectedAvgFilesPerCommit = testCommits.reduce((sum, c) => sum + c.files, 0) / testCommits.length;
+        // const _expectedAvgFilesPerCommit = testCommits.reduce((sum, c) => sum + c.files, 0) / testCommits.length;
 
         await this.createControlledGitData(projectId, testCommits);
 

@@ -9,11 +9,7 @@
 import {
   ComplexityAnalyzeParams,
   ComplexityInsightsParams,
-  ComplexityManageParams,
-  COMPLEXITY_ANALYZE_VALIDATION,
-  COMPLEXITY_INSIGHTS_VALIDATION,
-  COMPLEXITY_MANAGE_VALIDATION,
-  PARAMETER_MAPPING_EXAMPLES
+  ComplexityManageParams
 } from '../types/consolidated-complexity.js';
 
 // =============================================================================
@@ -397,16 +393,16 @@ export function mapGetPerformanceParams(oldParams: {
  */
 export function validateParameterMapping(
   oldToolName: string,
-  oldParams: any,
+  _oldParams: any,
   newParams: ComplexityAnalyzeParams | ComplexityInsightsParams | ComplexityManageParams
 ): { valid: boolean; errors: string[]; warnings: string[]; } {
   const errors: string[] = [];
-  const warnings: string[] = [];
+  const _warnings: string[] = [];
 
   // Basic validation that new parameters are properly structured
   if (!newParams) {
     errors.push('New parameters are null or undefined');
-    return { valid: false, errors, warnings };
+    return { valid: false, errors, warnings: _warnings };
   }
 
   // Tool-specific validation
@@ -415,7 +411,7 @@ export function validateParameterMapping(
     case 'complexity_get_file_metrics':
     case 'complexity_get_function_metrics':
     case 'complexity_analyze_commit':
-      validateAnalyzeParams(newParams as ComplexityAnalyzeParams, errors, warnings);
+      validateAnalyzeParams(newParams as ComplexityAnalyzeParams, errors, _warnings);
       break;
 
     case 'complexity_get_dashboard':
@@ -423,7 +419,7 @@ export function validateParameterMapping(
     case 'complexity_get_trends':
     case 'complexity_get_technical_debt':
     case 'complexity_get_refactoring_opportunities':
-      validateInsightsParams(newParams as ComplexityInsightsParams, errors, warnings);
+      validateInsightsParams(newParams as ComplexityInsightsParams, errors, _warnings);
       break;
 
     case 'complexity_start_tracking':
@@ -433,7 +429,7 @@ export function validateParameterMapping(
     case 'complexity_resolve_alert':
     case 'complexity_set_thresholds':
     case 'complexity_get_performance':
-      validateManageParams(newParams as ComplexityManageParams, errors, warnings);
+      validateManageParams(newParams as ComplexityManageParams, errors, _warnings);
       break;
 
     default:
@@ -443,11 +439,11 @@ export function validateParameterMapping(
   return {
     valid: errors.length === 0,
     errors,
-    warnings
+    warnings: _warnings
   };
 }
 
-function validateAnalyzeParams(params: ComplexityAnalyzeParams, errors: string[], warnings: string[]): void {
+function validateAnalyzeParams(params: ComplexityAnalyzeParams, errors: string[], _warnings: string[]): void {
   if (!params.target) {
     errors.push('Missing required field: target');
   }
@@ -458,18 +454,18 @@ function validateAnalyzeParams(params: ComplexityAnalyzeParams, errors: string[]
     warnings.push('Type is "files" but target is a single string, consider using "file" type');
   }
   if (params.type === 'file' && Array.isArray(params.target)) {
-    warnings.push('Type is "file" but target is an array, consider using "files" type');
+    _warnings.push('Type is "file" but target is an array, consider using "files" type');
   }
 }
 
-function validateInsightsParams(params: ComplexityInsightsParams, errors: string[], warnings: string[]): void {
+function validateInsightsParams(params: ComplexityInsightsParams, errors: string[], _warnings: string[]): void {
   if (!params.view || !['dashboard', 'hotspots', 'trends', 'debt', 'refactoring'].includes(params.view)) {
     errors.push('Invalid or missing field: view');
   }
   // Add more specific validation based on view type
 }
 
-function validateManageParams(params: ComplexityManageParams, errors: string[], warnings: string[]): void {
+function validateManageParams(params: ComplexityManageParams, errors: string[], _warnings: string[]): void {
   if (!params.action || !['start', 'stop', 'alerts', 'acknowledge', 'resolve', 'thresholds', 'performance'].includes(params.action)) {
     errors.push('Invalid or missing field: action');
   }
@@ -572,7 +568,7 @@ export function migrateLegacyToolCall(
   newParams: ComplexityAnalyzeParams | ComplexityInsightsParams | ComplexityManageParams;
   migrationNotes?: string[];
 } {
-  const migrationNotes: string[] = [];
+  // const _migrationNotes: string[] = [];
 
   switch (toolName) {
     // Analyze tools

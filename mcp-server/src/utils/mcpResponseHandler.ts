@@ -35,7 +35,7 @@ export class McpResponseHandler {
     try {
       // Input validation
       if (typeof rawResponse !== 'string') {
-        logger.warn('Non-string response received', { toolName, requestId, type: typeof rawResponse });
+        logger.warn('Non-string response received', { toolName, requestId, type: typeof rawResponse } as any);
         return {
           success: false,
           error: 'Invalid response type: expected string',
@@ -50,10 +50,13 @@ export class McpResponseHandler {
         logger.warn('MCP response parsing failed', {
           toolName,
           requestId,
-          error: parseResult.error,
+          error: {
+            name: 'ParseError',
+            message: parseResult.error || 'Unknown parsing error'
+          },
           responseLength: rawResponse.length,
           responsePreview: rawResponse.substring(0, 200)
-        });
+        } as any);
 
         return {
           success: false,
@@ -70,7 +73,7 @@ export class McpResponseHandler {
         requestId,
         contentType,
         responseLength: rawResponse.length
-      });
+      } as any);
 
       return {
         success: true,
@@ -87,7 +90,7 @@ export class McpResponseHandler {
         error: err.message,
         stack: err.stack,
         responseLength: rawResponse?.length || 0
-      });
+      } as any);
 
       return {
         success: false,
@@ -115,7 +118,10 @@ export class McpResponseHandler {
     if (!toolParseResult.success) {
       logger.warn('Tool response validation failed', {
         ...context,
-        error: toolParseResult.error
+        error: {
+          name: 'ValidationError',
+          message: toolParseResult.error || 'Unknown validation error'
+        }
       });
 
       return {
@@ -130,7 +136,10 @@ export class McpResponseHandler {
     if (!contentValidation.valid) {
       logger.warn('Tool content validation failed', {
         ...context,
-        error: contentValidation.error
+        error: {
+          name: 'ContentValidationError',
+          message: contentValidation.error || 'Unknown content validation error'
+        }
       });
 
       return {
@@ -211,7 +220,10 @@ export class McpResponseHandler {
             attempt,
             maxRetries,
             backoffMs: backoffTime,
-            error: result.error
+            error: {
+              name: 'ProcessingError',
+              message: result.error || 'Unknown processing error'
+            }
           });
 
           await new Promise(resolve => setTimeout(resolve, backoffTime));

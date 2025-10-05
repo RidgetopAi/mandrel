@@ -70,8 +70,8 @@ export class SessionTracker {
       const startTime = new Date();
       
       // Implement project inheritance hierarchy if no project specified
-      let resolvedProjectId = projectId;
-      
+      let resolvedProjectId: string | null = projectId || null;
+
       if (!resolvedProjectId) {
         resolvedProjectId = await this.resolveProjectForSession(sessionId);
       }
@@ -648,11 +648,11 @@ export class SessionTracker {
   /**
    * Resolve project for new session using TS010 hierarchy:
    * 1. Current project (from project handler context)
-   * 2. User's primary project  
+   * 2. User's primary project
    * 3. System default project (aidis-bootstrap)
    * 4. Create personal project
    */
-  static async resolveProjectForSession(sessionId: string = 'default-session'): Promise<string> {
+  static async resolveProjectForSession(sessionId: string = 'default-session'): Promise<string | null> {
     try {
       console.log(`🔍 Resolving project for session ${sessionId} using TS010 hierarchy...`);
       

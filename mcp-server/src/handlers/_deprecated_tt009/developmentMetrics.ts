@@ -533,7 +533,7 @@ export class DevelopmentMetricsHandler {
    * Get comprehensive dashboard metrics with optimized performance
    */
   private static async getDashboardMetrics(args: any): Promise<any> {
-    const { projectId, timeframe = '30d', includeAlerts = true, includeTrends = true } = args;
+    const { projectId, timeframe: _timeframe = '30d', includeAlerts = true, includeTrends = true } = args;
 
     try {
       // Use materialized view for optimal performance

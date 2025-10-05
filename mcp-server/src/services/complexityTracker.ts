@@ -2235,17 +2235,18 @@ class TypeScriptComplexityAnalyzer implements LanguageComplexityAnalyzer {
     return exports;
   }
 
-  private extractClasses(code: string): any[] {
-    const classRegex = /class\s+(\w+)/g;
-    const classes: any[] = [];
-    let match;
-    
-    while ((match = classRegex.exec(code)) !== null) {
-      classes.push({ name: match[1] });
-    }
-    
-    return classes;
-  }
+  // Unused method - kept for potential future use
+  // private _extractClasses(code: string): any[] {
+  //   const classRegex = /class\s+(\w+)/g;
+  //   const classes: any[] = [];
+  //   let match;
+  //
+  //   while ((match = classRegex.exec(code)) !== null) {
+  //     classes.push({ name: match[1] });
+  //   }
+  //
+  //   return classes;
+  // }
 
   private getCyclomaticGrade(complexity: number): 'A' | 'B' | 'C' | 'D' | 'F' {
     if (complexity <= 10) return 'A';

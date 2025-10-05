@@ -452,7 +452,7 @@ export class MetricsIntegrationService {
   /**
    * Process productivity-specific alerts for burnout and health risks
    */
-  private async processProductivityAlerts(result: any): Promise<void> {
+  private async processProductivityAlerts(_result: any): Promise<void> {
     try {
       // This would be implemented to check for productivity health risks
       console.log('🔍 Processing productivity health alerts...');

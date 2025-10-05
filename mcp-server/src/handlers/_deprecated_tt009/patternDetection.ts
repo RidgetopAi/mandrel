@@ -502,7 +502,7 @@ export class PatternDetectionHandler {
 
       return {
         success: true,
-        projectId,
+        projectId: projectId || '',
         analysis,
         topInsights
       };

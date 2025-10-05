@@ -6,10 +6,7 @@
  */
 
 import { SessionRouter } from './sessionRouter.js';
-import { SessionManagementHandler } from '../handlers/sessionAnalytics.js';
 import { isFeatureEnabled } from '../utils/featureFlags.js';
-import { logEvent } from '../middleware/eventLogger.js';
-import { db } from '../config/database.js';
 
 export interface UnifiedSession {
   // Core session identity
@@ -455,7 +452,7 @@ export class UnifiedSessionManager {
     };
   }
 
-  private async getV2Session(sessionId: string): Promise<SessionOperationResult<UnifiedSession>> {
+  private async getV2Session(_sessionId: string): Promise<SessionOperationResult<UnifiedSession>> {
     // Get session from MCP system
     console.log('🔍 Getting V2 session from MCP system');
 
@@ -468,7 +465,7 @@ export class UnifiedSessionManager {
     };
   }
 
-  private async getLegacySession(sessionId: string): Promise<SessionOperationResult<UnifiedSession>> {
+  private async getLegacySession(_sessionId: string): Promise<SessionOperationResult<UnifiedSession>> {
     // Get session from legacy system
     console.log('🔍 Getting legacy session from web system');
 
@@ -481,7 +478,7 @@ export class UnifiedSessionManager {
     };
   }
 
-  private async updateV2SessionActivity(sessionId: string, activity: any): Promise<SessionOperationResult<void>> {
+  private async updateV2SessionActivity(_sessionId: string, _activity: any): Promise<SessionOperationResult<void>> {
     console.log('📊 Updating V2 session activity');
 
     return {
@@ -491,7 +488,7 @@ export class UnifiedSessionManager {
     };
   }
 
-  private async updateLegacySessionActivity(sessionId: string, activity: any): Promise<SessionOperationResult<void>> {
+  private async updateLegacySessionActivity(_sessionId: string, _activity: any): Promise<SessionOperationResult<void>> {
     console.log('📊 Updating legacy session activity');
 
     return {
@@ -501,7 +498,7 @@ export class UnifiedSessionManager {
     };
   }
 
-  private async endV2Session(sessionId: string): Promise<SessionOperationResult<UnifiedSession>> {
+  private async endV2Session(_sessionId: string): Promise<SessionOperationResult<UnifiedSession>> {
     console.log('🏁 Ending V2 session');
 
     return {
@@ -512,7 +509,7 @@ export class UnifiedSessionManager {
     };
   }
 
-  private async endLegacySession(sessionId: string): Promise<SessionOperationResult<UnifiedSession>> {
+  private async endLegacySession(_sessionId: string): Promise<SessionOperationResult<UnifiedSession>> {
     console.log('🏁 Ending legacy session');
 
     return {
@@ -523,7 +520,7 @@ export class UnifiedSessionManager {
     };
   }
 
-  private async listV2Sessions(options: any): Promise<SessionOperationResult<UnifiedSession[]>> {
+  private async listV2Sessions(_options: any): Promise<SessionOperationResult<UnifiedSession[]>> {
     console.log('📋 Listing V2 sessions');
 
     return {
@@ -534,7 +531,7 @@ export class UnifiedSessionManager {
     };
   }
 
-  private async listLegacySessions(options: any): Promise<SessionOperationResult<UnifiedSession[]>> {
+  private async listLegacySessions(_options: any): Promise<SessionOperationResult<UnifiedSession[]>> {
     console.log('📋 Listing legacy sessions');
 
     return {

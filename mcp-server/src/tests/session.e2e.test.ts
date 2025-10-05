@@ -9,15 +9,13 @@
  * - Error handling and edge cases
  */
 
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import { describe, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import { db } from '../config/database.js';
 import { SessionTracker } from '../services/sessionTracker.js';
 import { projectHandler } from '../handlers/project.js';
-import { SessionManagementHandler } from '../handlers/sessionAnalytics.js';
 
 describe('Session Management E2E Tests', () => {
   let testProjectId: string;
-  let sessionHandler: SessionManagementHandler;
   let testProjectName: string;
   let originalActiveSession: string | null = null;
   

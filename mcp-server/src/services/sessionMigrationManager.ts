@@ -5,8 +5,7 @@
  * to the unified session management system with zero data loss.
  */
 
-import { UnifiedSessionManager, UnifiedSession } from './unifiedSessionManager.js';
-import { SessionManagementHandler } from '../handlers/sessionAnalytics.js';
+import { UnifiedSessionManager } from './unifiedSessionManager.js';
 import { isFeatureEnabled } from '../utils/featureFlags.js';
 import { logEvent } from '../middleware/eventLogger.js';
 import { db } from '../config/database.js';
@@ -457,7 +456,7 @@ export class SessionMigrationManager {
     }
   }
 
-  private async createInSecondarySystem(options: any): Promise<{ success: boolean; sessionId?: string; error?: string; }> {
+  private async createInSecondarySystem(_options: any): Promise<{ success: boolean; sessionId?: string; error?: string; }> {
     try {
       // Create in legacy web system (secondary)
       console.log('🔄 Creating session in secondary system (Legacy)');
@@ -477,7 +476,7 @@ export class SessionMigrationManager {
     }
   }
 
-  private async validateDualWrite(primarySessionId: string, secondarySessionId: string): Promise<MigrationValidationResult> {
+  private async validateDualWrite(primarySessionId: string, _secondarySessionId: string): Promise<MigrationValidationResult> {
     // Compare sessions created in both systems
     return await this.validateSessionConsistency(primarySessionId);
   }

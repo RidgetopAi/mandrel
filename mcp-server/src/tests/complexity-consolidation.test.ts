@@ -384,7 +384,8 @@ describe('Complexity Tools Consolidation Test Suite', () => {
           }
         };
 
-        const result = await handleComplexityAnalyze(params);
+        // const _result =
+        await handleComplexityAnalyze(params);
 
         expect(mockComplexityTracker.analyzeComplexityOnCommit).toHaveBeenCalledWith(commits);
       });

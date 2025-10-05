@@ -12,7 +12,6 @@
 
 import { db } from '../config/database.js';
 import { ProjectSwitchValidator } from './projectSwitchValidator.js';
-import { projectHandler } from '../handlers/project.js';
 import { randomUUID } from 'crypto';
 
 export interface MigrationSession {
@@ -435,7 +434,7 @@ export class SessionMigrator {
     return risks;
   }
 
-  private static generateRecommendations(analyses: MigrationAnalysis[], summary: any): string[] {
+  private static generateRecommendations(_analyses: MigrationAnalysis[], summary: any): string[] {
     const recommendations: string[] = [];
 
     if (summary.manual_review > 0) {

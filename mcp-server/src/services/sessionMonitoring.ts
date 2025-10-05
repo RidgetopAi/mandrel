@@ -6,7 +6,7 @@
  */
 
 import { SessionRouter } from './sessionRouter.js';
-import { isFeatureEnabled, ensureFeatureFlags } from '../utils/featureFlags.js';
+import { ensureFeatureFlags } from '../utils/featureFlags.js';
 import { logEvent } from '../middleware/eventLogger.js';
 import fs from 'fs/promises';
 import path from 'path';

@@ -37,7 +37,7 @@ export class HttpMcpBridge {
 
   private setupRoutes(): void {
     // Health check endpoint
-    this.app.get('/health', (req, res) => {
+    this.app.get('/health', (_req, res) => {
       res.json({ 
         status: 'healthy', 
         service: 'HTTP-MCP Bridge',
@@ -95,18 +95,18 @@ export class HttpMcpBridge {
   private async callMcpTool(toolName: string, args: any): Promise<any> {
     return new Promise((resolve, reject) => {
       // Use the mcp__aidis__ prefix that Amp uses for AIDIS MCP tools
-      const mcpToolName = `mcp__aidis__${toolName}`;
-      
+      // const mcpToolName = `mcp__aidis__${toolName}`;
+
       // Create a JSON-RPC request to Amp's MCP system
-      const request = {
-        jsonrpc: '2.0',
-        id: Date.now(),
-        method: 'tools/call',
-        params: {
-          name: mcpToolName,
-          arguments: args
-        }
-      };
+      // const _request = {
+      //   jsonrpc: '2.0',
+      //   id: Date.now(),
+      //   method: 'tools/call',
+      //   params: {
+      //     name: mcpToolName,
+      //     arguments: args
+      //   }
+      // };
 
       // Since we're running inside Amp's environment, we can use the MCP tools directly
       // by simulating the tool call through a child process that invokes the MCP server

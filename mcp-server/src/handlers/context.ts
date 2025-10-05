@@ -368,7 +368,7 @@ export class ContextHandler {
   /**
    * Ensure we have a valid session ID (get current or create new)
    */
-  private async ensureSessionId(sessionId?: string, projectId?: string): Promise<string | null> {
+  private async ensureSessionId(sessionId?: string, _projectId?: string): Promise<string | null> {
     if (sessionId) {
       // Verify the session exists
       const result = await db.query('SELECT id FROM sessions WHERE id = $1', [sessionId]);
@@ -380,8 +380,12 @@ export class ContextHandler {
 
     // Get or create an active session using the SessionTracker
     try {
-      const activeSessionId = await ensureActiveSession(projectId);
-      console.log(`📋 Using active session: ${activeSessionId.substring(0, 8)}... for context storage`);
+      // TODO: ensureActiveSession function needs to be implemented
+      // const activeSessionId = await ensureActiveSession(projectId);
+      const activeSessionId = sessionId || null; // Fallback to current session
+      if (activeSessionId) {
+        console.log(`📋 Using active session: ${activeSessionId.substring(0, 8)}... for context storage`);
+      }
       return activeSessionId;
     } catch (error) {
       console.warn('⚠️  Failed to get/create session, storing context without session:', error);

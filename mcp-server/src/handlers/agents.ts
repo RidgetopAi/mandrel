@@ -487,7 +487,7 @@ export class AgentsHandler {
 
             if (assignedTo !== undefined) {
                 // Convert agent name to ID if needed
-                let assignedToId = assignedTo;
+                let assignedToId: string | null = assignedTo || null;
                 if (assignedTo && !this.isUUID(assignedTo)) {
                     const agentResult = await client.query('SELECT id FROM agents WHERE name = $1', [assignedTo]);
                     if (agentResult.rows.length > 0) {
@@ -596,7 +596,7 @@ export class AgentsHandler {
         try {
             // Convert agent names to IDs if needed
             let fromAgentUuid = fromAgentId;
-            let toAgentUuid = toAgentId;
+            let toAgentUuid: string | null = toAgentId || null;
 
             if (!this.isUUID(fromAgentId)) {
                 const agentResult = await client.query('SELECT id FROM agents WHERE name = $1', [fromAgentId]);
