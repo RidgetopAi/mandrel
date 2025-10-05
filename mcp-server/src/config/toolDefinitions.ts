@@ -871,6 +871,117 @@ export const AIDIS_TOOL_DEFINITIONS: ToolDefinition[] = [
             additionalProperties: true
           }
         },
+        {
+          name: 'session_record_activity',
+          description: 'Record a session activity event for detailed timeline tracking',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              sessionId: {
+                type: 'string',
+                description: 'Session ID to record activity for'
+              },
+              activityType: {
+                type: 'string',
+                description: 'Activity type (e.g., "context_stored", "task_created", "file_edited", "decision_recorded")'
+              },
+              activityData: {
+                type: 'object',
+                description: 'Flexible JSONB metadata (e.g., {"file_path": "src/foo.ts", "action": "created"})'
+              }
+            },
+            required: ['sessionId', 'activityType'],
+            additionalProperties: true
+          }
+        },
+        {
+          name: 'session_get_activities',
+          description: 'Get session activity timeline with optional filtering by activity type',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              sessionId: {
+                type: 'string',
+                description: 'Session ID to query activities for'
+              },
+              activityType: {
+                type: 'string',
+                description: 'Optional filter by activity type (e.g., "context_stored", "file_edited")'
+              },
+              limit: {
+                type: 'number',
+                description: 'Maximum number of activities to return (default: 100)'
+              }
+            },
+            required: ['sessionId'],
+            additionalProperties: true
+          }
+        },
+        {
+          name: 'session_record_file_edit',
+          description: 'Record a file modification in the session for LOC tracking and file timeline',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              sessionId: {
+                type: 'string',
+                description: 'Session ID to record file modification for'
+              },
+              filePath: {
+                type: 'string',
+                description: 'File path (relative or absolute)'
+              },
+              linesAdded: {
+                type: 'number',
+                description: 'Number of lines added'
+              },
+              linesDeleted: {
+                type: 'number',
+                description: 'Number of lines deleted'
+              },
+              source: {
+                type: 'string',
+                description: 'Source of modification: "tool", "git", or "manual" (default: "tool")'
+              }
+            },
+            required: ['sessionId', 'filePath', 'linesAdded', 'linesDeleted'],
+            additionalProperties: true
+          }
+        },
+        {
+          name: 'session_get_files',
+          description: 'Get all files modified during a session with LOC statistics',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              sessionId: {
+                type: 'string',
+                description: 'Session ID to query files for'
+              }
+            },
+            required: ['sessionId'],
+            additionalProperties: true
+          }
+        },
+        {
+          name: 'session_calculate_productivity',
+          description: 'Calculate productivity score for a session using configurable formula weights',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              sessionId: {
+                type: 'string',
+                description: 'Session ID to calculate productivity score for'
+              },
+              configName: {
+                type: 'string',
+                description: 'Productivity config name (default: "default")'
+              }
+            },
+            required: ['sessionId'],
+            additionalProperties: true
+          }
+        },
 
         // Git Correlation Tools
 
