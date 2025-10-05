@@ -624,10 +624,10 @@ export class MetricsAggregationHandler {
   }
 
   private static formatCorrelationResult(
-    correlationResult: any, 
-    leadingIndicators: any[], 
-    performanceDrivers: any[], 
-    params: MetricsCalculateCorrelationsParams
+    correlationResult: any,
+    leadingIndicators: any[],
+    performanceDrivers: any[],
+    _params: MetricsCalculateCorrelationsParams
   ): string {
     
     let output = `🔗 **Metrics Correlation Analysis**\n\n`;
@@ -692,7 +692,7 @@ export class MetricsAggregationHandler {
     return output;
   }
 
-  private static formatExecutiveSummary(summary: any, params: MetricsGetExecutiveSummaryParams): string {
+  private static formatExecutiveSummary(summary: any, _params: MetricsGetExecutiveSummaryParams): string {
     let output = `📋 **Executive Summary - ${summary.projectName}**\n\n`;
     
     // Time period
@@ -788,7 +788,7 @@ export class MetricsAggregationHandler {
     }
   }
 
-  private static generateCSVExport(metrics: any[], params: MetricsExportDataParams): string {
+  private static generateCSVExport(metrics: any[], _params: MetricsExportDataParams): string {
     // CSV header
     let csv = 'metric_type,metric_scope,value,unit,sample_size,data_quality,period_start,period_end\n';
     

@@ -297,7 +297,7 @@ async function formatFunctionAnalysisResponse(functions: any[], params: Complexi
 
   return {
     analysis: {
-      sessionId: await getCurrentSession(),
+      sessionId: await getCurrentSession() || '',
       projectId: params.options?.projectId || '',
       timestamp: new Date(),
       executionTimeMs,

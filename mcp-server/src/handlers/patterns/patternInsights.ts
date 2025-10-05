@@ -84,7 +84,7 @@ export async function handlePatternInsights(args: any): Promise<any> {
     await logEvent({
       actor: 'ai',
       event_type: 'pattern_insights_consolidated',
-      status: 'info',
+      status: 'closed',
       metadata: {
         type,
         executionTimeMs: executionTime,
@@ -215,11 +215,7 @@ async function getPatternAlerts(options: any): Promise<any> {
  */
 async function getSessionInsights(options: any): Promise<any> {
   const {
-    sessionId,
-    includeContextPatterns = true,
-    includeActivityPatterns = true,
-    includeTimePatterns = true,
-    minConfidence = 0.6
+    sessionId
   } = options;
 
   console.log(`📝 Getting session insights for: ${sessionId}`);

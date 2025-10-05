@@ -596,9 +596,7 @@ export class SmartSearchHandler {
         }
 
         const completed = taskStats.byStatus.completed || {};
-        const _inProgress = taskStats.byStatus.in_progress || {};
-        const _todo = taskStats.byStatus.todo || {};
-        
+
         const completedCount = Object.values(completed).reduce((a: any, b: any) => a + b, 0) as number;
         const totalCount = taskStats.total;
         const completionRate = completedCount / totalCount;

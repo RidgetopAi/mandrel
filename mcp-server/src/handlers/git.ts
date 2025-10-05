@@ -95,7 +95,7 @@ export class GitHandler {
       // Get session ID (current session if not provided)
       let sessionId = params.sessionId;
       if (!sessionId) {
-        sessionId = await getCurrentSession();
+        sessionId = await getCurrentSession() || undefined;
         if (!sessionId) {
           throw new Error('No active session found. Please start a session or provide sessionId.');
         }
@@ -467,7 +467,7 @@ export class GitHandler {
       // Get session ID (current session if not provided)
       let sessionId = params.sessionId;
       if (!sessionId) {
-        sessionId = await getCurrentSession();
+        sessionId = await getCurrentSession() || undefined;
         if (!sessionId) {
           throw new Error('No active session found. Please start a session or provide sessionId.');
         }

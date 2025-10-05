@@ -196,7 +196,7 @@ export class IngressValidator {
    */
   private static scanForSecurityThreats(
     input: any,
-    context: ValidationContext
+    _context: ValidationContext
   ): ValidationResult {
     const threats: string[] = [];
     const warnings: string[] = [];

@@ -47,15 +47,12 @@ import { namingHandler } from './handlers/naming.js';
 import { decisionsHandler } from './handlers/decisions.js';
 import { tasksHandler } from './handlers/tasks.js';
 import { getQueueManager, shutdownQueue } from './services/queueManager.js';
-import { codeAnalysisHandler } from './handlers/codeAnalysis.js';
 import { smartSearchHandler } from './handlers/smartSearch.js';
 import { navigationHandler } from './handlers/navigation.js';
-import { agentsHandler } from './handlers/agents.js';
 import { validationMiddleware } from './middleware/validation.js';
 // Unused: import { AIDISMCPProxy } from './utils/mcpProxy.js';
 import { SessionTracker, ensureActiveSession } from './services/sessionTracker.js';
 import { SessionManagementHandler } from './handlers/sessionAnalytics.js';
-import { GitHandler } from './handlers/git.js';
 import { startGitTracking, stopGitTracking } from './services/gitTracker.js';
 import { startPatternDetection, stopPatternDetection } from './services/patternDetector.js';
 import {
@@ -329,7 +326,7 @@ class AIDISServer {
       // This is acceptable for logging context as it's non-critical
       const sessionId = this.getCurrentSessionId();
       if (!sessionId) return undefined;
-      return projectHandler['sessionStates'].get(sessionId)?.currentProjectId;
+      return projectHandler['sessionStates'].get(sessionId)?.currentProjectId || undefined;
     } catch {
       return undefined;
     }
@@ -1410,7 +1407,6 @@ class AIDISServer {
       };
     }
 
-    const _currentProject = await projectHandler.getCurrentProject();
     const projectList = projects.map((project, index) => {
       const isActive = project.isActive ? ' 🟢 (CURRENT)' : '';
       const contextInfo = project.contextCount !== undefined ? ` (${project.contextCount} contexts)` : '';
@@ -2408,11 +2404,6 @@ class AIDISServer {
   /**
    * Handle agent sessions list requests
    */
-
-  private isUUID(str: string): boolean {
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    return uuidRegex.test(str);
-  }
 
   /**
    * Handle code analysis requests

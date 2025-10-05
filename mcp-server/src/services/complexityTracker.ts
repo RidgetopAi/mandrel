@@ -33,7 +33,7 @@ import { db } from '../config/database.js';
 import { logEvent } from '../middleware/eventLogger.js';
 import { getCurrentSession } from './sessionManager.js';
 import { readFileSync, existsSync } from 'fs';
-import { join, extname, basename, dirname } from 'path';
+import { extname, basename } from 'path';
 
 // Complexity Analysis Configuration
 export interface ComplexityTrackerConfig {
@@ -898,7 +898,7 @@ export class ComplexityTracker {
     // this.languageAnalyzers.set('java', new JavaComplexityAnalyzer());
   }
 
-  private async validateAndFilterFiles(projectId: string, filePaths: string[]): Promise<string[]> {
+  private async validateAndFilterFiles(_projectId: string, filePaths: string[]): Promise<string[]> {
     const validFiles: string[] = [];
 
     for (const filePath of filePaths) {
@@ -933,9 +933,9 @@ export class ComplexityTracker {
   }
 
   private async analyzeFileBatch(
-    filePaths: string[], 
-    analysisSessionId: string, 
-    projectId: string
+    filePaths: string[],
+    _analysisSessionId: string,
+    _projectId: string
   ): Promise<{
     cyclomaticMetrics: CyclomaticComplexityMetric[];
     cognitiveMetrics: CognitiveComplexityMetric[];
@@ -1133,8 +1133,8 @@ export class ComplexityTracker {
   }
 
   private async identifyComplexityHotspots(
-    result: ComplexityAnalysisResult, 
-    analysisSessionId: string
+    result: ComplexityAnalysisResult,
+    _analysisSessionId: string
   ): Promise<ComplexityHotspot[]> {
     const hotspots: ComplexityHotspot[] = [];
 
@@ -1195,7 +1195,7 @@ export class ComplexityTracker {
 
   private async identifyRefactoringOpportunities(
     result: ComplexityAnalysisResult,
-    analysisSessionId: string
+    _analysisSessionId: string
   ): Promise<RefactoringOpportunity[]> {
     const opportunities: RefactoringOpportunity[] = [];
 
@@ -1826,9 +1826,8 @@ class TypeScriptComplexityAnalyzer implements LanguageComplexityAnalyzer {
 
   analyzeCyclomaticComplexity(code: string, filePath: string): CyclomaticComplexityMetric[] {
     const metrics: CyclomaticComplexityMetric[] = [];
-    
+
     // Simplified analysis - in production would use proper AST parsing
-    const lines = code.split('\n');
     const functions = this.extractFunctions(code);
     
     for (const func of functions) {
@@ -1961,8 +1960,7 @@ class TypeScriptComplexityAnalyzer implements LanguageComplexityAnalyzer {
     // Simplified dependency analysis
     const imports = this.extractImports(code);
     const exports = this.extractExports(code);
-    const classes = this.extractClasses(code);
-    
+
     // File-level dependency metrics
     const efferentCoupling = imports.length;
     const afferentCoupling = 0; // Would need project-wide analysis
@@ -1997,9 +1995,8 @@ class TypeScriptComplexityAnalyzer implements LanguageComplexityAnalyzer {
     // Simplified function extraction - would use proper AST in production
     const functionRegex = /(?:function\s+(\w+)|(?:(\w+)\s*[:=]\s*(?:async\s+)?function)|(?:async\s+)?(\w+)\s*\([^)]*\)\s*(?::\s*[^{]*)?{)/g;
     const functions: any[] = [];
-    const lines = code.split('\n');
     let match;
-    
+
     while ((match = functionRegex.exec(code)) !== null) {
       const functionName = match[1] || match[2] || match[3] || 'anonymous';
       const startLine = code.substring(0, match.index).split('\n').length;

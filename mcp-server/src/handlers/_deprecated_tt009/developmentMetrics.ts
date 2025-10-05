@@ -438,7 +438,7 @@ export class DevelopmentMetricsHandler {
 
       // Log tool execution
       await logEvent({
-        actor: 'user',
+        actor: 'human',
         event_type: 'metrics_tool_executed',
         status: 'closed',
         metadata: {
@@ -460,7 +460,7 @@ export class DevelopmentMetricsHandler {
 
       // Log tool error
       await logEvent({
-        actor: 'user', 
+        actor: 'human', 
         event_type: 'metrics_tool_error',
         status: 'error',
         metadata: {
@@ -480,13 +480,9 @@ export class DevelopmentMetricsHandler {
    * Trigger comprehensive metrics collection for a project
    */
   private static async collectProjectMetrics(args: any): Promise<any> {
-    const { projectId, trigger = 'manual', startDate, endDate } = args;
+    const { projectId, trigger = 'manual' } = args;
 
     try {
-      // Parse dates if provided
-      const _analysisStartDate = startDate ? new Date(startDate) : undefined;
-      const _analysisEndDate = endDate ? new Date(endDate) : undefined;
-
       // Trigger metrics collection
       const result = await collectProjectMetrics(projectId, trigger);
 
@@ -540,9 +536,6 @@ export class DevelopmentMetricsHandler {
     const { projectId, timeframe = '30d', includeAlerts = true, includeTrends = true } = args;
 
     try {
-      const timeframeDays = this.parseTimeframe(timeframe);
-      const _startDate = new Date(Date.now() - (timeframeDays * 24 * 60 * 60 * 1000));
-
       // Use materialized view for optimal performance
       const dashboardQuery = `
         SELECT * FROM project_metrics_dashboard 
@@ -960,12 +953,11 @@ export class DevelopmentMetricsHandler {
    * Get active metrics alerts
    */
   private static async getMetricsAlerts(args: any): Promise<any> {
-    const { 
-      projectId, 
-      severities, 
-      statuses = ['open', 'acknowledged'], 
-      limit = 20,
-      includePriority = true 
+    const {
+      projectId,
+      severities,
+      statuses = ['open', 'acknowledged'],
+      limit = 20
     } = args;
 
     try {
@@ -1395,7 +1387,7 @@ export class DevelopmentMetricsHandler {
   /**
    * Stop metrics collection service
    */
-  private static async stopCollection(args: any): Promise<any> {
+  private static async stopCollection(_args: any): Promise<any> {
     try {
       await stopMetricsCollection();
 

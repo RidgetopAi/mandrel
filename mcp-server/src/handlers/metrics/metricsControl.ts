@@ -88,7 +88,7 @@ export async function handleMetricsControl(args: any): Promise<any> {
     await logEvent({
       actor: 'ai',
       event_type: 'metrics_control_consolidated',
-      status: 'info',
+      status: 'closed',
       metadata: {
         operation,
         executionTimeMs: executionTime,
