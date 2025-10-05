@@ -16,7 +16,7 @@ import GitServiceModule from '../../../aidis-command/backend/dist/services/gitSe
 import { SessionDetailService } from '../../../aidis-command/backend/dist/services/sessionDetail.js';
 import { db } from '../config/database.js';
 import { logEvent } from '../middleware/eventLogger.js';
-import { getCurrentSession } from '../services/sessionManager.js';
+import { getCurrentSession } from '../services/sessionTracker.js';
 
 // The compiled gitService module exports both `GitService` and `default` in CommonJS format.
 // When imported from ESM (the MCP server), Node returns the module namespace object.

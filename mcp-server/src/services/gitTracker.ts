@@ -15,7 +15,7 @@ import { watchFile, unwatchFile, existsSync } from 'fs';
 import { join } from 'path';
 import { GitHandler } from '../handlers/git.js';
 import { SessionDetailService } from '../../../aidis-command/backend/dist/services/sessionDetail.js';
-import { getCurrentSession } from './sessionManager.js';
+import { getCurrentSession } from './sessionTracker.js';
 import { db } from '../config/database.js';
 import { logEvent } from '../middleware/eventLogger.js';
 
