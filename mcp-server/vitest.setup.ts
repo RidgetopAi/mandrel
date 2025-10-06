@@ -1,13 +1,13 @@
-import { vi } from 'vitest';
+import { vi, beforeEach } from 'vitest';
 
-// Mock console methods to reduce test noise
-vi.mock('console', () => ({
-  log: vi.fn(),
-  error: vi.fn(),
-  warn: vi.fn(),
-  info: vi.fn(),
-  debug: vi.fn()
-}));
+// Spy on console methods to reduce test noise
+beforeEach(() => {
+  vi.spyOn(console, 'log').mockImplementation(() => {});
+  vi.spyOn(console, 'error').mockImplementation(() => {});
+  vi.spyOn(console, 'warn').mockImplementation(() => {});
+  vi.spyOn(console, 'info').mockImplementation(() => {});
+  vi.spyOn(console, 'debug').mockImplementation(() => {});
+});
 
 // Mock UUID generation for consistent test results
 // Use a counter to generate unique UUIDs for each call

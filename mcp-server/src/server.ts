@@ -2645,16 +2645,27 @@ class AIDISServer {
       const assignedPort = await portManager.assignPort('aidis-mcp');
       console.log(`🏥 Starting health check server...`);
 
-      this.healthServer?.listen(assignedPort, async () => {
-        const actualPort = (this.healthServer!.address() as any)?.port || assignedPort;
+      await new Promise<void>((resolve, reject) => {
+        this.healthServer?.listen(assignedPort, async () => {
+          try {
+            const actualPort = (this.healthServer!.address() as any)?.port || assignedPort;
 
-        // Register the service with its actual port
-        await portManager.registerService('aidis-mcp', actualPort, '/healthz');
-        await portManager.logPortConfiguration('aidis-mcp', actualPort);
+            // Register the service with its actual port
+            await portManager.registerService('aidis-mcp', actualPort, '/healthz');
+            await portManager.logPortConfiguration('aidis-mcp', actualPort);
 
-        console.log(`✅ Health endpoints available:`);
-        console.log(`   🏥 Liveness:  http://localhost:${actualPort}/healthz`);
-        console.log(`   🎯 Readiness: http://localhost:${actualPort}/readyz`);
+            console.log(`✅ Health endpoints available:`);
+            console.log(`   🏥 Liveness:  http://localhost:${actualPort}/healthz`);
+            console.log(`   🎯 Readiness: http://localhost:${actualPort}/readyz`);
+            resolve();
+          } catch (error) {
+            reject(error);
+          }
+        });
+
+        this.healthServer?.on('error', (error) => {
+          reject(error);
+        });
       });
       
       // ORACLE FIX #4: Create transport with MCP debug logging
