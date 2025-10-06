@@ -10,6 +10,11 @@ vi.mock('console', () => ({
 }));
 
 // Mock UUID generation for consistent test results
+// Use a counter to generate unique UUIDs for each call
+let uuidCounter = 0;
 vi.mock('crypto', () => ({
-  randomUUID: vi.fn(() => 'test-uuid-123-456-789')
+  randomUUID: vi.fn(() => {
+    const count = (++uuidCounter).toString(16).padStart(12, '0');
+    return `12345678-1234-4123-8123-${count}`;
+  })
 }));
