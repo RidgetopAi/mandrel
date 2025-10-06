@@ -13,6 +13,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { db } from '../config/database.js';
 import { SessionTracker, SessionData, SessionStats, ensureActiveSession, recordSessionOperation } from '../services/sessionTracker.js';
 import { SessionManagementHandler, SessionAnalyticsHandler, getSessionStatistics, recordSessionOperation as recordAnalyticsOperation, startSessionTracking } from '../handlers/sessionAnalytics.js';
+import { projectHandler } from '../handlers/project.js';
 
 // Mock database to avoid real DB operations in unit tests
 vi.mock('../config/database.js', () => ({
@@ -51,22 +52,29 @@ describe('SessionTracker Unit Tests', () => {
     });
 
     it('should create session without project ID', async () => {
+      // Mock resolveProjectForSession to return null (no project found)
+      vi.spyOn(SessionTracker as any, 'resolveProjectForSession').mockResolvedValueOnce(null);
+
       mockDb.query
-        .mockResolvedValueOnce({ rows: [{ id: 'session-123', started_at: new Date() }] })
-        .mockResolvedValueOnce({ rows: [] });
-      
+        .mockResolvedValueOnce({ rows: [{ id: 'session-123', started_at: new Date() }] }) // session insert
+        .mockResolvedValueOnce({ rows: [] }); // analytics insert
+
       const sessionId = await SessionTracker.startSession();
-      
+
       expect(sessionId).toBeTruthy();
-      
-      // Verify project_id is null
+
+      // Verify project_id is null (second parameter at index 1)
       const sessionCall = mockDb.query.mock.calls[0];
       expect(sessionCall[1][1]).toBeNull();
     });
 
     it('should handle database errors', async () => {
+      // Mock resolveProjectForSession to return null
+      vi.spyOn(SessionTracker as any, 'resolveProjectForSession').mockResolvedValueOnce(null);
+
+      // Mock database to reject on session insert
       mockDb.query.mockRejectedValueOnce(new Error('Database error'));
-      
+
       await expect(SessionTracker.startSession()).rejects.toThrow('Database error');
     });
 
@@ -100,8 +108,7 @@ describe('SessionTracker Unit Tests', () => {
 
       expect(activeId).toBe('db-session-456');
       expect(mockDb.query).toHaveBeenCalledWith(
-        expect.stringContaining('SELECT id'),
-        undefined
+        expect.stringMatching(/SELECT id.*FROM sessions.*WHERE ended_at IS NULL/s)
       );
     });
 
@@ -155,16 +162,41 @@ describe('SessionTracker Unit Tests', () => {
     it('should return complete session data', async () => {
       const sessionId = 'test-session-123';
       const testDate = new Date();
-      
+
       mockDb.query
-        .mockResolvedValueOnce({ rows: [{ timestamp: testDate, project_id: 'proj-123' }] }) // session start
-        .mockResolvedValueOnce({ rows: [{ count: '2' }] }) // contexts count
-        .mockResolvedValueOnce({ rows: [{ count: '1' }] }) // decisions count
-        .mockResolvedValueOnce({ rows: [{ count: '5' }] }) // operations count
-        .mockResolvedValueOnce({ rows: [] }); // session end (not ended)
-      
+        .mockResolvedValueOnce({
+          rows: [{
+            id: sessionId,
+            started_at: testDate,
+            ended_at: null,
+            project_id: 'proj-123',
+            title: null,
+            description: null,
+            session_goal: null,
+            tags: null,
+            lines_added: 0,
+            lines_deleted: 0,
+            lines_net: 0,
+            productivity_score: 3.5,
+            ai_model: null,
+            files_modified_count: 0,
+            activity_count: 5,
+            status: 'active',
+            last_activity_at: null,
+            input_tokens: 0,
+            output_tokens: 0,
+            total_tokens: 0,
+            contexts_created: 2,
+            tasks_created: 0,
+            tasks_updated: 0,
+            tasks_completed: 0,
+            duration_ms: 60000
+          }]
+        }) // session query
+        .mockResolvedValueOnce({ rows: [{ count: '1' }] }); // decisions count
+
       const sessionData = await SessionTracker.getSessionData(sessionId);
-      
+
       expect(sessionData).toBeTruthy();
       expect(sessionData!.session_id).toBe(sessionId);
       expect(sessionData!.start_time).toBe(testDate);
@@ -173,7 +205,7 @@ describe('SessionTracker Unit Tests', () => {
       expect(sessionData!.decisions_created).toBe(1);
       expect(sessionData!.operations_count).toBe(5);
       expect(sessionData!.success_status).toBe('active');
-      expect(sessionData!.productivity_score).toBeGreaterThan(0);
+      expect(sessionData!.productivity_score).toBe(3.5);
     });
 
     it('should return null for non-existent session', async () => {
@@ -188,17 +220,42 @@ describe('SessionTracker Unit Tests', () => {
       const sessionId = 'test-session-123';
       const testDate = new Date();
       const endDate = new Date(Date.now() + 60000);
-      
+
       // Test completed session
       mockDb.query
-        .mockResolvedValueOnce({ rows: [{ timestamp: testDate, project_id: 'proj-123' }] })
-        .mockResolvedValueOnce({ rows: [{ count: '0' }] })
-        .mockResolvedValueOnce({ rows: [{ count: '0' }] })
-        .mockResolvedValueOnce({ rows: [{ count: '3' }] }) // has operations
-        .mockResolvedValueOnce({ rows: [{ timestamp: endDate, duration_ms: 60000 }] }); // ended
-      
+        .mockResolvedValueOnce({
+          rows: [{
+            id: sessionId,
+            started_at: testDate,
+            ended_at: endDate,
+            project_id: 'proj-123',
+            title: null,
+            description: null,
+            session_goal: null,
+            tags: null,
+            lines_added: 0,
+            lines_deleted: 0,
+            lines_net: 0,
+            productivity_score: 2.0,
+            ai_model: null,
+            files_modified_count: 0,
+            activity_count: 3,
+            status: 'active',
+            last_activity_at: null,
+            input_tokens: 0,
+            output_tokens: 0,
+            total_tokens: 0,
+            contexts_created: 0,
+            tasks_created: 0,
+            tasks_updated: 0,
+            tasks_completed: 0,
+            duration_ms: 60000
+          }]
+        }) // session query
+        .mockResolvedValueOnce({ rows: [{ count: '0' }] }); // decisions count
+
       const sessionData = await SessionTracker.getSessionData(sessionId);
-      
+
       expect(sessionData!.success_status).toBe('completed');
     });
 
@@ -333,24 +390,18 @@ describe('SessionManagementHandler Unit Tests', () => {
       const activeSessionId = 'session-123';
       const projectName = 'TestProject';
       const projectId = 'project-456';
-      
+
       vi.spyOn(SessionTracker, 'getActiveSession').mockResolvedValueOnce(activeSessionId);
-      
-      // Mock project handler
-      const mockProjects = [{ id: projectId, name: projectName }];
-      const mockProjectHandler = {
-        listProjects: vi.fn().mockResolvedValue(mockProjects)
-      };
-      
-      // Mock the project handler import
-      vi.doMock('../handlers/project.js', () => ({
-        projectHandler: mockProjectHandler
-      }));
-      
+
+      // Mock projectHandler.listProjects to return the test project
+      vi.spyOn(projectHandler, 'listProjects').mockResolvedValueOnce([
+        { id: projectId, name: projectName, description: 'Test project', status: 'active', createdAt: new Date(), updatedAt: new Date(), gitRepoUrl: null, rootDirectory: null, metadata: {} }
+      ]);
+
       mockDb.query.mockResolvedValueOnce({ rows: [] }); // update query
-      
+
       const result = await SessionManagementHandler.assignSessionToProject(projectName);
-      
+
       expect(result.success).toBe(true);
       expect(result.sessionId).toBe(activeSessionId);
       expect(result.projectName).toBe(projectName);
@@ -371,19 +422,14 @@ describe('SessionManagementHandler Unit Tests', () => {
 
     it('should handle non-existent project', async () => {
       vi.spyOn(SessionTracker, 'getActiveSession').mockResolvedValueOnce('session-123');
-      
-      const mockProjectHandler = {
-        listProjects: vi.fn().mockResolvedValue([
-          { id: 'other-project', name: 'OtherProject' }
-        ])
-      };
-      
-      vi.doMock('../handlers/project.js', () => ({
-        projectHandler: mockProjectHandler
-      }));
-      
+
+      // Mock projectHandler.listProjects to return a different project
+      vi.spyOn(projectHandler, 'listProjects').mockResolvedValueOnce([
+        { id: 'other-project', name: 'OtherProject', description: 'Other project', status: 'active', createdAt: new Date(), updatedAt: new Date(), gitRepoUrl: null, rootDirectory: null, metadata: {} }
+      ]);
+
       const result = await SessionManagementHandler.assignSessionToProject('NonExistentProject');
-      
+
       expect(result.success).toBe(false);
       expect(result.message).toContain('not found');
       expect(result.message).toContain('Available projects');
@@ -437,23 +483,19 @@ describe('SessionManagementHandler Unit Tests', () => {
       const projectName = 'TestProject';
       const projectId = 'project-123';
       const newSessionId = 'new-session-456';
-      
-      const mockProjects = [{ id: projectId, name: projectName }];
-      const mockProjectHandler = {
-        listProjects: vi.fn().mockResolvedValue(mockProjects)
-      };
-      
-      vi.doMock('../handlers/project.js', () => ({
-        projectHandler: mockProjectHandler
-      }));
-      
+
+      // Mock projectHandler.listProjects to return the test project
+      vi.spyOn(projectHandler, 'listProjects').mockResolvedValueOnce([
+        { id: projectId, name: projectName, description: 'Test project', status: 'active', createdAt: new Date(), updatedAt: new Date(), gitRepoUrl: null, rootDirectory: null, metadata: {} }
+      ]);
+
       vi.spyOn(SessionTracker, 'getActiveSession').mockResolvedValueOnce(null); // no current session
       vi.spyOn(SessionTracker, 'startSession').mockResolvedValueOnce(newSessionId);
-      
+
       mockDb.query.mockResolvedValueOnce({ rows: [] }); // title update
-      
+
       const result = await SessionManagementHandler.createNewSession(title, projectName);
-      
+
       expect(result.success).toBe(true);
       expect(result.sessionId).toBe(newSessionId);
       expect(result.projectName).toBe(projectName);
@@ -464,23 +506,26 @@ describe('SessionManagementHandler Unit Tests', () => {
     it('should end existing session before creating new one', async () => {
       const currentSessionId = 'current-session-123';
       const newSessionId = 'new-session-456';
-      
+
       vi.spyOn(SessionTracker, 'getActiveSession').mockResolvedValueOnce(currentSessionId);
       vi.spyOn(SessionTracker, 'startSession').mockResolvedValueOnce(newSessionId);
-      
+
       mockDb.query
         .mockResolvedValueOnce({ rows: [] }) // end current session
         .mockResolvedValueOnce({ rows: [] }); // optional title update
-      
+
       const result = await SessionManagementHandler.createNewSession();
-      
+
       expect(result.success).toBe(true);
       expect(result.sessionId).toBe(newSessionId);
-      
-      // Verify current session was ended
+
+      // Verify current session was ended with metadata merge
       expect(mockDb.query).toHaveBeenCalledWith(
-        expect.stringContaining('UPDATE sessions SET ended_at = NOW()'),
-        [expect.any(String), currentSessionId]
+        expect.stringMatching(/UPDATE sessions.*SET ended_at = NOW().*metadata.*COALESCE/s),
+        [
+          expect.stringContaining('ended_reason'),
+          currentSessionId
+        ]
       );
     });
   });
@@ -505,14 +550,21 @@ describe('Utility Functions Unit Tests', () => {
     it('should create new session when none exists', async () => {
       const newSessionId = 'new-123';
       const projectId = 'project-456';
-      
+
       vi.spyOn(SessionTracker, 'getActiveSession').mockResolvedValueOnce(null);
       vi.spyOn(SessionTracker, 'startSession').mockResolvedValueOnce(newSessionId);
-      
+
       const sessionId = await ensureActiveSession(projectId);
-      
+
       expect(sessionId).toBe(newSessionId);
-      expect(SessionTracker.startSession).toHaveBeenCalledWith(projectId);
+      expect(SessionTracker.startSession).toHaveBeenCalledWith(
+        projectId,
+        undefined, // title
+        undefined, // description
+        undefined, // sessionGoal
+        undefined, // tags
+        undefined  // aiModel
+      );
     });
   });
 
@@ -533,14 +585,21 @@ describe('Utility Functions Unit Tests', () => {
       const newSessionId = 'new-session-123';
       const operationType = 'test_operation';
       const projectId = 'project-456';
-      
+
       vi.spyOn(SessionTracker, 'getActiveSession').mockResolvedValueOnce(null);
       vi.spyOn(SessionTracker, 'startSession').mockResolvedValueOnce(newSessionId);
       vi.spyOn(SessionTracker, 'recordOperation').mockResolvedValueOnce();
-      
+
       await recordSessionOperation(operationType, projectId);
-      
-      expect(SessionTracker.startSession).toHaveBeenCalledWith(projectId);
+
+      expect(SessionTracker.startSession).toHaveBeenCalledWith(
+        projectId,
+        undefined, // title
+        undefined, // description
+        undefined, // sessionGoal
+        undefined, // tags
+        undefined  // aiModel
+      );
       expect(SessionTracker.recordOperation).toHaveBeenCalledWith(newSessionId, operationType);
     });
   });

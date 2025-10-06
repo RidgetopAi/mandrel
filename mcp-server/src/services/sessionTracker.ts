@@ -292,7 +292,14 @@ export class SessionTracker {
       ];
       
       await db.query(updateSessionSql, sessionUpdateParams);
-      
+
+      // Calculate and update productivity score
+      const productivityScore = await this.calculateProductivity(sessionId);
+      await db.query(
+        'UPDATE sessions SET productivity_score = $1 WHERE id = $2',
+        [productivityScore, sessionId]
+      );
+
       // Also log session end event to analytics_events
       const analyticsSql = `
         INSERT INTO analytics_events (
@@ -435,13 +442,13 @@ export class SessionTracker {
   static async recordOperation(sessionId: string, operationType: string): Promise<void> {
     try {
       console.log(`📝 Recording operation: ${operationType} for session ${sessionId.substring(0, 8)}...`);
-      
+
       const sql = `
         INSERT INTO analytics_events (
           actor, session_id, event_type, status, tags
         ) VALUES ($1, $2, $3, $4, $5)
       `;
-      
+
       const params = [
         'ai',
         sessionId,
@@ -449,11 +456,27 @@ export class SessionTracker {
         'closed',
         ['session', 'operation', operationType]
       ];
-      
+
       await db.query(sql, params);
 
-      // TS004-1: Update session activity timestamp
-      await this.updateSessionActivity(sessionId);
+      // Update session activity_count and last_activity_at
+      // Also update specific metric columns based on operation type
+      let updateSql = `
+        UPDATE sessions
+        SET activity_count = COALESCE(activity_count, 0) + 1,
+            last_activity_at = NOW()`;
+
+      // Increment specific counters based on operation type
+      if (operationType.includes('context')) {
+        updateSql += `,\n            contexts_created = COALESCE(contexts_created, 0) + 1`;
+      }
+      if (operationType.includes('task')) {
+        updateSql += `,\n            tasks_created = COALESCE(tasks_created, 0) + 1`;
+      }
+
+      updateSql += `\n        WHERE id = $1`;
+
+      await db.query(updateSql, [sessionId]);
 
       console.log(`✅ Operation recorded: ${operationType}`);
 
@@ -1302,35 +1325,14 @@ export class SessionTracker {
         count: parseInt(row.count)
       }));
       
-      // Calculate overall productivity score
+      // Calculate overall productivity score from sessions table (Phase 2)
+      // Productivity score is calculated and stored during endSession()
       const productivitySql = `
-        SELECT 
-          AVG(
-            CASE 
-              WHEN duration_ms > 0 THEN 
-                ((contexts.count * 2 + decisions.count * 3) / ((duration_ms / 3600000.0) + 1))
-              ELSE 0 
-            END
-          ) as avg_productivity
-        FROM (
-          SELECT DISTINCT session_id, duration_ms
-          FROM analytics_events 
-          WHERE event_type = 'session_end' ${projectFilter}
-        ) sessions
-        LEFT JOIN (
-          SELECT session_id, COUNT(*) as count
-          FROM analytics_events 
-          WHERE event_type LIKE 'context_%' ${projectFilter}
-          GROUP BY session_id
-        ) contexts ON sessions.session_id = contexts.session_id
-        LEFT JOIN (
-          SELECT session_id, COUNT(*) as count
-          FROM analytics_events 
-          WHERE event_type LIKE 'decision_%' ${projectFilter}
-          GROUP BY session_id
-        ) decisions ON sessions.session_id = decisions.session_id
+        SELECT AVG(productivity_score) as avg_productivity
+        FROM sessions
+        WHERE ended_at IS NOT NULL ${projectFilter}
       `;
-      
+
       const productivityResult = await db.query(productivitySql, params);
       const productivityScore = Math.round((parseFloat(productivityResult.rows[0].avg_productivity) || 0) * 100) / 100;
       
