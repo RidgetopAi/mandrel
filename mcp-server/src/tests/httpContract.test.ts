@@ -20,8 +20,7 @@ process.env.AIDIS_SKIP_STDIO = process.env.AIDIS_SKIP_STDIO || 'true';
 process.env.AIDIS_AIDIS_MCP_PORT = process.env.AIDIS_AIDIS_MCP_PORT || '0';
 process.env.AIDIS_DISABLE_PROCESS_EXIT_HANDLERS = process.env.AIDIS_DISABLE_PROCESS_EXIT_HANDLERS || 'true';
 
-type AidisServerModule = typeof import('@/server');
-let ServerCtor: AidisServerModule['AIDISServer'];
+let ServerCtor: typeof import('@/server/AidisMcpServer').default;
 let processLock: typeof import('@/utils/processLock').processLock;
 
 const ajv = new Ajv({ allErrors: true, strict: false });
@@ -97,14 +96,14 @@ const TOOL_ARGUMENTS: Record<string, Record<string, unknown>> = {
 };
 
 describe('HTTP ↔ MCP contract', () => {
-  let server: InstanceType<AidisServerModule['AIDISServer']>;
+  let server: InstanceType<typeof ServerCtor>;
   let baseUrl: string;
   let tempDir: string;
 
   beforeAll(async () => {
     if (!ServerCtor) {
-      const serverModule = await import('@/server');
-      ServerCtor = serverModule.AIDISServer;
+      const serverModule = await import('@/server/AidisMcpServer');
+      ServerCtor = serverModule.default;
     }
     if (!processLock) {
       ({ processLock } = await import('@/utils/processLock'));
