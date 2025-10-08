@@ -127,6 +127,10 @@ export class ContextHandler {
         metadata: JSON.stringify(request.metadata || {})
       };
 
+      // DEBUG: Track context creation calls to detect duplicates
+      const callStack = new Error().stack;
+      console.error(`🔍 CONTEXT_STORE CALLED: "${extractedTitle}" - Stack: ${callStack?.split('\n')[2]?.trim()}`);
+
       console.log(`🔍 DEBUG: About to insert context_type = "${contextData.context_type}" (type: ${typeof contextData.context_type})`);
       console.log(`🔍 DEBUG: context_type length = ${contextData.context_type.length}`);
       console.log(`🔍 DEBUG: context_type char codes = [${Array.from(contextData.context_type).map(c => c.charCodeAt(0)).join(',')}]`);

@@ -406,8 +406,12 @@ describe('SessionManagementHandler Unit Tests', () => {
       expect(result.sessionId).toBe(activeSessionId);
       expect(result.projectName).toBe(projectName);
       expect(mockDb.query).toHaveBeenCalledWith(
-        expect.stringContaining('UPDATE sessions SET project_id = $1'),
-        [projectId, expect.any(String), activeSessionId]
+        expect.stringContaining('UPDATE sessions'),
+        expect.arrayContaining([
+          projectId,
+          expect.stringContaining('assigned_manually'),
+          activeSessionId
+        ])
       );
     });
 

@@ -10,6 +10,7 @@ import { ErrorHandler } from '../utils/errorHandler.js';
 import { portManager } from '../utils/portManager.js';
 import { dbPool, poolHealthCheck } from '../services/databasePool.js';
 import { AIDIS_TOOL_DEFINITIONS } from '../config/toolDefinitions.js';
+import { ProjectController } from '../api/controllers/projectController.js';
 
 /**
  * HTTP Health Check Server
@@ -22,6 +23,7 @@ export class HealthServer {
   private circuitBreakerState: string = 'closed';
   private mcpToolExecutor?: (toolName: string, args: any) => Promise<any>;
   private parameterDeserializer?: (args: any) => any;
+  private projectController: ProjectController;
 
   constructor(
     mcpToolExecutor?: (toolName: string, args: any) => Promise<any>,
@@ -29,6 +31,7 @@ export class HealthServer {
   ) {
     this.mcpToolExecutor = mcpToolExecutor;
     this.parameterDeserializer = parameterDeserializer;
+    this.projectController = new ProjectController();
   }
 
   /**
@@ -86,6 +89,8 @@ export class HealthServer {
         await this.handleMcpToolRequest(req, res);
       } else if (req.url?.startsWith('/v2/mcp/')) {
         await this.handleV2McpRequest(req, res);
+      } else if (req.url?.startsWith('/api/v2/projects/')) {
+        await this.handleProjectApiRequest(req, res);
       } else {
         res.writeHead(404);
         res.end(JSON.stringify({ error: 'Not found' }));
@@ -449,6 +454,74 @@ export class HealthServer {
         success: false,
         error: 'Internal server error',
         version: '2.0.0'
+      }));
+    }
+  }
+
+  /**
+   * Handle Project REST API Requests
+   */
+  private async handleProjectApiRequest(req: http.IncomingMessage, res: http.ServerResponse): Promise<void> {
+    try {
+      // Extract route from URL: /api/v2/projects/{id}/set-primary
+      const urlPattern = /^\/api\/v2\/projects\/([^\/]+)\/set-primary$/;
+      const match = req.url?.match(urlPattern);
+
+      if (!match) {
+        res.writeHead(404);
+        res.end(JSON.stringify({
+          success: false,
+          error: 'Project API endpoint not found'
+        }));
+        return;
+      }
+
+      const projectId = match[1];
+
+      if (req.method === 'POST') {
+        // Create mock Express Request and Response objects
+        const mockReq = {
+          params: { id: projectId },
+          body: {}
+        } as any;
+
+        let responseData: any = null;
+        let statusCode = 200;
+
+        const mockRes = {
+          status: (code: number) => {
+            statusCode = code;
+            return mockRes;
+          },
+          json: (data: any) => {
+            responseData = data;
+          }
+        } as any;
+
+        // Call the controller
+        await this.projectController.setPrimary(mockReq, mockRes);
+
+        // Send the response
+        res.writeHead(statusCode);
+        res.end(JSON.stringify(responseData));
+      } else {
+        res.writeHead(405);
+        res.end(JSON.stringify({
+          success: false,
+          error: 'Method not allowed. Use POST.'
+        }));
+      }
+    } catch (error: any) {
+      logger.error('Project API error', {
+        error: error.message,
+        url: req.url,
+        method: req.method
+      } as any);
+
+      res.writeHead(500);
+      res.end(JSON.stringify({
+        success: false,
+        error: error.message || 'Internal server error'
       }));
     }
   }

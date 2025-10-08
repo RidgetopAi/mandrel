@@ -1,11 +1,12 @@
 #!/bin/bash
 
-# AIDIS Simple Process Starter
-# Replaces SystemD service with basic process management
+# AIDIS HTTP Bridge Mode Starter
+# Starts AIDIS with HTTP bridge ONLY (no direct STDIO)
+# For use with AmpCode (via stdio-mock) and Claude Code (direct HTTP)
 
 cd "$(dirname "$0")"
 
-echo "🚀 Starting AIDIS MCP Server..."
+echo "🌉 Starting AIDIS in HTTP Bridge Mode..."
 
 # Ensure logs directory exists
 mkdir -p logs
@@ -23,9 +24,9 @@ if [ -f logs/aidis.pid ]; then
     fi
 fi
 
-# Start AIDIS MCP server with direct STDIO for MCP protocol
+# Start AIDIS in HTTP-only mode (SKIP STDIO)
 cd mcp-server
-npx tsx src/main.ts > ../logs/aidis.log 2>&1 &
+AIDIS_SKIP_STDIO=true npx tsx src/main.ts > ../logs/aidis.log 2>&1 &
 AIDIS_PID=$!
 
 # Save PID for management
@@ -35,24 +36,31 @@ echo $AIDIS_PID > ../logs/aidis.pid
 sleep 3
 
 if ps -p $AIDIS_PID > /dev/null 2>&1; then
-    echo "✅ AIDIS MCP Server started successfully (PID: $AIDIS_PID)"
+    echo "✅ AIDIS HTTP Bridge started successfully (PID: $AIDIS_PID)"
     echo "📋 Logs: tail -f logs/aidis.log"
+    echo ""
+    echo "🌉 HTTP Bridge Mode:"
+    echo "   • AmpCode → stdio-mock → HTTP:8080 ✅"
+    echo "   • Claude Code → HTTP:8080 directly ✅"
+    echo "   • Direct STDIO: DISABLED (clean!)"
 
     # Check port registry for actual assigned port
     sleep 2
     if [ -f run/port-registry.json ]; then
         ACTUAL_PORT=$(cat run/port-registry.json | grep -o '"port":[0-9]*' | head -1 | cut -d':' -f2)
         if [ -n "$ACTUAL_PORT" ]; then
+            echo ""
             echo "🏥 Health: curl http://localhost:${ACTUAL_PORT}/healthz"
         else
-            echo "🏥 Health: curl http://localhost:8080/healthz (fallback)"
+            echo ""
+            echo "🏥 Health: curl http://localhost:8080/healthz"
         fi
     else
-        echo "🏥 Health: curl http://localhost:8080/healthz (fallback)"
+        echo ""
+        echo "🏥 Health: curl http://localhost:8080/healthz"
     fi
 
     echo "🛑 Stop: ./stop-aidis.sh"
-    echo "📡 Port Assignment: Check run/port-registry.json for actual ports"
 else
     echo "❌ Failed to start AIDIS"
     echo "📋 Check logs: tail logs/aidis.log"

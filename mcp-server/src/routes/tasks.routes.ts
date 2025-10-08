@@ -1,6 +1,5 @@
 import { tasksHandler } from '../handlers/tasks.js';
 import { projectHandler } from '../handlers/project.js';
-import { SessionTrackingMiddleware } from '../api/middleware/sessionTracking.js';
 import { formatMcpError } from '../utils/mcpFormatter.js';
 import type { McpResponse } from '../utils/mcpFormatter.js';
 
@@ -31,13 +30,8 @@ export class TasksRoutes {
         args.metadata
       );
 
-      // Auto-track task_created activity in session
-      await SessionTrackingMiddleware.trackTaskCreated(
-        task.id,
-        task.title,
-        task.type,
-        task.priority
-      );
+      // Activity tracking is already handled in tasksHandler.createTask()
+      // Removed duplicate SessionTrackingMiddleware.trackTaskCreated() call
 
       const assignedText = task.assignedTo ? `\n🤖 Assigned To: ${task.assignedTo}` : '';
       const tagsText = task.tags.length > 0 ? `\n🏷️  Tags: [${task.tags.join(', ')}]` : '';

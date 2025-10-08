@@ -1297,8 +1297,8 @@ export class SessionTracker {
         WHERE ae1.event_type = 'session_start' ${projectFilter}
         AND EXISTS (
           SELECT 1 FROM analytics_events ae2 
-          WHERE ae2.session_id = ae1.session_id 
-          AND ae2.event_type NOT LIKE 'session_%'
+          WHERE ae2.session_id = ae1.session_id
+          AND ae2.event_type NOT IN ('session_start', 'session_end')
         )
       `;
       
