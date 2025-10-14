@@ -743,7 +743,7 @@ class AIDISCoreServer {
     return decisionsHandler.recordDecision({
       title: args.title,
       description: args.description,
-      rationale: args.reasoning || '',
+      rationale: args.rationale || '',
       alternativesConsidered: args.alternatives ?
         (Array.isArray(args.alternatives) ? args.alternatives.map((alt: any) => ({
           name: typeof alt === 'string' ? alt : (alt.name || 'Alternative'),
