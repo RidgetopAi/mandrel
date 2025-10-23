@@ -26,10 +26,10 @@ export const email = z.string()
   .email('Please enter a valid email address')
   .max(255, 'Email must be less than 255 characters');
 
-export const url = z.string()
-  .url('Please enter a valid URL')
-  .or(z.literal(''))
-  .optional();
+export const url = z.union([
+  z.string().url('Please enter a valid URL'),
+  z.literal('')
+]).optional();
 
 export const positiveInteger = z.number()
   .int('Must be an integer')

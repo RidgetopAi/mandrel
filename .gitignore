@@ -75,3 +75,5 @@ fresh_login.json
 
 # Zone identifier files
 *:Zone.Identifier
+# Personal projects - not part of AIDIS
+projects/
