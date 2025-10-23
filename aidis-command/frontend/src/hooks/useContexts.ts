@@ -40,9 +40,9 @@ export const useContextSearchQuery = (
   const queryKey = useMemo(() => contextQueryKeys.list(stableParams), [stableParams]);
 
   return useQuery({
-    queryKey,
-    queryFn: () => contextsClient.search(stableParams),
-    ...options,
+  queryKey,
+  queryFn: () => contextsClient.search(stableParams),
+  ...options,
   });
 };
 

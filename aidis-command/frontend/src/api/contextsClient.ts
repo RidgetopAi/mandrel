@@ -136,7 +136,7 @@ export const contextsClient = {
     return (result.data ?? []) as Context[];
   },
 
-  async exportContexts(params: ContextSearchParams, format: 'json' | 'csv' = 'json'): Promise<Blob> {
+  async exportContexts(params: ContextSearchParams, format: 'json' | 'csv' | 'md' = 'json'): Promise<Blob> {
     const query = new URLSearchParams();
     Object.entries(params).forEach(([key, value]) => {
       if (value === undefined || value === null) return;

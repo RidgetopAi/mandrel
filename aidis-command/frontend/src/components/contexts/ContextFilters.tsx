@@ -41,7 +41,13 @@ const ContextFilters: React.FC<ContextFiltersProps> = ({ onSearch, loading }) =>
   const { searchParams, updateSearchParam, clearFilters, isFiltered } = useContextSearch();
   // Oracle Phase 1: Removed currentProject - project scoping handled by API interceptor
   const [localQuery, setLocalQuery] = useState(searchParams.query || '');
+  const [hasMounted, setHasMounted] = useState(false);
   const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Mark component as mounted after first render
+  useEffect(() => {
+    setHasMounted(true);
+  }, []);
 
   // Sync local query with global state when query is cleared externally
   useEffect(() => {
@@ -62,12 +68,19 @@ const ContextFilters: React.FC<ContextFiltersProps> = ({ onSearch, loading }) =>
     }, 300);
   }, [updateSearchParam, onSearch]);
 
-  // Trigger debounced search when local query changes
+  // Trigger debounced search when local query changes (only after component has mounted)
   useEffect(() => {
-    if (localQuery !== searchParams.query) {
+    // Normalize values for comparison: treat undefined and empty string as equivalent
+    const normalizedLocal = localQuery || undefined;
+    const normalizedGlobal = searchParams.query || undefined;
+    const shouldSearch = hasMounted && normalizedLocal !== normalizedGlobal;
+
+    // Only trigger search after mount AND when localQuery actually differs from global state
+    // This prevents the unwanted search when component first mounts
+    if (shouldSearch) {
       debouncedSearch(localQuery);
     }
-  }, [localQuery, searchParams.query, debouncedSearch]);
+  }, [hasMounted, localQuery, searchParams.query, debouncedSearch]);
 
   // Cleanup timeout on unmount
   useEffect(() => {

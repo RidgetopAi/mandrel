@@ -1,0 +1,11 @@
+Product Code,Product Name,Category,Unit Price,Stock Quantity,Supplier,Last Updated
+P001,Widget A,Electronics,29.99,150,TechSupply Co,2024-01-15
+P002,Gadget B,Electronics,49.99,85,TechSupply Co,2024-01-16
+P003,Tool C,Hardware,15.50,220,BuildMart,2024-01-14
+P004,Component D,Electronics,8.75,500,TechSupply Co,2024-01-17
+P005,Device E,Electronics,199.99,45,ElectroWorld,2024-01-15
+P006,Material F,Hardware,12.25,180,BuildMart,2024-01-18
+P007,Part G,Automotive,35.00,95,AutoParts Inc,2024-01-16
+P008,Supply H,Office,5.99,300,OfficeMax,2024-01-17
+P009,Equipment I,Industrial,450.00,12,IndustrialPro,2024-01-15
+P010,Accessory J,Electronics,22.50,160,TechSupply Co,2024-01-19

@@ -21,16 +21,20 @@ export const optionalString = (maxLength = 255) =>
   z.string()
     .max(maxLength, `Field must be less than ${maxLength} characters`)
     .trim()
-    .optional();
+    .optional()
+    .nullable()
+    .transform(val => val === null ? undefined : val);
 
 export const email = z.string()
   .email('Please enter a valid email address')
   .max(255, 'Email must be less than 255 characters');
 
-export const url = z.string()
-  .url('Please enter a valid URL')
-  .or(z.literal(''))
-  .optional();
+export const url = z.union([
+  z.string().url('Please enter a valid URL'),
+  z.literal(''),
+  z.null()
+]).optional()
+  .transform(val => val === null ? undefined : val);
 
 export const positiveInteger = z.number()
   .int('Must be an integer')
