@@ -624,6 +624,9 @@ class AIDISCoreServer {
   }
 
   private async handleContextSearch(args: any) {
+    // Use provided projectId or default to current project
+    const projectId = args.projectId || await projectHandler.getCurrentProjectId('default-session');
+
     const results = await contextHandler.searchContext({
       query: args.query,
       // sessionId: args.sessionId || 'default-session', // Removed - not in SearchContextRequest type
@@ -632,7 +635,7 @@ class AIDISCoreServer {
       tags: args.tags,
       minSimilarity: args.minSimilarity,
       offset: args.offset,
-      projectId: args.projectId
+      projectId: projectId
     } as any);
 
     if (results.length === 0) {

@@ -17,7 +17,7 @@ import { logContextEvent, logEvent } from '../middleware/eventLogger.js';
 export interface StoreContextRequest {
   projectId?: string;
   sessionId?: string;
-  type: 'code' | 'decision' | 'error' | 'discussion' | 'planning' | 'completion' | 'milestone' | 'reflections' | 'handoff';
+  type: 'code' | 'decision' | 'error' | 'discussion' | 'planning' | 'completion' | 'milestone' | 'reflections' | 'handoff' | 'lessons';
   content: string;
   tags?: string[];
   relevanceScore?: number;
@@ -205,7 +205,26 @@ export class ContextHandler {
   }
 
   /**
+   * Check if hierarchical memory is enabled for a project
+   */
+  private async isHierarchicalEnabled(projectId?: string): Promise<boolean> {
+    if (!projectId) return false;
+
+    try {
+      const result = await db.query(
+        `SELECT metadata->>'hierarchical_memory_enabled' as enabled FROM projects WHERE id = $1`,
+        [projectId]
+      );
+      return result.rows[0]?.enabled === 'true';
+    } catch (error) {
+      console.error('Error checking hierarchical memory flag:', error);
+      return false;
+    }
+  }
+
+  /**
    * Search contexts using vector similarity and filters
+   * Supports hierarchical memory scoring when enabled for project
    */
   async searchContext(request: SearchContextRequest): Promise<SearchResult[]> {
     console.log(`🔍 Searching contexts: "${request.query}"`);
@@ -216,16 +235,60 @@ export class ContextHandler {
         text: request.query
       });
 
+      // Check if hierarchical memory is enabled for this project
+      const hierarchicalEnabled = await this.isHierarchicalEnabled(request.projectId);
+      console.log(`🧠 Hierarchical memory: ${hierarchicalEnabled ? 'ENABLED' : 'disabled'}`);
+
       // Build search query with filters
-      let sql = `
-        SELECT
-          id, project_id, session_id, context_type, content,
-          created_at, relevance_score, tags, metadata,
-          1 - (embedding <=> $1::vector) as similarity
-        FROM contexts
-        WHERE embedding IS NOT NULL
-      `;
-      
+      let sql: string;
+
+      if (hierarchicalEnabled) {
+        // Enhanced: vector similarity + recency + importance + context type weights
+        sql = `
+          SELECT
+            id, project_id, session_id, context_type, content,
+            created_at, relevance_score, tags, metadata,
+            1 - (embedding <=> $1::vector) as similarity,
+            EXP(-EXTRACT(EPOCH FROM (NOW() - created_at)) / (24.0 * 3600)) as recency_score,
+            COALESCE(relevance_score, 5.0) / 10.0 as importance_score,
+            CASE context_type
+              WHEN 'milestone' THEN 1.0
+              WHEN 'decision' THEN 0.9
+              WHEN 'completion' THEN 0.8
+              WHEN 'reflections' THEN 0.7
+              WHEN 'planning' THEN 0.6
+              WHEN 'code' THEN 0.5
+              ELSE 0.4
+            END as type_weight,
+            (
+              (1 - (embedding <=> $1::vector)) +
+              EXP(-EXTRACT(EPOCH FROM (NOW() - created_at)) / (24.0 * 3600)) +
+              COALESCE(relevance_score, 5.0) / 10.0 +
+              CASE context_type
+                WHEN 'milestone' THEN 1.0
+                WHEN 'decision' THEN 0.9
+                WHEN 'completion' THEN 0.8
+                WHEN 'reflections' THEN 0.7
+                WHEN 'planning' THEN 0.6
+                WHEN 'code' THEN 0.5
+                ELSE 0.4
+              END
+            ) / 4.0 as combined_score
+          FROM contexts
+          WHERE embedding IS NOT NULL
+        `;
+      } else {
+        // Current: vector similarity only
+        sql = `
+          SELECT
+            id, project_id, session_id, context_type, content,
+            created_at, relevance_score, tags, metadata,
+            1 - (embedding <=> $1::vector) as similarity
+          FROM contexts
+          WHERE embedding IS NOT NULL
+        `;
+      }
+
       const params: any[] = [`[${queryEmbedding.embedding.join(',')}]`];
       let paramIndex = 2;
 
@@ -248,8 +311,12 @@ export class ContextHandler {
         paramIndex++;
       }
 
-      // Order by similarity (highest first) and limit results
-      sql += ` ORDER BY similarity DESC LIMIT $${paramIndex}`;
+      // Order by appropriate score and limit results
+      if (hierarchicalEnabled) {
+        sql += ` ORDER BY combined_score DESC LIMIT $${paramIndex}`;
+      } else {
+        sql += ` ORDER BY similarity DESC LIMIT $${paramIndex}`;
+      }
       params.push(request.limit || 10);
 
       console.log('🔍 Executing vector similarity search...');

@@ -217,7 +217,7 @@ const phase2Stats = sessions_stats({ phase2Only: true });
 
 💪 PRODUCTIVITY BREAKDOWN:
    • Tasks: 45 created, 38 completed (84% completion)
-   • Contexts: 123 items added
+   • Contexts: 123 items addedListenBrainz Labs APIListenBrainz Labs API
    • Decisions: 18 recorded
    • Files: 203 modified
 
