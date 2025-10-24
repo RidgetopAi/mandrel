@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   Drawer, Typography, Space, Tag, Button, Descriptions, Card,
-  Tabs, List, message, Spin, Input, Form, Select
+  Tabs, List, message, Spin, Input, Form, Select, Modal
 } from 'antd';
 import {
   EditOutlined, SaveOutlined, ShareAltOutlined,
@@ -9,6 +9,7 @@ import {
   LinkOutlined, FolderOutlined, UserOutlined
 } from '@ant-design/icons';
 import { useContextStore } from '../../stores/contextStore';
+import { useProjectContext } from '../../contexts/ProjectContext';
 import type { Context } from '../../types/context';
 import {
   useDeleteContext,
@@ -46,7 +47,9 @@ const ContextDetail: React.FC<ContextDetailProps> = ({
   onDelete
 }) => {
   const { relatedContexts, setRelatedContexts, setCurrentContext } = useContextStore();
+  const { allProjects } = useProjectContext();
   const [isEditing, setIsEditing] = useState(false);
+  const [originalProjectId, setOriginalProjectId] = useState<string | null>(null);
   const [form] = Form.useForm();
   const updateContextMutation = useUpdateContext();
   const deleteContextMutation = useDeleteContext();
@@ -59,8 +62,10 @@ const ContextDetail: React.FC<ContextDetailProps> = ({
       form.setFieldsValue({
         content: context.content,
         tags: context.tags || [],
-        relevance_score: context.relevance_score
+        relevance_score: context.relevance_score,
+        project_id: context.project_id
       });
+      setOriginalProjectId(context.project_id || null);
     }
   }, [context, form]);
 
@@ -92,12 +97,39 @@ const ContextDetail: React.FC<ContextDetailProps> = ({
 
     try {
       const values = await form.validateFields();
+
+      // Check if project is changing
+      if (values.project_id !== originalProjectId) {
+        const targetProject = allProjects.find(p => p.id === values.project_id);
+
+        Modal.confirm({
+          title: 'Move Context to Different Project?',
+          content: `Are you sure you want to move this context to "${targetProject?.name}"? This action will be tracked in the context's audit trail.`,
+          okText: 'Yes, Move Context',
+          cancelText: 'Cancel',
+          onOk: async () => {
+            await saveContext(values);
+          }
+        });
+      } else {
+        await saveContext(values);
+      }
+    } catch (error) {
+      console.error('Failed to validate form:', error);
+    }
+  };
+
+  const saveContext = async (values: any) => {
+    if (!context) return;
+
+    try {
       const updatedContext = await updateContextMutation.mutateAsync({
         id: context.id,
         updates: {
           content: values.content,
           tags: values.tags,
           relevance_score: values.relevance_score,
+          project_id: values.project_id,
         },
       });
 
@@ -105,9 +137,27 @@ const ContextDetail: React.FC<ContextDetailProps> = ({
       onUpdate?.(updatedContext);
       setIsEditing(false);
       message.success('Context updated successfully');
+
+      // Update original project ID after successful save
+      setOriginalProjectId(values.project_id);
     } catch (error) {
       console.error('Failed to update context:', error);
-      message.error('Failed to update context');
+
+      // Show specific validation error if available
+      if (error && typeof error === 'object' && 'body' in error) {
+        const apiError = error as any;
+        if (apiError.body?.error?.details) {
+          const details = apiError.body.error.details;
+          const errorMsg = details.map((d: any) => `${d.field}: ${d.message}`).join(', ');
+          message.error(`Validation failed: ${errorMsg}`);
+        } else if (apiError.body?.error?.message) {
+          message.error(apiError.body.error.message);
+        } else {
+          message.error('Failed to update context');
+        }
+      } else {
+        message.error('Failed to update context');
+      }
     }
   };
 
@@ -269,6 +319,28 @@ const ContextDetail: React.FC<ContextDetailProps> = ({
             <Card title="Tags & Metadata" size="small">
               {isEditing ? (
                 <Form form={form} layout="vertical">
+                  <Form.Item
+                    name="project_id"
+                    label="Project"
+                    tooltip="Change the project this context belongs to"
+                  >
+                    <Select
+                      placeholder="Select project"
+                      showSearch
+                      optionFilterProp="children"
+                    >
+                      {allProjects
+                        .filter(p => p.status === 'active')
+                        .map(project => (
+                          <Select.Option key={project.id} value={project.id}>
+                            {project.name}
+                            {project.id === originalProjectId && (
+                              <Tag color="blue" style={{ marginLeft: 8 }}>Current</Tag>
+                            )}
+                          </Select.Option>
+                        ))}
+                    </Select>
+                  </Form.Item>
                   <Form.Item name="tags" label="Tags">
                     <Select
                       mode="tags"
@@ -277,14 +349,14 @@ const ContextDetail: React.FC<ContextDetailProps> = ({
                       tokenSeparators={[',']}
                     />
                   </Form.Item>
-                  <Form.Item 
-                    name="relevance_score" 
+                  <Form.Item
+                    name="relevance_score"
                     label="Relevance Score (0-10)"
                   >
-                    <Input 
-                      type="number" 
-                      min={0} 
-                      max={10} 
+                    <Input
+                      type="number"
+                      min={0}
+                      max={10}
                       step={0.1}
                       placeholder="Enter relevance score..."
                     />

@@ -21,8 +21,8 @@ describe('McpParser', () => {
       expect(result.success).toBe(true);
       if (result.success) {
         expect('content' in result.data).toBe(true);
-        expect(result.data.content).toHaveLength(1);
-        expect(result.data.content[0].type).toBe('text');
+        expect((result.data as any).content).toHaveLength(1);
+        expect((result.data as any).content[0].type).toBe('text');
       }
     });
 
@@ -36,7 +36,7 @@ describe('McpParser', () => {
       expect(result.success).toBe(true);
       if (result.success) {
         expect('success' in result.data).toBe(true);
-        expect(result.data.success).toBe(true);
+        expect((result.data as any).success).toBe(true);
       }
     });
 
@@ -50,7 +50,7 @@ describe('McpParser', () => {
       expect(result.success).toBe(true);
       if (result.success) {
         expect('success' in result.data).toBe(true);
-        expect(result.data.success).toBe(false);
+        expect((result.data as any).success).toBe(false);
       }
     });
 
@@ -58,13 +58,13 @@ describe('McpParser', () => {
       const malformedJson = '{ "content": [{ "type": "text", "text": "unclosed string }';
       const result = McpParser.parseResponse(malformedJson);
       expect(result.success).toBe(false);
-      expect(result.error).toContain('JSON parsing failed');
+      expect((result as any).error).toContain('JSON parsing failed');
     });
 
     it('should reject empty response', () => {
       const result = McpParser.parseResponse('');
       expect(result.success).toBe(false);
-      expect(result.error).toContain('Empty response');
+      expect((result as any).error).toContain('Empty response');
     });
 
     it('should reject oversized response', () => {
@@ -77,7 +77,7 @@ describe('McpParser', () => {
 
       const result = McpParser.parseResponse(oversized);
       expect(result.success).toBe(false);
-      expect(result.error).toContain('Response too large');
+      expect((result as any).error).toContain('Response too large');
     });
 
     it('should reject deeply nested objects', () => {
@@ -88,7 +88,7 @@ describe('McpParser', () => {
 
       const result = McpParser.parseResponse(JSON.stringify(deepObject));
       expect(result.success).toBe(false);
-      expect(result.error).toContain('nesting too deep');
+      expect((result as any).error).toContain('nesting too deep');
     });
 
     it('should reject too many content items', () => {
@@ -101,7 +101,7 @@ describe('McpParser', () => {
 
       const result = McpParser.parseResponse(JSON.stringify(tooManyItems));
       expect(result.success).toBe(false);
-      expect(result.error).toContain('Too many content items');
+      expect((result as any).error).toContain('Too many content items');
     });
 
     it('should handle complex valid responses', () => {
@@ -134,10 +134,10 @@ describe('McpParser', () => {
       const result = McpParser.parseResponse(JSON.stringify(complexResponse));
       expect(result.success).toBe(true);
       if (result.success) {
-        expect(result.data.content).toHaveLength(3);
-        expect(result.data.content[0].type).toBe('text');
-        expect(result.data.content[1].type).toBe('resource');
-        expect(result.data.content[2].type).toBe('image');
+        expect((result.data as any).content).toHaveLength(3);
+        expect((result.data as any).content[0].type).toBe('text');
+        expect((result.data as any).content[1].type).toBe('resource');
+        expect((result.data as any).content[2].type).toBe('image');
       }
     });
   });
@@ -163,7 +163,7 @@ describe('McpParser', () => {
 
       const result = McpParser.parseToolResponse(successResponse);
       expect(result.success).toBe(false);
-      expect(result.error).toContain('Not a valid tool response');
+      expect((result as any).error).toContain('Not a valid tool response');
     });
   });
 
@@ -190,7 +190,7 @@ describe('McpParser', () => {
 
       const result = McpParser.parseSuccessResponse(errorResponse);
       expect(result.success).toBe(false);
-      expect(result.error).toContain('Not a valid success response');
+      expect((result as any).error).toContain('Not a valid success response');
     });
   });
 
@@ -217,7 +217,7 @@ describe('McpParser', () => {
 
       const result = McpParser.parseErrorResponse(successResponse);
       expect(result.success).toBe(false);
-      expect(result.error).toContain('Not a valid error response');
+      expect((result as any).error).toContain('Not a valid error response');
     });
   });
 
@@ -236,21 +236,21 @@ describe('McpParser', () => {
       const content = [{ type: 'text' }];
       const result = McpParser.validateContent(content);
       expect(result.valid).toBe(false);
-      expect(result.error).toContain('Text content item missing text field');
+      expect((result as any).error).toContain('Text content item missing text field');
     });
 
     it('should reject image content without required fields', () => {
       const content = [{ type: 'image', data: 'base64' }]; // missing mimeType
       const result = McpParser.validateContent(content);
       expect(result.valid).toBe(false);
-      expect(result.error).toContain('Image content item missing data or mimeType');
+      expect((result as any).error).toContain('Image content item missing data or mimeType');
     });
 
     it('should reject resource content without uri', () => {
       const content = [{ type: 'resource', resource: { name: 'test' } }]; // missing uri
       const result = McpParser.validateContent(content);
       expect(result.valid).toBe(false);
-      expect(result.error).toContain('Resource content item missing resource.uri');
+      expect((result as any).error).toContain('Resource content item missing resource.uri');
     });
   });
 
@@ -264,7 +264,7 @@ describe('McpParser', () => {
         ]
       };
 
-      const texts = McpParser.extractTextContent(response);
+      const texts = McpParser.extractTextContent(response as any);
       expect(texts).toEqual(['First text', 'Second text']);
     });
 
@@ -274,7 +274,7 @@ describe('McpParser', () => {
         data: 'not a tool response'
       };
 
-      const texts = McpParser.extractTextContent(response);
+      const texts = McpParser.extractTextContent(response as any);
       expect(texts).toEqual([]);
     });
   });
@@ -289,7 +289,7 @@ describe('McpParser', () => {
         ]
       };
 
-      const allContent = McpParser.extractAllContent(response);
+      const allContent = McpParser.extractAllContent(response as any);
       expect(allContent).toHaveLength(3);
       expect(allContent[0]).toEqual({ type: 'text', content: 'Hello' });
       expect(allContent[1]).toEqual({

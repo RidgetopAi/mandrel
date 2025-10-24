@@ -21,17 +21,17 @@
 
 import { processLock } from './utils/processLock.js';
 
-import { Server } from '@modelcontextprotocol/sdk/server/index.js';
-import * as fs from 'fs';
-import * as path from 'path';
+// import { Server } from '@modelcontextprotocol/sdk/server/index.js';
+// import * as fs from 'fs'; // Commented out - currently unused (ProcessSingleton disabled)
+// import * as path from 'path'; // Commented out - currently unused (ProcessSingleton disabled)
 import * as http from 'http';
 import {
-  CallToolRequestSchema,
+  // CallToolRequestSchema,
   ErrorCode,
-  ListResourcesRequestSchema,
-  ListToolsRequestSchema,
+  // ListResourcesRequestSchema,
+  // ListToolsRequestSchema,
   McpError,
-  ReadResourceRequestSchema,
+  // ReadResourceRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
 
 import { initializeDatabase, closeDatabase } from './config/database.js';
@@ -40,41 +40,18 @@ import { contextHandler } from './handlers/context.js';
 import { projectHandler } from './handlers/project.js';
 import { namingHandler } from './handlers/naming.js';
 import { decisionsHandler } from './handlers/decisions.js';
-import { tasksHandler } from './handlers/tasks.js';
+// import { tasksHandler } from './handlers/tasks.js';
 import { codeAnalysisHandler } from './handlers/codeAnalysis.js';
 import { smartSearchHandler } from './handlers/smartSearch.js';
 import { navigationHandler } from './handlers/navigation.js';
+import { agentsHandler } from './handlers/agents.js';
 import { validationMiddleware } from './middleware/validation.js';
 
 // Enterprise hardening constants
-const PID_FILE = '/home/ridgetop/aidis/run/aidis-core.pid';
+// const PID_FILE = '/home/ridgetop/aidis/run/aidis-core.pid'; // Commented out - ProcessSingleton disabled
 const HTTP_PORT = process.env.AIDIS_HTTP_PORT || 8080;
 const MAX_RETRIES = 3;
 const INITIAL_RETRY_DELAY = 1000;
-
-/**
- * Check if another AIDIS core service is already running
- */
-async function isAidisCoreRunning(): Promise<boolean> {
-  try {
-    return new Promise((resolve) => {
-      const req = http.get(`http://localhost:${HTTP_PORT}/healthz`, (res) => {
-        let data = '';
-        res.on('data', (chunk) => data += chunk);
-        res.on('end', () => {
-          resolve(data.includes('"status":"healthy"'));
-        });
-      });
-      req.on('error', () => resolve(false));
-      req.setTimeout(2000, () => {
-        req.destroy();
-        resolve(false);
-      });
-    });
-  } catch {
-    return false;
-  }
-}
 
 // Enable debug logging if needed
 if (process.env.AIDIS_DEBUG) {
@@ -83,20 +60,22 @@ if (process.env.AIDIS_DEBUG) {
 
 /**
  * Process Singleton - Prevent multiple AIDIS core instances
+ * Note: Disabled for now - may be re-enabled in future
  */
-class ProcessSingleton {
+/*
+class _ProcessSingleton {
   private pidFile: string;
-  
+
   constructor(pidFile: string = PID_FILE) {
     this.pidFile = pidFile;
   }
-  
+
   ensureSingleInstance(): boolean {
     try {
       // Check if PID file exists
       if (fs.existsSync(this.pidFile)) {
         const existingPid = fs.readFileSync(this.pidFile, 'utf8').trim();
-        
+
         // Check if process is still running
         try {
           process.kill(parseInt(existingPid), 0); // Signal 0 tests if process exists
@@ -109,16 +88,16 @@ class ProcessSingleton {
           fs.unlinkSync(this.pidFile);
         }
       }
-      
+
       // Create PID file
       const pidDir = path.dirname(this.pidFile);
       if (!fs.existsSync(pidDir)) {
         fs.mkdirSync(pidDir, { recursive: true });
       }
-      
+
       fs.writeFileSync(this.pidFile, process.pid.toString());
       console.log(`🔒 Process singleton active (PID: ${process.pid})`);
-      
+
       // Clean up PID file on exit
       const cleanup = () => {
         try {
@@ -130,19 +109,20 @@ class ProcessSingleton {
           console.error('⚠️  Failed to clean up PID file:', error);
         }
       };
-      
+
       process.on('exit', cleanup);
       process.on('SIGINT', cleanup);
       process.on('SIGTERM', cleanup);
-      
+
       return true;
-      
+
     } catch (error) {
       console.error('❌ Failed to ensure singleton:', error);
       return false;
     }
   }
 }
+*/
 
 /**
  * Circuit Breaker for Database Operations
@@ -235,12 +215,10 @@ class RetryHandler {
 class AIDISCoreServer {
   private httpServer: http.Server | null = null;
   private circuitBreaker: CircuitBreaker;
-  private singleton: ProcessSingleton;
   private dbHealthy: boolean = false;
 
   constructor() {
     this.circuitBreaker = new CircuitBreaker();
-    this.singleton = new ProcessSingleton();
     
     this.setupHttpServer();
   }
@@ -559,10 +537,6 @@ class AIDISCoreServer {
     return AIDIS_TOOL_DEFINITIONS.map(tool => tool.name);
   }
 
-  private getToolDescription(toolName: string): string {
-    const tool = AIDIS_TOOL_DEFINITIONS.find(t => t.name === toolName);
-    return tool?.description || 'AIDIS tool';
-  }
 
   // Tool handler methods (copied from original server.ts)
   private async handlePing(args: { message?: string }) {
@@ -639,7 +613,7 @@ class AIDISCoreServer {
           type: 'text',
           text: `📝 Context stored successfully!\n\n` +
                 `🆔 ID: ${result.id}\n` +
-                `📝 Type: ${result.type}\n` +
+                `📝 Type: ${result.contextType}\n` +
                 `📏 Content: ${result.content.substring(0, 100)}${result.content.length > 100 ? '...' : ''}\n` +
                 `🏷️  Tags: ${result.tags.length > 0 ? result.tags.join(', ') : 'none'}\n` +
                 `📊 Relevance: ${result.relevanceScore || 'auto-calculated'}\n` +
@@ -650,16 +624,19 @@ class AIDISCoreServer {
   }
 
   private async handleContextSearch(args: any) {
-    const results = await contextHandler.searchContexts({
+    // Use provided projectId or default to current project
+    const projectId = args.projectId || await projectHandler.getCurrentProjectId('default-session');
+
+    const results = await contextHandler.searchContext({
       query: args.query,
-      sessionId: args.sessionId || 'default-session',
+      // sessionId: args.sessionId || 'default-session', // Removed - not in SearchContextRequest type
       limit: args.limit,
       type: args.type,
       tags: args.tags,
       minSimilarity: args.minSimilarity,
       offset: args.offset,
-      projectId: args.projectId
-    });
+      projectId: projectId
+    } as any);
 
     if (results.length === 0) {
       return {
@@ -695,10 +672,9 @@ class AIDISCoreServer {
   }
 
   private async handleContextGetRecent(args: any) {
-    return contextHandler.getRecentContexts(
+    return contextHandler.getRecentContext(
       args.sessionId || 'default-session',
-      args.limit,
-      args.projectId
+      args.limit
     );
   }
 
@@ -713,9 +689,7 @@ class AIDISCoreServer {
 
   private async handleProjectCreate(args: any) {
     return projectHandler.createProject(
-      args.name,
-      args.description,
-      args.sessionId || 'default-session'
+      args.name
     );
   }
 
@@ -731,35 +705,36 @@ class AIDISCoreServer {
   }
 
   private async handleProjectInfo(args: any) {
-    return projectHandler.getProjectInfo(
+    return projectHandler.getProject(
       args.projectId || await projectHandler.getCurrentProjectId('default-session')
     );
   }
 
   // Naming handlers
   private async handleNamingRegister(args: any) {
-    return namingHandler.registerNaming(
-      args.name,
-      args.type,
-      args.context,
-      args.sessionId || 'default-session'
-    );
+    return namingHandler.registerName({
+      canonicalName: args.name,
+      entityType: args.type,
+      description: args.context,
+      projectId: args.projectId
+    });
   }
 
   private async handleNamingCheck(args: any) {
-    return namingHandler.checkNaming(
-      args.name,
-      args.type,
-      args.sessionId || 'default-session'
-    );
+    return namingHandler.checkNameConflicts({
+      projectId: args.projectId,
+      entityType: args.type,
+      name: args.name, // Changed from canonicalName to name
+      alternateNames: args.alternateNames
+    } as any);
   }
 
   private async handleNamingSuggest(args: any) {
-    return namingHandler.suggestNames(
-      args.type,
-      args.context,
-      args.sessionId || 'default-session'
-    );
+    return namingHandler.suggestNames({
+      entityType: args.type,
+      description: args.context,
+      projectId: args.projectId
+    });
   }
 
   private async handleNamingStats(args: any) {
@@ -768,31 +743,37 @@ class AIDISCoreServer {
 
   // Decision handlers
   private async handleDecisionRecord(args: any) {
-    return decisionsHandler.recordDecision(
-      args.title,
-      args.description,
-      args.alternatives,
-      args.reasoning,
-      args.sessionId || 'default-session',
-      args.tags
-    );
+    return decisionsHandler.recordDecision({
+      title: args.title,
+      description: args.description,
+      rationale: args.rationale || '',
+      alternativesConsidered: args.alternatives ?
+        (Array.isArray(args.alternatives) ? args.alternatives.map((alt: any) => ({
+          name: typeof alt === 'string' ? alt : (alt.name || 'Alternative'),
+          description: typeof alt === 'string' ? alt : (alt.description || ''),
+          pros: typeof alt === 'object' && alt.pros ? alt.pros : [],
+          cons: typeof alt === 'object' && alt.cons ? alt.cons : []
+        })) : []) : [],
+      decisionType: args.decisionType || 'technical',
+      impactLevel: args.impactLevel || 'medium',
+      projectId: args.projectId
+    });
   }
 
   private async handleDecisionSearch(args: any) {
-    return decisionsHandler.searchDecisions(
-      args.query,
-      args.sessionId || 'default-session',
-      args.limit
-    );
+    return decisionsHandler.searchDecisions({
+      query: args.query,
+      limit: args.limit,
+      projectId: args.projectId
+    });
   }
 
   private async handleDecisionUpdate(args: any) {
-    return decisionsHandler.updateDecision(
-      args.decisionId,
-      args.status,
-      args.outcome,
-      args.sessionId || 'default-session'
-    );
+    return decisionsHandler.updateDecision({
+      decisionId: args.decisionId,
+      status: args.status,
+      outcomeNotes: args.outcome
+    });
   }
 
   private async handleDecisionStats(args: any) {
@@ -813,10 +794,10 @@ class AIDISCoreServer {
   }
 
   private async handleAgentStatus(args: any) {
-    return agentsHandler.getAgentStatus(
-      args.agentId,
-      args.sessionId || 'default-session'
-    );
+    // Get agent list and filter by agentId
+    const agents = await agentsHandler.listAgents(args.projectId);
+    const agent = agents.find(a => a.id === args.agentId || a.name === args.agentId);
+    return agent || { error: 'Agent not found' };
   }
 
   private async handleTaskCreate(args: any) {
@@ -839,12 +820,11 @@ class AIDISCoreServer {
   }
 
   private async handleTaskUpdate(args: any) {
-    return agentsHandler.updateTask(
+    return agentsHandler.updateTaskStatus(
       args.taskId,
       args.status,
-      args.progress,
-      args.sessionId || 'default-session',
-      args.result
+      args.assignedTo,
+      args.metadata || {}
     );
   }
 
@@ -930,31 +910,31 @@ class AIDISCoreServer {
   }
 
   private async handleAgentJoin(args: any) {
-    return agentsHandler.joinSession(
+    return agentsHandler.joinProject(
       args.agentId,
       args.sessionId,
-      args.currentSession || 'default-session'
+      args.projectId || await projectHandler.getCurrentProjectId('default-session')
     );
   }
 
   private async handleAgentLeave(args: any) {
-    return agentsHandler.leaveSession(
+    return agentsHandler.leaveProject(
       args.agentId,
-      args.sessionId || 'default-session'
+      args.sessionId || 'default-session',
+      args.projectId || await projectHandler.getCurrentProjectId('default-session')
     );
   }
 
   private async handleAgentSessions(args: any) {
-    return agentsHandler.getAgentSessions(
-      args.agentId,
-      args.sessionId || 'default-session'
+    return agentsHandler.getActiveAgentSessions(
+      args.projectId || await projectHandler.getCurrentProjectId('default-session')
     );
   }
 
   // Code analysis handlers
   private async handleCodeAnalyze(args: any) {
     const projectId = args.projectId || await projectHandler.getCurrentProjectId('default-session');
-    return codeAnalysisHandler.analyzeCode(
+    return codeAnalysisHandler.analyzeFile(
       projectId,
       args.filePath,
       args.fileContent,
@@ -1046,8 +1026,9 @@ class AIDISCoreServer {
   }
 
   private async handleCodeImpact(args: any) {
+    const projectId = await projectHandler.getCurrentProjectId('default-session');
     const impact = await codeAnalysisHandler.analyzeImpact(
-      await projectHandler.getCurrentProjectId('default-session'),
+      projectId || 'default-project',
       args.componentId
     );
 
@@ -1069,12 +1050,13 @@ class AIDISCoreServer {
     }
 
     const dependentsList = impact.dependents.map((dep, index) => {
-      const typeIcon = {
+      const componentTypeIconMap = {
         function: '⚡',
         class: '🏗️',
         interface: '📋',
         module: '📦'
-      }[dep.component_type] || '📝';
+      } as const;
+      const typeIcon = componentTypeIconMap[dep.component_type as keyof typeof componentTypeIconMap] || '📝';
       
       return `   ${index + 1}. **${dep.name}** ${typeIcon}\n` +
              `      📄 File: ${dep.file_path}\n` +
@@ -1231,19 +1213,21 @@ class AIDISCoreServer {
     const projectId = args.projectId || await projectHandler.getCurrentProjectId('default-session');
     const insights = await smartSearchHandler.getProjectInsights(projectId);
 
-    const healthLevel = {
+    const healthLevelMap = {
       healthy: '🟢 HEALTHY',
-      moderate: '🟡 MODERATE', 
+      moderate: '🟡 MODERATE',
       needs_attention: '🔴 NEEDS ATTENTION',
       no_data: '⚪ NO DATA'
-    }[insights.insights.codeHealth.level] || '❓ UNKNOWN';
+    } as const;
+    const healthLevel = healthLevelMap[insights.insights.codeHealth.level as keyof typeof healthLevelMap] || '❓ UNKNOWN';
 
-    const efficiencyLevel = {
+    const efficiencyLevelMap = {
       efficient: '🟢 EFFICIENT',
       moderate: '🟡 MODERATE',
       needs_improvement: '🔴 NEEDS IMPROVEMENT',
       no_data: '⚪ NO DATA'
-    }[insights.insights.teamEfficiency.level] || '❓ UNKNOWN';
+    } as const;
+    const efficiencyLevel = efficiencyLevelMap[insights.insights.teamEfficiency.level as keyof typeof efficiencyLevelMap] || '❓ UNKNOWN';
 
     const gapsText = insights.insights.knowledgeGaps.length > 0
       ? `\n📋 Knowledge Gaps:\n` + insights.insights.knowledgeGaps.map((gap: string) => `   • ${gap}`).join('\n')

@@ -8,7 +8,6 @@ import { z } from 'zod';
 
 // Base validation schemas
 const baseMetadata = z.record(z.any()).optional();
-const baseId = z.string().uuid().optional();
 const baseName = z.string().min(1).max(255);
 const baseDescription = z.string().max(2000).optional();
 const baseTags = z.array(z.string().max(50)).max(20).optional();
@@ -35,7 +34,7 @@ export const aidisSystemSchemas = {
 export const contextSchemas = {
   store: z.object({
     content: z.string().min(1).max(10000),
-    type: z.enum(['code', 'decision', 'error', 'discussion', 'planning', 'completion', 'milestone', 'reflections', 'handoff']),
+    type: z.enum(['code', 'decision', 'error', 'discussion', 'planning', 'completion', 'milestone', 'reflections', 'handoff', 'lessons']),
     tags: baseTags,
     relevanceScore: baseRelevanceScore,
     metadata: baseMetadata,
@@ -45,7 +44,7 @@ export const contextSchemas = {
   
   search: z.object({
     query: baseQuery,
-    type: z.enum(['code', 'decision', 'error', 'discussion', 'planning', 'completion', 'milestone', 'reflections', 'handoff']).optional(),
+    type: z.enum(['code', 'decision', 'error', 'discussion', 'planning', 'completion', 'milestone', 'reflections', 'handoff', 'lessons']).optional(),
     tags: baseTags,
     limit: baseLimit,
     minSimilarity: z.number().min(0).max(100).optional(),
@@ -148,9 +147,19 @@ export const decisionSchemas = {
   }),
   
   search: z.object({
-    query: baseQuery,
+    query: z.string().min(1).max(1000).optional(), // Make query optional for flexible filtering
     limit: baseLimit,
+    // Add all parameters the handler actually supports (all optional)
+    decisionType: z.enum(['architecture', 'library', 'framework', 'pattern',
+      'api_design', 'database', 'deployment', 'security', 'performance',
+      'ui_ux', 'testing', 'tooling', 'process', 'naming_convention', 'code_style']).optional(),
+    status: z.enum(['active', 'deprecated', 'superseded', 'under_review']).optional(),
+    impactLevel: z.enum(['low', 'medium', 'high', 'critical']).optional(),
+    component: z.string().optional(),
+    tags: baseTags.optional(),
+    projectId: z.string().optional(),
     includeOutcome: z.boolean().optional()
+    // Note: dateFrom/dateTo excluded - complex date parsing not needed for AI ease-of-use
   }),
   
   update: z.object({
@@ -499,7 +508,12 @@ export function validateToolArguments(toolName: string, args: any) {
   if (!schema) {
     throw new Error(`No validation schema found for tool: ${toolName}`);
   }
-  
+
+  // Normalize synonyms for decision tools (AI-friendly parameter names)
+  if (toolName === 'decision_record' || toolName === 'decision_search') {
+    args = normalizeDecisionSynonyms(toolName, args);
+  }
+
   try {
     return schema.parse(args);
   } catch (error) {
@@ -528,12 +542,75 @@ export function validationMiddleware(toolName: string, args: any) {
       error: null
     };
   } catch (error) {
+    const err = error as Error;
     return {
       success: false,
       data: null,
-      error: error.message
+      error: err.message
     };
   }
+}
+
+/**
+ * Normalize AI-friendly synonym parameters to canonical names
+ * Enables natural language parameter variations without breaking validation
+ */
+function normalizeDecisionSynonyms(toolName: string, args: any): any {
+  const normalized = { ...args };
+
+  if (toolName === 'decision_record') {
+    // rationale synonyms
+    if (args.reasoning && !args.rationale) normalized.rationale = args.reasoning;
+    if (args.reason && !args.rationale) normalized.rationale = args.reason;
+    if (args.why && !args.rationale) normalized.rationale = args.why;
+
+    // impactLevel synonyms
+    if (args.impact && !args.impactLevel) normalized.impactLevel = args.impact;
+    if (args.severity && !args.impactLevel) normalized.impactLevel = args.severity;
+    if (args.priority && !args.impactLevel) normalized.impactLevel = args.priority;
+
+    // alternativesConsidered synonyms
+    if (args.options && !args.alternativesConsidered) {
+      normalized.alternativesConsidered = Array.isArray(args.options)
+        ? args.options.map((opt: any) => typeof opt === 'string'
+            ? { name: opt, reasonRejected: 'Not selected' }
+            : opt)
+        : args.options;
+    }
+    if (args.alternatives && !args.alternativesConsidered) {
+      normalized.alternativesConsidered = args.alternatives;
+    }
+    if (args.choices && !args.alternativesConsidered) {
+      normalized.alternativesConsidered = args.choices;
+    }
+
+    // Clean up synonyms from normalized object
+    delete normalized.reasoning;
+    delete normalized.reason;
+    delete normalized.why;
+    delete normalized.impact;
+    delete normalized.severity;
+    delete normalized.priority;
+    delete normalized.options;
+    delete normalized.alternatives;
+    delete normalized.choices;
+  }
+
+  if (toolName === 'decision_search') {
+    // decisionType synonyms
+    if (args.type && !args.decisionType) normalized.decisionType = args.type;
+
+    // impactLevel synonyms
+    if (args.impact && !args.impactLevel) normalized.impactLevel = args.impact;
+    if (args.severity && !args.impactLevel) normalized.impactLevel = args.severity;
+
+    // Clean up synonyms
+    delete normalized.type;
+    delete normalized.impact;
+    delete normalized.severity;
+  }
+
+  return normalized;
 }
 
 export default validationMiddleware;

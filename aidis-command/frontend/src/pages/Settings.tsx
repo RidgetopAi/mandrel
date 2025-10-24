@@ -32,10 +32,15 @@ const Settings: React.FC = () => {
     }
   };
 
-  const handleDefaultProjectChange = (projectName: string | null) => {
+  const handleDefaultProjectChange = async (projectName: string | null) => {
     if (projectName) {
-      setDefaultProject(projectName);
-      message.success(`Default project set to: ${projectName}`);
+      try {
+        await setDefaultProject(projectName);
+        message.success(`Default project set to: ${projectName}`);
+      } catch (error) {
+        console.error('Failed to set default project:', error);
+        message.error('Failed to set default project in backend. Local settings updated.');
+      }
     } else {
       clearDefaultProject();
       message.info('Default project cleared');

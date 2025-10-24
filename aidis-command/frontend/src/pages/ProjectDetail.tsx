@@ -23,8 +23,7 @@ import {
   FolderOpenOutlined,
   DatabaseOutlined,
   ClockCircleOutlined,
-  EditOutlined,
-  BarChartOutlined
+  EditOutlined
 } from '@ant-design/icons';
 import { useProject, useProjectSessions } from '../hooks/useProjects';
 import SessionList from '../components/projects/SessionList';
@@ -262,22 +261,7 @@ const ProjectDetail: React.FC = () => {
           )}
         </TabPane>
         
-        <TabPane 
-          tab={
-            <Space>
-              <BarChartOutlined />
-              Analytics
-            </Space>
-          } 
-          key="analytics"
-        >
-          <Alert
-            message="Analytics Coming Soon"
-            description="Project-specific analytics and insights will be available in a future update."
-            type="info"
-            showIcon
-          />
-        </TabPane>
+
       </Tabs>
     </Space>
   );

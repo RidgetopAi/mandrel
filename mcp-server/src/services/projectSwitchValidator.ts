@@ -12,8 +12,7 @@
  */
 
 import { db } from '../config/database.js';
-import { projectHandler, ProjectInfo, SessionState } from '../handlers/project.js';
-import { SessionTracker } from './sessionTracker.js';
+import { projectHandler, ProjectInfo } from '../handlers/project.js';
 import { randomUUID } from 'crypto';
 
 export interface ValidationError {
@@ -167,7 +166,7 @@ export class ProjectSwitchValidator {
   static async performAtomicSwitch(
     sessionId: string,
     targetProjectId: string,
-    preValidationResult: SwitchValidationResult
+    _preValidationResult: SwitchValidationResult
   ): Promise<{ success: boolean; project?: ProjectInfo; error?: ValidationError; rollbackData?: any }> {
     const transactionId = randomUUID();
     const switchContext: SwitchContext = {
@@ -463,7 +462,7 @@ export class ProjectSwitchValidator {
     }
   }
 
-  private static async validatePendingOperations(sessionId: string): Promise<SwitchValidationResult> {
+  private static async validatePendingOperations(_sessionId: string): Promise<SwitchValidationResult> {
     const result: SwitchValidationResult = { isValid: true, errors: [], warnings: [], metadata: {} };
 
     try {
@@ -567,7 +566,7 @@ export class ProjectSwitchValidator {
 
     try {
       // Validate that the session state is consistent across all systems
-      const sessionInfo = projectHandler.getSessionInfo(sessionId);
+      // const _sessionInfo = projectHandler.getSessionInfo(sessionId);
       const currentProject = await projectHandler.getCurrentProject(sessionId);
 
       if (!currentProject || currentProject.id !== targetProjectId) {
@@ -593,7 +592,7 @@ export class ProjectSwitchValidator {
     }
   }
 
-  private static async validateContextOperations(sessionId: string, targetProjectId: string): Promise<SwitchValidationResult> {
+  private static async validateContextOperations(_sessionId: string, targetProjectId: string): Promise<SwitchValidationResult> {
     const result: SwitchValidationResult = { isValid: true, errors: [], warnings: [], metadata: {} };
 
     try {
@@ -623,7 +622,7 @@ export class ProjectSwitchValidator {
     }
   }
 
-  private static async validateUISynchronization(sessionId: string, targetProjectId: string): Promise<SwitchValidationResult> {
+  private static async validateUISynchronization(_sessionId: string, _targetProjectId: string): Promise<SwitchValidationResult> {
     const result: SwitchValidationResult = { isValid: true, errors: [], warnings: [], metadata: {} };
 
     try {
@@ -657,9 +656,9 @@ export class ProjectSwitchValidator {
   }
 
   private static async executeSwitch(
-    sessionId: string, 
-    targetProjectId: string, 
-    switchContext: SwitchContext
+    sessionId: string,
+    targetProjectId: string,
+    _switchContext: SwitchContext
   ): Promise<{ success: boolean; project?: ProjectInfo; error?: ValidationError }> {
     try {
       // Use the existing switchProject method from projectHandler

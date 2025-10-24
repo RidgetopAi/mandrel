@@ -16,7 +16,7 @@
 
 import { db } from '../config/database.js';
 import { logEvent } from '../middleware/eventLogger.js';
-import { getCurrentSession } from './sessionManager.js';
+import { getCurrentSession } from './sessionTracker.js';
 
 // Pattern Detection Configuration
 export interface PatternDetectorConfig {
@@ -172,7 +172,8 @@ export class PatternDetector {
   private isRunning: boolean = false;
   private updateTimer: NodeJS.Timeout | null = null;
   private commitBuffer: string[] = [];
-  private lastAnalysisTime: Date = new Date();
+  // Unused - tracked elsewhere
+  // private _lastAnalysisTime: Date = new Date();
   
   // Performance metrics
   private metrics = {
@@ -211,7 +212,7 @@ export class PatternDetector {
       console.log('🔍 Starting real-time pattern detection service...');
       
       this.isRunning = true;
-      this.lastAnalysisTime = new Date();
+      // this._lastAnalysisTime = new Date();
 
       // Start periodic pattern updates if enabled
       if (this.config.enableRealTimeDetection) {
@@ -558,7 +559,7 @@ export class PatternDetector {
       }
 
       // Count file co-occurrences
-      for (const [commitSha, files] of transactions) {
+      for (const [_commitSha, files] of transactions) {
         const uniqueFiles = [...new Set(files)];
         for (let i = 0; i < uniqueFiles.length; i++) {
           for (let j = i + 1; j < uniqueFiles.length; j++) {
@@ -1184,7 +1185,7 @@ export class PatternDetector {
       }
 
       // Calculate degrees of freedom and p-value approximation
-      const degreesOfFreedom = numPeriods - 1;
+      // const _degreesOfFreedom = numPeriods - 1;
       const criticalValue = 14.067; // For alpha = 0.05, df varies by pattern type
       const pValue = chiSquare > criticalValue ? 0.01 : 0.5; // Simplified approximation
 
@@ -1500,17 +1501,17 @@ export class PatternDetector {
   }
 
   private async getCommitsInRange(
-    projectId: string, 
-    startSha?: string, 
-    endSha?: string
+    _projectId: string,
+    _startSha?: string,
+    _endSha?: string
   ): Promise<any[]> {
     // Implementation to get commits in range for batch processing
     return [];
   }
 
   private aggregateBatchResults(
-    results: PatternDetectionResult[], 
-    projectId: string
+    results: PatternDetectionResult[],
+    _projectId: string
   ): PatternDetectionResult {
     // Implementation to aggregate multiple batch results
     return results[0]; // Placeholder

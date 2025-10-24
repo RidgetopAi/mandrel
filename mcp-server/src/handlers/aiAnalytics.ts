@@ -3,7 +3,7 @@
  * Measures AI vs human productivity, adoption rates, and cost efficiency
  */
 
-import { database } from '../database/database';
+import { db as database } from '../config/database.js';
 
 interface AIEffectivenessResponse {
   adoptionRate: number;

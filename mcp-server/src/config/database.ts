@@ -9,7 +9,6 @@ const __dirname = path.dirname(__filename);
 
 // Load environment variables with validation
 const envExamplePath = path.resolve(__dirname, '../../.env.example');
-const envPath = path.resolve(__dirname, '../../.env');
 
 // Check if files exist before loading
 import fs from 'fs';

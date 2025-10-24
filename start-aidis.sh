@@ -25,7 +25,7 @@ fi
 
 # Start AIDIS MCP server with direct STDIO for MCP protocol
 cd mcp-server
-npx tsx src/server.ts > ../logs/aidis.log 2>&1 &
+npx tsx src/main.ts > ../logs/aidis.log 2>&1 &
 AIDIS_PID=$!
 
 # Save PID for management

@@ -11,7 +11,7 @@
  * 3. Mock embeddings (development/testing)
  */
 
-import { pipeline, Pipeline } from '@xenova/transformers';
+import { pipeline } from '@xenova/transformers';
 
 // Error types for better error handling
 export enum EmbeddingErrorType {
@@ -80,7 +80,6 @@ export class EmbeddingService {
   private metrics: EmbeddingMetrics;
   private maxTextLength: number = 8000; // Reasonable limit for embedding models
   private modelInitialized: boolean = false;
-  private modelInitializationPromise: Promise<any> | null = null;
 
   constructor() {
     this.model = process.env.EMBEDDING_MODEL || 'text-embedding-ada-002';
@@ -223,20 +222,21 @@ export class EmbeddingService {
         }
         return result;
       } catch (error) {
-        lastError = error;
+        const err = error as Error;
+        lastError = err;
 
         if (attempt === this.retryConfig.maxRetries) {
-          console.error(`❌ ${operationName} failed after ${attempt} retries:`, error.message);
+          console.error(`❌ ${operationName} failed after ${attempt} retries:`, err.message);
           break;
         }
 
-        if (!this.isRetryableError(error)) {
-          console.error(`❌ ${operationName} failed with non-retryable error:`, error.message);
-          throw error;
+        if (!this.isRetryableError(err)) {
+          console.error(`❌ ${operationName} failed with non-retryable error:`, err.message);
+          throw err;
         }
 
         const delay = this.calculateRetryDelay(attempt);
-        console.warn(`⚠️ ${operationName} failed (attempt ${attempt + 1}/${this.retryConfig.maxRetries + 1}), retrying in ${delay}ms:`, error.message);
+        console.warn(`⚠️ ${operationName} failed (attempt ${attempt + 1}/${this.retryConfig.maxRetries + 1}), retrying in ${delay}ms:`, err.message);
         await this.sleep(delay);
       }
     }
@@ -269,8 +269,9 @@ export class EmbeddingService {
       console.log('✅ Local embedding model loaded successfully!');
       return this.localModel;
     } catch (error) {
-      console.error('❌ Failed to load local model:', error);
-      throw new Error(`Failed to initialize local embedding model: ${error}`);
+      const err = error as Error;
+      console.error('❌ Failed to load local model:', err);
+      throw new Error(`Failed to initialize local embedding model: ${err.message}`);
     }
   }
 
@@ -293,7 +294,7 @@ export class EmbeddingService {
 
       console.log(`📝 Generating embedding for text (${text.length} chars): "${text.substring(0, 60)}..."`);
 
-      let result: EmbeddingVector;
+      let result: EmbeddingVector | undefined;
       let errors: EmbeddingError[] = [];
 
       // Try local model first (if preferred)
@@ -304,12 +305,13 @@ export class EmbeddingService {
           this.metrics.localModelSuccesses++;
           console.log(`✅ Successfully generated embedding using local model`);
         } catch (error) {
-          const embeddingError = error instanceof EmbeddingError ? error :
+          const err = error as Error;
+          const embeddingError = err instanceof EmbeddingError ? err :
             new EmbeddingError(
-              `Local embedding generation failed: ${error.message}`,
+              `Local embedding generation failed: ${err.message}`,
               EmbeddingErrorType.MODEL_INFERENCE,
-              this.isRetryableError(error),
-              error
+              this.isRetryableError(err),
+              err
             );
           errors.push(embeddingError);
           console.warn('⚠️  Local embedding failed, trying alternatives:', embeddingError.message);
@@ -326,12 +328,13 @@ export class EmbeddingService {
             this.metrics.openAiSuccesses++;
             console.log(`✅ Successfully generated embedding using OpenAI API`);
           } catch (error) {
-            const embeddingError = error instanceof EmbeddingError ? error :
+            const err = error as Error;
+            const embeddingError = err instanceof EmbeddingError ? err :
               new EmbeddingError(
-                `OpenAI embedding generation failed: ${error.message}`,
+                `OpenAI embedding generation failed: ${err.message}`,
                 EmbeddingErrorType.API_ERROR,
-                this.isRetryableError(error),
-                error
+                this.isRetryableError(err),
+                err
               );
             errors.push(embeddingError);
             console.warn('⚠️  OpenAI embedding failed, trying alternatives:', embeddingError.message);
@@ -347,12 +350,13 @@ export class EmbeddingService {
           this.metrics.localModelSuccesses++;
           console.log(`✅ Successfully generated embedding using local model (backup)`);
         } catch (error) {
-          const embeddingError = error instanceof EmbeddingError ? error :
+          const err = error as Error;
+          const embeddingError = err instanceof EmbeddingError ? err :
             new EmbeddingError(
-              `Local embedding backup failed: ${error.message}`,
+              `Local embedding backup failed: ${err.message}`,
               EmbeddingErrorType.MODEL_INFERENCE,
-              this.isRetryableError(error),
-              error
+              this.isRetryableError(err),
+              err
             );
           errors.push(embeddingError);
           console.warn('⚠️  Local embedding backup failed:', embeddingError.message);
@@ -394,22 +398,23 @@ export class EmbeddingService {
 
     } catch (error) {
       // Record failed request
+      const err = error as Error;
       this.metrics.failedRequests++;
       const processingTime = Date.now() - startTime;
-      this.recordError(error.message);
+      this.recordError(err.message);
 
-      console.error(`❌ Embedding generation failed after ${processingTime}ms:`, error.message);
+      console.error(`❌ Embedding generation failed after ${processingTime}ms:`, err.message);
 
       // Re-throw as EmbeddingError if not already
-      if (error instanceof EmbeddingError) {
-        throw error;
+      if (err instanceof EmbeddingError) {
+        throw err;
       }
 
       throw new EmbeddingError(
-        `Embedding generation failed: ${error.message}`,
+        `Embedding generation failed: ${err.message}`,
         EmbeddingErrorType.UNKNOWN,
         false,
-        error
+        err
       );
     }
   }
@@ -457,12 +462,13 @@ export class EmbeddingService {
           model: `${this.localModelName}-local`,
         };
       } catch (error) {
-        if (error instanceof EmbeddingError) {
-          throw error;
+        const err = error as Error;
+        if (err instanceof EmbeddingError) {
+          throw err;
         }
 
         // Categorize model inference errors
-        const errorMessage = error.message?.toLowerCase() || '';
+        const errorMessage = err.message?.toLowerCase() || '';
         let errorType = EmbeddingErrorType.MODEL_INFERENCE;
         let isRetryable = false;
 
@@ -475,10 +481,10 @@ export class EmbeddingService {
         }
 
         throw new EmbeddingError(
-          `Local model inference failed: ${error.message}`,
+          `Local model inference failed: ${err.message}`,
           errorType,
           isRetryable,
-          error
+          err
         );
       }
     }, 'Local embedding generation');
@@ -573,34 +579,35 @@ export class EmbeddingService {
           model: this.model,
         };
       } catch (error) {
-        if (error instanceof EmbeddingError) {
-          throw error;
+        const err = error as Error & { code?: string; name?: string };
+        if (err instanceof EmbeddingError) {
+          throw err;
         }
 
         // Handle fetch-specific errors
-        if (error.name === 'AbortError') {
+        if (err.name === 'AbortError') {
           throw new EmbeddingError(
             'OpenAI API request timed out',
             EmbeddingErrorType.NETWORK_ERROR,
             true,
-            error
+            err
           );
         }
 
-        if (error.code === 'ECONNRESET' || error.code === 'ENOTFOUND' || error.code === 'ETIMEDOUT') {
+        if (err.code === 'ECONNRESET' || err.code === 'ENOTFOUND' || err.code === 'ETIMEDOUT') {
           throw new EmbeddingError(
-            `OpenAI API network error: ${error.message}`,
+            `OpenAI API network error: ${err.message}`,
             EmbeddingErrorType.NETWORK_ERROR,
             true,
-            error
+            err
           );
         }
 
         throw new EmbeddingError(
-          `OpenAI API request failed: ${error.message}`,
+          `OpenAI API request failed: ${err.message}`,
           EmbeddingErrorType.API_ERROR,
-          this.isRetryableError(error),
-          error
+          this.isRetryableError(err),
+          err
         );
       }
     }, 'OpenAI embedding generation');
@@ -699,9 +706,9 @@ export class EmbeddingService {
     const words = text.toLowerCase().split(/\s+/);
     
     // Add signals for common development terms
-    const signals = {
+    const signals: Record<string, number[]> = {
       'database': [0, 50, 100],
-      'postgresql': [1, 51, 101], 
+      'postgresql': [1, 51, 101],
       'mcp': [2, 52, 102],
       'server': [3, 53, 103],
       'typescript': [4, 54, 104],
@@ -802,15 +809,16 @@ export class EmbeddingService {
       // Clamp to valid range due to floating point precision
       return Math.max(-1, Math.min(1, similarity));
     } catch (error) {
-      if (error instanceof EmbeddingError) {
-        throw error;
+      const err = error as Error;
+      if (err instanceof EmbeddingError) {
+        throw err;
       }
 
       throw new EmbeddingError(
-        `Similarity calculation failed: ${error.message}`,
+        `Similarity calculation failed: ${err.message}`,
         EmbeddingErrorType.UNKNOWN,
         false,
-        error
+        err
       );
     }
   }
@@ -855,7 +863,8 @@ export class EmbeddingService {
              result.embedding.length > 0 &&
              result.embedding.every(val => isFinite(val));
     } catch (error) {
-      console.error('🌡️  Health check failed:', error.message);
+      const err = error as Error;
+      console.error('🌡️  Health check failed:', err.message);
       return false;
     }
   }

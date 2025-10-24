@@ -10,13 +10,26 @@ import { useProjectInsights } from '../../hooks/useProjects';
 const { Text, Paragraph } = Typography;
 const { TabPane } = Tabs;
 
-// Define the ProjectInsights type based on what the backend actually returns
+interface ProjectHealth {
+  score: number;
+  level: string;
+  components: number;
+  contexts: number;
+  decisions: number;
+  tasks: number;
+}
+
+interface TeamEfficiency {
+  score: number;
+  level: string;
+}
+
 interface ProjectInsightsData {
   insights: {
-    projectHealth?: any;
-    teamEfficiency?: any;
-    raw?: string;
-  } | string; // Support both new structured format and legacy string format
+    projectHealth: ProjectHealth;
+    teamEfficiency: TeamEfficiency;
+    raw: string;
+  };
   generatedAt: string;
   projectId: string;
 }
@@ -41,7 +54,8 @@ interface ParsedInsights {
   contexts: number;
   decisions: number;
   tasks: number;
-  recommendations?: string[];
+  knowledgeGaps: string[];
+  codeIssues: string[];
 }
 
 const ProjectInsights: React.FC<ProjectInsightsProps> = ({ projectId, className }) => {
@@ -64,55 +78,66 @@ const ProjectInsights: React.FC<ProjectInsightsProps> = ({ projectId, className 
     projectId: projectId
   } : null;
 
-  const parseInsights = (rawInsights: string | any): ParsedInsights => {
+  const parseInsights = (insightsData: ProjectInsightsData['insights']): ParsedInsights => {
     try {
-      // Handle structured response - extract raw content if available
-      let insightsStr: string;
-      if (typeof rawInsights === 'string') {
-        insightsStr = rawInsights;
-      } else if (rawInsights && typeof rawInsights === 'object' && rawInsights.raw) {
-        insightsStr = rawInsights.raw;
-      } else {
-        insightsStr = JSON.stringify(rawInsights, null, 2);
-      }
+      const { projectHealth, teamEfficiency, raw } = insightsData;
 
-      // Parse the text response from MCP tool
-      // Extract metrics using regex patterns
-      const codeHealthMatch = insightsStr.match(/Code Health:.*?(\d+\.?\d*)/);
-      const teamEfficiencyMatch = insightsStr.match(/Team Efficiency:.*?(\d+)/);
-      const componentsMatch = insightsStr.match(/Components:\s*(\d+)/);
-      const contextsMatch = insightsStr.match(/Contexts:\s*(\d+)/);
-      const decisionsMatch = insightsStr.match(/Decisions:\s*(\d+)/);
-      const tasksMatch = insightsStr.match(/Tasks:\s*(\d+)/);
-
-      const codeScore = codeHealthMatch ? parseFloat(codeHealthMatch[1]) : 0;
-      const teamScore = teamEfficiencyMatch ? parseInt(teamEfficiencyMatch[1]) : 0;
-
-      // Determine status and colors based on scores
-      const getHealthStatus = (score: number) => {
-        if (score >= 80) return { status: 'HEALTHY', color: 'success' };
-        if (score >= 60) return { status: 'MODERATE', color: 'warning' };
-        return { status: 'NEEDS ATTENTION', color: 'error' };
+      // Map project health level to color
+      const getHealthColor = (level: string) => {
+        if (level === 'healthy') return 'success';
+        if (level === 'moderate') return 'warning';
+        return 'error';
       };
 
-      const codeHealth = getHealthStatus(codeScore);
-      const teamHealth = getHealthStatus(teamScore);
+      // Map team efficiency level to color
+      const getEfficiencyColor = (level: string) => {
+        if (level === 'high') return 'success';
+        if (level === 'medium') return 'warning';
+        if (level === 'low') return 'error';
+        return 'default';
+      };
+
+      // Extract knowledge gaps from raw text
+      const knowledgeGaps: string[] = [];
+      const knowledgeGapsMatch = raw.match(/📋 Knowledge Gaps:\n(.*?)(?=\n⚠️|$)/s);
+      if (knowledgeGapsMatch) {
+        const gaps = knowledgeGapsMatch[1]
+          .split('\n')
+          .filter(line => line.trim().startsWith('•'))
+          .map(line => line.replace(/^\s*•\s*/, '').trim())
+          .filter(line => line.length > 0);
+        knowledgeGaps.push(...gaps);
+      }
+
+      // Extract code issues from raw text
+      const codeIssues: string[] = [];
+      const codeIssuesMatch = raw.match(/⚠️\s+Code Issues:\n(.*?)(?=\n\n|$)/s);
+      if (codeIssuesMatch) {
+        const issues = codeIssuesMatch[1]
+          .split('\n')
+          .filter(line => line.trim().startsWith('•'))
+          .map(line => line.replace(/^\s*•\s*/, '').trim())
+          .filter(line => line.length > 0);
+        codeIssues.push(...issues);
+      }
 
       return {
         codeHealth: {
-          score: codeScore,
-          status: codeHealth.status,
-          color: codeHealth.color
+          score: projectHealth.score,
+          status: projectHealth.level.toUpperCase().replace('_', ' '),
+          color: getHealthColor(projectHealth.level)
         },
         teamEfficiency: {
-          score: teamScore,
-          status: teamHealth.status,
-          color: teamHealth.color
+          score: teamEfficiency.score,
+          status: teamEfficiency.level.toUpperCase(),
+          color: getEfficiencyColor(teamEfficiency.level)
         },
-        components: componentsMatch ? parseInt(componentsMatch[1]) : 0,
-        contexts: contextsMatch ? parseInt(contextsMatch[1]) : 0,
-        decisions: decisionsMatch ? parseInt(decisionsMatch[1]) : 0,
-        tasks: tasksMatch ? parseInt(tasksMatch[1]) : 0
+        components: projectHealth.components,
+        contexts: projectHealth.contexts,
+        decisions: projectHealth.decisions,
+        tasks: projectHealth.tasks,
+        knowledgeGaps,
+        codeIssues
       };
     } catch (err) {
       console.error('Error parsing insights:', err);
@@ -122,7 +147,9 @@ const ProjectInsights: React.FC<ProjectInsightsProps> = ({ projectId, className 
         components: 0,
         contexts: 0,
         decisions: 0,
-        tasks: 0
+        tasks: 0,
+        knowledgeGaps: [],
+        codeIssues: []
       };
     }
   };
@@ -173,6 +200,9 @@ const ProjectInsights: React.FC<ProjectInsightsProps> = ({ projectId, className 
             value={parsed.components}
             prefix={<RocketOutlined />}
           />
+          {parsed.components === 0 && (
+            <Text type="secondary" style={{ fontSize: '12px' }}>No code analyzed yet</Text>
+          )}
         </Card>
       </Col>
 
@@ -193,6 +223,9 @@ const ProjectInsights: React.FC<ProjectInsightsProps> = ({ projectId, className 
             value={parsed.decisions}
             prefix={<CheckCircleOutlined />}
           />
+          {parsed.decisions === 0 && (
+            <Text type="secondary" style={{ fontSize: '12px' }}>No decisions recorded</Text>
+          )}
         </Card>
       </Col>
 
@@ -203,6 +236,9 @@ const ProjectInsights: React.FC<ProjectInsightsProps> = ({ projectId, className 
             value={parsed.tasks}
             prefix={<TrophyOutlined />}
           />
+          {parsed.tasks === 0 && (
+            <Text type="secondary" style={{ fontSize: '12px' }}>No tasks tracked</Text>
+          )}
         </Card>
       </Col>
     </Row>
@@ -260,19 +296,61 @@ const ProjectInsights: React.FC<ProjectInsightsProps> = ({ projectId, className 
               <InfoCircleOutlined style={{ color: '#1890ff', marginRight: 8 }} />
               Team efficiency reflects task completion rates and productivity patterns
             </Text>
+            {parsed.teamEfficiency.score === 0 && parsed.teamEfficiency.status === 'UNKNOWN' && (
+              <Text type="secondary">
+                <InfoCircleOutlined style={{ marginRight: 8 }} />
+                No task data available yet
+              </Text>
+            )}
             {parsed.teamEfficiency.score >= 70 && (
               <Text type="success">
                 <CheckCircleOutlined style={{ marginRight: 8 }} />
                 High team efficiency - excellent productivity!
               </Text>
             )}
-            {parsed.teamEfficiency.score < 50 && (
+            {parsed.teamEfficiency.score > 0 && parsed.teamEfficiency.score < 50 && (
               <Text type="warning">
                 <WarningOutlined style={{ marginRight: 8 }} />
                 Focus on improving team workflows and processes
               </Text>
             )}
           </Space>
+        </Card>
+      </Col>
+    </Row>
+  );
+
+  const renderKnowledgeAndIssues = (parsed: ParsedInsights) => (
+    <Row gutter={[16, 16]}>
+      <Col xs={24} md={12}>
+        <Card title="📋 Knowledge Gaps" size="small">
+          {parsed.knowledgeGaps.length > 0 ? (
+            <ul style={{ paddingLeft: 20, margin: 0 }}>
+              {parsed.knowledgeGaps.map((gap, idx) => (
+                <li key={idx} style={{ marginBottom: 8 }}>
+                  <Text>{gap}</Text>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <Text type="secondary">No knowledge gaps identified</Text>
+          )}
+        </Card>
+      </Col>
+
+      <Col xs={24} md={12}>
+        <Card title="⚠️ Code Issues" size="small">
+          {parsed.codeIssues.length > 0 ? (
+            <ul style={{ paddingLeft: 20, margin: 0 }}>
+              {parsed.codeIssues.map((issue, idx) => (
+                <li key={idx} style={{ marginBottom: 8 }}>
+                  <Text type="warning">{issue}</Text>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <Text type="secondary">No code issues found</Text>
+          )}
         </Card>
       </Col>
     </Row>
@@ -290,27 +368,7 @@ const ProjectInsights: React.FC<ProjectInsightsProps> = ({ projectId, className 
           borderRadius: '4px',
           overflow: 'auto'
         }}>
-{(() => {
-            // Handle structured response properly
-            if (!insights?.insights) {
-              return 'No insights available';
-            }
-
-            if (typeof insights.insights === 'string') {
-              return insights.insights;
-            }
-
-            // If it's a structured object, try to get the raw content
-            if (insights.insights && typeof insights.insights === 'object') {
-              if (insights.insights.raw) {
-                return insights.insights.raw;
-              }
-              // Fallback to formatted JSON if no raw property
-              return JSON.stringify(insights.insights, null, 2);
-            }
-
-            return 'No insights available';
-          })()}
+{insights?.insights?.raw || 'No insights available'}
         </pre>
       </Paragraph>
       <Text type="secondary" style={{ fontSize: '11px' }}>
@@ -391,6 +449,10 @@ const ProjectInsights: React.FC<ProjectInsightsProps> = ({ projectId, className 
         
         <TabPane tab="Health Analysis" key="health">
           {renderHealthDetails(parsed)}
+        </TabPane>
+        
+        <TabPane tab="Knowledge & Issues" key="knowledge">
+          {renderKnowledgeAndIssues(parsed)}
         </TabPane>
         
         <TabPane tab="Raw Data" key="raw">

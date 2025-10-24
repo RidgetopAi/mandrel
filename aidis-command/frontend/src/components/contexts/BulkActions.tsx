@@ -41,7 +41,7 @@ const BulkActions: React.FC<BulkActionsProps> = ({
   const bulkDeleteMutation = useBulkDeleteContexts();
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [exportModalVisible, setExportModalVisible] = useState(false);
-  const [exportFormat, setExportFormat] = useState<'json' | 'csv'>('json');
+  const [exportFormat, setExportFormat] = useState<'json' | 'csv' | 'md'>('json');
   const [exporting, setExporting] = useState(false);
   const [addContextModalVisible, setAddContextModalVisible] = useState(false);
   const [newContextData, setNewContextData] = useState({
@@ -303,6 +303,9 @@ const BulkActions: React.FC<BulkActionsProps> = ({
               <Option value="csv">
                 CSV - Tabular format for spreadsheets
               </Option>
+              <Option value="md">
+                Markdown - Full content for NotebookLM
+              </Option>
             </Select>
           </div>
 
@@ -315,6 +318,12 @@ const BulkActions: React.FC<BulkActionsProps> = ({
           {exportFormat === 'csv' && (
             <div style={{ fontSize: '12px', color: '#8c8c8c' }}>
               CSV format includes: ID, Project, Type, Content Preview, Tags, Relevance Score, and Dates.
+            </div>
+          )}
+
+          {exportFormat === 'md' && (
+            <div style={{ fontSize: '12px', color: '#8c8c8c' }}>
+              Markdown format includes all fields with full content. Compatible with NotebookLM and other AI analysis tools.
             </div>
           )}
         </Space>

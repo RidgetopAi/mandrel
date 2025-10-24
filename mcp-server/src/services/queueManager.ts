@@ -97,7 +97,7 @@ export class QueueManager {
    */
   private registerWorkers(): void {
     // Feature flags refresh worker (replaces 5s timer)
-    this.createWorker(JobType.FEATURE_FLAGS_REFRESH, async (job: Job<QueueJobData>) => {
+    this.createWorker(JobType.FEATURE_FLAGS_REFRESH, async (_job: Job<QueueJobData>) => {
       const { default: featureFlagStore } = await import('../utils/featureFlags.js');
       await featureFlagStore.refresh();
       console.log(`[QueueManager] Feature flags refreshed at ${new Date().toISOString()}`);
@@ -105,28 +105,28 @@ export class QueueManager {
     });
 
     // Git tracking worker (replaces 30s timer)
-    this.createWorker(JobType.GIT_TRACKING, async (job: Job<QueueJobData>) => {
+    this.createWorker(JobType.GIT_TRACKING, async (_job: Job<QueueJobData>) => {
       // TODO: Implement git tracking logic (currently timer-based in server.ts:4931)
       console.log(`[QueueManager] Git tracking executed at ${new Date().toISOString()}`);
       return { success: true, timestamp: Date.now() };
     });
 
     // Metrics collection worker (replaces 5min timer)
-    this.createWorker(JobType.METRICS_COLLECTION, async (job: Job<QueueJobData>) => {
+    this.createWorker(JobType.METRICS_COLLECTION, async (_job: Job<QueueJobData>) => {
       // TODO: Implement metrics collection logic
       console.log(`[QueueManager] Metrics collection executed at ${new Date().toISOString()}`);
       return { success: true, timestamp: Date.now() };
     });
 
     // Complexity analysis worker (replaces 10min timer)
-    this.createWorker(JobType.COMPLEXITY_ANALYSIS, async (job: Job<QueueJobData>) => {
+    this.createWorker(JobType.COMPLEXITY_ANALYSIS, async (_job: Job<QueueJobData>) => {
       // TODO: Implement complexity analysis logic
       console.log(`[QueueManager] Complexity analysis executed at ${new Date().toISOString()}`);
       return { success: true, timestamp: Date.now() };
     });
 
     // Pattern detection worker
-    this.createWorker(JobType.PATTERN_DETECTION, async (job: Job<QueueJobData>) => {
+    this.createWorker(JobType.PATTERN_DETECTION, async (_job: Job<QueueJobData>) => {
       // TODO: Implement pattern detection logic
       console.log(`[QueueManager] Pattern detection executed at ${new Date().toISOString()}`);
       return { success: true, timestamp: Date.now() };

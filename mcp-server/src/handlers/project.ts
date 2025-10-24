@@ -38,6 +38,7 @@ export interface SessionState {
   currentProjectId: string | null;
   sessionId?: string;
   agentType?: string;
+  manualOverride?: boolean;  // Track if user manually switched (vs auto-initialized)
 }
 
 export class ProjectHandler {
@@ -207,17 +208,29 @@ export class ProjectHandler {
   /**
    * Set the current active project for the session
    */
-  setCurrentProject(projectId: string, sessionId: string = this.defaultSessionId): void {
-    console.log(`🔄 Setting current project to: ${projectId} (session: ${sessionId})`);
-    
+  setCurrentProject(projectId: string, sessionId: string = this.defaultSessionId, manualOverride: boolean = false): void {
+    console.log(`🔄 Setting current project to: ${projectId} (session: ${sessionId}, manual: ${manualOverride})`);
+
     const existing = this.sessionStates.get(sessionId) || {};
     this.sessionStates.set(sessionId, {
       ...existing,
       currentProjectId: projectId,
-      sessionId
+      sessionId,
+      manualOverride  // Store whether this was a manual switch
     });
 
-    console.log(`✅ Current project set for session ${sessionId}`);
+    console.log(`✅ Current project set for session ${sessionId}${manualOverride ? ' (manual override)' : ''}`);
+  }
+
+  /**
+   * Clear all session caches - forces re-initialization on next access
+   * Used when primary project changes to ensure sessions sync with new default
+   */
+  clearSessionCache(): void {
+    console.log('🗑️  Clearing all session caches');
+    const sessionCount = this.sessionStates.size;
+    this.sessionStates.clear();
+    console.log(`✅ Cleared ${sessionCount} session cache(s)`);
   }
 
   /**
@@ -273,8 +286,9 @@ export class ProjectHandler {
       throw new Error(`Project "${identifier}" not found`);
     }
 
-    this.setCurrentProject(project.id, sessionId);
-    
+    // Mark as manual override so initializeSession() won't override this choice
+    this.setCurrentProject(project.id, sessionId, true);
+
     console.log(`✅ Switched to project: ${project.name}`);
     return { ...project, isActive: true };
   }
@@ -367,33 +381,69 @@ export class ProjectHandler {
   async initializeSession(sessionId: string = this.defaultSessionId): Promise<ProjectInfo | null> {
     console.log(`🔄 Initializing session: ${sessionId}`);
 
-    // Check if session already has a current project
-    const existing = await this.getCurrentProjectId(sessionId);
-    if (existing) {
-      const project = await this.getProject(existing);
-      if (project) {
-        console.log(`✅ Session already has active project: ${project.name}`);
-        return project;
-      }
-    }
-
-    // Set default project (aidis-bootstrap or first available project)
+    // Get all projects first
     const projects = await this.listProjects(false);
     if (projects.length === 0) {
       console.log('⚠️  No projects available');
       return null;
     }
 
-    // Try to find aidis-bootstrap first
+    // Priority 0: Check if user manually switched - respect their choice!
+    const sessionState = this.sessionStates.get(sessionId);
+    const existing = await this.getCurrentProjectId(sessionId);
+
+    if (sessionState?.manualOverride && existing) {
+      const manualProject = await this.getProject(existing);
+      if (manualProject) {
+        console.log(`✅ Respecting manual project switch: ${manualProject.name}`);
+        return { ...manualProject, isActive: true };
+      }
+    }
+
+    // Priority 1: Check for primary project (respects user's default preference)
+    const primaryProject = projects.find(p => p.metadata && p.metadata.is_primary === true);
+
+    if (primaryProject) {
+      console.log(`✅ Found primary project: ${primaryProject.name}`);
+
+      // Check if we're already on the primary project
+      if (existing === primaryProject.id) {
+        console.log(`✅ Already on primary project: ${primaryProject.name}`);
+        return { ...primaryProject, isActive: true };
+      }
+
+      // Switch from cached project to primary
+      if (existing) {
+        const old = await this.getProject(existing);
+        console.log(`🔄 Switching from ${old?.name} to primary project: ${primaryProject.name}`);
+      }
+
+      this.setCurrentProject(primaryProject.id, sessionId);
+      return { ...primaryProject, isActive: true };
+    }
+
+    // Priority 2: No primary - check cached session state
+    if (existing) {
+      const project = await this.getProject(existing);
+      if (project) {
+        console.log(`✅ Using cached project: ${project.name} (no primary set)`);
+        return project;
+      }
+    }
+
+    // Priority 3: Fall back to system defaults
     let defaultProject = projects.find(p => p.name === 'aidis-bootstrap');
-    if (!defaultProject) {
-      // Use first available project
+    if (defaultProject) {
+      console.log(`✅ Using system default project: ${defaultProject.name}`);
+    } else {
+      // Priority 4: Use first available project
       defaultProject = projects[0];
+      console.log(`✅ Using first available project: ${defaultProject.name}`);
     }
 
     this.setCurrentProject(defaultProject.id, sessionId);
     console.log(`✅ Session initialized with project: ${defaultProject.name}`);
-    
+
     return { ...defaultProject, isActive: true };
   }
 

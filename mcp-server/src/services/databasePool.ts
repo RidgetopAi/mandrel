@@ -1,5 +1,4 @@
 import { Pool, PoolConfig, PoolClient } from 'pg';
-import { config } from '../config/environment';
 
 /**
  * TR008-4: Optimized Database Connection Pool Manager
@@ -89,7 +88,7 @@ class DatabasePoolManager {
       this.lastError = err.message;
     });
 
-    this.pool.on('connect', (client) => {
+    this.pool.on('connect', (_client) => {
       console.log('✅ New database client connected to pool');
     });
 

@@ -1,11 +1,11 @@
 /**
  * ParticleBallScene.js
  * 
- * Spherical particle field visualization with:
- * - 1200 particles in spherical shell distribution
- * - Bass-reactive: radius inflation/deflation (1.0-1.5x)
- * - Mid-frequency: particle jitter/displacement
- * - Treble: color intensity modulation
+ * Particle burst visualization with:
+ * - Particles explode outward from center on bass hits
+ * - Multiple burst waves with trails
+ * - Color-coded by frequency bands
+ * - Continuous spawning and recycling
  */
 
 import * as THREE from 'three';
@@ -13,56 +13,50 @@ import { BaseScene } from '../BaseScene.js';
 
 export class ParticleBallScene extends BaseScene {
   constructor() {
-    super('Particle Ball');
+    super('Particle Burst');
     this.particleSystem = null;
-    this.originalPositions = null;
-    this.baseRadius = 1.5;
+    this.particleVelocities = [];
+    this.particleLifetimes = [];
+    this.particleCount = 2000;
+    this.spawnTimer = 0;
+    this.lastBassLevel = 0;
   }
 
   init(camera, audioEngine) {
     super.init(camera, audioEngine);
     
-    this.createParticleSphere();
+    this.createParticleSystem();
     
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
     this.add(ambientLight);
   }
 
-  createParticleSphere() {
-    const particleCount = 1600;
-    const positions = new Float32Array(particleCount * 3);
-    const colors = new Float32Array(particleCount * 3);
+  createParticleSystem() {
+    const positions = new Float32Array(this.particleCount * 3);
+    const colors = new Float32Array(this.particleCount * 3);
     
-    for (let i = 0; i < particleCount; i++) {
-      const theta = Math.random() * Math.PI * 2;
-      const phi = Math.acos((Math.random() * 2) - 1);
-      const r = this.baseRadius * (0.9 + Math.random() * 0.2);
+    for (let i = 0; i < this.particleCount; i++) {
+      positions[i * 3] = 0;
+      positions[i * 3 + 1] = 0;
+      positions[i * 3 + 2] = 0;
       
-      const x = r * Math.sin(phi) * Math.cos(theta);
-      const y = r * Math.sin(phi) * Math.sin(theta);
-      const z = r * Math.cos(phi);
+      colors[i * 3] = 1.0;
+      colors[i * 3 + 1] = 1.0;
+      colors[i * 3 + 2] = 1.0;
       
-      positions[i * 3] = x;
-      positions[i * 3 + 1] = y;
-      positions[i * 3 + 2] = z;
-      
-      const color = new THREE.Color(0x00ffff);
-      colors[i * 3] = color.r;
-      colors[i * 3 + 1] = color.g;
-      colors[i * 3 + 2] = color.b;
+      this.particleVelocities.push(new THREE.Vector3());
+      this.particleLifetimes.push(0);
     }
-    
-    this.originalPositions = new Float32Array(positions);
     
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
     
     const material = new THREE.PointsMaterial({
-      size: 0.02,
+      size: 0.08,
       vertexColors: true,
       transparent: true,
-      opacity: 0.9,
+      opacity: 1.0,
       blending: THREE.AdditiveBlending,
       depthWrite: false,
       sizeAttenuation: true
@@ -80,42 +74,98 @@ export class ParticleBallScene extends BaseScene {
     super.exit();
   }
 
+  spawnBurst(count, audioBands) {
+    const positions = this.particleSystem.geometry.attributes.position.array;
+    const colors = this.particleSystem.geometry.attributes.color.array;
+    
+    let spawned = 0;
+    for (let i = 0; i < this.particleCount && spawned < count; i++) {
+      if (this.particleLifetimes[i] <= 0) {
+        const theta = Math.random() * Math.PI * 2;
+        const phi = Math.acos((Math.random() * 2) - 1);
+        
+        const speed = 3.0 + Math.random() * 4.0 + audioBands.bass * 6.0;
+        
+        this.particleVelocities[i].set(
+          Math.sin(phi) * Math.cos(theta) * speed,
+          Math.sin(phi) * Math.sin(theta) * speed,
+          Math.cos(phi) * speed
+        );
+        
+        this.particleLifetimes[i] = 1.0 + Math.random() * 1.5;
+        
+        positions[i * 3] = 0;
+        positions[i * 3 + 1] = 0;
+        positions[i * 3 + 2] = 0;
+        
+        const colorChoice = Math.random();
+        if (colorChoice < 0.33) {
+          colors[i * 3] = 1.0;
+          colors[i * 3 + 1] = 0.2;
+          colors[i * 3 + 2] = 0.8;
+        } else if (colorChoice < 0.66) {
+          colors[i * 3] = 0.0;
+          colors[i * 3 + 1] = 1.0;
+          colors[i * 3 + 2] = 1.0;
+        } else {
+          colors[i * 3] = 1.0;
+          colors[i * 3 + 1] = 1.0;
+          colors[i * 3 + 2] = 0.2;
+        }
+        
+        spawned++;
+      }
+    }
+  }
+
   update(deltaTime, audioBands) {
     if (!audioBands || !this.particleSystem) return;
 
     const positions = this.particleSystem.geometry.attributes.position.array;
     const colors = this.particleSystem.geometry.attributes.color.array;
     
-    const bassMultiplier = 1.0 + audioBands.bass * 1.5;
-    const midJitter = audioBands.mid * 0.8;
-    const trebleIntensity = 0.5 + audioBands.treble * 0.5;
+    const bassDelta = audioBands.bass - this.lastBassLevel;
+    if (bassDelta > 0.2 && audioBands.bass > 0.4) {
+      this.spawnBurst(80 + Math.floor(audioBands.bass * 150), audioBands);
+    }
+    this.lastBassLevel = audioBands.bass;
     
-    for (let i = 0; i < positions.length / 3; i++) {
-      const i3 = i * 3;
-      
-      const origX = this.originalPositions[i3];
-      const origY = this.originalPositions[i3 + 1];
-      const origZ = this.originalPositions[i3 + 2];
-      
-      positions[i3] = origX * bassMultiplier + (Math.random() - 0.5) * midJitter;
-      positions[i3 + 1] = origY * bassMultiplier + (Math.random() - 0.5) * midJitter;
-      positions[i3 + 2] = origZ * bassMultiplier + (Math.random() - 0.5) * midJitter;
-      
-      const intensity = 0.7 + trebleIntensity * 0.3;
-      colors[i3] = 0.0;
-      colors[i3 + 1] = intensity;
-      colors[i3 + 2] = intensity;
+    if (audioBands.mid > 0.5) {
+      this.spawnTimer += deltaTime;
+      if (this.spawnTimer > 0.1) {
+        this.spawnBurst(Math.floor(audioBands.mid * 30), audioBands);
+        this.spawnTimer = 0;
+      }
+    }
+    
+    for (let i = 0; i < this.particleCount; i++) {
+      if (this.particleLifetimes[i] > 0) {
+        this.particleLifetimes[i] -= deltaTime;
+        
+        const i3 = i * 3;
+        positions[i3] += this.particleVelocities[i].x * deltaTime;
+        positions[i3 + 1] += this.particleVelocities[i].y * deltaTime;
+        positions[i3 + 2] += this.particleVelocities[i].z * deltaTime;
+        
+        this.particleVelocities[i].multiplyScalar(0.98);
+      } else {
+        const i3 = i * 3;
+        positions[i3] = 0;
+        positions[i3 + 1] = 0;
+        positions[i3 + 2] = 0;
+        colors[i3] = 0;
+        colors[i3 + 1] = 0;
+        colors[i3 + 2] = 0;
+      }
     }
     
     this.particleSystem.geometry.attributes.position.needsUpdate = true;
     this.particleSystem.geometry.attributes.color.needsUpdate = true;
-    
-    this.particleSystem.rotation.y += deltaTime * 0.15;
-    this.particleSystem.rotation.x += deltaTime * 0.08;
   }
 
   dispose() {
-    this.originalPositions = null;
+    this.particleVelocities = [];
+    this.particleLifetimes = [];
     super.dispose();
   }
 }

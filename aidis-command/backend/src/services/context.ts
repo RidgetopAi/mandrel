@@ -21,7 +21,6 @@ export interface ContextSearchParams {
   session_id?: string;
   type?: string;
   tags?: string[];
-  min_similarity?: number;
   date_from?: string;
   date_to?: string;
   limit?: number;
@@ -81,7 +80,6 @@ export class ContextService {
       session_id,
       type,
       tags,
-      min_similarity = 0.3,
       date_from,
       date_to,
       limit = 20,
@@ -104,15 +102,15 @@ export class ContextService {
     const sqlParams: any[] = [];
     let paramIndex = 1;
 
-    // Semantic search with pgvector
+    // Text search: matches content, tags, or context type
     if (query) {
-      sql += ` AND c.embedding <-> (
-        SELECT embedding FROM contexts 
-        WHERE content ILIKE $${paramIndex++} 
-        ORDER BY embedding <-> (SELECT AVG(embedding) FROM contexts WHERE content ILIKE $${paramIndex - 1})
-        LIMIT 1
-      )::vector < $${paramIndex++}`;
-      sqlParams.push(`%${query}%`, 1 - min_similarity);
+      const likeParam = `%${query}%`;
+      sql += ` AND (
+        c.content ILIKE $${paramIndex++}
+        OR $${paramIndex++} = ANY(c.tags)
+        OR LOWER(c.context_type) = LOWER($${paramIndex++})
+      )`;
+      sqlParams.push(likeParam, query, query);
     }
 
     if (project_id) {
@@ -143,12 +141,6 @@ export class ContextService {
     if (date_to) {
       sql += ` AND c.created_at <= $${paramIndex++}`;
       sqlParams.push(date_to);
-    }
-
-    // Text search fallback if no semantic search
-    if (query && !query.includes('embedding')) {
-      sql += ` AND (c.content ILIKE $${paramIndex++} OR $${paramIndex++} = ANY(c.tags))`;
-      sqlParams.push(`%${query}%`, query);
     }
 
     // Sorting
@@ -244,6 +236,7 @@ export class ContextService {
     tags?: string[];
     metadata?: Record<string, any>;
     relevance_score?: number;
+    project_id?: string;
   }): Promise<Context | null> {
     const setClauses: string[] = [];
     const values: any[] = [];
@@ -269,6 +262,11 @@ export class ContextService {
       values.push(updates.relevance_score);
     }
 
+    if (updates.project_id !== undefined) {
+      setClauses.push(`project_id = $${paramIndex++}`);
+      values.push(updates.project_id);
+    }
+
     if (setClauses.length === 0) {
       throw new Error('No updates provided');
     }
@@ -278,10 +276,10 @@ export class ContextService {
 
     try {
       const result = await pool.query(`
-        UPDATE contexts 
+        UPDATE contexts
         SET ${setClauses.join(', ')}
         WHERE id = $${paramIndex}
-        RETURNING 
+        RETURNING
           id, project_id, context_type as type, content, metadata, tags,
           relevance_score, session_id, created_at, created_at as updated_at
       `, values);
@@ -437,13 +435,13 @@ export class ContextService {
    */
   static async exportContexts(
     params: ContextSearchParams,
-    format: 'json' | 'csv' = 'json'
+    format: 'json' | 'csv' | 'md' = 'json'
   ): Promise<{ data: string; filename: string; contentType: string }> {
     // Get all matching contexts (no pagination for export)
     const searchResult = await this.searchContexts({ ...params, limit: 10000, offset: 0 });
-    
+
     const timestamp = new Date().toISOString().slice(0, 10);
-    
+
     if (format === 'json') {
       return {
         data: JSON.stringify({
@@ -455,10 +453,10 @@ export class ContextService {
         filename: `contexts-export-${timestamp}.json`,
         contentType: 'application/json'
       };
-    } else {
+    } else if (format === 'csv') {
       // CSV format
       const headers = [
-        'ID', 'Project', 'Type', 'Content Preview', 'Tags', 
+        'ID', 'Project', 'Type', 'Content Preview', 'Tags',
         'Relevance Score', 'Created At', 'Updated At'
       ].join(',');
 
@@ -478,7 +476,48 @@ export class ContextService {
         filename: `contexts-export-${timestamp}.csv`,
         contentType: 'text/csv'
       };
+    } else if (format === 'md') {
+      // Markdown format - full content with all metadata
+      const header = `# AIDIS Context Export\n\n**Exported:** ${new Date().toISOString()}\n**Total Contexts:** ${searchResult.contexts.length}\n\n---\n\n`;
+
+      const content = searchResult.contexts.map((ctx, index) => {
+        const metadata = ctx.metadata ? JSON.stringify(ctx.metadata, null, 2) : 'None';
+        const tags = ctx.tags && ctx.tags.length > 0 ? ctx.tags.join(', ') : 'None';
+        const sessionId = ctx.session_id || 'None';
+        const relevance = ctx.relevance_score || 'N/A';
+
+        return `## Context ${index + 1}: ${ctx.type}
+
+**Project:** ${ctx.project_name || 'Unknown'}
+**Tags:** ${tags}
+**Relevance Score:** ${relevance}
+**Session ID:** ${sessionId}
+**Created:** ${ctx.created_at}
+**Updated:** ${ctx.updated_at}
+
+### Content
+
+${ctx.content}
+
+### Metadata
+
+\`\`\`json
+${metadata}
+\`\`\`
+
+---
+
+`;
+      }).join('\n');
+
+      return {
+        data: header + content,
+        filename: `contexts-export-${timestamp}.md`,
+        contentType: 'text/markdown'
+      };
     }
+
+    throw new Error(`Unsupported export format: ${format}`);
   }
 
   /**

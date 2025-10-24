@@ -99,6 +99,7 @@ export const contextsClient = {
       tags?: string[];
       metadata?: Record<string, unknown>;
       relevance_score?: number;
+      project_id?: string;
     }
   ): Promise<Context> {
     const response = await ContextsService.putContexts({ id, requestBody: updates });
@@ -135,7 +136,7 @@ export const contextsClient = {
     return (result.data ?? []) as Context[];
   },
 
-  async exportContexts(params: ContextSearchParams, format: 'json' | 'csv' = 'json'): Promise<Blob> {
+  async exportContexts(params: ContextSearchParams, format: 'json' | 'csv' | 'md' = 'json'): Promise<Blob> {
     const query = new URLSearchParams();
     Object.entries(params).forEach(([key, value]) => {
       if (value === undefined || value === null) return;

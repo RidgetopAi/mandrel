@@ -2,10 +2,11 @@
  * AIDIS Tool Definitions
  *
  * Shared module containing all 41 AIDIS MCP tool definitions.
+ * (8 session analytics tools migrated to REST API on 2025-10-05)
  * This module serves as the single source of truth for tool schemas
  * used by both the main MCP server and the HTTP bridge.
  *
- * Last Updated: 2025-10-01
+ * Last Updated: 2025-10-05
  */
 
 /**
@@ -25,6 +26,7 @@ export interface ToolDefinition {
 
 /**
  * Complete array of all 41 AIDIS tool definitions
+ * (8 session analytics tools migrated to REST API on 2025-10-05)
  */
 export const AIDIS_TOOL_DEFINITIONS: ToolDefinition[] = [
           {
@@ -791,7 +793,7 @@ export const AIDIS_TOOL_DEFINITIONS: ToolDefinition[] = [
         },
         {
           name: 'session_new',
-          description: 'Create a new session with optional title and project assignment',
+          description: 'Create a new session with optional title, project assignment, goal, tags, and AI model tracking (Phase 2 enhanced)',
           inputSchema: {
             type: 'object',
             properties: {
@@ -801,7 +803,24 @@ export const AIDIS_TOOL_DEFINITIONS: ToolDefinition[] = [
               },
               projectName: {
                 type: 'string',
-                description: 'Project to assign to'
+                description: 'Project to assign session to'
+              },
+              description: {
+                type: 'string',
+                description: 'Detailed session description'
+              },
+              sessionGoal: {
+                type: 'string',
+                description: 'Session objective (e.g., "Implement user auth", "Fix payment bug")'
+              },
+              tags: {
+                type: 'array',
+                items: { type: 'string' },
+                description: 'Tags for categorization (e.g., ["bug-fix", "frontend"])'
+              },
+              aiModel: {
+                type: 'string',
+                description: 'AI model identifier (e.g., "claude-sonnet-4-5")'
               }
             },
             additionalProperties: true
@@ -809,21 +828,30 @@ export const AIDIS_TOOL_DEFINITIONS: ToolDefinition[] = [
         },
         {
           name: 'session_update',
-          description: 'Update session title and description for better organization',
+          description: 'Update session title, description, goal, and tags for better organization (Phase 2 enhanced)',
           inputSchema: {
             type: 'object',
             properties: {
               sessionId: {
                 type: 'string',
-                description: 'Session ID'
+                description: 'Session ID to update'
               },
               title: {
                 type: 'string',
-                description: 'New title'
+                description: 'New session title'
               },
               description: {
                 type: 'string',
-                description: 'New description'
+                description: 'New session description'
+              },
+              sessionGoal: {
+                type: 'string',
+                description: 'New session goal/objective'
+              },
+              tags: {
+                type: 'array',
+                items: { type: 'string' },
+                description: 'New tags array (replaces existing)'
               }
             },
             required: ['sessionId'],
@@ -845,6 +873,18 @@ export const AIDIS_TOOL_DEFINITIONS: ToolDefinition[] = [
             additionalProperties: true
           }
         },
+
+        // Session Analytics Tools - MIGRATED TO REST API (2025-10-05)
+        // The following 8 tools have been migrated to REST API endpoints at /api/v2/sessions/*
+        // - session_record_activity → POST /api/v2/sessions/:sessionId/activities
+        // - session_get_activities → GET /api/v2/sessions/:sessionId/activities
+        // - session_record_file_edit → POST /api/v2/sessions/:sessionId/files
+        // - session_get_files → GET /api/v2/sessions/:sessionId/files
+        // - session_calculate_productivity → POST /api/v2/sessions/:sessionId/productivity
+        // - sessions_list → GET /api/v2/sessions
+        // - sessions_stats → GET /api/v2/sessions/stats
+        // - sessions_compare → GET /api/v2/sessions/compare
+        // See: src/api/controllers/sessionAnalyticsController.ts
 
         // Git Correlation Tools
 

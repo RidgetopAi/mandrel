@@ -17,11 +17,10 @@ process.env.AIDIS_LOCK_FILE = process.env.AIDIS_LOCK_FILE || path.join(os.tmpdir
 process.env.AIDIS_SKIP_DATABASE = process.env.AIDIS_SKIP_DATABASE || 'true';
 process.env.AIDIS_SKIP_BACKGROUND = process.env.AIDIS_SKIP_BACKGROUND || 'true';
 process.env.AIDIS_SKIP_STDIO = process.env.AIDIS_SKIP_STDIO || 'true';
-process.env.AIDIS_HEALTH_PORT = process.env.AIDIS_HEALTH_PORT || '0';
+process.env.AIDIS_AIDIS_MCP_PORT = process.env.AIDIS_AIDIS_MCP_PORT || '0';
 process.env.AIDIS_DISABLE_PROCESS_EXIT_HANDLERS = process.env.AIDIS_DISABLE_PROCESS_EXIT_HANDLERS || 'true';
 
-type AidisServerModule = typeof import('@/server');
-let ServerCtor: AidisServerModule['AIDISServer'];
+let ServerCtor: typeof import('@/server/AidisMcpServer').default;
 let processLock: typeof import('@/utils/processLock').processLock;
 
 const ajv = new Ajv({ allErrors: true, strict: false });
@@ -97,14 +96,14 @@ const TOOL_ARGUMENTS: Record<string, Record<string, unknown>> = {
 };
 
 describe('HTTP ↔ MCP contract', () => {
-  let server: InstanceType<AidisServerModule['AIDISServer']>;
+  let server: InstanceType<typeof ServerCtor>;
   let baseUrl: string;
   let tempDir: string;
 
   beforeAll(async () => {
     if (!ServerCtor) {
-      const serverModule = await import('@/server');
-      ServerCtor = serverModule.AIDISServer;
+      const serverModule = await import('@/server/AidisMcpServer');
+      ServerCtor = serverModule.default;
     }
     if (!processLock) {
       ({ processLock } = await import('@/utils/processLock'));
@@ -131,7 +130,7 @@ describe('HTTP ↔ MCP contract', () => {
     process.env.AIDIS_SKIP_DATABASE = 'true';
     process.env.AIDIS_SKIP_BACKGROUND = 'true';
     process.env.AIDIS_SKIP_STDIO = 'true';
-    process.env.AIDIS_HEALTH_PORT = '0';
+    process.env.AIDIS_AIDIS_MCP_PORT = '0';
 
     server = new ServerCtor();
     await server.start();
@@ -204,7 +203,7 @@ describe('HTTP ↔ MCP contract', () => {
 
   it('retains contract envelope across all registered tools', async () => {
     const toolNames = await getRegisteredToolNamesFromSource();
-    expect(toolNames.length).toBeGreaterThanOrEqual(90);
+    expect(toolNames.length).toBeGreaterThanOrEqual(49);
 
     for (const toolName of toolNames) {
       const args = TOOL_ARGUMENTS[toolName] ?? {};

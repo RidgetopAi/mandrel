@@ -212,7 +212,7 @@ export class AgentsHandler {
                     console.log(`🔍 Resolved agent "${assignedTo}" to ID: ${assignedToId}`);
                 } else {
                     console.log(`⚠️  Agent "${assignedTo}" not found, leaving unassigned`);
-                    assignedToId = null;
+                    assignedToId = undefined;
                 }
             }
 
@@ -222,7 +222,7 @@ export class AgentsHandler {
                     createdById = agentResult.rows[0].id;
                     console.log(`🔍 Resolved creator "${createdBy}" to ID: ${createdById}`);
                 } else {
-                    createdById = null;
+                    createdById = undefined;
                 }
             }
 
@@ -445,7 +445,7 @@ export class AgentsHandler {
                     break;
                     
                 case 'defer':
-                    await this.updateTaskStatus(taskId, 'todo', null, {
+                    await this.updateTaskStatus(taskId, 'todo', undefined, {
                         conflict_resolution: 'deferred',
                         defer_reason: metadata.reason,
                         defer_until: metadata.deferUntil,
@@ -487,7 +487,7 @@ export class AgentsHandler {
 
             if (assignedTo !== undefined) {
                 // Convert agent name to ID if needed
-                let assignedToId = assignedTo;
+                let assignedToId: string | null = assignedTo || null;
                 if (assignedTo && !this.isUUID(assignedTo)) {
                     const agentResult = await client.query('SELECT id FROM agents WHERE name = $1', [assignedTo]);
                     if (agentResult.rows.length > 0) {
@@ -596,7 +596,7 @@ export class AgentsHandler {
         try {
             // Convert agent names to IDs if needed
             let fromAgentUuid = fromAgentId;
-            let toAgentUuid = toAgentId;
+            let toAgentUuid: string | null = toAgentId || null;
 
             if (!this.isUUID(fromAgentId)) {
                 const agentResult = await client.query('SELECT id FROM agents WHERE name = $1', [fromAgentId]);

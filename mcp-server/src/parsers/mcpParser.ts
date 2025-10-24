@@ -82,9 +82,10 @@ export class McpParser {
       try {
         jsonData = JSON.parse(responseText);
       } catch (parseError) {
+        const err = parseError as Error;
         return {
           success: false,
-          error: `JSON parsing failed: ${parseError.message}`
+          error: `JSON parsing failed: ${err.message}`
         };
       }
 
@@ -121,9 +122,10 @@ export class McpParser {
       };
 
     } catch (error) {
+      const err = error as Error;
       return {
         success: false,
-        error: `Parser error: ${error.message}`
+        error: `Parser error: ${err.message}`
       };
     }
   }
@@ -241,9 +243,10 @@ export class McpParser {
       return { valid: true };
 
     } catch (error) {
+      const err = error as Error;
       return {
         valid: false,
-        error: `Content validation error: ${error.message}`
+        error: `Content validation error: ${err.message}`
       };
     }
   }

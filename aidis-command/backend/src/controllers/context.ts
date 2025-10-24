@@ -97,6 +97,9 @@ export class ContextController {
       if (typeof updates.relevance_score === 'number') {
         filteredUpdates.relevance_score = updates.relevance_score;
       }
+      if (typeof updates.project_id === 'string') {
+        filteredUpdates.project_id = updates.project_id;
+      }
 
       if (Object.keys(filteredUpdates).length === 0) {
         res.status(400).json({
@@ -104,6 +107,52 @@ export class ContextController {
           message: 'No valid updates provided'
         });
         return;
+      }
+
+      // Validate project_id if provided
+      if (filteredUpdates.project_id) {
+        const { db } = await import('../database/connection');
+        const projectExists = await db.query(
+          'SELECT id FROM projects WHERE id = $1 AND status = $2',
+          [filteredUpdates.project_id, 'active']
+        );
+
+        if (projectExists.rows.length === 0) {
+          res.status(400).json({
+            success: false,
+            message: 'Invalid project ID or project is not active'
+          });
+          return;
+        }
+
+        // Get current context to check if project is changing
+        const currentContext = await ContextService.getContextById(id);
+
+        if (!currentContext) {
+          res.status(404).json({
+            success: false,
+            message: 'Context not found'
+          });
+          return;
+        }
+
+        if (currentContext.project_id !== filteredUpdates.project_id) {
+          // Project is changing - add audit trail to metadata
+          const auditTrail = {
+            from_project_id: currentContext.project_id,
+            to_project_id: filteredUpdates.project_id,
+            moved_at: new Date().toISOString(),
+            moved_by: 'user' // or get from auth context
+          };
+
+          filteredUpdates.metadata = {
+            ...(currentContext.metadata || {}),
+            move_history: [
+              ...((currentContext.metadata?.move_history) || []),
+              auditTrail
+            ]
+          };
+        }
       }
 
       const context = await ContextService.updateContext(id, filteredUpdates);

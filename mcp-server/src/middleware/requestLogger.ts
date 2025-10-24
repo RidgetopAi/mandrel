@@ -19,7 +19,7 @@
  */
 
 import { logger, CorrelationIdManager, PerformanceMonitor } from '../utils/logger.js';
-import { McpError, ErrorCode } from '@modelcontextprotocol/sdk/types.js';
+import { McpError } from '@modelcontextprotocol/sdk/types.js';
 
 export interface RequestContext {
   correlationId: string;
