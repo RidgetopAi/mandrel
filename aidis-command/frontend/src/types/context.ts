@@ -21,6 +21,7 @@ export interface ContextStats extends Partial<GeneratedContextStats> {
   by_project?: Record<string, number>;
   recent_contexts?: number;
   total_projects?: number;
+  most_recent_timestamp?: string;
 }
 
 export interface ContextSearchParams {
