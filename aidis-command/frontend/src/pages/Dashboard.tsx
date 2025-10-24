@@ -16,28 +16,16 @@ import {
   DatabaseOutlined,
   FolderOutlined,
   ClockCircleOutlined,
-  CheckCircleOutlined,
-  ExclamationCircleOutlined,
 } from '@ant-design/icons';
 import { useAuthContext } from '../contexts/AuthContext';
 import { useProjectContext } from '../contexts/ProjectContext';
 import { useDashboardStats } from '../hooks/useDashboardStats';
-import { useAidisV2Status } from '../hooks/useAidisV2Status';
 import ProjectInsights from '../components/analytics/ProjectInsights';
 import SystemMonitoring from '../components/analytics/SystemMonitoring';
 import MonitoringStats from '../components/analytics/MonitoringStats';
 import MonitoringAlerts from '../components/analytics/MonitoringAlerts';
 import MonitoringTrends from '../components/analytics/MonitoringTrends';
 import SessionSummaries from '../components/analytics/SessionSummaries';
-import AidisV2ApiTest from '../components/testing/AidisV2ApiTest';
-import ErrorBoundaryDemo from '../components/testing/ErrorBoundaryDemo';
-// Phase 3: AI Comprehension Dashboard Integration
-import AIComprehensionMetrics from '../components/analytics/AIComprehensionMetrics';
-import CodeHealthCards from '../components/analytics/CodeHealthCards';
-import CodeTrendCharts from '../components/analytics/CodeTrendCharts';
-import HotspotDetection from '../components/analytics/HotspotDetection';
-import ComponentDeepDive from '../components/analytics/ComponentDeepDive';
-import LiveUpdateManager from '../components/analytics/LiveUpdateManager';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -48,9 +36,6 @@ const Dashboard: React.FC = () => {
 
   // Oracle Phase 2: Use dashboard stats hook with real data
   const { stats, isLoading, error, refetch } = useDashboardStats();
-
-  // TR001-6: AIDIS V2 API Status
-  const { status: aidisV2Status } = useAidisV2Status();
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -172,72 +157,6 @@ const Dashboard: React.FC = () => {
         <ProjectInsights projectId={currentProject.id} />
       )}
 
-      {/* Phase 3: AI Comprehension Dashboard */}
-      {currentProject && (
-        <Space direction="vertical" size="large" style={{ width: '100%' }}>
-          {/* Header for AI Comprehension Section */}
-          <div>
-            <Title level={3} style={{ marginBottom: '8px' }}>
-              🧠 AI Code Health & Comprehension Analytics
-            </Title>
-            <Text type="secondary">
-              Phase 2 Enhanced AST Analysis with Real-time Intelligence
-            </Text>
-          </div>
-
-          {/* Live Update Manager */}
-          <Row gutter={[24, 24]}>
-            <Col xs={24} lg={8}>
-              <LiveUpdateManager
-                onRefreshTrigger={() => {
-                  // Trigger refresh for all AI components
-                  refetch();
-                }}
-              />
-            </Col>
-            <Col xs={24} lg={16}>
-              <CodeHealthCards projectId={currentProject.id} />
-            </Col>
-          </Row>
-
-          {/* AI Comprehension Metrics for Sample File */}
-          <AIComprehensionMetrics
-            projectId={currentProject.id}
-            filePath="/sample/project/src/utils/helpers.ts"
-            refreshInterval={30000}
-          />
-
-          {/* Code Trends and Hotspots */}
-          <Row gutter={[24, 24]}>
-            <Col xs={24}>
-              <CodeTrendCharts
-                projectId={currentProject.id}
-                height={350}
-              />
-            </Col>
-          </Row>
-
-          <Row gutter={[24, 24]}>
-            <Col xs={24}>
-              <HotspotDetection
-                projectId={currentProject.id}
-                onHotspotSelect={(hotspot) => {
-                  console.log('Selected hotspot:', hotspot);
-                }}
-              />
-            </Col>
-          </Row>
-
-          {/* Component Deep Dive */}
-          <ComponentDeepDive
-            filePath="/sample/project/src/utils/helpers.ts"
-            onComponentSelect={(component) => {
-              console.log('Selected component:', component);
-            }}
-          />
-        </Space>
-      )}
-
       {/* Session Analytics */}
       <SessionSummaries projectId={currentProject?.id} limit={10} />
 
@@ -292,71 +211,6 @@ const Dashboard: React.FC = () => {
           </Card>
         </Col>
       </Row>
-
-      {/* System Status */}
-      <Card title="System Status">
-        <Row gutter={24}>
-          <Col span={8}>
-            <Space>
-              <CheckCircleOutlined style={{ color: '#52c41a', fontSize: '18px' }} />
-              <div>
-                <Text strong>Backend API</Text>
-                <br />
-                <Text type="secondary">Connected</Text>
-              </div>
-            </Space>
-          </Col>
-          <Col span={8}>
-            <Space>
-              <CheckCircleOutlined style={{ color: '#52c41a', fontSize: '18px' }} />
-              <div>
-                <Text strong>Authentication</Text>
-                <br />
-                <Text type="secondary">Active</Text>
-              </div>
-            </Space>
-          </Col>
-          <Col span={8}>
-            <Space>
-              {aidisV2Status.status === 'connected' && (
-                <CheckCircleOutlined style={{ color: '#52c41a', fontSize: '18px' }} />
-              )}
-              {aidisV2Status.status === 'connecting' && (
-                <Spin size="small" />
-              )}
-              {aidisV2Status.status === 'error' && (
-                <ExclamationCircleOutlined style={{ color: '#ff4d4f', fontSize: '18px' }} />
-              )}
-              {aidisV2Status.status === 'unknown' && (
-                <ExclamationCircleOutlined style={{ color: '#fa8c16', fontSize: '18px' }} />
-              )}
-              <div>
-                <Text strong>
-                  AIDIS V2 API
-                  {aidisV2Status.health?.version && (
-                    <Text type="secondary"> v{aidisV2Status.health.version}</Text>
-                  )}
-                </Text>
-                <br />
-                <Text type="secondary">
-                  {aidisV2Status.status === 'connected' &&
-                    `${aidisV2Status.health?.toolsAvailable || 0} tools (${aidisV2Status.responseTime}ms)`
-                  }
-                  {aidisV2Status.status === 'connecting' && 'Connecting...'}
-                  {aidisV2Status.status === 'error' && 'Connection failed'}
-                  {aidisV2Status.status === 'unknown' && 'Checking...'}
-                </Text>
-              </div>
-            </Space>
-          </Col>
-        </Row>
-      </Card>
-
-      {/* TR001-6: AIDIS V2 API Integration Test */}
-      <AidisV2ApiTest />
-
-      {/* TR002-6: Error Boundary & Fallback Components Demo */}
-      <ErrorBoundaryDemo />
     </Space>
   );
 };

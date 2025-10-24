@@ -10,6 +10,7 @@ import {
 import { useContextSelection } from '../../stores/contextStore';
 import { useBulkDeleteContexts } from '../../hooks/useContexts';
 import contextsClient from '../../api/contextsClient';
+import { useProjectContext } from '../../contexts/ProjectContext';
 
 const { Text } = Typography;
 const { Option } = Select;
@@ -39,6 +40,7 @@ const BulkActions: React.FC<BulkActionsProps> = ({
   } = useContextSelection();
 
   const bulkDeleteMutation = useBulkDeleteContexts();
+  const { currentProject } = useProjectContext();
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [exportModalVisible, setExportModalVisible] = useState(false);
   const [exportFormat, setExportFormat] = useState<'json' | 'csv' | 'md'>('json');
@@ -112,7 +114,8 @@ const BulkActions: React.FC<BulkActionsProps> = ({
             content: newContextData.content,
             type: newContextData.type,
             tags: newContextData.tags.length > 0 ? newContextData.tags : undefined,
-            metadata: Object.keys(newContextData.metadata).length > 0 ? newContextData.metadata : undefined
+            metadata: Object.keys(newContextData.metadata).length > 0 ? newContextData.metadata : undefined,
+            projectId: currentProject?.id // FIX: Pass selected project ID
           }
         })
       });
