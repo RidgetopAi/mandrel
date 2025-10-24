@@ -35,6 +35,7 @@ export interface ContextStats {
   by_project: Record<string, number>;
   recent_contexts: number;
   total_projects: number;
+  most_recent_timestamp?: string;
 }
 
 export class ContextService {
@@ -339,10 +340,11 @@ export class ContextService {
 
       // Get basic counts first
       const basicResult = await pool.query(`
-        SELECT 
+        SELECT
           COUNT(*) as total_contexts,
           COUNT(*) FILTER (WHERE c.created_at >= NOW() - INTERVAL '7 days') as recent_contexts,
-          COUNT(DISTINCT c.project_id) as total_projects
+          COUNT(DISTINCT c.project_id) as total_projects,
+          MAX(c.created_at) as most_recent_timestamp
         FROM contexts c
         ${projectFilter}
       `, params);
@@ -381,11 +383,12 @@ export class ContextService {
       });
 
       const basicRow = basicResult.rows[0];
-      
+
       return {
         total_contexts: parseInt(basicRow.total_contexts),
-        recent_contexts: parseInt(basicRow.recent_contexts), 
+        recent_contexts: parseInt(basicRow.recent_contexts),
         total_projects: parseInt(basicRow.total_projects),
+        most_recent_timestamp: basicRow.most_recent_timestamp,
         by_type,
         by_project
       };
