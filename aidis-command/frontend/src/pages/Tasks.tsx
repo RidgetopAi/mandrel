@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Card, Row, Col, Tabs, Button, notification } from 'antd';
-import { PlusOutlined, BarChartOutlined, ProjectOutlined } from '@ant-design/icons';
+import { PlusOutlined, BarChartOutlined, ProjectOutlined, ReloadOutlined } from '@ant-design/icons';
 import useWebSocketSingleton from '../hooks/useWebSocketSingleton';
 import { apiService } from '../services/api';
 import { useProjectContext } from '../contexts/ProjectContext';
@@ -45,7 +45,7 @@ const Tasks: React.FC = () => {
   // Use the global project context instead of local state
   const { currentProject, allProjects } = useProjectContext();
   const [showCreateForm, setShowCreateForm] = useState(false);
-  const [activeTab, setActiveTab] = useState('kanban');
+  const [activeTab, setActiveTab] = useState('list');
 
   // WebSocket for real-time updates  
   const token = localStorage.getItem('aidis_token');
@@ -289,7 +289,15 @@ const Tasks: React.FC = () => {
                   WebSocket: {isConnected ? '🟢 Connected' : '🔴 Disconnected'} | {tasks.length} tasks loaded
                 </p>
               </div>
-              <div>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <Button
+                  icon={<ReloadOutlined />}
+                  onClick={loadTasks}
+                  loading={loading}
+                  disabled={!currentProject}
+                >
+                  Refresh
+                </Button>
                 <Button
                   type="primary"
                   icon={<PlusOutlined />}
