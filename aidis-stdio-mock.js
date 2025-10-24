@@ -233,14 +233,20 @@ class AidisStdioMock {
 
   async handleToolCall(request) {
     const { method, params } = request;
-    
+
     if (method === 'tools/call') {
       const { name, arguments: args } = params;
-      
+
+      // DEBUG: Track tool calls to detect duplicates
+      const callTimestamp = Date.now();
+      console.error(`🔍 STDIO TOOL CALL: ${name} at ${callTimestamp} - Request ID: ${request.id}`);
+
       try {
         // Wrap parameters in "arguments" object for HTTP bridge
         const bridgeParams = { arguments: args || {} };
+        console.error(`🌉 HTTP CALL TO: http://localhost:8080/mcp/tools/${name}`);
         const httpResponse = await this.makeHttpCall(name, bridgeParams);
+        console.error(`✅ HTTP RESPONSE from ${name}: success=${httpResponse.success}`);
         
         if (httpResponse.success) {
           return {

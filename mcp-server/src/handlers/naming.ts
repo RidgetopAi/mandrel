@@ -252,9 +252,8 @@ export class NamingHandler {
       const commonPatterns = new Map<string, number>();
 
       patterns.rows.forEach(row => {
-        const name = row.canonical_name;
-        const convention = typeof row.naming_convention === 'string' 
-          ? JSON.parse(row.naming_convention) 
+        const convention = typeof row.naming_convention === 'string'
+          ? JSON.parse(row.naming_convention)
           : row.naming_convention;
 
         // Track patterns
@@ -484,7 +483,7 @@ export class NamingHandler {
   }
 
   private async checkNamingConventions(
-    projectId: string, 
+    _projectId: string, 
     entityType: string, 
     name: string
   ): Promise<NameConflict[]> {
@@ -627,9 +626,9 @@ export class NamingHandler {
   private applyNamingPattern(word: string, pattern: string): string {
     switch (pattern) {
       case 'camelCase':
-        return word.charAt(0).toLowerCase() + word.slice(1).replace(/\W+(.)/g, (match, chr) => chr.toUpperCase());
+        return word.charAt(0).toLowerCase() + word.slice(1).replace(/\W+(.)/g, (_match, chr) => chr.toUpperCase());
       case 'PascalCase':
-        return word.charAt(0).toUpperCase() + word.slice(1).replace(/\W+(.)/g, (match, chr) => chr.toUpperCase());
+        return word.charAt(0).toUpperCase() + word.slice(1).replace(/\W+(.)/g, (_match, chr) => chr.toUpperCase());
       case 'snake_case':
         return word.toLowerCase().replace(/\W+/g, '_');
       case 'SCREAMING_SNAKE_CASE':
@@ -653,7 +652,7 @@ export class NamingHandler {
     return patterns[entityType] || 'camelCase';
   }
 
-  private generateExplanation(suggestion: string, entityType: string, similarExamples: string[], expectedPattern: string): string {
+  private generateExplanation(_suggestion: string, entityType: string, similarExamples: string[], expectedPattern: string): string {
     const explanations: string[] = [];
     
     // Pattern-based explanation

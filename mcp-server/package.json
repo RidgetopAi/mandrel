@@ -2,16 +2,16 @@
   "name": "aidis-mcp-server",
   "version": "0.1.0",
   "description": "AI Development Intelligence System - MCP Server for persistent context management",
-  "main": "dist/server.js",
+  "main": "dist/main.js",
   "type": "module",
   "directories": {
     "doc": "docs",
     "test": "tests"
   },
   "scripts": {
-    "dev": "tsx watch src/server.ts",
+    "dev": "tsx watch src/main.ts",
     "build": "tsc",
-    "start": "node dist/server.js",
+    "start": "node dist/main.js",
     "test": "vitest",
     "test:watch": "vitest --watch",
     "test:integration": "vitest run tests/integration",

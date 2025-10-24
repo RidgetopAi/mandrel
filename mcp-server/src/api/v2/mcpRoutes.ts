@@ -43,7 +43,7 @@ export interface V2McpResponse {
  */
 export class V2McpRouter {
   private router: express.Router;
-  private toolHandlers: Map<string, Function>;
+  private toolHandlers: Map<string, any>;
 
   constructor() {
     this.router = express.Router();
@@ -112,12 +112,13 @@ export class V2McpRouter {
       const clientVersion = req.headers['x-api-version'] as string;
 
       if (clientVersion && !API_COMPATIBILITY.includes(clientVersion)) {
-        return res.status(400).json({
+        res.status(400).json({
           success: false,
           error: `Unsupported API version: ${clientVersion}`,
           version: API_VERSION,
           supportedVersions: API_COMPATIBILITY
         });
+        return;
       }
 
       // Add version info to request
@@ -126,18 +127,17 @@ export class V2McpRouter {
     });
 
     // Request logging
-    this.router.use((req, res, next) => {
+    this.router.use((req, _res, next) => {
       const requestId = req.headers['x-request-id'] as string || `v2-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
       (req as any).requestId = requestId;
 
       logger.info('V2 MCP API request', {
-        requestId,
         method: req.method,
         path: req.path,
         tool: req.params.tool,
         clientVersion: (req as any).apiVersion,
         userAgent: req.headers['user-agent']
-      });
+      } as any);
 
       next();
     });
@@ -152,7 +152,7 @@ export class V2McpRouter {
    */
   private setupRoutes(): void {
     // API information endpoint
-    this.router.get('/', (req, res) => {
+    this.router.get('/', (_req, res) => {
       res.json({
         version: API_VERSION,
         compatibleVersions: API_COMPATIBILITY,
@@ -166,7 +166,7 @@ export class V2McpRouter {
     });
 
     // Health check endpoint
-    this.router.get('/health', (req, res) => {
+    this.router.get('/health', (_req, res) => {
       res.json({
         status: 'healthy',
         version: API_VERSION,
@@ -176,7 +176,7 @@ export class V2McpRouter {
     });
 
     // List available tools
-    this.router.get('/tools', (req, res) => {
+    this.router.get('/tools', (_req, res) => {
       const tools = Array.from(this.toolHandlers.keys()).map(tool => ({
         name: tool,
         endpoint: `/v2/mcp/tools/${tool}`,
@@ -198,30 +198,31 @@ export class V2McpRouter {
       const startTime = Date.now();
       const { tool } = req.params;
       const requestId = (req as any).requestId;
-      const apiVersion = (req as any).apiVersion;
 
       try {
         // Validate request structure
         const requestValidation = this.validateV2Request(req.body, tool);
         if (!requestValidation.success) {
-          return res.status(400).json({
+          res.status(400).json({
             success: false,
             error: requestValidation.error,
             version: API_VERSION,
             requestId
           });
+          return;
         }
 
         // Check if tool exists
         const handler = this.toolHandlers.get(tool);
         if (!handler) {
-          return res.status(404).json({
+          res.status(404).json({
             success: false,
             error: `Tool '${tool}' not found`,
             version: API_VERSION,
             requestId,
             availableTools: Array.from(this.toolHandlers.keys())
           });
+          return;
         }
 
         // Create validation context
@@ -244,7 +245,7 @@ export class V2McpRouter {
         );
 
         if (!validationResult.success) {
-          return res.status(400).json({
+          res.status(400).json({
             success: false,
             error: 'Validation failed',
             details: validationResult.errors,
@@ -252,6 +253,7 @@ export class V2McpRouter {
             version: API_VERSION,
             requestId
           });
+          return;
         }
 
         // Execute tool handler
@@ -264,7 +266,7 @@ export class V2McpRouter {
         );
 
         if (!responseResult.success) {
-          return res.status(500).json({
+          res.status(500).json({
             success: false,
             error: 'Tool execution failed',
             details: responseResult.error,
@@ -272,6 +274,7 @@ export class V2McpRouter {
             requestId,
             processingTime: Date.now() - startTime
           });
+          return;
         }
 
         // Success response
@@ -287,12 +290,11 @@ export class V2McpRouter {
         res.json(v2Response);
 
       } catch (error) {
+        const err = error as Error;
         logger.error('V2 MCP API error', {
-          tool,
-          requestId,
-          error: error.message,
-          stack: error.stack
-        });
+          error: err.message,
+          stack: err.stack
+        } as any);
 
         res.status(500).json({
           success: false,
@@ -328,7 +330,7 @@ export class V2McpRouter {
   /**
    * Validate V2 request structure
    */
-  private validateV2Request(body: any, tool: string): { success: boolean; error?: string } {
+  private validateV2Request(body: any, _tool: string): { success: boolean; error?: string } {
     if (!body || typeof body !== 'object') {
       return {
         success: false,
@@ -357,9 +359,9 @@ export class V2McpRouter {
   /**
    * Add custom tool handler
    */
-  addToolHandler(toolName: string, handler: Function): void {
+  addToolHandler(toolName: string, handler: any): void {
     this.toolHandlers.set(toolName, handler);
-    logger.info('Added V2 tool handler', { toolName });
+    logger.info('Added V2 tool handler', { tool: toolName } as any);
   }
 
   /**
@@ -368,7 +370,7 @@ export class V2McpRouter {
   removeToolHandler(toolName: string): boolean {
     const removed = this.toolHandlers.delete(toolName);
     if (removed) {
-      logger.info('Removed V2 tool handler', { toolName });
+      logger.info('Removed V2 tool handler', { tool: toolName } as any);
     }
     return removed;
   }

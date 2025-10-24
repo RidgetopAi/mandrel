@@ -62,6 +62,7 @@ interface AIDISTool {
   name: string;
   description: string;
   endpoint: string;
+  inputSchema?: any; // pass-through from AIDIS tool definitions
 }
 
 // HTTP response interfaces
@@ -271,11 +272,11 @@ class ConnectionManager {
       
       const toolsResponse: ToolListResponse = JSON.parse(response);
       
-      // Convert AIDIS tools to MCP tool format
-      this.cachedTools = toolsResponse.tools.map(tool => ({
+      // Convert AIDIS tools to MCP tool format, preserving inputSchema from server
+      this.cachedTools = toolsResponse.tools.map((tool: AIDISTool) => ({
         name: tool.name,
         description: tool.description,
-        inputSchema: {
+        inputSchema: tool.inputSchema || {
           type: 'object' as const,
           properties: {},
           additionalProperties: true

@@ -17,6 +17,9 @@ const {
 } = require('@modelcontextprotocol/sdk/types.js');
 const http = require('http');
 
+// Resolve base URL for AIDIS HTTP service
+const BASE_URL = process.env.AIDIS_HTTP_URL || process.env.AIDIS_URL || 'http://localhost:8080';
+
 // Create MCP server
 const server = new Server(
   {
@@ -30,7 +33,7 @@ const server = new Server(
   }
 );
 
-// All 41 AIDIS tools from actual server (TT009 token-optimized: disabled 11 unused, added 3 navigation)
+// Fallback list of tools (used only if schema fetch fails)
 const AIDIS_TOOLS = [
   // System Health (2 tools)
   { name: 'aidis_ping', description: 'Test connectivity to AIDIS server' },
@@ -96,30 +99,86 @@ const AIDIS_TOOLS = [
   { name: 'aidis_examples', description: 'Get usage examples and patterns for a specific AIDIS tool' }
 ];
 
-console.error(`🎯 Bridge loaded with ${AIDIS_TOOLS.length} tools`);
+console.error(`🎯 Bridge starting. Target: ${BASE_URL}`);
+
+// Cached schemas loaded from AIDIS HTTP service
+let CACHED_TOOL_SCHEMAS = null; // [{ name, description, inputSchema }, ...]
+
+function fetchJson(url, options = {}) {
+  return new Promise((resolve, reject) => {
+    try {
+      const u = new URL(url);
+      const isHttps = u.protocol === 'https:';
+      const httpModule = isHttps ? require('https') : http;
+
+      const req = httpModule.request({
+        hostname: u.hostname,
+        port: u.port || (isHttps ? 443 : 80),
+        path: u.pathname + u.search,
+        method: options.method || 'GET',
+        headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
+        timeout: options.timeout || 30000,
+      }, (res) => {
+        let data = '';
+        res.on('data', (chunk) => data += chunk);
+        res.on('end', () => {
+          if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) {
+            try { resolve(JSON.parse(data)); } catch (e) { reject(new Error(`Invalid JSON from ${url}`)); }
+          } else {
+            reject(new Error(`HTTP ${res.statusCode}: ${data || res.statusMessage}`));
+          }
+        });
+      });
+      req.on('error', reject);
+      req.on('timeout', () => { req.destroy(); reject(new Error('Request timeout')); });
+      if (options.body) req.write(options.body);
+      req.end();
+    } catch (err) {
+      reject(err);
+    }
+  });
+}
+
+async function loadToolSchemas() {
+  try {
+    const schemas = await fetchJson(`${BASE_URL}/mcp/tools/schemas`);
+    if (schemas && schemas.success !== false && Array.isArray(schemas.tools)) {
+      // Normalize to minimal shape needed by MCP: name, description, inputSchema
+      CACHED_TOOL_SCHEMAS = schemas.tools.map(t => ({
+        name: t.name,
+        description: t.description,
+        inputSchema: t.inputSchema || { type: 'object', properties: {}, additionalProperties: true },
+      }));
+      console.error(`📦 Loaded ${CACHED_TOOL_SCHEMAS.length} tool schemas from AIDIS`);
+      return true;
+    }
+  } catch (e) {
+    console.error(`⚠️  Failed to load tool schemas: ${e.message}`);
+  }
+  CACHED_TOOL_SCHEMAS = null;
+  return false;
+}
 
 // Call AIDIS HTTP bridge
 function callAidisHttp(toolName, args) {
   return new Promise((resolve, reject) => {
-    const postData = JSON.stringify({
-      arguments: args || {}
-    });
+    const postData = JSON.stringify({ arguments: args || {} });
+    const base = new URL(BASE_URL);
+    const isHttps = base.protocol === 'https:';
+    const httpModule = isHttps ? require('https') : http;
 
     const options = {
-      hostname: 'localhost',
-      port: 8080,
+      hostname: base.hostname,
+      port: base.port || (isHttps ? 443 : 80),
       path: `/mcp/tools/${toolName}`,
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Content-Length': Buffer.byteLength(postData)
-      },
-      timeout: 30000
+      headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(postData) },
+      timeout: 30000,
     };
 
     console.error(`🔄 HTTP Call: ${toolName}`);
 
-    const req = http.request(options, (res) => {
+    const req = httpModule.request(options, (res) => {
       let data = '';
       res.on('data', (chunk) => data += chunk);
       res.on('end', () => {
@@ -150,19 +209,19 @@ function callAidisHttp(toolName, args) {
   });
 }
 
-// Register tools/list handler
+// Register tools/list handler (prefer live schemas if available)
 server.setRequestHandler(ListToolsRequestSchema, async () => {
-  return {
-    tools: AIDIS_TOOLS.map(tool => ({
-      name: tool.name,
-      description: tool.description,
-      inputSchema: {
-        type: 'object',
-        properties: {},
-        additionalProperties: true
-      }
-    }))
-  };
+  if (!CACHED_TOOL_SCHEMAS) {
+    await loadToolSchemas();
+  }
+  const tools = (CACHED_TOOL_SCHEMAS && CACHED_TOOL_SCHEMAS.length)
+    ? CACHED_TOOL_SCHEMAS
+    : AIDIS_TOOLS.map(tool => ({
+        name: tool.name,
+        description: tool.description,
+        inputSchema: { type: 'object', properties: {}, additionalProperties: true }
+      }));
+  return { tools };
 });
 
 // Handle tool calls
@@ -190,10 +249,13 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
 // Start server
 async function main() {
+  // Best-effort load of schemas before connecting
+  await loadToolSchemas();
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  console.error('🚀 AIDIS HTTP-MCP Bridge v2.0.0 - Connected to HTTP endpoints on port 8080');
-  console.error(`📡 Available tools: ${AIDIS_TOOLS.length} (token-optimized configuration)`);
+  const toolCount = (CACHED_TOOL_SCHEMAS && CACHED_TOOL_SCHEMAS.length) || AIDIS_TOOLS.length;
+  console.error(`🚀 AIDIS HTTP-MCP Bridge v2.0.0 - Connected to ${BASE_URL}`);
+  console.error(`📡 Available tools: ${toolCount} (schemas ${CACHED_TOOL_SCHEMAS ? 'loaded' : 'fallback'})`);
 }
 
 main().catch((error) => {

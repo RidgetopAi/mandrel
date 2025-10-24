@@ -208,11 +208,12 @@ class SimpleMonitoring {
     
     try {
       // Database health check
-      const { pool } = await import('../config/database.js');
-      await pool.query('SELECT 1');
+      const { db } = await import('../config/database.js');
+      await db.query('SELECT 1');
       this.recordHealthCheck('database', 'healthy', 'Database connection OK', Date.now() - startTime);
     } catch (error) {
-      this.recordHealthCheck('database', 'unhealthy', `Database error: ${error.message}`, Date.now() - startTime);
+      const err = error as Error;
+      this.recordHealthCheck('database', 'unhealthy', `Database error: ${err.message}`, Date.now() - startTime);
     }
 
     // Memory health check
@@ -246,7 +247,7 @@ export const monitoring = new SimpleMonitoring();
  */
 export function withMonitoring(metricPrefix: string = 'method') {
   return function<T extends any[], R>(
-    target: any,
+    _target: any,
     propertyKey: string,
     descriptor: TypedPropertyDescriptor<(...args: T) => Promise<R>>
   ) {
@@ -281,10 +282,10 @@ export function withMonitoring(metricPrefix: string = 'method') {
 export function createMonitoringEndpoints() {
   return {
     // Health endpoint
-    health: (req: any, res: any) => {
+    health: (_req: any, res: any) => {
       const health = monitoring.getSystemHealth();
       const statusCode = health.status === 'healthy' ? 200 : health.status === 'degraded' ? 200 : 503;
-      
+
       res.writeHead(statusCode, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({
         status: health.status,
@@ -301,7 +302,7 @@ export function createMonitoringEndpoints() {
     },
 
     // Metrics endpoint
-    metrics: (req: any, res: any) => {
+    metrics: (_req: any, res: any) => {
       const dashboard = monitoring.getDashboardData();
       
       res.writeHead(200, { 'Content-Type': 'application/json' });

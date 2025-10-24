@@ -519,7 +519,7 @@ export class CodeAnalysisHandler {
     }
 
     async analyzeImpact(
-        projectId: string,
+        _projectId: string,
         componentId: string
     ): Promise<{ dependents: any[]; impactScore: number }> {
         console.log(`📊 Analyzing impact for component ${componentId}`);
@@ -907,23 +907,6 @@ export class CodeAnalysisHandler {
         }
     }
 
-    private async getCurrentAnalysisSession(projectId: string, filePath: string): Promise<string | null> {
-        const client = await this.pool.connect();
-        try {
-            const result = await client.query(`
-                SELECT id FROM code_analysis_sessions
-                WHERE project_id = $1 
-                AND $2 = ANY(target_files)
-                AND status = 'running'
-                ORDER BY started_at DESC
-                LIMIT 1
-            `, [projectId, filePath]);
-
-            return result.rows.length > 0 ? result.rows[0].id : null;
-        } finally {
-            client.release();
-        }
-    }
 
     async getSessionAnalytics(sessionId: string): Promise<any> {
         console.log(`📊 Getting analytics for analysis session ${sessionId}`);

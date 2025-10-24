@@ -48,6 +48,10 @@ export class TasksHandler {
 
         const client = await this.pool.connect();
         try {
+            // DEBUG: Track task creation calls to detect duplicates
+            const callStack = new Error().stack;
+            console.error(`🔍 TASK_CREATE CALLED: "${title}" - Stack: ${callStack?.split('\n')[2]?.trim()}`);
+
             // TS005-1: Capture active session_id for task-session linking
             const { SessionTracker } = await import('../services/sessionTracker.js');
             const sessionId = await SessionTracker.getActiveSession();
@@ -361,7 +365,6 @@ export class TasksHandler {
         const client = await this.pool.connect();
         try {
             let groupColumn: string;
-            let extractFunction: string = '';
 
             switch (groupBy) {
                 case 'phase':

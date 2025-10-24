@@ -12,8 +12,7 @@ COPY package*.json ./
 RUN npm ci --only=production --ignore-scripts && \
     npm cache clean --force
 
-# Stage 2: Build stage (for dev dependencies and compilation check)
-FROM node:22-alpine AS builder
+ 
 WORKDIR /app
 
 # Copy package files

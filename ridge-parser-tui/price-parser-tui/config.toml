@@ -1,0 +1,16 @@
+# Price Parser TUI Configuration
+
+[paths]
+# Root directory for CSV files
+data_dir = "data"
+
+# Output directory for JSON exports
+output_dir = "output"
+
+[ui]
+# Default color scheme
+theme = "monokai"
+
+# Table settings
+max_column_width = 30
+show_row_numbers = true

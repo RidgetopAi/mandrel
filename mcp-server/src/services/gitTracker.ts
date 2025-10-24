@@ -15,11 +15,9 @@ import { watchFile, unwatchFile, existsSync } from 'fs';
 import { join } from 'path';
 import { GitHandler } from '../handlers/git.js';
 import { SessionDetailService } from '../../../aidis-command/backend/dist/services/sessionDetail.js';
-import { getCurrentSession } from './sessionManager.js';
+import { getCurrentSession } from './sessionTracker.js';
 import { db } from '../config/database.js';
 import { logEvent } from '../middleware/eventLogger.js';
-// TC015: Integration with complexity tracking
-import { analyzeComplexityOnCommit } from './complexityTracker.js';
 
 export interface GitTrackingConfig {
   enableFileWatching: boolean;
@@ -27,9 +25,6 @@ export interface GitTrackingConfig {
   pollingIntervalMs: number;
   correlationDelayMs: number;
   maxRecentCommitsCheck: number;
-  // TC015: Complexity tracking integration
-  enableComplexityAnalysis: boolean;
-  complexityAnalysisDelay: number;
 }
 
 export interface GitTrackingStatus {
@@ -40,9 +35,6 @@ export interface GitTrackingStatus {
   commitsDetected: number;
   correlationsTriggered: number;
   watchers: string[];
-  // TC015: Complexity tracking status
-  complexityAnalysesTriggered: number;
-  lastComplexityAnalysis?: Date;
 }
 
 const DEFAULT_CONFIG: GitTrackingConfig = {
@@ -50,10 +42,7 @@ const DEFAULT_CONFIG: GitTrackingConfig = {
   enablePeriodicPolling: true,
   pollingIntervalMs: 30000, // 30 seconds
   correlationDelayMs: 5000,  // 5 seconds delay after commit detection
-  maxRecentCommitsCheck: 5,  // Check for commits in last 5 minutes
-  // TC015: Complexity tracking integration
-  enableComplexityAnalysis: true,
-  complexityAnalysisDelay: 3000  // 3 seconds delay after correlation
+  maxRecentCommitsCheck: 5   // Check for commits in last 5 minutes
 };
 
 /**
@@ -66,7 +55,6 @@ export class GitTracker {
   private pollingTimer: NodeJS.Timeout | null = null;
   private watchers: Map<string, () => void> = new Map();
   private status: GitTrackingStatus;
-  private lastCommitHashes: Set<string> = new Set();
 
   private constructor(config: Partial<GitTrackingConfig> = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config };
@@ -75,9 +63,7 @@ export class GitTracker {
       lastCheckTime: new Date(),
       commitsDetected: 0,
       correlationsTriggered: 0,
-      watchers: [],
-      // TC015: Complexity tracking status
-      complexityAnalysesTriggered: 0
+      watchers: []
     };
   }
 
@@ -230,8 +216,6 @@ export class GitTracker {
         };
       }
 
-      const projectId = sessionResult.rows[0].project_id;
-
       // Check for new commits using GitHandler
       const result = await GitHandler.trackRealtimeGitActivity();
       
@@ -243,34 +227,6 @@ export class GitTracker {
         
         if (result.autoCorrelated) {
           this.status.correlationsTriggered++;
-          
-          // TC015: Trigger complexity analysis after correlation
-          if (this.config.enableComplexityAnalysis) {
-            try {
-              // Add delay for complexity analysis
-              setTimeout(async () => {
-                try {
-                  // Get recent commit SHAs for complexity analysis
-                  const commitShas = result.commitData?.map(commit => commit.sha) || [];
-                  if (commitShas.length > 0) {
-                    console.log(`🧮 Triggering complexity analysis for ${commitShas.length} commits...`);
-                    const complexityResult = await analyzeComplexityOnCommit(commitShas);
-                    
-                    if (complexityResult?.success) {
-                      this.status.complexityAnalysesTriggered++;
-                      this.status.lastComplexityAnalysis = new Date();
-                      console.log(`✅ Complexity analysis completed: ${complexityResult.filesAnalyzed} files analyzed`);
-                    }
-                  }
-                } catch (error) {
-                  console.error('❌ Complexity analysis failed:', error);
-                }
-              }, this.config.complexityAnalysisDelay);
-              
-            } catch (error) {
-              console.error('❌ Failed to schedule complexity analysis:', error);
-            }
-          }
         }
 
         return {

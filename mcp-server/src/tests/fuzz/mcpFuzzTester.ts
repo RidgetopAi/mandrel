@@ -6,7 +6,6 @@
 import { McpParser } from '../../parsers/mcpParser.js';
 import { IngressValidator } from '../../middleware/ingressValidation.js';
 import { McpResponseHandler } from '../../utils/mcpResponseHandler.js';
-import { logger } from '../../utils/logger.js';
 import * as crypto from 'crypto';
 
 export interface FuzzTestConfig {
@@ -98,9 +97,10 @@ export class McpFuzzTester {
         }
 
       } catch (error) {
-        if (error.message === 'Test timeout') {
+        const err = error as Error;
+        if (err.message === 'Test timeout') {
           timeouts++;
-        } else if (error.message.includes('crash') || error.message.includes('segfault')) {
+        } else if (err.message.includes('crash') || err.message.includes('segfault')) {
           crashed++;
         } else {
           failed++;
@@ -110,15 +110,15 @@ export class McpFuzzTester {
           testId,
           category: testConfig.testCategories[i % testConfig.testCategories.length],
           input: 'Generated fuzz input',
-          error: error.message,
-          stack: error.stack,
+          error: err.message,
+          stack: err.stack,
           timestamp: new Date()
         };
 
         failures.push(failure);
 
         if (testConfig.enableLogging) {
-          console.log(`❌ Test ${testId} failed: ${error.message}`);
+          console.log(`❌ Test ${testId} failed: ${err.message}`);
         }
 
         if (testConfig.stopOnFirstFailure) {
@@ -148,7 +148,7 @@ export class McpFuzzTester {
   /**
    * Execute individual fuzz test
    */
-  private static async executeFuzzTest(testId: string, category: string, input: string): Promise<void> {
+  private static async executeFuzzTest(_testId: string, category: string, input: string): Promise<void> {
     switch (category) {
       case 'parser':
         await this.testMcpParser(input);
@@ -200,10 +200,11 @@ export class McpFuzzTester {
 
     } catch (error) {
       // Expected errors are OK, crashes are not
-      if (error.message.includes('Maximum call stack') ||
-          error.message.includes('out of memory') ||
-          error.name === 'RangeError') {
-        throw new Error(`Parser crash: ${error.message}`);
+      const err = error as Error & { name?: string };
+      if (err.message.includes('Maximum call stack') ||
+          err.message.includes('out of memory') ||
+          err.name === 'RangeError') {
+        throw new Error(`Parser crash: ${err.message}`);
       }
       // Validation errors are expected and OK
     }
@@ -242,9 +243,10 @@ export class McpFuzzTester {
       }
 
     } catch (error) {
-      if (error.message.includes('Maximum call stack') ||
-          error.message.includes('out of memory')) {
-        throw new Error(`Validator crash: ${error.message}`);
+      const err = error as Error;
+      if (err.message.includes('Maximum call stack') ||
+          err.message.includes('out of memory')) {
+        throw new Error(`Validator crash: ${err.message}`);
       }
     }
   }
@@ -264,9 +266,10 @@ export class McpFuzzTester {
       }
 
     } catch (error) {
-      if (error.message.includes('Maximum call stack') ||
-          error.message.includes('out of memory')) {
-        throw new Error(`Response handler crash: ${error.message}`);
+      const err = error as Error;
+      if (err.message.includes('Maximum call stack') ||
+          err.message.includes('out of memory')) {
+        throw new Error(`Response handler crash: ${err.message}`);
       }
     }
   }
@@ -296,7 +299,7 @@ export class McpFuzzTester {
   /**
    * Test with extreme inputs
    */
-  private static async testExtremeInputs(input: string): Promise<void> {
+  private static async testExtremeInputs(_input: string): Promise<void> {
     const extremeInputs = [
       '', // Empty
       ' '.repeat(1000000), // Large whitespace
@@ -317,7 +320,7 @@ export class McpFuzzTester {
   /**
    * Test with attack vectors
    */
-  private static async testAttackVectors(input: string): Promise<void> {
+  private static async testAttackVectors(_input: string): Promise<void> {
     const attackVectors = [
       '{"__proto__":{"polluted":true}}',
       '{"constructor":{"prototype":{"polluted":true}}}',

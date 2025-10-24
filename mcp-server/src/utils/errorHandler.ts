@@ -18,7 +18,7 @@
  */
 
 import { logger, CorrelationIdManager } from './logger.js';
-import { McpError, ErrorCode } from '@modelcontextprotocol/sdk/types.js';
+import { McpError } from '@modelcontextprotocol/sdk/types.js';
 
 export type ErrorSeverity = 'low' | 'medium' | 'high' | 'critical';
 
@@ -278,7 +278,7 @@ export class ErrorHandler {
    * Generate suggested action for error resolution
    */
   private static generateSuggestedAction(
-    error: Error,
+    _error: Error,
     category: string,
     isRetryable: boolean
   ): string {

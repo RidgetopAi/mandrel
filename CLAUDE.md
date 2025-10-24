@@ -87,9 +87,24 @@ curl -X POST http://localhost:8080/mcp/tools/aidis_ping \
 - **List projects**: `project_list`
 
 ### Session Management
+**MCP Tools (5 - for AI agents):**
 - **Assign session to project**: `session_assign <projectName>`
 - **Check session status**: `session_status`
 - **Create new session**: `session_new [title] [projectName]`
+- **Update session metadata**: `session_update(title?, description?)`
+- **Get session details**: `session_details(sessionId?)`
+
+**REST API (8 endpoints - for AIDIS Command UI):**
+- `POST /api/v2/sessions/:id/activities` - Record session activity
+- `GET /api/v2/sessions/:id/activities` - Get activity timeline
+- `POST /api/v2/sessions/:id/files` - Record file modifications
+- `GET /api/v2/sessions/:id/files` - Get modified files
+- `POST /api/v2/sessions/:id/productivity` - Calculate productivity score
+- `GET /api/v2/sessions` - List sessions (with filters/pagination)
+- `GET /api/v2/sessions/stats` - Aggregate statistics
+- `GET /api/v2/sessions/compare` - Compare two sessions
+
+**Automation:** Session activities auto-tracked when using context_store, task_create, decision_record, naming_register
 
 ### Context Management  
 - **Store context**: `context_store(content, type, tags?)`
@@ -211,8 +226,9 @@ project_list(includeStats?: boolean)
   - **Array parameters**: Must be actual JSON arrays, not quoted strings
 ---
 
-**Last Updated**: 2025-10-01
-**Tools**: 41 active tools (optimized from 52)
-**Token Usage**: ~12,300 tokens (55% reduction from original 27,500)
-**Status**: Production ready with token-optimized schemas and full functionality preserved
+**Last Updated**: 2025-10-05
+**Tools**: 41 active MCP tools (5 session operational + 36 other tools)
+**REST API**: 8 session analytics endpoints at /api/v2/sessions/* (for AIDIS Command UI)
+**Token Usage**: ~12,300 tokens (optimized with automation hooks)
+**Status**: Production ready with REST API for external integrations and auto-tracking
 
