@@ -161,8 +161,12 @@ export const ContextBulkDeleteSchema = z.object({
 // ================================
 
 export const UpdateSessionSchema = z.object({
-  title: optionalString(200),
-  description: optionalString(1000),
+  title: optionalString(255),
+  description: optionalString(5000),
+  session_goal: optionalString(5000),
+  tags: z.array(z.string()).optional(),
+  ai_model: optionalString(100),
+  project_id: z.string().uuid().optional(),
 });
 
 export type UpdateSessionData = z.infer<typeof UpdateSessionSchema>;

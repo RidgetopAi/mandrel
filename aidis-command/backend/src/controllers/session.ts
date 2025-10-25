@@ -242,7 +242,7 @@ export class SessionController {
       const { id } = req.params;
       const updates = req.body as UpdateSessionData;
 
-      const existingSession = await this.fetchSessionSummary(id);
+      const existingSession = await SessionController.fetchSessionSummary(id);
       if (!existingSession) {
         res.status(404).json({
           success: false,
@@ -254,26 +254,61 @@ export class SessionController {
         return;
       }
 
-      const fields: string[] = [];
-      const values: Array<string> = [id];
+      // Determine which table contains this session
+      const userSessionCheck = await pool.query('SELECT id FROM user_sessions WHERE id = $1', [id]);
+      const isUserSession = userSessionCheck.rows.length > 0;
 
-      if (typeof updates.title !== 'undefined') {
-        fields.push(`title = $${values.length + 1}`);
-        values.push(updates.title);
+      if (isUserSession) {
+        // user_sessions table doesn't have title/description columns
+        if (updates.title || updates.description) {
+          console.warn(`Session ${id} is in user_sessions table which doesn't support title/description updates`);
+        }
+        
+        // Only update timestamp
+        await pool.query('UPDATE user_sessions SET updated_at = NOW() WHERE id = $1', [id]);
+      } else {
+        // sessions table - supports all session fields
+        const fields: string[] = [];
+        const values: Array<any> = [id];
+
+        if (typeof updates.title !== 'undefined') {
+          fields.push(`title = $${values.length + 1}`);
+          values.push(updates.title);
+        }
+
+        if (typeof updates.description !== 'undefined') {
+          fields.push(`description = $${values.length + 1}`);
+          values.push(updates.description);
+        }
+
+        if (typeof updates.session_goal !== 'undefined') {
+          fields.push(`session_goal = $${values.length + 1}`);
+          values.push(updates.session_goal);
+        }
+
+        if (typeof updates.tags !== 'undefined') {
+          fields.push(`tags = $${values.length + 1}`);
+          values.push(updates.tags);
+        }
+
+        if (typeof updates.ai_model !== 'undefined') {
+          fields.push(`ai_model = $${values.length + 1}`);
+          values.push(updates.ai_model);
+        }
+
+        if (typeof updates.project_id !== 'undefined') {
+          fields.push(`project_id = $${values.length + 1}::uuid`);
+          values.push(updates.project_id);
+        }
+
+        if (fields.length > 0) {
+          fields.push('updated_at = NOW()');
+          const updateQuery = `UPDATE sessions SET ${fields.join(', ')} WHERE id = $1`;
+          await pool.query(updateQuery, values);
+        }
       }
 
-      if (typeof updates.description !== 'undefined') {
-        fields.push(`description = $${values.length + 1}`);
-        values.push(updates.description);
-      }
-
-      if (fields.length > 0) {
-        fields.push('updated_at = NOW()');
-        const updateQuery = `UPDATE user_sessions SET ${fields.join(', ')} WHERE id = $1`;
-        await pool.query(updateQuery, values);
-      }
-
-      const updatedSession = await this.fetchSessionSummary(id);
+      const updatedSession = await SessionController.fetchSessionSummary(id);
       if (!updatedSession) {
         res.status(500).json({
           success: false,
@@ -366,15 +401,16 @@ export class SessionController {
     }
   }
   private static async fetchSessionSummary(sessionId: string): Promise<SessionSummary | null> {
-    const query = `
+    // Try user_sessions first (no title/description columns)
+    const userSessionQuery = `
       SELECT
         s.id,
         s.project_id,
         p.name AS project_name,
-        s.title,
-        s.description,
+        NULL::text as title,
+        NULL::text as description,
         s.session_type,
-        s.status,
+        NULL::text as status,
         s.created_at,
         s.updated_at,
         ctx.total_contexts AS context_count,
@@ -389,18 +425,68 @@ export class SessionController {
       WHERE s.id = $1
     `;
 
-    const { rows } = await pool.query<SessionSummaryRow>(query, [sessionId]);
-    if (rows.length === 0) {
+    const { rows: userRows } = await pool.query<SessionSummaryRow>(userSessionQuery, [sessionId]);
+    
+    if (userRows.length > 0) {
+      const row = userRows[0];
+      return {
+        id: row.id,
+        project_id: row.project_id ?? undefined,
+        project_name: row.project_name,
+        title: row.title,
+        description: row.description,
+        session_type: row.session_type,
+        status: row.status,
+        created_at: row.created_at,
+        updated_at: row.updated_at,
+        context_count: row.context_count !== null ? Number(row.context_count) : undefined,
+        last_context_at: row.last_context_at,
+      };
+    }
+
+    // Fallback to sessions table
+    const sessionsQuery = `
+      SELECT
+        s.id,
+        s.project_id,
+        p.name AS project_name,
+        s.title,
+        s.description,
+        s.session_goal,
+        s.tags,
+        s.ai_model,
+        NULL::text as session_type,
+        s.status,
+        s.started_at as created_at,
+        s.updated_at,
+        ctx.total_contexts AS context_count,
+        ctx.last_context_at
+      FROM sessions s
+      LEFT JOIN projects p ON p.id = s.project_id
+      LEFT JOIN (
+        SELECT session_id, COUNT(*)::text AS total_contexts, MAX(created_at) AS last_context_at
+        FROM contexts
+        GROUP BY session_id
+      ) ctx ON ctx.session_id = s.id
+      WHERE s.id = $1
+    `;
+
+    const { rows: sessionRows } = await pool.query<SessionSummaryRow>(sessionsQuery, [sessionId]);
+    
+    if (sessionRows.length === 0) {
       return null;
     }
 
-    const row = rows[0];
+    const row = sessionRows[0];
     return {
       id: row.id,
       project_id: row.project_id ?? undefined,
       project_name: row.project_name,
       title: row.title,
       description: row.description,
+      session_goal: row.session_goal,
+      tags: row.tags,
+      ai_model: row.ai_model,
       session_type: row.session_type,
       status: row.status,
       created_at: row.created_at,
@@ -417,6 +503,9 @@ interface SessionSummaryRow {
   project_name: string | null;
   title: string | null;
   description: string | null;
+  session_goal?: string | null;
+  tags?: string[] | null;
+  ai_model?: string | null;
   session_type: string | null;
   status: string | null;
   created_at: string;
@@ -431,6 +520,9 @@ interface SessionSummary {
   project_name?: string | null;
   title?: string | null;
   description?: string | null;
+  session_goal?: string | null;
+  tags?: string[] | null;
+  ai_model?: string | null;
   session_type?: string | null;
   status?: string | null;
   created_at: string;

@@ -341,7 +341,6 @@ export class SessionAnalyticsService {
           s.tasks_updated,
           s.tasks_completed,
           s.contexts_created,
-          s.total_characters,
           p.name as project_name,
           EXTRACT(EPOCH FROM (COALESCE(s.ended_at, CURRENT_TIMESTAMP) - s.started_at)) / 60 as duration_minutes,
           COUNT(c.id) as contexts_count,
@@ -351,19 +350,15 @@ export class SessionAnalyticsService {
             WHEN s.ended_at > CURRENT_TIMESTAMP - INTERVAL '1 hour' THEN 'inactive'
             ELSE 'disconnected'
           END as status,
-          CASE
-            WHEN s.session_type = 'mcp' THEN 'mcp'
-            WHEN s.session_type = 'web' THEN 'web'
-            ELSE 'api'
-          END as type
+          s.agent_type as type
         FROM sessions s
         LEFT JOIN projects p ON s.project_id = p.id
         LEFT JOIN contexts c ON s.id = c.session_id
-        LEFT JOIN tasks t ON s.project_id = t.project_id AND s.id = t.created_by
+        LEFT JOIN tasks t ON s.project_id = t.project_id AND s.id::text = t.created_by
         ${whereClause}
         GROUP BY s.id, s.project_id, s.title, s.description, s.started_at, s.ended_at,
                  s.input_tokens, s.output_tokens, s.total_tokens, s.tasks_created, s.tasks_updated,
-                 s.tasks_completed, s.contexts_created, s.total_characters, p.name, s.session_type
+                 s.tasks_completed, s.contexts_created, p.name, s.agent_type
         ORDER BY s.started_at DESC
         LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
       `;
