@@ -223,6 +223,21 @@ export class ContextHandler {
   }
 
   /**
+   * Detect if query explicitly requests recent/current information
+   * Instance #43: Fix for hierarchical memory recency limitation
+   */
+  private isRecencyQuery(query: string): boolean {
+    const recencyKeywords = [
+      'recent', 'latest', 'current', 'now',
+      'today', 'yesterday', 'this week', 'this month',
+      'new', 'newest', 'just', 'last'
+    ];
+
+    const queryLower = query.toLowerCase();
+    return recencyKeywords.some(keyword => queryLower.includes(keyword));
+  }
+
+  /**
    * Search contexts using vector similarity and filters
    * Supports hierarchical memory scoring when enabled for project
    */
@@ -237,19 +252,68 @@ export class ContextHandler {
 
       // Check if hierarchical memory is enabled for this project
       const hierarchicalEnabled = await this.isHierarchicalEnabled(request.projectId);
-      console.log(`🧠 Hierarchical memory: ${hierarchicalEnabled ? 'ENABLED' : 'disabled'}`);
+
+      // Check if query explicitly requests recent information (Instance #43 fix)
+      const isRecencyFocused = hierarchicalEnabled && this.isRecencyQuery(request.query);
+
+      // Log scoring mode
+      if (hierarchicalEnabled) {
+        console.log(`🧠 Hierarchical memory: ${isRecencyFocused ? 'RECENCY-FOCUSED' : 'BALANCED'}`);
+      } else {
+        console.log(`🧠 Hierarchical memory: disabled`);
+      }
 
       // Build search query with filters
       let sql: string;
 
-      if (hierarchicalEnabled) {
-        // Enhanced: vector similarity + recency + importance + context type weights
+      if (hierarchicalEnabled && isRecencyFocused) {
+        // Recency-focused: TEMPORAL FILTER + dominant recency weighting
+        // Instance #43: Added temporal filter (only last 60 days)
+        // Instance #43: Aggressive recency weight (90%) with 7-day halflife
+        // Addresses Instance #42+ finding: hierarchical failed on "recent" queries
         sql = `
           SELECT
             id, project_id, session_id, context_type, content,
             created_at, relevance_score, tags, metadata,
             1 - (embedding <=> $1::vector) as similarity,
-            EXP(-EXTRACT(EPOCH FROM (NOW() - created_at)) / (24.0 * 3600)) as recency_score,
+            EXP(-EXTRACT(EPOCH FROM (NOW() - created_at)) / (7.0 * 24.0 * 3600)) as recency_score,
+            COALESCE(relevance_score, 5.0) / 10.0 as importance_score,
+            CASE context_type
+              WHEN 'milestone' THEN 1.0
+              WHEN 'decision' THEN 0.9
+              WHEN 'completion' THEN 0.8
+              WHEN 'reflections' THEN 0.7
+              WHEN 'planning' THEN 0.6
+              WHEN 'code' THEN 0.5
+              ELSE 0.4
+            END as type_weight,
+            (
+              ((1 - (embedding <=> $1::vector)) * 0.05) +
+              (EXP(-EXTRACT(EPOCH FROM (NOW() - created_at)) / (7.0 * 24.0 * 3600)) * 0.90) +
+              (COALESCE(relevance_score, 5.0) / 10.0 * 0.025) +
+              (CASE context_type
+                WHEN 'milestone' THEN 1.0
+                WHEN 'decision' THEN 0.9
+                WHEN 'completion' THEN 0.8
+                WHEN 'reflections' THEN 0.7
+                WHEN 'planning' THEN 0.6
+                WHEN 'code' THEN 0.5
+                ELSE 0.4
+              END * 0.025)
+            ) as combined_score
+          FROM contexts
+          WHERE embedding IS NOT NULL
+            AND created_at > NOW() - INTERVAL '60 days'
+        `;
+      } else if (hierarchicalEnabled) {
+        // Balanced: vector similarity + recency + importance + context type weights
+        // Instance #43: Fixed decay parameter - 30-day halflife (was 1-day)
+        sql = `
+          SELECT
+            id, project_id, session_id, context_type, content,
+            created_at, relevance_score, tags, metadata,
+            1 - (embedding <=> $1::vector) as similarity,
+            EXP(-EXTRACT(EPOCH FROM (NOW() - created_at)) / (30.0 * 24.0 * 3600)) as recency_score,
             COALESCE(relevance_score, 5.0) / 10.0 as importance_score,
             CASE context_type
               WHEN 'milestone' THEN 1.0
@@ -262,7 +326,7 @@ export class ContextHandler {
             END as type_weight,
             (
               (1 - (embedding <=> $1::vector)) +
-              EXP(-EXTRACT(EPOCH FROM (NOW() - created_at)) / (24.0 * 3600)) +
+              EXP(-EXTRACT(EPOCH FROM (NOW() - created_at)) / (30.0 * 24.0 * 3600)) +
               COALESCE(relevance_score, 5.0) / 10.0 +
               CASE context_type
                 WHEN 'milestone' THEN 1.0
@@ -278,7 +342,7 @@ export class ContextHandler {
           WHERE embedding IS NOT NULL
         `;
       } else {
-        // Current: vector similarity only
+        // Baseline: vector similarity only
         sql = `
           SELECT
             id, project_id, session_id, context_type, content,
