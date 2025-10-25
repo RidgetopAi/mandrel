@@ -1080,7 +1080,13 @@ export class GitService {
         if (existingCommit.rows.length === 0) {
           // Collect enhanced commit metadata
           const enhancedMetadata = await this.collectCommitMetadata(commit, git);
-          
+
+          // Skip dependency-heavy commits to avoid inflating metrics
+          if (this.isDependencyCommit(enhancedMetadata, commit)) {
+            console.log(`⏭️  Skipping dependency commit: ${commit.hash.substring(0, 12)} - ${commit.message}`);
+            continue;
+          }
+
           // Store new commit with enhanced metadata
           await this.storeCommitWithMetadata(project_id, commit, enhancedMetadata);
           commitsProcessed++;
@@ -1109,6 +1115,80 @@ export class GitService {
     return { commitsProcessed, branchesUpdated, fileChangesTracked };
   }
 
+
+  /**
+   * Check if a commit is primarily a dependency installation/update
+   * These commits should be excluded from code contribution metrics
+   */
+  private static isDependencyCommit(metadata: any, commit: any): boolean {
+    const insertions = metadata.insertions || 0;
+    const deletions = metadata.deletions || 0;
+    const filesChanged = metadata.files_changed || 0;
+    const message = commit.message.toLowerCase();
+
+    // Filter 1: Excessive line changes (likely dependency install)
+    if (insertions > 10000) {
+      return true;
+    }
+
+    // Filter 2: Excessive file changes (likely node_modules commit)
+    if (filesChanged > 1000) {
+      return true;
+    }
+
+    // Filter 3: Check file stats for dependency patterns
+    const fileStats = metadata.commit_stats?.file_stats || [];
+    if (fileStats.length > 0) {
+      const dependencyFilePatterns = [
+        /^node_modules\//,
+        /^package-lock\.json$/,
+        /^yarn\.lock$/,
+        /^pnpm-lock\.yaml$/,
+        /^Cargo\.lock$/,
+        /^Gemfile\.lock$/,
+        /^composer\.lock$/,
+        /^Pipfile\.lock$/,
+        /\.min\.(js|css)$/,
+        /^vendor\//,
+        /^dist\/.*\.(js|css)$/
+      ];
+
+      let dependencyFileCount = 0;
+      for (const fileStat of fileStats) {
+        const filePath = fileStat.file_path;
+        if (dependencyFilePatterns.some(pattern => pattern.test(filePath))) {
+          dependencyFileCount++;
+        }
+      }
+
+      // If more than 50% of files are dependency-related, skip this commit
+      const dependencyRatio = dependencyFileCount / fileStats.length;
+      if (dependencyRatio > 0.5) {
+        return true;
+      }
+    }
+
+    // Filter 4: Check commit message for dependency keywords
+    const dependencyKeywords = [
+      'package-lock',
+      'yarn.lock',
+      'npm install',
+      'yarn add',
+      'update dependencies',
+      'bump dependencies',
+      'lockfile',
+      'node_modules'
+    ];
+
+    if (dependencyKeywords.some(keyword => message.includes(keyword))) {
+      // Only skip if also has high insertion count (> 1000 lines)
+      if (insertions > 1000) {
+        return true;
+      }
+    }
+
+    return false;
+  }
 
   /**
    * Collect comprehensive metadata for a commit

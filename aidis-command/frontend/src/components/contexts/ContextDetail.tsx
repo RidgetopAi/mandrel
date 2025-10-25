@@ -217,7 +217,7 @@ const ContextDetail: React.FC<ContextDetailProps> = ({
         </Space>
       }
       placement="right"
-      width={720}
+      width="66%"
       onClose={onClose}
       open={visible}
       extra={
