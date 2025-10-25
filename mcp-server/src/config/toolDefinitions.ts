@@ -767,114 +767,16 @@ export const AIDIS_TOOL_DEFINITIONS: ToolDefinition[] = [
               additionalProperties: true
             },
           },
-        
-        // Session Management Tools
-        {
-          name: 'session_assign',
-          description: 'Assign current session to a project',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              projectName: {
-                type: 'string',
-                description: 'Project name to assign to'
-              }
-            },
-            required: ['projectName'],
-            additionalProperties: true
-          }
-        },
-        {
-          name: 'session_status',
-          description: 'Get current session status and details',
-          inputSchema: {
-            type: 'object',
-            properties: {},
-            additionalProperties: true
-          }
-        },
-        {
-          name: 'session_new',
-          description: 'Create a new session with optional title, project assignment, goal, tags, and AI model tracking (Phase 2 enhanced)',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              title: {
-                type: 'string',
-                description: 'Session title'
-              },
-              projectName: {
-                type: 'string',
-                description: 'Project to assign session to'
-              },
-              description: {
-                type: 'string',
-                description: 'Detailed session description'
-              },
-              sessionGoal: {
-                type: 'string',
-                description: 'Session objective (e.g., "Implement user auth", "Fix payment bug")'
-              },
-              tags: {
-                type: 'array',
-                items: { type: 'string' },
-                description: 'Tags for categorization (e.g., ["bug-fix", "frontend"])'
-              },
-              aiModel: {
-                type: 'string',
-                description: 'AI model identifier (e.g., "claude-sonnet-4-5")'
-              }
-            },
-            additionalProperties: true
-          }
-        },
-        {
-          name: 'session_update',
-          description: 'Update session title, description, goal, and tags for better organization (Phase 2 enhanced)',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              sessionId: {
-                type: 'string',
-                description: 'Session ID to update'
-              },
-              title: {
-                type: 'string',
-                description: 'New session title'
-              },
-              description: {
-                type: 'string',
-                description: 'New session description'
-              },
-              sessionGoal: {
-                type: 'string',
-                description: 'New session goal/objective'
-              },
-              tags: {
-                type: 'array',
-                items: { type: 'string' },
-                description: 'New tags array (replaces existing)'
-              }
-            },
-            required: ['sessionId'],
-            additionalProperties: true
-          }
-        },
-        {
-          name: 'session_details',
-          description: 'Get detailed session information including title, description, and metadata',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              sessionId: {
-                type: 'string',
-                description: 'Session ID'
-              }
-            },
-            required: ['sessionId'],
-            additionalProperties: true
-          }
-        },
+
+        // Session Management Tools - DELETED (2025-10-24)
+        // The following 5 MCP tools were removed because sessions auto-manage themselves:
+        // - session_assign → Auto-tracking via ensureActiveSession()
+        // - session_status → Auto-tracking via SessionTracker service
+        // - session_new → Auto-tracking via ensureActiveSession()
+        // - session_update → Not needed for auto-tracking
+        // - session_details → Not needed for auto-tracking
+        // SessionTracker service remains fully functional for auto-tracking.
+        // AIDIS Command UI uses REST API endpoints at /api/v2/sessions/* for session analytics.
 
         // Session Analytics Tools - MIGRATED TO REST API (2025-10-05)
         // The following 8 tools have been migrated to REST API endpoints at /api/v2/sessions/*
