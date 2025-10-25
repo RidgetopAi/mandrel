@@ -13,7 +13,6 @@ import { projectRoutes } from './project.routes.js';
 import { namingRoutes } from './naming.routes.js';
 import { decisionsRoutes } from './decisions.routes.js';
 import { tasksRoutes } from './tasks.routes.js';
-import { sessionsRoutes } from './sessions.routes.js';
 import { searchRoutes } from './search.routes.js';
 
 /**
@@ -91,17 +90,9 @@ export async function routeExecutor(toolName: string, args: any): Promise<McpRes
       case 'task_progress_summary':
         return await tasksRoutes.handleProgressSummary(args);
 
-      // Session Management (5 tools)
-      case 'session_assign':
-        return await sessionsRoutes.handleAssign(args);
-      case 'session_status':
-        return await sessionsRoutes.handleStatus();
-      case 'session_new':
-        return await sessionsRoutes.handleNew(args);
-      case 'session_update':
-        return await sessionsRoutes.handleUpdate(args);
-      case 'session_details':
-        return await sessionsRoutes.handleDetails(args);
+      // Session Management (5 tools) - DELETED (2025-10-24)
+      // Sessions auto-manage via SessionTracker service
+      // REST API endpoints at /api/v2/sessions/* handle UI analytics
 
       // Smart Search & AI (3 tools)
       case 'smart_search':
