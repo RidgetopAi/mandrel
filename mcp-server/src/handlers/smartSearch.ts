@@ -1,7 +1,6 @@
 import { Pool } from 'pg';
 import { db } from '../config/database.js';
 import { contextHandler } from './context.js';
-import { namingHandler } from './naming.js';
 import { decisionsHandler } from './decisions.js';
 import { codeAnalysisHandler } from './codeAnalysis.js';
 
@@ -293,28 +292,8 @@ export class SmartSearchHandler {
         const recommendations: Recommendation[] = [];
 
         try {
-            if (type === 'naming' || type === 'implementation') {
-                // Naming recommendations based on existing patterns
-                const suggestedNames = await namingHandler.suggestNames({
-                    projectId,
-                    entityType: 'function',
-                    description: context
-                });
-                for (const suggestion of suggestedNames) {
-                    recommendations.push({
-                        type: 'naming',
-                        title: `Use consistent naming: ${suggestion.suggestedName}`,
-                        description: suggestion.explanation,
-                        confidence: suggestion.confidence,
-                        actionable: true,
-                        references: suggestion.similarExamples,
-                        metadata: { 
-                            entityType: 'function',
-                            pattern: suggestion.suggestedName 
-                        }
-                    });
-                }
-            }
+            // Naming recommendations removed - replaced by dependency tracking system
+            // type === 'naming' no longer supported
 
             if (type === 'implementation' || type === 'architecture') {
                 // Find similar implementations using semantic search

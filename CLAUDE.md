@@ -5,12 +5,11 @@
 ## IMMEDIATE ESSENTIALS
 
 ### System Status
-**AIDIS: 31 MCP Tools - 100% Operational** *(Optimized for token efficiency)*
+**AIDIS: 27 MCP Tools - 100% Operational** *(Optimized for token efficiency)*
 - System Health: 2 tools
 - Navigation: 3 tools (help, explain, examples)
 - Context Management: 4 tools
 - Project Management: 6 tools
-- Naming Registry: 4 tools
 - Technical Decisions: 4 tools
 - Task Management: 6 tools
 - Smart Search & AI: 2 tools
@@ -53,17 +52,28 @@
 - Reason: Sessions auto-manage via SessionTracker service + REST API handles UI needs
 - Final tool count: 36 → 31 tools
 
+**Phase 7: Naming Registry Deletion (2025-10-24)**
+- Deleted 4 naming MCP tools (naming_register, naming_check, naming_suggest, naming_stats)
+- Removed handlers/naming.ts (695 lines) and routes/naming.routes.ts (195 lines)
+- Removed frontend pages/Naming.tsx (542 lines) and components/naming/* (4 files)
+- Removed 12 frontend infrastructure files (stores, hooks, services, API models)
+- Dropped database table: naming_registry (migration 034)
+- Removed all imports from 5+ backend files
+- Total removal: ~2,500 lines of code
+- Reason: Manual registration friction, minimal adoption (19 entries), IDE/TypeScript handles naming better, replaced by dependency tracking system
+- Final tool count: 31 → 27 tools
+
 **Total Token Optimization:**
 - Before: ~27,500 tokens (530 tokens/tool × 52 tools)
-- After: ~9,300 tokens (300 tokens/tool × 31 tools)
-- **Savings: 18,200 tokens (66% reduction)**
+- After: ~8,100 tokens (300 tokens/tool × 27 tools)
+- **Savings: 19,400 tokens (70% reduction)**
 - Server-side validation maintains data integrity
 - Clean removal of non-functional features
 
 ### Navigation Tools - START HERE
 Essential tools for discovering AIDIS capabilities:
 
-- **`aidis_help`** - Show all 31 tools organized by category
+- **`aidis_help`** - Show all 27 tools organized by category
 - **`aidis_explain <toolname>`** - Get detailed help for any specific tool
 - **`aidis_examples <toolname>`** - See usage examples and patterns
 
@@ -243,8 +253,8 @@ project_list(includeStats?: boolean)
 ---
 
 **Last Updated**: 2025-10-24
-**Tools**: 31 active MCP tools
+**Tools**: 27 active MCP tools
 **REST API**: 8 session analytics endpoints at /api/v2/sessions/* (for AIDIS Command UI)
-**Token Usage**: ~9,300 tokens (66% reduction from original 27,500)
+**Token Usage**: ~8,100 tokens (70% reduction from original 27,500)
 **Status**: Production ready - cleaned and streamlined for podcast demo
 

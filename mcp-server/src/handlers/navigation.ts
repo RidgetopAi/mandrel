@@ -37,12 +37,6 @@ export class NavigationHandler {
       { name: 'project_info', description: 'Get detailed information about a specific project' },
       { name: 'project_insights', description: 'Get comprehensive project health and insights' }
     ],
-    'Naming Registry': [
-      { name: 'naming_register', description: 'Register a name to prevent conflicts' },
-      { name: 'naming_check', description: 'Check for naming conflicts before using a name' },
-      { name: 'naming_suggest', description: 'Get name suggestions based on description' },
-      { name: 'naming_stats', description: 'Get naming statistics and convention compliance' }
-    ],
     'Technical Decisions': [
       { name: 'decision_record', description: 'Record a technical decision with context' },
       { name: 'decision_search', description: 'Search technical decisions with filters' },
@@ -341,44 +335,6 @@ export class NavigationHandler {
       }
     ],
 
-    // Naming Registry
-    'naming_check': [
-      {
-        title: 'Check if a function name is available',
-        example: `naming_check({
-  entityType: "function",
-  proposedName: "processUserData",
-  contextTags: ["user", "processing"]
-})`
-      },
-      {
-        title: 'Check component name availability',
-        example: `naming_check({
-  entityType: "component",
-  proposedName: "UserProfile"
-})`
-      }
-    ],
-    'naming_register': [
-      {
-        title: 'Register a function name',
-        example: `naming_register({
-  entityType: "function",
-  canonicalName: "validateEmailFormat",
-  description: "Validates email address format using regex"
-})`
-      }
-    ],
-    'naming_suggest': [
-      {
-        title: 'Get function name suggestions',
-        example: `naming_suggest({
-  entityType: "function",
-  description: "handles user authentication with JWT tokens"
-})`
-      }
-    ],
-
     // Technical Decisions
     'decision_record': [
       {
@@ -491,7 +447,6 @@ export class NavigationHandler {
     helpText += '🎯 **Popular Workflows:**\n';
     helpText += '• Context: store → search → get_recent\n';
     helpText += '• Projects: create → switch → info\n';
-    helpText += '• Naming: check → register → suggest\n';
     helpText += '• Decisions: record → search → update\n';
 
     return {
