@@ -22,13 +22,17 @@ frontend_*.log
 pids
 *.pid
 *.seed
+run/
+sessions/
 
 # Database
 *.db
 *.sqlite
+*.sql
 
 # Backups
 backups/
+archive/
 *.backup
 *.tar.gz
 
@@ -60,20 +64,84 @@ coverage/
 tmp/
 temp/
 
-# Debug images
+# Debug and test artifacts
 debug-images/
+debug-tests/
 *.png
 *.jpg
 *.jpeg
-
-# AIDIS specific
-aidis.service
-aidis_restart.log
 test-*.js
+test-*.ts
+
+# AIDIS specific - runtime
+aidis.service
+aidis-user.service
+aidis_restart.log
 create_admin.sql
 fresh_login.json
+auth_response.json
+server-*.pid
+*.pid
+
+# AIDIS specific - development artifacts
+*_INVESTIGATION_REPORT.md
+*_IMPLEMENTATION_COMPLETE.md
+*_IMPLEMENTATION_PLAN.md
+*_IMPLEMENTATION_SUMMARY.md
+*_FIX_COMPLETE.md
+*_FIX_SUMMARY.md
+*_PLAN.md
+*_SUMMARY.md
+*_QUICK_REFERENCE.md
+*_QUICK_SUMMARY.md
+*_FLOW_DIAGRAM.md
+*_FEATURE_MATRIX.md
+*_ARCHITECTURE_DIAGRAM.md
+*_VISUAL.txt
+*_INDEX.md
+*_EXECUTIVE_SUMMARY.md
+PHASE*.md
+ORACLE*.md
+SESSION*.md
+TS006*.md
+TS007*.md
+TT009*.md
+TR001*.md
+baseline-*.md
+baseline-*.ts
+aidis-rebuild-*.ts
+agent*.txt
+*.svg
+
+# AIDIS specific - development scripts
+aidis-stdio-mock*.js
+claude-http-mcp-bridge*.js
+compare-mcp-servers.js
+debug-mcp-protocol.js
+emergency-rollback.sh
+health-check.sh
+monitor-health.sh
+rollback-*.sh
+mcp-*.js
+*-wrapper.js
+verify-*.ts
+measure-*.ts
+performance-*.ts
+dep-viewer.html
+deps.json
+fixed-tool-list.js
+logging-config.env
+
+# Personal projects - not part of AIDIS
+projects/
+logo/
+
+# Configuration backups
+.backup-*/
+.mcp-mock.json
+.mcp-original.json
+.claude.json
+.playwright-mcp/
 
 # Zone identifier files
 *:Zone.Identifier
-# Personal projects - not part of AIDIS
-projects/
