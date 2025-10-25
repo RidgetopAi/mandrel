@@ -44,36 +44,52 @@ export const useSettings = (): UseSettingsReturn => {
     // If setting a project as default, update backend metadata
     if (projectName) {
       try {
-        // Find project ID by name
-        const projectsResponse = await fetch('http://localhost:8080/api/v1/projects');
+        // Get API base URL from environment or use default
+        const apiBaseUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+
+        // Find project ID by name - use AIDIS Command backend API
+        const projectsResponse = await fetch(`${apiBaseUrl}/projects`, {
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('aidis_token') || ''}`,
+          },
+        });
+        if (!projectsResponse.ok) {
+          throw new Error(`Failed to fetch projects: ${projectsResponse.statusText}`);
+        }
+
         const projectsData = await projectsResponse.json();
         const project = projectsData.data?.projects?.find((p: any) => p.name === projectName);
 
         if (project?.id) {
-          // Call backend to set project as primary
-          const response = await fetch(`http://localhost:8080/api/v2/projects/${project.id}/set-primary`, {
+          // Call AIDIS Command backend to set project as primary (which proxies to MCP server)
+          const response = await fetch(`${apiBaseUrl}/projects/${project.id}/set-primary`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
+              'Authorization': `Bearer ${localStorage.getItem('aidis_token') || ''}`,
             },
           });
 
           if (!response.ok) {
-            console.error('Failed to set project as primary in backend:', await response.text());
-            // Continue anyway to update local storage
-          } else {
-            console.log('✅ Successfully set project as primary in backend:', projectName);
+            const errorText = await response.text();
+            console.error('Failed to set project as primary in backend:', errorText);
+            throw new Error(`Backend error: ${errorText}`);
           }
+
+          console.log('✅ Successfully set project as primary in backend:', projectName);
         } else {
           console.warn('⚠️ Could not find project ID for:', projectName);
+          throw new Error(`Project "${projectName}" not found`);
         }
       } catch (error) {
         console.error('Failed to update backend primary project:', error);
-        // Continue anyway to update local storage
+        // Re-throw the error so the UI can show it to the user
+        throw error;
       }
     }
 
-    // Update local settings
+    // Update local settings only after successful backend update
     setSettings(prev => {
       const newSettings = {
         ...prev,

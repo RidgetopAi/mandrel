@@ -258,4 +258,32 @@ export class ProjectController {
       });
     }
   }
+
+  /**
+   * POST /projects/:id/set-primary - Set project as primary/default
+   * Proxies to MCP server's /api/v2/projects/:id/set-primary endpoint
+   */
+  static async setPrimary(req: Request, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+
+      console.log(`[Set Primary] Setting project ${id} as primary`);
+
+      // Call MCP server's set-primary endpoint
+      const mcpResponse = await McpService.callMcpEndpoint(
+        `/api/v2/projects/${id}/set-primary`,
+        'POST'
+      );
+
+      console.log('[Set Primary] MCP response:', mcpResponse);
+
+      res.json(mcpResponse);
+    } catch (error) {
+      console.error('Set primary project error:', error);
+      res.status(500).json({
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to set primary project'
+      });
+    }
+  }
 }
