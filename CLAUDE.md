@@ -5,46 +5,66 @@
 ## IMMEDIATE ESSENTIALS
 
 ### System Status
-**AIDIS: 41 MCP Tools - 100% Operational** *(Optimized for token efficiency)*
+**AIDIS: 31 MCP Tools - 100% Operational** *(Optimized for token efficiency)*
 - System Health: 2 tools
 - Navigation: 3 tools (help, explain, examples)
 - Context Management: 4 tools
 - Project Management: 6 tools
-- Session Management: 5 tools
 - Naming Registry: 4 tools
 - Technical Decisions: 4 tools
 - Task Management: 6 tools
 - Smart Search & AI: 2 tools
-- **Development Metrics: 3 tools** *(Consolidated from 17 tools)*
-- **Pattern Detection: 2 tools** *(Consolidated from 17 tools)*
 
 ### Token Optimization (2025-10-01) ✅ COMPLETE
 
 **Phase 1: Tool Consolidation (TT009)**
 - Consolidated 50 individual tools → 8 unified tools (84% reduction)
-- Metrics: 17 → 3 tools | Patterns: 17 → 2 tools | Complexity: 16 → 3 tools (DISABLED)
+- Metrics: 17 → 0 tools (DELETED) | Patterns: 17 → 2 tools | Complexity: 16 → 3 tools (DISABLED)
 
 **Phase 2: Strategic Tool Disabling**
 - Disabled 11 unused tools (5 code analysis, 3 git correlation, 3 complexity)
-- Active tools: 52 → 41 tools (21% reduction)
+- Active tools: 52 → 38 tools (27% reduction)
 
 **Phase 3: Schema Simplification**
-- Simplified all 41 tool schemas using description-based guidance
+- Simplified all 38 tool schemas using description-based guidance
 - Removed verbose enums, nested schemas, default values
 - Added `additionalProperties: true` for flexibility
 
+**Phase 4: Metrics Deletion (2025-10-24)**
+- Deleted 3 ghost metrics tools (never implemented)
+- Dropped 4 empty database tables
+- Removed 17 old metrics references from navigation
+- Final tool count: 41 → 38 tools
+
+**Phase 5: Pattern Detection Removal (2025-10-24)**
+- Deleted 2 pattern tools (pattern_analyze, pattern_insights)
+- Removed 1,611-line patternDetector.ts service
+- Removed 3 pattern handler files (948 lines total)
+- Dropped 6 database tables via migration 033
+- Removed 252 lines of pattern stub functions from git.ts
+- Reason: 90% functionality was deprecated stubs, only 1 of 4 pattern types worked
+- Final tool count: 38 → 36 tools
+
+**Phase 6: Session MCP Tools Deletion (2025-10-24)**
+- Deleted 5 session MCP tools (session_assign, session_status, session_new, session_update, session_details)
+- Removed routes/sessions.routes.ts (285 lines)
+- Removed validation schemas and tool definitions
+- Removed navigation catalog entries
+- Reason: Sessions auto-manage via SessionTracker service + REST API handles UI needs
+- Final tool count: 36 → 31 tools
+
 **Total Token Optimization:**
 - Before: ~27,500 tokens (530 tokens/tool × 52 tools)
-- After: ~12,300 tokens (300 tokens/tool × 41 tools)
-- **Savings: 15,200 tokens (55% reduction)**
+- After: ~9,300 tokens (300 tokens/tool × 31 tools)
+- **Savings: 18,200 tokens (66% reduction)**
 - Server-side validation maintains data integrity
-- Zero breaking changes, all functionality preserved
+- Clean removal of non-functional features
 
 ### Navigation Tools - START HERE
 Essential tools for discovering AIDIS capabilities:
 
-- **`aidis_help`** - Show all 41 tools organized by category
-- **`aidis_explain <toolname>`** - Get detailed help for any specific tool  
+- **`aidis_help`** - Show all 31 tools organized by category
+- **`aidis_explain <toolname>`** - Get detailed help for any specific tool
 - **`aidis_examples <toolname>`** - See usage examples and patterns
 
 ### HTTP Bridge Connection
@@ -83,16 +103,11 @@ curl -X POST http://localhost:8080/mcp/tools/aidis_ping \
 
 ### Project Management
 - **Switch projects**: `project_switch <name>`
-- **Current project**: `project_current` 
+- **Current project**: `project_current`
 - **List projects**: `project_list`
 
 ### Session Management
-**MCP Tools (5 - for AI agents):**
-- **Assign session to project**: `session_assign <projectName>`
-- **Check session status**: `session_status`
-- **Create new session**: `session_new [title] [projectName]`
-- **Update session metadata**: `session_update(title?, description?)`
-- **Get session details**: `session_details(sessionId?)`
+**Session MCP tools deleted (Phase 6) - sessions auto-manage via SessionTracker service**
 
 **REST API (8 endpoints - for AIDIS Command UI):**
 - `POST /api/v2/sessions/:id/activities` - Record session activity
@@ -121,9 +136,10 @@ curl -X POST http://localhost:8080/mcp/tools/aidis_ping \
 - **System**: aidis_ping, aidis_status
 - **Context**: context_store, context_search, context_get_recent, context_stats
 - **Projects**: project_list, project_create, project_switch, project_current, project_info, project_insights
-- **Sessions**: session_assign, session_status, session_new
 - **Naming**: naming_register, naming_check, naming_suggest, naming_stats
 - **Decisions**: decision_record, decision_search, decision_update, decision_stats
+- **Tasks**: task_create, task_list, task_update, task_details, task_bulk_update, task_progress_summary
+- **Smart Search**: smart_search, get_recommendations, project_insights
 
 ---
 
@@ -226,9 +242,9 @@ project_list(includeStats?: boolean)
   - **Array parameters**: Must be actual JSON arrays, not quoted strings
 ---
 
-**Last Updated**: 2025-10-05
-**Tools**: 41 active MCP tools (5 session operational + 36 other tools)
+**Last Updated**: 2025-10-24
+**Tools**: 31 active MCP tools
 **REST API**: 8 session analytics endpoints at /api/v2/sessions/* (for AIDIS Command UI)
-**Token Usage**: ~12,300 tokens (optimized with automation hooks)
-**Status**: Production ready with REST API for external integrations and auto-tracking
+**Token Usage**: ~9,300 tokens (66% reduction from original 27,500)
+**Status**: Production ready - cleaned and streamlined for podcast demo
 
