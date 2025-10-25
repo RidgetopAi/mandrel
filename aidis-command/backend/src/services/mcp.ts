@@ -414,6 +414,65 @@ export class McpService {
   }
 
   /**
+   * Call an arbitrary MCP server endpoint (not a tool endpoint)
+   * Used for REST API calls like /api/v2/projects/:id/set-primary
+   */
+  static async callMcpEndpoint(path: string, method: string = 'GET', body?: any): Promise<any> {
+    return new Promise((resolve, reject) => {
+      const postData = body ? JSON.stringify(body) : '';
+
+      const options = {
+        hostname: 'localhost',
+        port: process.env.AIDIS_HTTP_PORT || process.env.AIDIS_MCP_PORT || process.env.PORT || 8080,
+        path: path,
+        method: method,
+        headers: {
+          'Content-Type': 'application/json',
+          ...(postData ? { 'Content-Length': Buffer.byteLength(postData) } : {})
+        }
+      };
+
+      const req = http.request(options, (res) => {
+        let data = '';
+
+        res.on('data', (chunk) => {
+          data += chunk;
+        });
+
+        res.on('end', () => {
+          try {
+            if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) {
+              const parsed = JSON.parse(data);
+              resolve(parsed);
+            } else {
+              reject(new Error(`HTTP ${res.statusCode}: ${data}`));
+            }
+          } catch (parseError) {
+            reject(new Error(`Failed to parse response: ${parseError}`));
+          }
+        });
+      });
+
+      req.on('error', (error) => {
+        reject(new Error(`Request failed: ${error.message}`));
+      });
+
+      req.on('timeout', () => {
+        req.destroy();
+        reject(new Error('Request timeout'));
+      });
+
+      req.setTimeout(this.REQUEST_TIMEOUT);
+
+      if (postData) {
+        req.write(postData);
+      }
+
+      req.end();
+    });
+  }
+
+  /**
    * Test AIDIS server connectivity
    */
   static async testConnection(): Promise<boolean> {
