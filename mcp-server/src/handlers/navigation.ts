@@ -37,13 +37,6 @@ export class NavigationHandler {
       { name: 'project_info', description: 'Get detailed information about a specific project' },
       { name: 'project_insights', description: 'Get comprehensive project health and insights' }
     ],
-    'Session Management': [
-      { name: 'session_assign', description: 'Assign current session to a project' },
-      { name: 'session_status', description: 'Get current session status and details' },
-      { name: 'session_new', description: 'Create a new session with optional title and project assignment' },
-      { name: 'session_update', description: 'Update session title and description for better organization' },
-      { name: 'session_details', description: 'Get detailed session information including title, description, and metadata' }
-    ],
     'Naming Registry': [
       { name: 'naming_register', description: 'Register a name to prevent conflicts' },
       { name: 'naming_check', description: 'Check for naming conflicts before using a name' },
@@ -175,43 +168,8 @@ export class NavigationHandler {
       returns: 'Project health metrics, activity patterns, and recommendations'
     },
 
-    // Session Management
-    'session_assign': {
-      description: 'Assign current session to a project for context organization',
-      parameters: [
-        { name: 'projectName', type: 'string', required: true, description: 'Name of the project to assign the session to' }
-      ],
-      returns: 'Confirmation of session assignment with project details'
-    },
-    'session_status': {
-      description: 'Get current session status and details including duration and context count',
-      parameters: [],
-      returns: 'Session ID, type, project assignment, start time, duration, and context statistics'
-    },
-    'session_new': {
-      description: 'Create a new session with optional title and project assignment',
-      parameters: [
-        { name: 'title', type: 'string', required: false, description: 'Optional custom title for the session' },
-        { name: 'projectName', type: 'string', required: false, description: 'Optional project to assign the new session to' }
-      ],
-      returns: 'New session ID and project assignment confirmation'
-    },
-    'session_update': {
-      description: 'Update session title and description for better organization and context',
-      parameters: [
-        { name: 'sessionId', type: 'string', required: true, description: 'ID of the session to update' },
-        { name: 'title', type: 'string', required: false, description: 'New title for the session (optional)' },
-        { name: 'description', type: 'string', required: false, description: 'New description for the session (optional)' }
-      ],
-      returns: 'Updated session details with new title/description and metadata'
-    },
-    'session_details': {
-      description: 'Get detailed session information including title, description, and comprehensive metadata',
-      parameters: [
-        { name: 'sessionId', type: 'string', required: true, description: 'ID of the session to get details for' }
-      ],
-      returns: 'Complete session information including title, description, timestamps, project, and activity metrics'
-    },
+    // Session Management - DELETED (2025-10-24)
+    // 5 session tools removed - sessions auto-manage via SessionTracker service
 
     // Add more tool parameters as needed...
     // (Truncating for brevity in this implementation)
@@ -498,68 +456,10 @@ export class NavigationHandler {
   projectId: "my-project-id"
 })`
       }
-    ],
-    
-    // Session Management
-    'session_assign': [
-      {
-        title: 'Assign session to current project',
-        example: `session_assign({
-  projectName: "my-web-app"
-})`
-      }
-    ],
-    'session_status': [
-      {
-        title: 'Get current session information',
-        example: `session_status()`
-      }
-    ],
-    'session_new': [
-      {
-        title: 'Create new session with title',
-        example: `session_new({
-  title: "Feature Development Sprint",
-  projectName: "aidis-bootstrap"
-})`
-      },
-      {
-        title: 'Create simple new session',
-        example: `session_new()`
-      }
-    ],
-    'session_update': [
-      {
-        title: 'Update session title only',
-        example: `session_update({
-  sessionId: "67b60ed0-1234-5678-9abc-def012345678",
-  title: "Authentication Module Development"
-})`
-      },
-      {
-        title: 'Update both title and description',
-        example: `session_update({
-  sessionId: "67b60ed0-1234-5678-9abc-def012345678",
-  title: "User Authentication Implementation",
-  description: "Implementing JWT-based authentication with login, logout, and session management. Includes password hashing and token validation."
-})`
-      },
-      {
-        title: 'Update description only',
-        example: `session_update({
-  sessionId: "67b60ed0-1234-5678-9abc-def012345678",
-  description: "Working on database optimization and query performance improvements for the user management system."
-})`
-      }
-    ],
-    'session_details': [
-      {
-        title: 'Get session details with metadata',
-        example: `session_details({
-  sessionId: "67b60ed0-1234-5678-9abc-def012345678"
-})`
-      }
     ]
+
+    // Session Management - DELETED (2025-10-24)
+    // 5 session tools removed - sessions auto-manage via SessionTracker service
   };
 
   /**

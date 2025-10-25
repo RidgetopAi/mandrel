@@ -326,29 +326,9 @@ export const smartSearchSchemas = {
   })
 };
 
-// Session Management Schemas
-export const sessionSchemas = {
-  assign: z.object({
-    projectName: z.string().min(1).max(255)
-  }),
-
-  status: z.object({}),
-
-  new: z.object({
-    title: z.string().max(500).optional(),
-    projectName: z.string().min(1).max(255).optional()
-  }),
-
-  update: z.object({
-    title: z.string().max(500).optional(),
-    description: z.string().max(2000).optional(),
-    sessionId: z.string().optional()
-  }),
-
-  details: z.object({
-    sessionId: z.string().optional()
-  })
-};
+// Session Management Schemas - DELETED (2025-10-24)
+// Session MCP tools removed - sessions now auto-manage via SessionTracker service
+// REST API endpoints at /api/v2/sessions/* handle UI analytics needs
 
 // Main validation schema registry
 export const validationSchemas = {
@@ -428,14 +408,10 @@ export const validationSchemas = {
   }),
   git_correlate_session: z.object({
     sessionId: z.string().optional()
-  }),
+  })
 
-  // Session Management
-  session_assign: sessionSchemas.assign,
-  session_status: sessionSchemas.status,
-  session_new: sessionSchemas.new,
-  session_update: sessionSchemas.update,
-  session_details: sessionSchemas.details
+  // Session Management - DELETED (2025-10-24)
+  // 5 session tools removed - sessions auto-manage via SessionTracker service
 };
 
 /**
