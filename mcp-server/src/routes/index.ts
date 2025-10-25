@@ -15,11 +15,10 @@ import { decisionsRoutes } from './decisions.routes.js';
 import { tasksRoutes } from './tasks.routes.js';
 import { sessionsRoutes } from './sessions.routes.js';
 import { searchRoutes } from './search.routes.js';
-import { patternsRoutes } from './patterns.routes.js';
 
 /**
  * Execute MCP Tool via Route Dispatcher
- * Central entry point for all 38 active MCP tools
+ * Central entry point for all 36 active MCP tools
  */
 export async function routeExecutor(toolName: string, args: any): Promise<McpResponse> {
   try {
@@ -111,12 +110,6 @@ export async function routeExecutor(toolName: string, args: any): Promise<McpRes
         return await searchRoutes.handleRecommendations(args);
       case 'project_insights':
         return await searchRoutes.handleProjectInsights(args);
-
-      // Pattern Detection (2 tools)
-      case 'pattern_analyze':
-        return await patternsRoutes.handleAnalyze(args);
-      case 'pattern_insights':
-        return await patternsRoutes.handleInsights(args);
 
       // Unknown tool
       default:

@@ -408,35 +408,6 @@ export const validationSchemas = {
   complexity_insights: complexitySchemas.insights,
   complexity_manage: complexitySchemas.manage,
 
-  // TT009 Consolidated Tools - Metrics
-  metrics_collect: z.object({
-    scope: z.enum(['project', 'core', 'patterns', 'productivity']),
-    target: z.string().optional(),
-    options: z.record(z.any()).optional()
-  }),
-  metrics_analyze: z.object({
-    operation: z.enum(['dashboard', 'trends', 'correlations', 'executive_summary', 'aggregation']),
-    scope: z.string().optional(),
-    options: z.record(z.any()).optional()
-  }),
-  metrics_control: z.object({
-    operation: z.enum(['collection_management', 'alerts', 'performance', 'export']),
-    action: z.string().optional(),
-    options: z.record(z.any()).optional()
-  }),
-
-  // TT009 Consolidated Tools - Patterns
-  pattern_analyze: z.object({
-    target: z.enum(['project', 'session', 'commit', 'git', 'service']),
-    action: z.enum(['start', 'stop', 'status', 'analyze', 'detect', 'track', 'discovered', 'performance']),
-    options: z.record(z.any()).optional()
-  }),
-  pattern_insights: z.object({
-    operation: z.enum(['insights', 'correlations', 'recommendations', 'alerts']),
-    scope: z.string().optional(),
-    options: z.record(z.any()).optional()
-  }),
-
   // Code Analysis
   code_analyze: codeSchemas.analyze,
   code_components: codeSchemas.components,
@@ -464,31 +435,7 @@ export const validationSchemas = {
   session_status: sessionSchemas.status,
   session_new: sessionSchemas.new,
   session_update: sessionSchemas.update,
-  session_details: sessionSchemas.details,
-  
-  // Pattern Detection
-  pattern_detection_start: z.object({}),
-  pattern_detection_stop: z.object({}),
-  pattern_detect_commits: z.object({
-    projectId: z.string().uuid().optional(),
-    sessionId: z.string().uuid().optional(),
-    commitShas: z.array(z.string()).optional()
-  }),
-  pattern_get_session_insights: z.object({
-    sessionId: z.string().uuid().optional()
-  }),
-  pattern_analyze_project: z.object({
-    projectId: z.string().uuid().optional()
-  }),
-  pattern_get_alerts: z.object({
-    severity: z.enum(['critical', 'high', 'medium', 'low']).optional(),
-    limit: z.number().int().min(1).max(50).default(10)
-  }),
-  pattern_detection_status: z.object({}),
-  pattern_track_git_activity: z.object({
-    projectId: z.string().uuid().optional(),
-    filePaths: z.array(z.string()).optional()
-  })
+  session_details: sessionSchemas.details
 };
 
 /**

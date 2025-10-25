@@ -25,8 +25,10 @@ export interface ToolDefinition {
 }
 
 /**
- * Complete array of all 41 AIDIS tool definitions
- * (8 session analytics tools migrated to REST API on 2025-10-05)
+ * Complete array of all 36 AIDIS tool definitions
+ * Changes:
+ * - 8 session analytics tools migrated to REST API (2025-10-05)
+ * - 2 pattern detection tools removed (2025-10-24) - deprecated stub implementations
  */
 export const AIDIS_TOOL_DEFINITIONS: ToolDefinition[] = [
           {
@@ -886,122 +888,11 @@ export const AIDIS_TOOL_DEFINITIONS: ToolDefinition[] = [
         // - sessions_compare → GET /api/v2/sessions/compare
         // See: src/api/controllers/sessionAnalyticsController.ts
 
-        // Git Correlation Tools
+        // Pattern Detection Tools - REMOVED (2025-10-24)
+        // TC013/TC017: Pattern detection system deprecated and removed
+        // Reason: Most functionality stubbed out, only 1 of 4 pattern types worked
+        // Database tables dropped via migration 033
 
-        // TC013/TC017: Deprecated pattern tools removed - TT009-3 Complete
-        // 17 individual pattern tools consolidated into:
-        //   - pattern_analyze (detection/analysis/tracking operations)
-        //   - pattern_insights (insights/correlations/recommendations/alerts)
-
-        // TT009-2: Phase 2 Metrics Consolidation Tools
-        {
-          name: 'metrics_collect',
-          description: 'Unified metrics collection tool - replaces metrics_collect_project, metrics_get_core_metrics, metrics_get_pattern_intelligence, and metrics_get_productivity_health',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              scope: {
-                type: 'string',
-                description: 'Collection scope: project, core, patterns, productivity'
-              },
-              target: {
-                type: 'string',
-                description: 'Target identifier (project ID)'
-              },
-              options: {
-                type: 'object',
-                description: 'Scope-specific options: trigger, metricTypes, intelligenceTypes, productivityTypes, timeframe (1d/7d/30d/90d), developerEmail'
-              }
-            },
-            required: ['scope', 'target'],
-            additionalProperties: true
-          }
-        },
-        {
-          name: 'metrics_analyze',
-          description: 'Unified metrics analysis tool - replaces metrics_get_dashboard, metrics_get_trends, metrics_aggregate_projects, metrics_aggregate_timeline, metrics_calculate_correlations, and metrics_get_executive_summary',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              analysis: {
-                type: 'string',
-                description: 'Analysis type: dashboard, trends, correlations, executive, aggregate_projects, aggregate_timeline'
-              },
-              options: {
-                type: 'object',
-                description: 'Options: projectId, projectIds, timeframe (1d/7d/30d/90d/all or date range), metricTypes, includeAlerts, includeTrends, includeForecast, correlationType (pearson/spearman/kendall), metric1, metric2, aggregationType (sum/average/median/percentile/count/min/max), period (daily/weekly/monthly/quarterly), granularity (hour/day/week/month)'
-              }
-            },
-            required: ['analysis'],
-            additionalProperties: true
-          }
-        },
-        {
-          name: 'metrics_control',
-          description: 'TT009-2-3: Unified metrics control tool - collection management, alerts, performance, export',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              operation: {
-                type: 'string',
-                description: 'Operation: start, stop, alerts, acknowledge, resolve, performance, export'
-              },
-              options: {
-                type: 'object',
-                description: 'Options: projectId, sessionId, intervalMs, autoCollectGit, gracefulShutdown, collectFinalMetrics, severity, status, limit, includeResolved, alertId, acknowledgedBy, resolvedBy, notes, resolution, resolutionNotes, timeframe, includeSystemMetrics, includeQueueMetrics, format (json/csv), dateRange, metricTypes, includeMetadata, compressionLevel (none/low/medium/high)'
-              }
-            },
-            required: ['operation'],
-            additionalProperties: true
-          }
-        },
-        {
-          name: 'pattern_analyze',
-          description: 'TT009-3-1: Unified pattern analysis tool - detection, analysis, tracking operations',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              target: {
-                type: 'string',
-                description: 'Target type: project, session, commit, git, service'
-              },
-              action: {
-                type: 'string',
-                description: 'Action: start, stop, status, analyze, detect, track, discovered, performance'
-              },
-              options: {
-                type: 'object',
-                description: 'Options: enableRealTime, enableBatchProcessing, detectionTimeoutMs, updateIntervalMs, projectId, includeGitPatterns, includeSessionPatterns, includeHistoricalData, analysisDepth (basic/comprehensive/deep), patternTypes, sessionId, includeContextPatterns, includeTimePatterns, includeActivityPatterns, confidenceThreshold, commitSha, commitShas, includeImpactAnalysis, includeFilePatterns, includeChangePatterns, maxCommits, enableRealTimeTracking, trackingIntervalMs, minConfidence, includeMetadata, limitResults'
-              }
-            },
-            required: ['target', 'action'],
-            additionalProperties: true
-          }
-        },
-        {
-          name: 'pattern_insights',
-          description: 'TT009-3-2: Unified pattern insights tool - insights, correlations, recommendations, alerts',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              type: {
-                type: 'string',
-                description: 'Insight type: alerts, session, insights, trends, correlations, anomalies, recommendations'
-              },
-              options: {
-                type: 'object',
-                description: 'Options: projectId, sessionId, severity, status, limit, includeResolved, includeContextPatterns, includeActivityPatterns, includeTimePatterns, minConfidence, patternTypes, riskLevels, maxAge, includeRecommendations, limitResults, timeframe, includeForecast, forecastPeriods, granularity (hourly/daily/weekly), smoothing (none/moving_average/exponential), patternType1, patternType2, correlationType (pearson/spearman/kendall), includeLagAnalysis, maxLag, detectionMethod (statistical/isolation_forest/one_class_svm), sensitivityLevel (low/medium/high), includeContext, contextType (development/quality/performance/security), includeActionItems, includePrioritization, includeRiskAssessment, maxRecommendations'
-              }
-            },
-            required: ['type'],
-            additionalProperties: true
-          }
-        },
-
-        // TC014: Deprecated metrics tools removed - TT009-2 Complete
-        // 17 individual metrics tools consolidated into 3 unified tools:
-        //   - metrics_collect, metrics_analyze, metrics_control
-
-        // Code Complexity Tools - TC015: Multi-dimensional complexity tracking system
+        // TC014: Metrics tools - Never implemented, ghost code removed (2025-10-24)
 ];
 
