@@ -18,6 +18,11 @@ export class NavigationHandler {
       { name: 'aidis_ping', description: 'Test connectivity to AIDIS server' },
       { name: 'aidis_status', description: 'Get server status and health information' }
     ],
+    'Navigation': [
+      { name: 'aidis_help', description: 'Display categorized list of all AIDIS tools' },
+      { name: 'aidis_explain', description: 'Get detailed help for a specific AIDIS tool' },
+      { name: 'aidis_examples', description: 'Get usage examples and patterns for a specific AIDIS tool' }
+    ],
     'Context Management': [
       { name: 'context_store', description: 'Store development context with automatic embedding' },
       { name: 'context_search', description: 'Search stored contexts using semantic similarity' },
@@ -59,77 +64,9 @@ export class NavigationHandler {
       { name: 'task_bulk_update', description: 'Update multiple tasks atomically with the same changes' },
       { name: 'task_progress_summary', description: 'Get task progress summary with grouping and completion percentages' }
     ],
-    'Code Analysis': [
-      { name: 'code_analyze', description: 'Analyze code file structure and dependencies' },
-      { name: 'code_components', description: 'List code components (functions, classes, etc.)' },
-      { name: 'code_dependencies', description: 'Get dependencies for a specific component' },
-      { name: 'code_impact', description: 'Analyze the impact of changing a component' },
-      { name: 'code_stats', description: 'Get code analysis statistics for a project' }
-    ],
     'Smart Search & AI': [
       { name: 'smart_search', description: 'Intelligent search across all project data' },
       { name: 'get_recommendations', description: 'Get AI-powered recommendations for development' }
-    ],
-    'Code Complexity': [
-      { name: 'complexity_analyze', description: 'Unified complexity analysis - file analysis, commit analysis, and detailed metrics' },
-      { name: 'complexity_insights', description: 'Unified complexity insights - dashboard, hotspots, trends, technical debt, and refactoring opportunities' },
-      { name: 'complexity_manage', description: 'Unified complexity management - tracking service, alerts, thresholds, and performance monitoring' }
-    ],
-    'Development Metrics': [
-      { name: 'metrics_collect_project', description: 'Trigger comprehensive metrics collection for a project' },
-      { name: 'metrics_get_dashboard', description: 'Get comprehensive project metrics dashboard data' },
-      { name: 'metrics_get_core_metrics', description: 'Get detailed core development metrics (velocity, quality, debt)' },
-      { name: 'metrics_get_pattern_intelligence', description: 'Get pattern-based intelligence metrics' },
-      { name: 'metrics_get_productivity_health', description: 'Get developer productivity and health metrics' },
-      { name: 'metrics_get_alerts', description: 'Get active metrics alerts and notifications' },
-      { name: 'metrics_acknowledge_alert', description: 'Acknowledge a metrics alert' },
-      { name: 'metrics_resolve_alert', description: 'Mark a metrics alert as resolved' },
-      { name: 'metrics_get_trends', description: 'Get metrics trends and forecasting data' },
-      { name: 'metrics_get_performance', description: 'Get metrics collection system performance statistics' },
-      { name: 'metrics_start_collection', description: 'Start the metrics collection service' },
-      { name: 'metrics_stop_collection', description: 'Stop the metrics collection service' }
-    ],
-    'Metrics Aggregation': [
-      { name: 'metrics_aggregate_projects', description: 'Aggregate metrics across multiple projects with various aggregation types' },
-      { name: 'metrics_aggregate_timeline', description: 'Aggregate metrics over time with specified granularity and smoothing' },
-      { name: 'metrics_calculate_correlations', description: 'Calculate correlations and relationships between metrics' },
-      { name: 'metrics_get_executive_summary', description: 'Generate comprehensive executive summary with key insights' },
-      { name: 'metrics_export_data', description: 'Export aggregated metrics data in various formats (CSV, JSON, Excel)' }
-    ],
-    'Pattern Detection': [
-      { name: 'pattern_detection_start', description: 'Start the real-time pattern detection service' },
-      { name: 'pattern_detection_stop', description: 'Stop the pattern detection service and get final metrics' },
-      { name: 'pattern_detection_status', description: 'Get pattern detection service status and performance metrics' },
-      { name: 'pattern_detect_commits', description: 'Detect patterns in specific commits or recent commits' },
-      { name: 'pattern_track_git_activity', description: 'Track git activity with automatic pattern detection' },
-      { name: 'pattern_get_alerts', description: 'Get real-time pattern alerts for high-risk discoveries' },
-      { name: 'pattern_get_session_insights', description: 'Get pattern insights for current session' }
-    ],
-    'Pattern Analysis': [
-      { name: 'pattern_analyze_project', description: 'Get comprehensive pattern analysis for project' },
-      { name: 'pattern_analyze_session', description: 'Analyze patterns for specific session context' },
-      { name: 'pattern_analyze_commit', description: 'Analyze patterns for specific git commits with impact analysis' },
-      { name: 'pattern_get_discovered', description: 'Get discovered patterns with advanced filtering' },
-      { name: 'pattern_get_insights', description: 'Get actionable pattern insights with advanced filtering' },
-      { name: 'pattern_get_trends', description: 'Analyze pattern trends over time with forecasting' },
-      { name: 'pattern_get_correlations', description: 'Find correlations between different pattern types' },
-      { name: 'pattern_get_anomalies', description: 'Detect pattern anomalies and outliers with statistical analysis' },
-      { name: 'pattern_get_recommendations', description: 'Generate AI-driven pattern-based recommendations' },
-      { name: 'pattern_get_performance', description: 'Get pattern detection system performance metrics' }
-    ],
-    'Outcome Tracking': [
-      { name: 'outcome_record', description: 'Record a decision outcome measurement with evidence and scoring' },
-      { name: 'outcome_track_metric', description: 'Track metrics over time for a decision to monitor progress' },
-      { name: 'outcome_analyze_impact', description: 'Analyze and record impact relationships between decisions' },
-      { name: 'outcome_conduct_retrospective', description: 'Conduct a structured retrospective on a decision' },
-      { name: 'outcome_get_insights', description: 'Get learning insights and patterns from decision outcomes' },
-      { name: 'outcome_get_analytics', description: 'Get comprehensive decision analytics, trends, and reporting' },
-      { name: 'outcome_predict_success', description: 'Predict decision success probability using historical patterns' }
-    ],
-    'Git Integration': [
-      { name: 'git_session_commits', description: 'Get all git commits linked to a session with correlation details' },
-      { name: 'git_commit_sessions', description: 'Get all sessions that contributed to a specific git commit' },
-      { name: 'git_correlate_session', description: 'Manually trigger git correlation for current or specified session' }
     ]
   };
 
@@ -629,8 +566,12 @@ export class NavigationHandler {
    * Generate categorized help listing of all AIDIS tools
    */
   async getHelp(): Promise<any> {
+    // Dynamically count total tools across all categories
+    const totalTools = Object.values(this.toolCatalog).reduce((sum, tools) => sum + tools.length, 0);
+    const totalCategories = Object.keys(this.toolCatalog).length;
+
     let helpText = '🚀 **AIDIS - AI Development Intelligence System**\n\n';
-    helpText += '**49 Tools Available Across 12 Categories:**\n\n';
+    helpText += `**${totalTools} Tools Available Across ${totalCategories} Categories:**\n\n`;
 
     for (const [category, tools] of Object.entries(this.toolCatalog)) {
       helpText += `## ${category} (${tools.length} tools)\n`;
