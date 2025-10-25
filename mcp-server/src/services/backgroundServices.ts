@@ -6,7 +6,6 @@
 import { logger } from '../utils/logger.js';
 import { getQueueManager, shutdownQueue } from './queueManager.js';
 import { startGitTracking, stopGitTracking } from './gitTracker.js';
-import { startPatternDetection, stopPatternDetection } from './patternDetector.js';
 
 // Check if background services should be skipped (for testing)
 const SKIP_BACKGROUND_SERVICES = process.env.AIDIS_SKIP_BACKGROUND === 'true';
@@ -53,21 +52,6 @@ export class BackgroundServices {
       } catch (error) {
         console.warn('⚠️  Failed to initialize git tracking:', error);
         console.warn('   Git correlation will be manual only');
-      }
-
-      // Initialize pattern detection service
-      console.log('🔍 Starting pattern detection service...');
-      try {
-        await startPatternDetection({
-          enableRealTimeDetection: true,
-          enableBatchProcessing: true,
-          detectionTimeoutMs: 100, // Sub-100ms target
-          patternUpdateIntervalMs: 5000 // 5 seconds
-        });
-        console.log('✅ Pattern detection service initialized successfully');
-      } catch (error) {
-        console.warn('⚠️  Failed to initialize pattern detection:', error);
-        console.warn('   Pattern detection will be manual only');
       }
 
       // Initialize session timeout service (2-hour inactivity timeout)
@@ -117,15 +101,6 @@ export class BackgroundServices {
         console.log('✅ Git tracking stopped gracefully');
       } catch (error) {
         console.warn('⚠️  Failed to stop git tracking:', error);
-      }
-
-      // Stop pattern detection service
-      console.log('🔍 Stopping pattern detection service...');
-      try {
-        await stopPatternDetection();
-        console.log('✅ Pattern detection service stopped gracefully');
-      } catch (error) {
-        console.warn('⚠️  Failed to stop pattern detection:', error);
       }
 
       // Stop session timeout service
