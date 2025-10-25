@@ -20,7 +20,6 @@ const Dashboard = lazy(() => import('./pages/Dashboard'));
 const Contexts = lazy(() => import('./pages/Contexts'));
 const Tasks = lazy(() => import('./pages/Tasks'));
 const Decisions = lazy(() => import('./pages/Decisions'));
-const Naming = lazy(() => import('./pages/Naming'));
 const Embedding = lazy(() => import('./pages/Embedding'));
 const Projects = lazy(() => import('./pages/Projects'));
 const ProjectDetail = lazy(() => import('./pages/ProjectDetail'));
@@ -102,7 +101,6 @@ const App: React.FC = () => {
                       <Route path="contexts" element={<SectionErrorBoundary section="Contexts"><Contexts /></SectionErrorBoundary>} />
                       <Route path="tasks" element={<SectionErrorBoundary section="Tasks"><Tasks /></SectionErrorBoundary>} />
                       <Route path="decisions" element={<SectionErrorBoundary section="Decisions"><Decisions /></SectionErrorBoundary>} />
-                      <Route path="naming" element={<SectionErrorBoundary section="Naming"><Naming /></SectionErrorBoundary>} />
                       <Route path="embedding" element={<SectionErrorBoundary section="Embedding"><Embedding /></SectionErrorBoundary>} />
                       <Route path="projects" element={<SectionErrorBoundary section="Projects"><Projects /></SectionErrorBoundary>} />
                       <Route path="projects/:id" element={<SectionErrorBoundary section="Project Detail"><ProjectDetail /></SectionErrorBoundary>} />

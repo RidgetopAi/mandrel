@@ -38,7 +38,6 @@ import { initializeDatabase, closeDatabase } from './config/database.js';
 import { AIDIS_TOOL_DEFINITIONS } from './config/toolDefinitions.js';
 import { contextHandler } from './handlers/context.js';
 import { projectHandler } from './handlers/project.js';
-import { namingHandler } from './handlers/naming.js';
 import { decisionsHandler } from './handlers/decisions.js';
 // import { tasksHandler } from './handlers/tasks.js';
 import { codeAnalysisHandler } from './handlers/codeAnalysis.js';
@@ -273,8 +272,7 @@ class AIDISCoreServer {
         // Filter out disabled tools (Token Optimization 2025-10-01)
         const DISABLED_TOOLS = [
           'code_analyze', 'code_components', 'code_dependencies', 'code_impact', 'code_stats',
-          'git_session_commits', 'git_commit_sessions', 'git_correlate_session',
-          'complexity_analyze', 'complexity_insights', 'complexity_manage'
+          'git_session_commits', 'git_commit_sessions', 'git_correlate_session'
         ];
         const activeTools = AIDIS_TOOL_DEFINITIONS.filter(tool => !DISABLED_TOOLS.includes(tool.name));
 
@@ -305,8 +303,7 @@ class AIDISCoreServer {
         // Filter out disabled tools (Token Optimization 2025-10-01)
         const DISABLED_TOOLS = [
           'code_analyze', 'code_components', 'code_dependencies', 'code_impact', 'code_stats',
-          'git_session_commits', 'git_commit_sessions', 'git_correlate_session',
-          'complexity_analyze', 'complexity_insights', 'complexity_manage'
+          'git_session_commits', 'git_commit_sessions', 'git_correlate_session'
         ];
         const activeTools = AIDIS_TOOL_DEFINITIONS.filter(tool => !DISABLED_TOOLS.includes(tool.name));
 
@@ -440,18 +437,6 @@ class AIDISCoreServer {
         
       case 'project_info':
         return await this.handleProjectInfo(validatedArgs as any);
-
-      case 'naming_register':
-        return await this.handleNamingRegister(validatedArgs as any);
-        
-      case 'naming_check':
-        return await this.handleNamingCheck(validatedArgs as any);
-        
-      case 'naming_suggest':
-        return await this.handleNamingSuggest(validatedArgs as any);
-        
-      case 'naming_stats':
-        return await this.handleNamingStats(validatedArgs as any);
 
       case 'decision_record':
         return await this.handleDecisionRecord(validatedArgs as any);
@@ -708,37 +693,6 @@ class AIDISCoreServer {
     return projectHandler.getProject(
       args.projectId || await projectHandler.getCurrentProjectId('default-session')
     );
-  }
-
-  // Naming handlers
-  private async handleNamingRegister(args: any) {
-    return namingHandler.registerName({
-      canonicalName: args.name,
-      entityType: args.type,
-      description: args.context,
-      projectId: args.projectId
-    });
-  }
-
-  private async handleNamingCheck(args: any) {
-    return namingHandler.checkNameConflicts({
-      projectId: args.projectId,
-      entityType: args.type,
-      name: args.name, // Changed from canonicalName to name
-      alternateNames: args.alternateNames
-    } as any);
-  }
-
-  private async handleNamingSuggest(args: any) {
-    return namingHandler.suggestNames({
-      entityType: args.type,
-      description: args.context,
-      projectId: args.projectId
-    });
-  }
-
-  private async handleNamingStats(args: any) {
-    return namingHandler.getNamingStats(args.sessionId || 'default-session');
   }
 
   // Decision handlers
@@ -1152,7 +1106,7 @@ class AIDISCoreServer {
         {
           type: 'text',
           text: `🔍 Smart Search Results (${results.length})\n\n${resultsList}\n\n` +
-                `🎯 Searched: [${args.includeTypes?.join(', ') || 'context, component, decision, naming'}]\n` +
+                `🎯 Searched: [${args.includeTypes?.join(', ') || 'context, component, decision'}]\n` +
                 `💡 Refine with different includeTypes or broader query`
         },
       ],
@@ -1300,11 +1254,10 @@ class AIDISCoreServer {
       console.log(`   🔄 Retry Logic: ${MAX_RETRIES} attempts with exponential backoff`);
       console.log(`   🐛 Debug: ${process.env.AIDIS_DEBUG || 'DISABLED'}`);
       
-      console.log('🎯 Available tools: 41 total');
+      console.log('🎯 Available tools: 27 total');
       console.log('   📊 System: aidis_ping, aidis_status, aidis_help, aidis_explain, aidis_examples');
       console.log('   📝 Context: context_store, context_search, context_get_recent, context_stats');
       console.log('   📋 Projects: project_list, project_create, project_switch, project_current, project_info');
-      console.log('   🏷️  Naming: naming_register, naming_check, naming_suggest, naming_stats');
       console.log('   📋 Decisions: decision_record, decision_search, decision_update, decision_stats');
       console.log('   🤖 Agents: agent_register, agent_list, agent_status, agent_join, agent_leave, agent_sessions');
       console.log('   📋 Tasks: task_create, task_list, task_update, task_details, agent_message, agent_messages');
@@ -1315,7 +1268,6 @@ class AIDISCoreServer {
       console.log('🧠 AI Context Management: ONLINE');
       console.log('🔍 Semantic Search: READY');
       console.log('📋 Multi-Project Support: READY');
-      console.log('🏷️  Naming Registry: READY');
       console.log('📋 Decision Tracking: READY');
       console.log('🤖 Multi-Agent Coordination: READY');
       console.log('📦 Code Analysis: READY');

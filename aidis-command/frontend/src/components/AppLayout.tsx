@@ -66,11 +66,6 @@ const AppLayout: React.FC = () => {
       label: 'Decisions',
     },
     {
-      key: '/naming',
-      icon: <TagOutlined />,
-      label: 'Naming Registry',
-    },
-    {
       key: '/embedding',
       icon: <DotChartOutlined />,
       label: 'Embedding Analytics',
