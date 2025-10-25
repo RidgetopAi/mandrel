@@ -17,8 +17,8 @@ export interface PasswordUpdateData {
 export class UserService {
   static async getAllUsers(): Promise<Omit<User, 'password_hash'>[]> {
     const result = await pool.query(`
-      SELECT id, username, email, role, is_active, created_at, updated_at, last_login 
-      FROM admin_users 
+      SELECT id, username, email, role, theme, is_active, created_at, updated_at, last_login
+      FROM admin_users
       ORDER BY created_at DESC
     `);
     return result.rows;
@@ -26,11 +26,11 @@ export class UserService {
 
   static async getUserById(id: string): Promise<Omit<User, 'password_hash'> | null> {
     const result = await pool.query(`
-      SELECT id, username, email, role, is_active, created_at, updated_at, last_login 
-      FROM admin_users 
+      SELECT id, username, email, role, theme, is_active, created_at, updated_at, last_login
+      FROM admin_users
       WHERE id = $1
     `, [id]);
-    
+
     return result.rows[0] || null;
   }
 
@@ -71,10 +71,10 @@ export class UserService {
     values.push(id);
 
     const query = `
-      UPDATE admin_users 
-      SET ${fields.join(', ')} 
+      UPDATE admin_users
+      SET ${fields.join(', ')}
       WHERE id = $${paramIndex}
-      RETURNING id, username, email, role, is_active, created_at, updated_at, last_login
+      RETURNING id, username, email, role, theme, is_active, created_at, updated_at, last_login
     `;
 
     const result = await pool.query(query, values);

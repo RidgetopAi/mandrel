@@ -66,14 +66,14 @@ export class AuthService {
 
   static async createUser(userData: RegisterRequest): Promise<User> {
     const hashedPassword = await this.hashPassword(userData.password);
-    
+
     const result = await pool.query(
-      `INSERT INTO admin_users (username, email, password_hash, role) 
-       VALUES ($1, $2, $3, $4) 
-       RETURNING id, username, email, role, is_active, created_at, updated_at, last_login`,
+      `INSERT INTO admin_users (username, email, password_hash, role)
+       VALUES ($1, $2, $3, $4)
+       RETURNING id, username, email, role, theme, is_active, created_at, updated_at, last_login`,
       [userData.username, userData.email, hashedPassword, userData.role || 'admin']
     );
-    
+
     return result.rows[0];
   }
 
