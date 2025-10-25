@@ -205,12 +205,17 @@ const AppLayout: React.FC = () => {
             justifyContent: 'space-between',
           }}
         >
-          <Space>
+          <Space size="middle" align="center">
             <Button
               type="text"
               icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
               onClick={() => setCollapsed(!collapsed)}
               style={{ fontSize: '16px', width: 64, height: 64 }}
+            />
+            <img
+              src="/assets/ridgetopai-logo.jpg"
+              alt="RidgetopAI Logo"
+              style={{ height: '56px', objectFit: 'contain', display: 'block' }}
             />
           </Space>
 
@@ -220,7 +225,7 @@ const AppLayout: React.FC = () => {
               onProjectChange={(projectId, project) => setCurrentProject(project)}
               size="middle"
             />
-            
+
             <Badge dot={false}>
               <Dropdown
                 menu={{ items: userMenuItems }}

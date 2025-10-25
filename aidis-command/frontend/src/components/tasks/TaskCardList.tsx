@@ -243,19 +243,29 @@ const TaskCardList: React.FC<TaskCardListProps> = ({
                   }}
                   onClick={() => toggleTaskExpansion(task.id)}
                   title={
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        {getStatusIcon(task.status)}
-                        <Text strong ellipsis style={{ maxWidth: 200 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, flex: 1, minWidth: 0 }}>
+                        <div style={{ marginTop: 2 }}>{getStatusIcon(task.status)}</div>
+                        <Text
+                          strong
+                          ellipsis={isExpanded ? false : true}
+                          style={{
+                            maxWidth: isExpanded ? 'none' : 200,
+                            wordBreak: isExpanded ? 'break-word' : 'normal',
+                            whiteSpace: isExpanded ? 'normal' : 'nowrap',
+                            flex: 1
+                          }}
+                        >
                           {task.title}
                         </Text>
                       </div>
                       <Tooltip title={isExpanded ? "Click to collapse details" : "Click to expand details"}>
-                        <div style={{ 
-                          padding: '4px', 
-                          borderRadius: '4px', 
+                        <div style={{
+                          padding: '4px',
+                          borderRadius: '4px',
                           backgroundColor: isExpanded ? '#e6f7ff' : '#f5f5f5',
-                          transition: 'all 0.2s ease'
+                          transition: 'all 0.2s ease',
+                          flexShrink: 0
                         }}>
                           {isExpanded ? <ShrinkOutlined style={{ color: '#1890ff' }} /> : <ExpandAltOutlined />}
                         </div>
