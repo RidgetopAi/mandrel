@@ -1,230 +1,408 @@
 # AIDIS - AI Development Intelligence System
 
-**Revolutionary persistent AI brain and development intelligence platform**
+**Persistent AI memory and development intelligence platform for complex software projects**
 
 ![Status](https://img.shields.io/badge/Status-Production%20Ready-brightgreen)
-![Version](https://img.shields.io/badge/Version-0.1.0-blue)
+![Version](https://img.shields.io/badge/Version-1.0.0-blue)
 ![License](https://img.shields.io/badge/License-MIT-green)
 
 ---
 
-## 🚀 What is AIDIS?
+## Overview
 
-AIDIS solves the fundamental problems that destroy AI development projects:
+AIDIS provides persistent memory and intelligence tools for AI development workflows. It solves the fundamental problem of context loss in AI-assisted development by maintaining a searchable knowledge base of project context, technical decisions, and task coordination across development sessions.
 
-- **❌ Context Loss** → **✅ Persistent AI Memory** (110+ contexts stored)
-- **❌ Naming Chaos** → **✅ Enforced Consistency** across entire projects  
-- **❌ Lost Decisions** → **✅ Records WHY** choices were made
-- **❌ Project Confusion** → **✅ Clean Multi-project** workflows
-- **❌ Coordination Failures** → **✅ Multi-agent Collaboration**
-- **❌ Code Blindness** → **✅ Understands Structure** & dependencies
-
----
-
-## 🎯 Core Components
-
-### **AIDIS MCP Server**
-- **47 production-ready tools** via Model Context Protocol (post-TT009 consolidation)
-- **PostgreSQL + pgvector** for semantic search
-- **Local embeddings** (zero API costs)
-- **SystemD service** with enterprise stability
-
-### **AIDIS COMMAND Dashboard** 
-- **Full-stack React/Node.js** admin interface
-- **Real-time WebSocket** updates
-- **Task management** with professional UI
-- **Context browsing** with semantic search
-- **Project management** with analytics
+**Key Capabilities:**
+- Persistent context storage with semantic search
+- Technical decision tracking and retrieval
+- Multi-project workflow management
+- Task coordination and analytics
+- Real-time collaboration infrastructure
 
 ---
 
-## 🏗️ Architecture
+## Architecture
+
+AIDIS consists of two primary components:
+
+### MCP Server
+Production-grade backend implementing the Model Context Protocol with 27 specialized tools for development intelligence.
+
+**Technology Stack:**
+- Node.js/TypeScript
+- PostgreSQL with pgvector extension
+- Local embeddings via Transformers.js (zero API costs)
+- MCP STDIO + HTTP bridge protocols
+
+### AIDIS Command Dashboard
+Web-based administration interface for managing projects, contexts, and tasks.
+
+**Technology Stack:**
+- React frontend with Ant Design
+- Express.js REST API backend
+- WebSocket real-time updates
+- JWT authentication
 
 ```
-AIDIS SYSTEM ARCHITECTURE
-├── AIDIS MCP Server (aidis_development)
-│   ├── 37 MCP Tools (context, project, naming, decisions, agents, code analysis)
-│   ├── PostgreSQL + pgvector (384D local embeddings)
-│   ├── SystemD service (enterprise stability)
-│   └── HTTP forwarding proxy (bulletproof connectivity)
+System Architecture
+├── MCP Server (Port 5001)
+│   ├── 27 MCP Tools (context, projects, decisions, tasks)
+│   ├── PostgreSQL Database (aidis_production)
+│   ├── Local embeddings (384D vectors)
+│   └── HTTP Bridge (Port 8080)
 │
-└── AIDIS COMMAND Dashboard (aidis_ui_dev)
-    ├── React Frontend (http://localhost:3001)
-    ├── Express Backend (http://localhost:5000)  
-    ├── WebSocket real-time updates
-    └── Professional task management UI
+└── AIDIS Command (Ports 3000/5000)
+    ├── React Frontend
+    ├── Express Backend
+    └── WebSocket Server
 ```
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
-- **Node.js** 18+ and npm
-- **PostgreSQL** 16 with pgvector extension
-- **Docker** (for database container)
+
+- Node.js 18+
+- PostgreSQL 16 with pgvector extension
+- Docker (optional, for database)
 
 ### Installation
 
 ```bash
-# Clone the repository
-git clone git@github.com:YourUsername/aidis.git
+# Clone repository
+git clone https://github.com/RidgetopAi/aidis.git
 cd aidis
 
-# Start database
-docker run -d --name fb_postgres \
-  -e POSTGRES_USER=usern_name \
-  -e POSTGRES_PASSWORD=user_pw \
-  -e POSTGRES_DB=aidis_development \
+# Start PostgreSQL (using Docker)
+docker run -d --name aidis-postgres \
+  -e POSTGRES_USER=ridgetop \
+  -e POSTGRES_PASSWORD=your_password \
+  -e POSTGRES_DB=aidis_production \
   -p 5432:5432 \
-  postgres:16
+  ankane/pgvector
 
-# Install MCP server dependencies  
-cd mcp-server && npm install
+# Install MCP server dependencies
+cd mcp-server
+npm install
 
 # Run database migrations
 npx tsx scripts/migrate.ts
 
-# Start AIDIS MCP server
-npx tsx src/server.ts
+# Start MCP server
+./start-aidis.sh
 
-# In new terminal - Start AIDIS COMMAND
+# Install AIDIS Command (new terminal)
 cd ../aidis-command
-
-# Install dependencies
 npm run install:all
 
 # Start backend
 cd backend && npm run dev
 
-# In new terminal - Start frontend  
-cd frontend && PORT=3001 npm start
+# Start frontend (new terminal)
+cd frontend && npm start
 ```
 
 ### Access
-- **AIDIS COMMAND UI**: http://localhost:3001
-- **Login**: admin / admin123!
+
+- **AIDIS Command UI**: http://localhost:3000
+- **Default Login**: admin / admin123!
+- **MCP Server**: localhost:5001 (STDIO) / localhost:8080 (HTTP Bridge)
 
 ---
 
-## 🛠️ Development Commands
+## Features
 
-### AIDIS MCP Server
+### Context Management
+Store and retrieve development context with semantic similarity search. Maintain project knowledge across sessions.
+
+- Automatic embedding generation
+- Semantic search with relevance scoring
+- Type categorization (code, decision, error, discussion, etc.)
+- Tag-based filtering
+- Project-scoped isolation
+
+### Technical Decision Tracking
+Record architectural and implementation decisions with full context, alternatives considered, and outcomes.
+
+- Decision type classification
+- Impact level tracking
+- Alternative comparison
+- Outcome recording
+- Component mapping
+
+### Project Management
+Multi-project workflows with seamless switching and project-specific contexts.
+
+- Project creation and switching
+- Default project configuration
+- Project-scoped data isolation
+- Statistics and insights
+- Git repository integration
+
+### Task Coordination
+Professional task management with real-time updates and analytics.
+
+- Status tracking (todo, in progress, blocked, completed)
+- Priority levels and assignments
+- Dependency management
+- Progress analytics
+- WebSocket live updates
+
+### Session Analytics
+Track development sessions with productivity metrics and activity timelines.
+
+- Session duration and activity tracking
+- File modification history
+- Productivity scoring
+- Session comparison
+- Activity timeline
+
+---
+
+## MCP Tools
+
+AIDIS provides 27 specialized tools via the Model Context Protocol:
+
+**Navigation & Help** (5 tools)
+- System health monitoring
+- Tool discovery and documentation
+- Usage examples
+
+**Context Operations** (4 tools)
+- Store, search, and retrieve context
+- Recent context access
+- Statistics and analytics
+
+**Project Management** (6 tools)
+- Create, list, and switch projects
+- Project information and insights
+- Current project tracking
+
+**Decision Tracking** (4 tools)
+- Record decisions with alternatives
+- Search and filter decisions
+- Update outcomes
+- Decision statistics
+
+**Task Management** (6 tools)
+- Create and update tasks
+- Bulk operations
+- Progress tracking
+- Task details and filtering
+
+**Smart Search** (2 tools)
+- Cross-project intelligent search
+- AI-powered recommendations
+
+For detailed tool documentation, use the `aidis_help` and `aidis_explain` tools.
+
+---
+
+## Development
+
+### MCP Server Commands
+
 ```bash
 cd mcp-server
-npm install                    # Install dependencies
-npx tsx scripts/migrate.ts     # Run database migrations  
-npx tsx src/server.ts          # Start AIDIS MCP server
-npx tsx test-complete-aidis.ts # Test all systems
+
+# Start server
+npx tsx src/server.ts
+
+# Run migrations
+npx tsx scripts/migrate.ts
+
+# Production scripts
+./start-aidis.sh    # Start server
+./stop-aidis.sh     # Stop server
+./restart-aidis.sh  # Restart server
+./status-aidis.sh   # Check status
 ```
 
-### AIDIS COMMAND Dashboard
+### AIDIS Command Commands
+
 ```bash
 cd aidis-command
 
-# Backend
-cd backend && npm run dev      # Start backend (port 5000)
+# Backend development
+cd backend && npm run dev
 
-# Frontend  
-cd frontend && PORT=3001 npm start  # Start frontend (port 3001)
+# Frontend development
+cd frontend && npm start
+
+# Production build
+npm run build:all
+```
+
+### Database Migrations
+
+Migrations are located in `mcp-server/migrations/` and run automatically on server start. Manual execution:
+
+```bash
+cd mcp-server
+npx tsx scripts/migrate.ts
 ```
 
 ---
 
-## 📋 Features
+## Configuration
 
-### ✅ **Production Ready**
-- [x] **Context Management** - Store & retrieve development context with semantic search
-- [x] **Project Management** - Multi-project workflows with seamless switching  
-- [x] **Task Management** - Professional UI with real-time updates
-- [x] **Authentication** - JWT-based security with role-based access
-- [x] **WebSocket Integration** - Real-time collaborative features
-- [x] **Local Embeddings** - Cost-free semantic search (Transformers.js)
+### Environment Variables
 
-### 🔄 **In Development** 
-- [ ] **Technical Decision Browser** (T009)
-- [ ] **Naming Registry Management** (T010)  
-- [ ] **Kanban Board Interface** (T008-Advanced)
-- [ ] **Task Analytics Dashboard** (T008-Advanced)
+Create `.env` files in `mcp-server/` and `aidis-command/backend/`:
 
----
+**MCP Server (.env)**
+```env
+DATABASE_HOST=localhost
+DATABASE_PORT=5432
+DATABASE_USER=ridgetop
+DATABASE_PASSWORD=your_password
+DATABASE_NAME=aidis_production
+MCP_PORT=5001
+HTTP_BRIDGE_PORT=8080
+```
 
-## 🧠 The AIDIS Difference
+**AIDIS Command Backend (.env)**
+```env
+DATABASE_URL=postgresql://ridgetop:your_password@localhost:5432/aidis_production
+JWT_SECRET=your_jwt_secret
+PORT=5000
+FRONTEND_URL=http://localhost:3000
+```
 
-### **Before AIDIS:**
-- AI agents forget everything between sessions
-- Naming conflicts destroy codebases  
-- Architectural decisions get lost
-- Projects become unmaintainable
+### Default Project
 
-### **With AIDIS:**
-- **110+ contexts** of persistent knowledge
-- **Enforced naming consistency** across projects
-- **Decision tracking** with alternatives and outcomes
-- **Multi-agent coordination** for complex tasks
+Configure default project selection in AIDIS Command Settings page for automatic project loading on login.
 
 ---
 
-## 🎯 Use Cases
+## Production Deployment
 
-- **AI Development Projects** - Maintain context across multi-week builds
-- **Code Architecture** - Track decisions and enforce patterns  
-- **Team Coordination** - AI agents working together efficiently
-- **Knowledge Management** - Never lose important context again
+### Database Setup
+
+1. Install PostgreSQL 16 with pgvector extension
+2. Create production database
+3. Configure connection string in `.env`
+4. Run migrations
+
+### MCP Server
+
+```bash
+cd mcp-server
+npm install --production
+./start-aidis.sh
+```
+
+### AIDIS Command
+
+```bash
+cd aidis-command
+npm run build:all
+npm run start:prod
+```
+
+### Systemd Service (Optional)
+
+Template service file available at `aidis.service` for systemd integration.
 
 ---
 
-## 🏆 Technical Achievements
+## Project Structure
 
-- **47 MCP Tools** - Complete development intelligence suite (post-TT009 consolidation)
-- **Enterprise Architecture** - SystemD + HTTP proxy + PostgreSQL  
-- **Zero Ongoing Costs** - Local embeddings eliminate API fees
-- **Real-time Collaboration** - WebSocket infrastructure
-- **Multi-project Support** - Clean separation and switching
+```
+aidis/
+├── mcp-server/              # MCP protocol server
+│   ├── src/
+│   │   ├── handlers/        # MCP tool implementations
+│   │   ├── services/        # Business logic
+│   │   ├── models/          # Database models
+│   │   └── server.ts        # Entry point
+│   ├── migrations/          # Database schema
+│   └── scripts/             # Utility scripts
+│
+├── aidis-command/           # Web dashboard
+│   ├── frontend/            # React application
+│   │   ├── src/
+│   │   │   ├── components/  # React components
+│   │   │   ├── pages/       # Page components
+│   │   │   ├── contexts/    # React contexts
+│   │   │   └── services/    # API clients
+│   │   └── public/          # Static assets
+│   │
+│   └── backend/             # Express API
+│       └── src/
+│           ├── routes/      # API endpoints
+│           └── middleware/  # Express middleware
+│
+├── scripts/                 # Production scripts
+└── docs/                    # Documentation
+```
 
 ---
 
-## 📚 Documentation
+## Use Cases
 
-- **MCP Tools Reference** - See `mcp-server/src/handlers/` for all 37 tools
-- **API Documentation** - See `aidis-command/backend/src/routes/`
-- **Database Schema** - See `mcp-server/database/migrations/`
+**AI Development Projects**
+Maintain context and decisions across multi-week AI-assisted development projects.
+
+**Code Architecture**
+Track architectural decisions and enforce patterns across large codebases.
+
+**Team Coordination**
+Enable multiple AI agents or developers to collaborate effectively with shared context.
+
+**Knowledge Management**
+Build searchable knowledge bases of project-specific information and decisions.
 
 ---
 
-## 🤝 Contributing
+## Technical Highlights
 
-This is a revolutionary system that changes how AI development works. Contributions welcome!
+- **Local Embeddings**: Zero API costs using Transformers.js for semantic search
+- **MCP Protocol**: Standards-compliant tool implementation
+- **Semantic Search**: PostgreSQL pgvector for similarity queries
+- **Real-time Updates**: WebSocket infrastructure for live collaboration
+- **Multi-project**: Clean data isolation and project switching
+- **Production Ready**: Comprehensive error handling and logging
+
+---
+
+## Documentation
+
+- **Setup Guide**: `docs/DEV_SETUP_GUIDE.md`
+- **Database Migrations**: `docs/DB_MIGRATION_WALKTHROUGH.md`
+- **MCP Protocol Reference**: `docs/reference/MCP_STDIO_PROTOCOL_REFERENCE.md`
+- **API Documentation**: Available in `aidis-command/backend/src/routes/`
+- **Tool Catalog**: Use `aidis_help` MCP tool for current tool listing
+
+---
+
+## Contributing
+
+Contributions are welcome! Please follow these guidelines:
 
 1. Fork the repository
-2. Create feature branch (`git checkout -b feature/amazing-feature`)  
-3. Commit changes (`git commit -m 'Add amazing feature'`)
-4. Push to branch (`git push origin feature/amazing-feature`)
-5. Open Pull Request
+2. Create a feature branch (`git checkout -b feature/your-feature`)
+3. Commit your changes (`git commit -m 'Add feature'`)
+4. Push to the branch (`git push origin feature/your-feature`)
+5. Open a Pull Request
+
+### Development Branch Structure
+
+- `main` - Production-ready code
+- `aidis-alpha` - Active development
+- `dev-docs` - Historical documentation
 
 ---
 
-## 📚 Documentation Archive
+## License
 
-Historical documentation from Oracle Refactor phases is preserved in:
-- **Location:** `docs/archive/2025-09-23-oracle-refactor/`
-- **Contains:** Removed API services, obsolete docs, legacy components
-- **Purpose:** Historical reference and system evolution tracking
+MIT License - See LICENSE file for details.
 
 ---
 
-## 📄 License
+## Acknowledgments
 
-MIT License - See [LICENSE](LICENSE) file for details.
+Built by RidgetopAI for sustainable AI-assisted development. AIDIS demonstrates that persistent memory and structured knowledge management are essential for complex software projects involving AI agents.
 
----
-
-## 🌟 Acknowledgments
-
-Built with passion for the future of AI development. AIDIS represents a new paradigm where AI agents have persistent memory and can collaborate effectively on complex, long-term projects.
-
-**This changes everything.** 🚀
-
----
-
-*"AIDIS is not just a tool - it's the foundation for sustainable AI development."*
+For questions or support, please open an issue on GitHub.
