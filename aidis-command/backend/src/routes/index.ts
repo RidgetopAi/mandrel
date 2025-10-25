@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import healthRoutes from './health';
 import authRoutes from './auth';
+import userRoutes from './users';
 import contextRoutes from './contexts';
 import projectRoutes from './projects';
 import sessionRoutes from './sessions';
@@ -21,6 +22,7 @@ const router = Router();
 router.use('/', healthRoutes);
 router.use('/openapi', openApiRoutes);
 router.use('/auth', authRoutes);
+router.use('/users', userRoutes);
 router.use('/contexts', contextRoutes);
 router.use('/projects', projectRoutes);
 router.use('/sessions', sessionRoutes);

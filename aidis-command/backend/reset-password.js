@@ -6,9 +6,9 @@ const { Pool } = require('pg');
 // Database connection
 const pool = new Pool({
   user: 'ridgetop',
-  host: 'localhost', 
-  database: 'aidis_ui_dev',
-  password: 'bandy',
+  host: 'localhost',
+  database: 'aidis_production',
+  password: '',
   port: 5432,
 });
 
