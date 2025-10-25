@@ -59,7 +59,7 @@ export class HealthServer {
       // CORS headers for cross-origin requests from frontend
       res.setHeader('Access-Control-Allow-Origin', '*');
       res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-API-Version, X-Request-ID, X-Correlation-ID');
       res.setHeader('Content-Type', 'application/json');
 
       // Handle preflight OPTIONS requests
