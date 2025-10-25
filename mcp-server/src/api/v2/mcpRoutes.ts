@@ -9,7 +9,6 @@ import { McpResponseHandler } from '../../utils/mcpResponseHandler.js';
 import { logger } from '../../utils/logger.js';
 import { contextHandler } from '../../handlers/context.js';
 import { projectHandler } from '../../handlers/project.js';
-import { namingHandler } from '../../handlers/naming.js';
 import { decisionsHandler } from '../../handlers/decisions.js';
 import { tasksHandler } from '../../handlers/tasks.js';
 import { codeAnalysisHandler } from '../../handlers/codeAnalysis.js';
@@ -70,12 +69,6 @@ export class V2McpRouter {
     this.toolHandlers.set('project_list', projectHandler);
     this.toolHandlers.set('project_current', projectHandler);
     this.toolHandlers.set('project_insights', projectHandler);
-
-    // Naming Registry
-    this.toolHandlers.set('naming_register', namingHandler);
-    this.toolHandlers.set('naming_check', namingHandler);
-    this.toolHandlers.set('naming_suggest', namingHandler);
-    this.toolHandlers.set('naming_stats', namingHandler);
 
     // Technical Decisions
     this.toolHandlers.set('decision_record', decisionsHandler);

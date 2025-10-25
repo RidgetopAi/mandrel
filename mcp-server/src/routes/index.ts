@@ -10,7 +10,6 @@ import type { McpResponse } from '../utils/mcpFormatter.js';
 import { systemRoutes } from './system.routes.js';
 import { contextRoutes } from './context.routes.js';
 import { projectRoutes } from './project.routes.js';
-import { namingRoutes } from './naming.routes.js';
 import { decisionsRoutes } from './decisions.routes.js';
 import { tasksRoutes } from './tasks.routes.js';
 import { searchRoutes } from './search.routes.js';
@@ -55,16 +54,6 @@ export async function routeExecutor(toolName: string, args: any): Promise<McpRes
         return await projectRoutes.handleCurrent(args);
       case 'project_info':
         return await projectRoutes.handleInfo(args);
-
-      // Naming Registry (4 tools)
-      case 'naming_register':
-        return await namingRoutes.handleRegister(args);
-      case 'naming_check':
-        return await namingRoutes.handleCheck(args);
-      case 'naming_suggest':
-        return await namingRoutes.handleSuggest(args);
-      case 'naming_stats':
-        return await namingRoutes.handleStats(args);
 
       // Technical Decisions (4 tools)
       case 'decision_record':

@@ -25,10 +25,12 @@ export interface ToolDefinition {
 }
 
 /**
- * Complete array of all 36 AIDIS tool definitions
+ * Complete array of all 27 AIDIS tool definitions
  * Changes:
  * - 8 session analytics tools migrated to REST API (2025-10-05)
  * - 2 pattern detection tools removed (2025-10-24) - deprecated stub implementations
+ * - 5 session MCP tools removed (2025-10-24) - auto-tracking replaces manual management
+ * - 4 naming registry tools removed (2025-10-24) - replaced by dependency tracking
  */
 export const AIDIS_TOOL_DEFINITIONS: ToolDefinition[] = [
           {
@@ -272,109 +274,6 @@ export const AIDIS_TOOL_DEFINITIONS: ToolDefinition[] = [
                 }
               },
               required: ['project'],
-              additionalProperties: true
-            },
-          },
-          {
-            name: 'naming_register',
-            description: 'Register a name in the naming registry to prevent conflicts',
-            inputSchema: {
-              type: 'object',
-              properties: {
-                entityType: {
-                  type: 'string',
-                  description: 'Entity type: variable, function, class, interface, type, component, file, directory, module, service, endpoint, database_table, database_column, config_key, environment_var, css_class, html_id'
-                },
-                canonicalName: {
-                  type: 'string',
-                  description: 'Official name to register'
-                },
-                description: {
-                  type: 'string',
-                  description: 'Entity description'
-                },
-                aliases: {
-                  type: 'array',
-                  description: 'Alternative names'
-                },
-                contextTags: {
-                  type: 'array',
-                  description: 'Categorization tags'
-                },
-                projectId: {
-                  type: 'string',
-                  description: 'Project ID'
-                }
-              },
-              required: ['entityType', 'canonicalName'],
-              additionalProperties: true
-            },
-          },
-          {
-            name: 'naming_check',
-            description: 'Check for naming conflicts before using a name',
-            inputSchema: {
-              type: 'object',
-              properties: {
-                entityType: {
-                  type: 'string',
-                  description: 'Entity type: variable, function, class, interface, type, component, file, directory, module, service, endpoint, database_table, database_column, config_key, environment_var, css_class, html_id'
-                },
-                proposedName: {
-                  type: 'string',
-                  description: 'Name to check'
-                },
-                contextTags: {
-                  type: 'array',
-                  description: 'Context tags for conflict detection'
-                },
-                projectId: {
-                  type: 'string',
-                  description: 'Project ID'
-                }
-              },
-              required: ['entityType', 'proposedName'],
-              additionalProperties: true
-            },
-          },
-          {
-            name: 'naming_suggest',
-            description: 'Get name suggestions based on description and project patterns',
-            inputSchema: {
-              type: 'object',
-              properties: {
-                entityType: {
-                  type: 'string',
-                  description: 'Entity type: variable, function, class, interface, type, component, file, directory, module, service, endpoint, database_table, database_column, config_key, environment_var, css_class, html_id'
-                },
-                description: {
-                  type: 'string',
-                  description: 'What needs naming'
-                },
-                contextTags: {
-                  type: 'array',
-                  description: 'Tags to influence suggestions'
-                },
-                projectId: {
-                  type: 'string',
-                  description: 'Project ID'
-                }
-              },
-              required: ['entityType', 'description'],
-              additionalProperties: true
-            },
-          },
-          {
-            name: 'naming_stats',
-            description: 'Get naming statistics and convention compliance for a project',
-            inputSchema: {
-              type: 'object',
-              properties: {
-                projectId: {
-                  type: 'string',
-                  description: 'Project ID'
-                }
-              },
               additionalProperties: true
             },
           },
