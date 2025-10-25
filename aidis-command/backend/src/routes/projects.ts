@@ -155,6 +155,36 @@ router.get('/sessions/all', ProjectController.getAllSessions);
 
 /**
  * @swagger
+ * /projects/{id}/set-primary:
+ *   post:
+ *     summary: Set project as primary/default
+ *     tags: [Projects]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Project ID
+ *     responses:
+ *       200:
+ *         description: Project set as primary successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ApiSuccessResponse'
+ *       404:
+ *         description: Project not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ApiErrorResponse'
+ */
+router.post('/:id/set-primary', validateUUIDParam(), ProjectController.setPrimary);
+
+/**
+ * @swagger
  * /projects/{id}:
  *   get:
  *     summary: Get project by ID
