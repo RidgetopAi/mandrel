@@ -326,3 +326,62 @@
 [data-theme='dark'] .task-detail-section:hover {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
 }
+
+/* ============================================
+   KANBAN BOARD DARK MODE
+   ============================================ */
+
+/* Kanban card backgrounds */
+.kanban-card {
+  background: #fff;
+}
+
+[data-theme='dark'] .kanban-card {
+  background: #1f1f1f !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+}
+
+.kanban-card-dragging {
+  background: #f0f5ff;
+}
+
+[data-theme='dark'] .kanban-card-dragging {
+  background: #262626 !important;
+}
+
+/* Kanban column backgrounds */
+.kanban-column {
+  background: #fafafa;
+}
+
+[data-theme='dark'] .kanban-column {
+  background: #141414 !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+}
+
+.kanban-column-dragging-over {
+  background: #f0f5ff;
+}
+
+[data-theme='dark'] .kanban-column-dragging-over {
+  background: #262626 !important;
+}
+
+/* Kanban column headers */
+.kanban-column-header {
+  background: linear-gradient(135deg, #fafafa 0%, #f5f5f5 100%);
+}
+
+[data-theme='dark'] .kanban-column-header {
+  background: linear-gradient(135deg, #262626 0%, #1f1f1f 100%) !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+}
+
+/* Kanban card metadata border */
+.kanban-card-metadata {
+  border-top: 1px solid #f0f0f0;
+}
+
+[data-theme='dark'] .kanban-card-metadata {
+  border-top-color: #434343 !important;
+}
