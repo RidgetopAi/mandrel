@@ -1,0 +1,413 @@
+=== AIDIS DEBUGGING CONTEXT ===
+Generated: Wed Oct  1 23:10:39 EDT 2025
+Git Branch: feature/tt009-phases-2-3-complete
+Git Status: 379 files modified
+Node: v22.18.0
+npm: 10.9.3
+
+=== CRITICAL PORTS STATUS ===
+[0;31m✗ AIDIS Command Frontend (port 3005): NOT RUNNING[0m
+[0;31m✗ AIDIS Command Backend (port 5174): NOT RUNNING[0m
+[0;32m✓ HTTP MCP Bridge (port 8080): RUNNING[0m
+node    178721 ridgetop   52u  IPv6 863229      0t0  TCP *:http-alt (LISTEN)
+[0;31m✗ PostgreSQL (port 5432): NOT RUNNING[0m
+
+=== MCP SERVER STATUS ===
+[0;31m✗ MCP Server: NOT RUNNING[0m
+--- Port Registry Status ---
+{
+  "discovery-test": {
+    "serviceName": "discovery-test",
+    "port": 44303,
+    "pid": 27089,
+    "startedAt": "2025-09-18T01:49:26.780Z",
+    "healthEndpoint": "/health"
+  },
+  "aidis-mcp": {
+    "serviceName": "aidis-mcp",
+    "port": 8080,
+    "pid": 178721,
+    "startedAt": "2025-10-02T02:48:58.502Z",
+    "healthEndpoint": "/healthz"
+  },
+  "aidis-command-dev": {
+    "serviceName": "aidis-command-dev",
+    "port": 5000,
+    "pid": 180385,
+    "startedAt": "2025-10-02T02:51:01.171Z",
+    "healthEndpoint": "/api/health"
+  }
+}--- Recent MCP Logs (last 30 lines) ---
+🔍 Executing vector similarity search...
+✅ Found 10 matching contexts
+🎯 Top match: 0% similarity - "Phase 2 planning: Implement core context management with vec..."
+🔍 Context search request: "aidis-command-dev directory localhost:3001 development login auth"
+🔍 Searching contexts: "aidis-command-dev directory localhost:3001 development login auth"
+🏠 Generating LOCAL embedding (FREE!)...
+✅ Generated LOCAL embedding (384 dimensions)
+🔍 Executing vector similarity search...
+✅ Found 10 matching contexts
+🎯 Top match: 0% similarity - "Created MCP server with TypeScript using @modelcontextprotoc..."
+🔍 Context search request: "recent latest 2025-08-23 2025-08-22 2025-08-21"
+🔍 Searching contexts: "recent latest 2025-08-23 2025-08-22 2025-08-21"
+🏠 Generating LOCAL embedding (FREE!)...
+✅ Generated LOCAL embedding (384 dimensions)
+🔍 Executing vector similarity search...
+✅ Found 10 matching contexts
+🎯 Top match: 0% similarity - "Phase 2 planning: Implement core context management with vec..."
+🔍 Context search request: "2025-08-22 2025-08-23"
+🔍 Searching contexts: "2025-08-22 2025-08-23"
+🏠 Generating LOCAL embedding (FREE!)...
+✅ Generated LOCAL embedding (384 dimensions)
+🔍 Executing vector similarity search...
+✅ Found 10 matching contexts
+🎯 Top match: 0% similarity - "Phase 2 planning: Implement core context management with vec..."
+
+📴 Received SIGTERM, shutting down gracefully...
+🏥 Closing health check server...
+
+🔄 Received SIGTERM, shutting down gracefully...
+✅ Process lock released
+--- aidis-command-backend.log (last 20 lines) ---
+[0mGET /api/projects [36m304[0m 3.966 ms - -[0m
+[0mGET /api/projects [36m304[0m 3.315 ms - -[0m
+[0mGET /api/agents [36m304[0m 4.762 ms - -[0m
+[0mGET /api/projects [36m304[0m 4.273 ms - -[0m
+[0mGET /api/projects [36m304[0m 4.443 ms - -[0m
+[0mGET /api/projects [36m304[0m 3.649 ms - -[0m
+[0mGET /api/tasks?project_id=59eaee27-dfd9-49df-bcc0-5fa6c309f530 [36m304[0m 3.350 ms - -[0m
+[0mGET /api/tasks?project_id=c6735a75-95de-463f-97fd-0082095e75ae [32m200[0m 4.107 ms - 46[0m
+[0mGET /api/tasks?project_id=59eaee27-dfd9-49df-bcc0-5fa6c309f530 [36m304[0m 3.950 ms - -[0m
+WebSocket client disconnected: f7ad70e4-ae50-4c42-9447-7be278023db4
+npm error Lifecycle script `dev` failed with error:
+npm error code 143
+npm error path /home/ridgetop/aidis/aidis-command/backend
+npm error workspace aidis-command-backend@1.0.0
+npm error location /home/ridgetop/aidis/aidis-command/backend
+npm error command failed
+npm error command sh -c nodemon src/server.ts
+
+🔄 Received SIGTERM, shutting down gracefully...
+✅ HTTP server closed
+--- http-mcp-bridge.log (last 20 lines) ---
+/home/ridgetop/aidis/node_modules/path-to-regexp/dist/index.js:73
+            throw new TypeError(`Missing parameter name at ${i}: ${DEBUG_URL}`);
+            ^
+
+TypeError: Missing parameter name at 1: https://git.new/pathToRegexpError
+    at name (/home/ridgetop/aidis/node_modules/path-to-regexp/dist/index.js:73:19)
+    at lexer (/home/ridgetop/aidis/node_modules/path-to-regexp/dist/index.js:91:27)
+    at lexer.next (<anonymous>)
+    at Iter.peek (/home/ridgetop/aidis/node_modules/path-to-regexp/dist/index.js:106:38)
+    at Iter.tryConsume (/home/ridgetop/aidis/node_modules/path-to-regexp/dist/index.js:112:28)
+    at Iter.text (/home/ridgetop/aidis/node_modules/path-to-regexp/dist/index.js:128:30)
+    at consume (/home/ridgetop/aidis/node_modules/path-to-regexp/dist/index.js:152:29)
+    at parse (/home/ridgetop/aidis/node_modules/path-to-regexp/dist/index.js:183:20)
+    at /home/ridgetop/aidis/node_modules/path-to-regexp/dist/index.js:294:74
+    at Array.map (<anonymous>)
+
+Node.js v22.18.0
+--- intercept-server.log (last 20 lines) ---
+🚀 AIDIS Intercept server listening on http://localhost:5099
+POST /intercept { text, threadId?, model? }
+
+=== DATABASE CONNECTION ===
+[0;32m✓ PostgreSQL: Connected[0m
+ current_database | current_user | pg_backend_pid 
+------------------+--------------+----------------
+ aidis_production | ridgetop     |           6807
+(1 row)
+
+
+--- Recent Database Activity ---
+ total_contexts 
+----------------
+            597
+(1 row)
+
+ total_sessions 
+----------------
+             86
+(1 row)
+
+ total_projects 
+----------------
+             16
+(1 row)
+
+
+=== ENVIRONMENT VARIABLES ===
+DATABASE_URL: NOT SET
+NODE_ENV: not set
+PORT: not set
+PGHOST: not set
+PGPORT: not set
+PGDATABASE: not set
+
+=== TYPESCRIPT BUILD STATUS ===
+✓ mcp-server/tsconfig.json exists
+✓ aidis-command/frontend/tsconfig.json exists
+✓ aidis-command/backend/tsconfig.json exists
+✓ aidis-command/shared/tsconfig.json exists
+
+--- Build Artifacts ---
+✓ mcp-server/dist exists (4 JS files)
+✓ aidis-command/backend/dist exists
+
+=== NPM/BUILD ERRORS ===
+--- aidis-command/frontend/frontend.log (last 20 lines) ---
+
+  Local:            http://localhost:3000
+  On Your Network:  http://172.24.232.232:3000
+
+Note that the development build is not optimized.
+To create a production build, use npm run build.
+
+webpack compiled successfully
+Files successfully emitted, waiting for typecheck results...
+Issues checking in progress...
+No issues found.
+(node:13094) [DEP0060] DeprecationWarning: The `util._extend` API is deprecated. Please use Object.assign() instead.
+Killed
+npm error Lifecycle script `start` failed with error:
+npm error code 137
+npm error path /home/ridgetop/aidis/aidis-command/frontend
+npm error workspace aidis-command-frontend@1.0.0
+npm error location /home/ridgetop/aidis/aidis-command/frontend
+npm error command failed
+npm error command sh -c react-scripts start
+--- aidis-command/backend/backend.log (last 20 lines) ---
+    at listenInCluster (node:net:1997:12)
+    at Server.listen (node:net:2102:7)
+    at Function.listen (/home/ridgetop/aidis/aidis-command/node_modules/express/lib/application.js:635:24)
+    at startServer (/home/ridgetop/aidis/aidis-command/backend/src/server.ts:91:24)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5) {
+  code: 'EADDRINUSE',
+  errno: -98,
+  syscall: 'listen',
+  address: '::',
+  port: 5000
+}
+[31m[nodemon] app crashed - waiting for file changes before starting...[39m
+Killed
+npm error Lifecycle script `dev` failed with error:
+npm error code 137
+npm error path /home/ridgetop/aidis/aidis-command/backend
+npm error workspace aidis-command-backend@1.0.0
+npm error location /home/ridgetop/aidis/aidis-command/backend
+npm error command failed
+npm error command sh -c nodemon src/server.ts
+--- aidis-command/backend/server-3001.log (last 20 lines) ---
+
+Error: listen EADDRINUSE: address already in use :::3001
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at Server.listen (node:net:2102:7)
+    at Function.listen (/home/ridgetop/aidis/aidis-command/node_modules/express/lib/application.js:635:24)
+    at startServer (/home/ridgetop/aidis/aidis-command/backend/src/server.ts:68:24)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+Emitted 'error' event on WebSocketServer instance at:
+    at Server.emit (node:events:518:28)
+    at emitErrorNT (node:net:1976:8)
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -98,
+  syscall: 'listen',
+  address: '::',
+  port: 3001
+}
+
+Node.js v22.18.0
+--- aidis-command/backend/server-3002.log (last 20 lines) ---
+✅ Database connection established successfully
+✅ Database query test successful: 2025-08-17T18:10:52.131Z
+✅ Database initialized successfully
+WebSocket server initialized on /ws
+🔌 WebSocket server initialized on /ws
+🚀 AIDIS Command Backend started
+📍 Server running on http://localhost:3002
+🌍 Environment: development
+💾 Database: aidis_ui_dev@localhost:5432
+📋 Health endpoints:
+   • GET /api/health - Server health
+   • GET /api/db-status - Database status
+   • GET /api/version - Version info
+
+🔄 Received SIGTERM, shutting down gracefully...
+✅ HTTP server closed
+--- aidis-command/backend/server-5000.log (last 20 lines) ---
+
+Error: listen EADDRINUSE: address already in use :::5000
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at Server.listen (node:net:2102:7)
+    at Function.listen (/home/ridgetop/aidis/aidis-command/node_modules/express/lib/application.js:635:24)
+    at startServer (/home/ridgetop/aidis/aidis-command/backend/src/server.ts:68:24)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+Emitted 'error' event on WebSocketServer instance at:
+    at Server.emit (node:events:518:28)
+    at emitErrorNT (node:net:1976:8)
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -98,
+  syscall: 'listen',
+  address: '::',
+  port: 5000
+}
+
+Node.js v22.18.0
+--- aidis-command/backend/server-5001.log (last 20 lines) ---
+15:57:42.185 [[32minfo[39m] Starting AIDIS Command Backend...
+15:57:42.214 [[32minfo[39m] Database initialized successfully
+WebSocket server initialized on /ws
+15:57:42.216 [[32minfo[39m] WebSocket server initialized
+15:57:42.217 [[32minfo[39m] AIDIS Command Backend started successfully
+🚀 AIDIS Command Backend started
+📍 Server running on http://localhost:5001
+🌍 Environment: development
+📊 Logging: info (DB: warn)
+🗃️  2025-09-12T19:58:13.569Z [DB] Database client removed from pool
+🗃️  2025-09-12T19:58:13.572Z [DB] Database client removed from pool
+Killed
+Killed
+npm error Lifecycle script `dev` failed with error:
+npm error code 137
+npm error path /home/ridgetop/aidis/aidis-command/backend
+npm error workspace aidis-command-backend@1.0.0
+npm error location /home/ridgetop/aidis/aidis-command/backend
+npm error command failed
+npm error command sh -c nodemon src/server.ts
+--- aidis-command/backend/server-final.log (last 20 lines) ---
+[MCP] naming_stats result: {
+  total_names: 5,
+  compliance: 100,
+  deprecated: 0,
+  recent_activity: 5,
+  by_type: { variable: 2, component: 1, function: 1, interface: 1 },
+  by_project: {}
+}
+[0mGET /api/naming/stats [32m200[0m 20.603 ms - 301[0m
+[0mGET /api/naming?limit=10 [32m200[0m 2.791 ms - 1197[0m
+[0mPOST /api/auth/login [32m200[0m 181.203 ms - 641[0m
+[0mGET /api/naming?limit=10 [32m200[0m 1.918 ms - 1197[0m
+[0mPOST /api/auth/login [32m200[0m 183.318 ms - 641[0m
+[0mGET /api/naming?limit=10 [32m200[0m 2.303 ms - 1197[0m
+[0mGET /api/health [32m200[0m 0.419 ms - 243[0m
+[0mPOST /api/auth/login [32m200[0m 191.581 ms - 641[0m
+[0mGET /api/naming?limit=2 [32m200[0m 2.403 ms - 832[0m
+
+🔄 Received SIGTERM, shutting down gracefully...
+✅ HTTP server closed
+--- aidis-command/backend/server-new.log (last 20 lines) ---
+  recent_activity: 5,
+  by_type: { variable: 2, component: 1, function: 1, interface: 1 },
+  by_project: {}
+}
+[0mGET /api/naming/stats [32m200[0m 14.472 ms - 301[0m
+[MCP] Calling naming_check with params: { name: 'TestName' }
+[MCP] naming_check result: {
+  available: true,
+  message: '✅ Name "undefined" is available!\n' +
+    '\n' +
+    '🎯 No conflicts found for undefined\n' +
+    '💡 You can safely use this name or register it to claim it.'
+}
+Name availability check error: TypeError: result.data.includes is not a function
+    at checkNameAvailability (/home/ridgetop/aidis/aidis-command/backend/src/controllers/naming.ts:197:52)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+[0mGET /api/naming/check/TestName [31m500[0m 8.869 ms - 112[0m
+
+🔄 Received SIGTERM, shutting down gracefully...
+✅ HTTP server closed
+--- aidis-command/backend/server.log (last 20 lines) ---
+[32m[nodemon] starting `ts-node src/server.ts`[39m
+✅ Database connection established successfully
+✅ Database query test successful: 2025-09-12T18:31:07.510Z
+✅ Database initialized successfully
+WebSocket server initialized on /ws
+🔌 WebSocket server initialized on /ws
+Error: listen EADDRINUSE: address already in use :::5000
+    at Server.setupListenHandle [as _listen2] (node:net:1940:16)
+    at listenInCluster (node:net:1997:12)
+    at Server.listen (node:net:2102:7)
+    at Function.listen (/home/ridgetop/aidis/aidis-command/node_modules/express/lib/application.js:635:24)
+    at startServer (/home/ridgetop/aidis/aidis-command/backend/src/server.ts:76:24)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5) {
+  code: 'EADDRINUSE',
+  errno: -98,
+  syscall: 'listen',
+  address: '::',
+  port: 5000
+}
+[31m[nodemon] app crashed - waiting for file changes before starting...[39m
+
+=== RECENT ERROR PATTERNS ===
+Searching for: ECONNREFUSED, EADDRINUSE, TypeScript errors, Unhandled Promise...
+./logs/aidis.log
+Found in: ./logs/aidis.log
+  lastError: undefined,
+  lastError: undefined,
+  lastError: undefined,
+./logs/aidis-mcp.log
+Found in: ./logs/aidis-mcp.log
+{"timestamp":"2025-10-02T03:05:35.621Z","level":"error","message":"Cannot start: Another AIDIS instance is already running","correlationId":"6b632020-de95-44a5-b787-0e5e7ada4aae","component":"STARTUP","operation":"singleton_lock_failed","error":{"name":"Error","message":"Failed to acquire process lock: Error: AIDIS is already running with PID 178721. Only one instance allowed.","stack":"Error: Failed to acquire process lock: Error: AIDIS is already running with PID 178721. Only one instance allowed.\n    at ProcessLock.acquire (/home/ridgetop/aidis/mcp-server/src/utils/processLock.ts:80:13)\n    at AIDISServer.start (/home/ridgetop/aidis/mcp-server/src/server.ts:3124:19)\n    at <anonymous> (/home/ridgetop/aidis/mcp-server/src/server.ts:3988:28)"}}
+{"timestamp":"2025-10-02T03:05:41.661Z","level":"error","message":"Cannot start: Another AIDIS instance is already running","correlationId":"1baef2f2-5a95-41f6-86f3-f67561afe7a1","component":"STARTUP","operation":"singleton_lock_failed","error":{"name":"Error","message":"Failed to acquire process lock: Error: AIDIS is already running with PID 178721. Only one instance allowed.","stack":"Error: Failed to acquire process lock: Error: AIDIS is already running with PID 178721. Only one instance allowed.\n    at ProcessLock.acquire (/home/ridgetop/aidis/mcp-server/src/utils/processLock.ts:80:13)\n    at AIDISServer.start (/home/ridgetop/aidis/mcp-server/src/server.ts:3124:19)\n    at <anonymous> (/home/ridgetop/aidis/mcp-server/src/server.ts:3988:28)"}}
+{"timestamp":"2025-10-02T03:05:48.452Z","level":"error","message":"Cannot start: Another AIDIS instance is already running","correlationId":"ca2fabb3-802f-455a-93b8-da7133185f44","component":"STARTUP","operation":"singleton_lock_failed","error":{"name":"Error","message":"Failed to acquire process lock: Error: AIDIS is already running with PID 178721. Only one instance allowed.","stack":"Error: Failed to acquire process lock: Error: AIDIS is already running with PID 178721. Only one instance allowed.\n    at ProcessLock.acquire (/home/ridgetop/aidis/mcp-server/src/utils/processLock.ts:80:13)\n    at AIDISServer.start (/home/ridgetop/aidis/mcp-server/src/server.ts:3124:19)\n    at <anonymous> (/home/ridgetop/aidis/mcp-server/src/server.ts:3988:28)"}}
+./logs/aidis-mcp.1.log
+Found in: ./logs/aidis-mcp.1.log
+{"timestamp":"2025-10-02T02:43:52.569Z","level":"error","message":"Cannot start: Another AIDIS instance is already running","correlationId":"620b27bb-86cb-4a29-978f-70cd27342864","component":"STARTUP","operation":"singleton_lock_failed","error":{"name":"Error","message":"Failed to acquire process lock: Error: AIDIS is already running with PID 168055. Only one instance allowed.","stack":"Error: Failed to acquire process lock: Error: AIDIS is already running with PID 168055. Only one instance allowed.\n    at ProcessLock.acquire (/home/ridgetop/aidis/mcp-server/src/utils/processLock.ts:80:13)\n    at AIDISServer.start (/home/ridgetop/aidis/mcp-server/src/server.ts:3117:19)\n    at <anonymous> (/home/ridgetop/aidis/mcp-server/src/server.ts:3981:28)"}}
+{"timestamp":"2025-10-02T02:44:33.414Z","level":"error","message":"Cannot start: Another AIDIS instance is already running","correlationId":"6209bcd0-e991-42b0-a60f-25ac5c824f0f","component":"STARTUP","operation":"singleton_lock_failed","error":{"name":"Error","message":"Failed to acquire process lock: Error: AIDIS is already running with PID 175458. Only one instance allowed.","stack":"Error: Failed to acquire process lock: Error: AIDIS is already running with PID 175458. Only one instance allowed.\n    at ProcessLock.acquire (/home/ridgetop/aidis/mcp-server/src/utils/processLock.ts:80:13)\n    at AIDISServer.start (/home/ridgetop/aidis/mcp-server/src/server.ts:3117:19)\n    at <anonymous> (/home/ridgetop/aidis/mcp-server/src/server.ts:3981:28)"}}
+{"timestamp":"2025-10-02T02:44:39.487Z","level":"error","message":"Cannot start: Another AIDIS instance is already running","correlationId":"ea6ada61-05b3-447e-a758-be8120e07741","component":"STARTUP","operation":"singleton_lock_failed","error":{"name":"Error","message":"Failed to acquire process lock: Error: AIDIS is already running with PID 175458. Only one instance allowed.","stack":"Error: Failed to acquire process lock: Error: AIDIS is already running with PID 175458. Only one instance allowed.\n    at ProcessLock.acquire (/home/ridgetop/aidis/mcp-server/src/utils/processLock.ts:80:13)\n    at AIDISServer.start (/home/ridgetop/aidis/mcp-server/src/server.ts:3117:19)\n    at <anonymous> (/home/ridgetop/aidis/mcp-server/src/server.ts:3981:28)"}}
+
+=== RUNNING NODE PROCESSES ===
+ridgetop  158098  0.0  1.0 11814744 165580 pts/6 Sl+  19:09   0:10 node --no-warnings /home/ridgetop/.nvm/versions/node/v22.18.0/bin/amp
+ridgetop  158131  0.0  0.2 1174100 46104 pts/6   Sl+  19:09   0:00 /home/ridgetop/.nvm/versions/node/v22.18.0/bin/node /home/ridgetop/aidis/aidis-stdio-mock.js
+ridgetop  158132  0.0  0.8 1378928 138028 pts/6  Sl+  19:09   0:02 npm exec @playwright/mcp@latest --headless --isolated
+ridgetop  158165  0.0  0.4 1026860 73308 pts/6   Sl+  19:09   0:00 node /home/ridgetop/.npm/_npx/9833c18b2d85bc59/node_modules/.bin/mcp-server-playwright --headless --isolated
+ridgetop  178697  0.0  0.4 1124812 74808 ?       Sl   22:49   0:00 npm exec tsx src/server.ts
+ridgetop  178709  0.0  0.0   2804  1584 ?        S    22:49   0:00 sh -c tsx src/server.ts
+ridgetop  178710  0.0  0.3 1045180 59768 ?       Sl   22:49   0:00 node /home/ridgetop/aidis/mcp-server/node_modules/.bin/tsx src/server.ts
+ridgetop  178721  0.4  1.3 44761176 213176 ?     Sl   22:49   0:05 /home/ridgetop/.nvm/versions/node/v22.18.0/bin/node --require /home/ridgetop/aidis/mcp-server/node_modules/tsx/dist/preflight.cjs --import file:///home/ridgetop/aidis/mcp-server/node_modules/tsx/dist/loader.mjs src/server.ts
+ridgetop  180285  0.0  0.3 1112132 60556 pts/4   Sl+  22:51   0:00 npm run dev:full
+ridgetop  180296  0.0  0.0   2804  1584 pts/4    S+   22:51   0:00 sh -c concurrently "npm run dev:backend" "npm run dev:frontend"
+ridgetop  180297  0.0  0.3 1015000 58636 pts/4   Sl+  22:51   0:00 node /home/ridgetop/aidis/aidis-command/node_modules/.bin/concurrently npm run dev:backend npm run dev:frontend
+ridgetop  180305  0.0  0.0   2804  1584 pts/4    S+   22:51   0:00 /bin/sh -c npm run dev:backend
+ridgetop  180306  0.0  0.3 1112388 60236 pts/4   Sl+  22:51   0:00 npm run dev:backend
+ridgetop  180307  0.0  0.0   2804  1584 pts/4    S+   22:51   0:00 /bin/sh -c npm run dev:frontend
+ridgetop  180308  0.0  0.3 1112124 60268 pts/4   Sl+  22:51   0:00 npm run dev:frontend
+
+=== DISK & NODE_MODULES STATUS ===
+Disk usage: 11% used (852G free)
+Root node_modules: 100M
+MCP node_modules: 397M
+Frontend node_modules: 743M
+Backend node_modules: 23M
+
+=== PACKAGE.JSON VERSIONS ===
+Root: parse error
+MCP Server: parse error
+AIDIS Command: parse error
+
+=== LAST GIT OPERATIONS ===
+7fca648 MCP Tool Token Optimization - 55% Reduction Achieved
+a12a09e Complete TT009 Phases 2 & 3: Tool Consolidation Achievement
+bcd7bc2 Fix AIDIS MCP connection and complete embeddings migration
+ab18449 Fix Code Hotspot Detection layout and improve MCP data pipeline
+7490017 Fix multiple AIDIS Command UI and functionality issues
+
+--- Uncommitted Changes ---
+ M AGENTS.md
+ D CONTEXT_GET_RECENT_IMPLEMENTATION.md
+ D DB_MIGRATION_WALKTHROUGH.md
+ D DEV_SETUP_GUIDE.md
+ D DOCKER_OPTIMIZATION_REPORT.md
+ D EMBEDDINGS-MIGRATION-PLAN.md
+ D EMBEDDINGS-PLAN-CHECKLIST.md
+ D EMBEDDING_ERROR_HANDLING_IMPROVEMENTS.md
+ D EMERGENCY_ROLLBACK.md
+ D EMERGENT_NOTES_091625.md
+
+=== SYSTEM RESOURCES ===
+Memory: 3.9Gi/15Gi
+Load:  0.22, 0.22, 0.20
+Open files: 10739

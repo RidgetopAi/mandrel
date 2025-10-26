@@ -3,6 +3,7 @@ import { Card, Spin, Alert, Row, Col, Statistic, Select, Slider, Divider, Button
 import { Scatter } from '@ant-design/plots';
 import { ReloadOutlined } from '@ant-design/icons';
 import { useProjectContext } from '../../contexts/ProjectContext';
+import { useTheme } from '../../contexts/ThemeContext';
 import {
   useEmbeddingProjectionQuery,
 } from '../../hooks/useEmbeddings';
@@ -29,6 +30,7 @@ type ProjectionData = {
 const ScatterProjection: React.FC = () => {
   const { currentProject } = useProjectContext();
   const projectId = currentProject?.id;
+  const { themeMode } = useTheme();
 
   const [algorithm, setAlgorithm] = useState<string>('pca');
   const [sampleSize, setSampleSize] = useState<number>(500);
@@ -99,17 +101,46 @@ const ScatterProjection: React.FC = () => {
     xAxis: {
       title: {
         text: `PC1 ${fmtPercentage(projectionData?.varianceExplained?.[0])}`,
+        style: {
+          fill: themeMode === 'dark' ? 'rgba(255, 255, 255, 0.85)' : '#000',
+        },
       },
-      grid: { line: { style: { stroke: '#f0f0f0' } } },
+      label: {
+        style: {
+          fill: themeMode === 'dark' ? 'rgba(255, 255, 255, 0.65)' : '#666',
+        },
+      },
+      grid: {
+        line: {
+          style: {
+            stroke: themeMode === 'dark' ? '#434343' : '#f0f0f0',
+          },
+        },
+      },
     },
     yAxis: {
       title: {
         text: `PC2 ${fmtPercentage(projectionData?.varianceExplained?.[1])}`,
+        style: {
+          fill: themeMode === 'dark' ? 'rgba(255, 255, 255, 0.85)' : '#000',
+        },
       },
-      grid: { line: { style: { stroke: '#f0f0f0' } } },
+      label: {
+        style: {
+          fill: themeMode === 'dark' ? 'rgba(255, 255, 255, 0.65)' : '#666',
+        },
+      },
+      grid: {
+        line: {
+          style: {
+            stroke: themeMode === 'dark' ? '#434343' : '#f0f0f0',
+          },
+        },
+      },
     },
     legend: false,
-  }), [projectionData]);
+    theme: themeMode === 'dark' ? 'dark' : 'light',
+  }), [projectionData, themeMode]);
 
   if (!projectId) {
     return (

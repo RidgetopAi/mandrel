@@ -1,0 +1,474 @@
+{
+  "../../aidis-command/backend/dist/services/gitService.d.ts": [
+    "../../aidis-command/backend/dist/types/git.d.ts"
+  ],
+  "../../aidis-command/backend/dist/services/sessionDetail.d.ts": [],
+  "../../aidis-command/backend/dist/types/git.d.ts": [
+    "../../aidis-command/backend/dist/types/git.d.ts"
+  ],
+  "api/v2/mcpRoutes.ts": [
+    "handlers/codeAnalysis.ts",
+    "handlers/context.ts",
+    "handlers/decisions.ts",
+    "handlers/naming.ts",
+    "handlers/project.ts",
+    "handlers/smartSearch.ts",
+    "handlers/tasks.ts",
+    "middleware/ingressValidation.ts",
+    "utils/logger.ts",
+    "utils/mcpResponseHandler.ts"
+  ],
+  "config/database.ts": [],
+  "config/toolDefinitions.ts": [],
+  "core-server.ts": [
+    "config/database.ts",
+    "config/toolDefinitions.ts",
+    "handlers/codeAnalysis.ts",
+    "handlers/context.ts",
+    "handlers/decisions.ts",
+    "handlers/naming.ts",
+    "handlers/navigation.ts",
+    "handlers/project.ts",
+    "handlers/smartSearch.ts",
+    "handlers/tasks.ts",
+    "middleware/validation.ts",
+    "utils/processLock.ts"
+  ],
+  "handlers/_deprecated_tt009/developmentMetrics.ts": [
+    "config/database.ts",
+    "middleware/eventLogger.ts",
+    "services/metricsCollector.ts",
+    "services/sessionManager.ts"
+  ],
+  "handlers/_deprecated_tt009/metricsAggregation.ts": [
+    "middleware/eventLogger.ts",
+    "services/metricsAggregator.ts",
+    "services/metricsCorrelation.ts",
+    "services/sessionManager.ts"
+  ],
+  "handlers/_deprecated_tt009/patternAnalysis.ts": [
+    "config/database.ts",
+    "middleware/eventLogger.ts",
+    "services/patternDetector.ts",
+    "services/sessionManager.ts"
+  ],
+  "handlers/_deprecated_tt009/patternDetection.ts": [
+    "config/database.ts",
+    "handlers/git.ts",
+    "middleware/eventLogger.ts",
+    "services/patternDetector.ts",
+    "services/sessionManager.ts"
+  ],
+  "handlers/agents.ts": [
+    "config/database.ts"
+  ],
+  "handlers/aiAnalytics.ts": [],
+  "handlers/codeAnalysis.ts": [
+    "config/database.ts"
+  ],
+  "handlers/codeComplexity.ts": [
+    "config/database.ts",
+    "middleware/eventLogger.ts",
+    "services/complexityTracker.ts",
+    "services/sessionManager.ts"
+  ],
+  "handlers/complexity/complexityAnalyze.ts": [
+    "config/database.ts",
+    "middleware/eventLogger.ts",
+    "services/complexityTracker.ts",
+    "services/sessionManager.ts",
+    "types/consolidated-complexity.ts"
+  ],
+  "handlers/complexity/complexityInsights.ts": [
+    "config/database.ts",
+    "handlers/codeComplexity.ts",
+    "middleware/eventLogger.ts",
+    "services/complexityTracker.ts",
+    "services/sessionManager.ts",
+    "types/consolidated-complexity.ts"
+  ],
+  "handlers/complexity/complexityManage.ts": [
+    "config/database.ts",
+    "middleware/eventLogger.ts",
+    "services/complexityTracker.ts",
+    "services/sessionManager.ts",
+    "types/consolidated-complexity.ts"
+  ],
+  "handlers/context.ts": [
+    "config/database.ts",
+    "handlers/project.ts",
+    "middleware/eventLogger.ts",
+    "services/embedding.ts",
+    "services/sessionTracker.ts"
+  ],
+  "handlers/decisions.ts": [
+    "config/database.ts",
+    "handlers/project.ts",
+    "middleware/eventLogger.ts",
+    "services/sessionTracker.ts"
+  ],
+  "handlers/git.ts": [
+    "../../aidis-command/backend/dist/services/gitService.d.ts",
+    "../../aidis-command/backend/dist/services/sessionDetail.d.ts",
+    "config/database.ts",
+    "middleware/eventLogger.ts",
+    "services/patternDetector.ts",
+    "services/sessionManager.ts"
+  ],
+  "handlers/metrics/metricsAnalyze.ts": [
+    "config/database.ts",
+    "middleware/eventLogger.ts",
+    "services/metricsAggregator.ts",
+    "services/metricsCorrelation.ts",
+    "services/sessionManager.ts"
+  ],
+  "handlers/metrics/metricsCollect.ts": [
+    "config/database.ts",
+    "middleware/eventLogger.ts",
+    "services/metricsCollector.ts",
+    "services/sessionManager.ts"
+  ],
+  "handlers/metrics/metricsControl.ts": [
+    "config/database.ts",
+    "middleware/eventLogger.ts",
+    "services/metricsCollector.ts",
+    "services/sessionManager.ts"
+  ],
+  "handlers/naming.ts": [
+    "config/database.ts",
+    "handlers/project.ts"
+  ],
+  "handlers/navigation.ts": [],
+  "handlers/outcomeTracking.ts": [
+    "middleware/eventLogger.ts",
+    "services/outcomeTracker.ts"
+  ],
+  "handlers/patterns/patternAnalyze.ts": [
+    "config/database.ts",
+    "handlers/_deprecated_tt009/patternAnalysis.ts",
+    "handlers/_deprecated_tt009/patternDetection.ts",
+    "handlers/project.ts",
+    "middleware/eventLogger.ts",
+    "services/patternDetector.ts",
+    "services/sessionManager.ts"
+  ],
+  "handlers/patterns/patternInsights.ts": [
+    "config/database.ts",
+    "handlers/_deprecated_tt009/patternAnalysis.ts",
+    "middleware/eventLogger.ts",
+    "services/sessionManager.ts"
+  ],
+  "handlers/project.ts": [
+    "config/database.ts",
+    "services/projectSwitchValidator.ts"
+  ],
+  "handlers/sessionAnalytics.ts": [
+    "config/database.ts",
+    "handlers/project.ts",
+    "middleware/eventLogger.ts",
+    "services/sessionTracker.ts"
+  ],
+  "handlers/smartSearch.ts": [
+    "config/database.ts",
+    "handlers/codeAnalysis.ts",
+    "handlers/context.ts",
+    "handlers/decisions.ts",
+    "handlers/naming.ts"
+  ],
+  "handlers/tasks.ts": [
+    "config/database.ts",
+    "services/sessionTracker.ts"
+  ],
+  "middleware/eventLogger.ts": [
+    "config/database.ts",
+    "handlers/project.ts"
+  ],
+  "middleware/ingressValidation.ts": [
+    "middleware/validation.ts",
+    "utils/logger.ts"
+  ],
+  "middleware/requestLogger.ts": [
+    "utils/logger.ts"
+  ],
+  "middleware/validation.ts": [],
+  "parsers/__tests__/mcpParser.test.ts": [
+    "parsers/mcpParser.ts"
+  ],
+  "parsers/mcpParser.ts": [],
+  "scripts/backfillSessions.ts": [
+    "config/database.ts",
+    "services/sessionMigrator.ts"
+  ],
+  "scripts/rollbackMigration.ts": [
+    "config/database.ts",
+    "services/sessionMigrator.ts"
+  ],
+  "scripts/run-migration.ts": [
+    "config/database.ts"
+  ],
+  "server-backup-before-stdio-fix.ts": [
+    "config/database.ts",
+    "handlers/codeAnalysis.ts",
+    "handlers/codeComplexity.ts",
+    "handlers/complexity/complexityAnalyze.ts",
+    "handlers/complexity/complexityInsights.ts",
+    "handlers/complexity/complexityManage.ts",
+    "handlers/context.ts",
+    "handlers/decisions.ts",
+    "handlers/git.ts",
+    "handlers/metrics/metricsAnalyze.ts",
+    "handlers/metrics/metricsCollect.ts",
+    "handlers/metrics/metricsControl.ts",
+    "handlers/naming.ts",
+    "handlers/navigation.ts",
+    "handlers/outcomeTracking.ts",
+    "handlers/patterns/patternAnalyze.ts",
+    "handlers/patterns/patternInsights.ts",
+    "handlers/project.ts",
+    "handlers/sessionAnalytics.ts",
+    "handlers/smartSearch.ts",
+    "handlers/tasks.ts",
+    "middleware/ingressValidation.ts",
+    "middleware/requestLogger.ts",
+    "middleware/validation.ts",
+    "services/complexityTracker.ts",
+    "services/databasePool.ts",
+    "services/gitTracker.ts",
+    "services/metricsCollector.ts",
+    "services/metricsIntegration.ts",
+    "services/patternDetector.ts",
+    "services/queueManager.ts",
+    "services/sessionTracker.ts",
+    "utils/errorHandler.ts",
+    "utils/featureFlags.ts",
+    "utils/logger.ts",
+    "utils/mcpProxy.ts",
+    "utils/mcpResponseHandler.ts",
+    "utils/portManager.ts",
+    "utils/processLock.ts"
+  ],
+  "server.ts": [
+    "config/database.ts",
+    "config/toolDefinitions.ts",
+    "handlers/codeAnalysis.ts",
+    "handlers/codeComplexity.ts",
+    "handlers/complexity/complexityAnalyze.ts",
+    "handlers/complexity/complexityInsights.ts",
+    "handlers/complexity/complexityManage.ts",
+    "handlers/context.ts",
+    "handlers/decisions.ts",
+    "handlers/git.ts",
+    "handlers/metrics/metricsAnalyze.ts",
+    "handlers/metrics/metricsCollect.ts",
+    "handlers/metrics/metricsControl.ts",
+    "handlers/naming.ts",
+    "handlers/navigation.ts",
+    "handlers/outcomeTracking.ts",
+    "handlers/patterns/patternAnalyze.ts",
+    "handlers/patterns/patternInsights.ts",
+    "handlers/project.ts",
+    "handlers/sessionAnalytics.ts",
+    "handlers/smartSearch.ts",
+    "handlers/tasks.ts",
+    "middleware/ingressValidation.ts",
+    "middleware/requestLogger.ts",
+    "middleware/validation.ts",
+    "services/complexityTracker.ts",
+    "services/databasePool.ts",
+    "services/gitTracker.ts",
+    "services/metricsCollector.ts",
+    "services/metricsIntegration.ts",
+    "services/patternDetector.ts",
+    "services/queueManager.ts",
+    "services/sessionTimeout.ts",
+    "services/sessionTracker.ts",
+    "utils/errorHandler.ts",
+    "utils/featureFlags.ts",
+    "utils/logger.ts",
+    "utils/mcpProxy.ts",
+    "utils/mcpResponseHandler.ts",
+    "utils/portManager.ts",
+    "utils/processLock.ts"
+  ],
+  "server_backup.ts": [
+    "config/database.ts",
+    "handlers/codeAnalysis.ts",
+    "handlers/codeComplexity.ts",
+    "handlers/context.ts",
+    "handlers/decisions.ts",
+    "handlers/git.ts",
+    "handlers/naming.ts",
+    "handlers/navigation.ts",
+    "handlers/outcomeTracking.ts",
+    "handlers/project.ts",
+    "handlers/sessionAnalytics.ts",
+    "handlers/smartSearch.ts",
+    "handlers/tasks.ts",
+    "middleware/validation.ts",
+    "services/complexityTracker.ts",
+    "services/gitTracker.ts",
+    "services/metricsCollector.ts",
+    "services/metricsIntegration.ts",
+    "services/patternDetector.ts",
+    "services/sessionTracker.ts",
+    "utils/mcpProxy.ts",
+    "utils/processLock.ts"
+  ],
+  "services/complexityTracker.ts": [
+    "config/database.ts",
+    "middleware/eventLogger.ts",
+    "services/sessionManager.ts"
+  ],
+  "services/databasePool.ts": [],
+  "services/embedding.ts": [],
+  "services/gitTracker.ts": [
+    "../../aidis-command/backend/dist/services/sessionDetail.d.ts",
+    "config/database.ts",
+    "handlers/git.ts",
+    "middleware/eventLogger.ts",
+    "services/complexityTracker.ts",
+    "services/sessionManager.ts"
+  ],
+  "services/healthCheck.ts": [
+    "services/databasePool.ts",
+    "services/queueManager.ts"
+  ],
+  "services/metricsAggregator.ts": [
+    "config/database.ts",
+    "middleware/eventLogger.ts",
+    "services/sessionManager.ts"
+  ],
+  "services/metricsCollector.ts": [
+    "config/database.ts",
+    "middleware/eventLogger.ts",
+    "services/patternDetector.ts",
+    "services/sessionManager.ts"
+  ],
+  "services/metricsCorrelation.ts": [
+    "config/database.ts",
+    "middleware/eventLogger.ts"
+  ],
+  "services/metricsIntegration.ts": [
+    "config/database.ts",
+    "middleware/eventLogger.ts",
+    "services/metricsCollector.ts",
+    "services/patternDetector.ts"
+  ],
+  "services/outcomeTracker.ts": [
+    "config/database.ts",
+    "handlers/project.ts",
+    "middleware/eventLogger.ts"
+  ],
+  "services/patternDetector.ts": [
+    "config/database.ts",
+    "middleware/eventLogger.ts",
+    "services/sessionManager.ts"
+  ],
+  "services/projectSwitchValidator.ts": [
+    "config/database.ts",
+    "handlers/project.ts",
+    "services/sessionTracker.ts"
+  ],
+  "services/queueManager.ts": [
+    "utils/featureFlags.ts"
+  ],
+  "services/sessionManager.ts": [
+    "config/database.ts",
+    "middleware/eventLogger.ts"
+  ],
+  "services/sessionMigrationManager.ts": [
+    "config/database.ts",
+    "handlers/sessionAnalytics.ts",
+    "middleware/eventLogger.ts",
+    "services/unifiedSessionManager.ts",
+    "utils/featureFlags.ts"
+  ],
+  "services/sessionMigrator.ts": [
+    "config/database.ts",
+    "handlers/project.ts",
+    "services/projectSwitchValidator.ts"
+  ],
+  "services/sessionMonitoring.ts": [
+    "middleware/eventLogger.ts",
+    "services/sessionRouter.ts",
+    "utils/featureFlags.ts"
+  ],
+  "services/sessionRouter.ts": [
+    "handlers/sessionAnalytics.ts",
+    "middleware/eventLogger.ts",
+    "utils/featureFlags.ts"
+  ],
+  "services/sessionTimeout.ts": [
+    "config/database.ts"
+  ],
+  "services/sessionTracker.ts": [
+    "config/database.ts",
+    "handlers/project.ts",
+    "utils/agentDetection.ts"
+  ],
+  "services/unifiedSessionManager.ts": [
+    "config/database.ts",
+    "handlers/sessionAnalytics.ts",
+    "middleware/eventLogger.ts",
+    "services/sessionRouter.ts",
+    "utils/featureFlags.ts"
+  ],
+  "test/test-metrics-system.ts": [
+    "config/database.ts",
+    "services/metricsCollector.ts",
+    "services/metricsIntegration.ts"
+  ],
+  "tests/complexity-consolidation.test.ts": [
+    "config/database.ts",
+    "handlers/codeComplexity.ts",
+    "handlers/complexity/complexityAnalyze.ts",
+    "handlers/complexity/complexityInsights.ts",
+    "handlers/complexity/complexityManage.ts",
+    "services/complexityTracker.ts",
+    "utils/complexity-consolidation-validator.ts"
+  ],
+  "tests/featureFlags.test.ts": [],
+  "tests/fuzz/mcpFuzzTester.ts": [
+    "middleware/ingressValidation.ts",
+    "parsers/mcpParser.ts",
+    "utils/logger.ts",
+    "utils/mcpResponseHandler.ts"
+  ],
+  "tests/httpContract.test.ts": [],
+  "tests/session.e2e.test.ts": [
+    "config/database.ts",
+    "handlers/project.ts",
+    "handlers/sessionAnalytics.ts",
+    "services/sessionTracker.ts"
+  ],
+  "tests/session.unit.test.ts": [
+    "config/database.ts",
+    "handlers/sessionAnalytics.ts",
+    "services/sessionTracker.ts"
+  ],
+  "types/consolidated-complexity.ts": [],
+  "utils/agentDetection.ts": [],
+  "utils/complexity-consolidation-validator.ts": [
+    "types/consolidated-complexity.ts"
+  ],
+  "utils/errorHandler.ts": [
+    "utils/logger.ts"
+  ],
+  "utils/featureFlags.ts": [],
+  "utils/httpMcpBridge.ts": [],
+  "utils/logger.ts": [],
+  "utils/mcpProxy.ts": [],
+  "utils/mcpResponseHandler.ts": [
+    "parsers/mcpParser.ts",
+    "utils/logger.ts"
+  ],
+  "utils/monitoring.ts": [
+    "config/database.ts"
+  ],
+  "utils/portManager.ts": [
+    "utils/logger.ts"
+  ],
+  "utils/processLock.ts": [],
+  "utils/retryLogic.ts": [],
+  "utils/serviceMesh.ts": []
+}

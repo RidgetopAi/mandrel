@@ -14,6 +14,7 @@ import {
   Statistic,
   Badge,
   message,
+  Modal,
 } from 'antd';
 import {
   ClockCircleOutlined,
@@ -23,11 +24,15 @@ import {
   EyeOutlined,
   ReloadOutlined,
   SearchOutlined,
+  PlayCircleOutlined,
+  StopOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import { useAllSessions } from '../hooks/useProjects';
+import { useSessionsList } from '../hooks/useProjects';
 import SessionEditModal from '../components/sessions/SessionEditModal';
-import type { Session } from '../types/session';
+import StartSessionModal from '../components/sessions/StartSessionModal';
+import { sessionsClient } from '../api/sessionsClient';
+import type { Session, SessionDetail } from '../types/session';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -51,44 +56,88 @@ const Sessions: React.FC = () => {
   });
 
   // Use React Query hook for sessions data
-  const { data: sessionsResponse, isLoading: loading, error, refetch } = useAllSessions();
-  const sessions = useMemo(() => sessionsResponse?.sessions || [], [sessionsResponse]);
+  const { data: sessionsResponse, isLoading: loading, error, refetch } = useSessionsList({ limit: 1000 });
+  const sessions = useMemo(() => {
+    const sessionsList = sessionsResponse?.sessions || [];
+
+    // DIAGNOSTIC: Log raw data to debug 112 active issue
+    console.log('[Sessions] Raw sessions data received:', {
+      total: sessionsList.length,
+      sampleEndedAt: sessionsList.slice(0, 3).map(s => ({
+        title: s.title?.substring(0, 20),
+        ended_at: s.ended_at,
+        type: typeof s.ended_at,
+        isEmpty: s.ended_at === '',
+        isNull: s.ended_at === null,
+        isUndefined: s.ended_at === undefined,
+        isFalsy: !s.ended_at
+      }))
+    });
+
+    return sessionsList;
+  }, [sessionsResponse]);
   const [editModalVisible, setEditModalVisible] = useState(false);
+  const [startModalVisible, setStartModalVisible] = useState(false);
   const [selectedSession, setSelectedSession] = useState<SessionItem | null>(null);
+  const [activeSessions, setActiveSessions] = useState<Session[]>([]);
+  const [selectedActiveSessionId, setSelectedActiveSessionId] = useState<string | null>(null);
   const [searchText, setSearchText] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [projectFilter, setProjectFilter] = useState<string>('all');
-  
+
   const navigate = useNavigate();
   // const { currentProject } = useProjectContext(); // TODO: Use for project filtering
 
   // Calculate stats from sessions data
-  const calculateStats = useCallback((sessionsArray: SessionItem[]) => {
+  const calculateStats = useCallback((sessionsArray: SessionItem[], apiTotal?: number) => {
+    // Use UTC midnight for consistent timezone handling
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const todayUTC = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()));
 
     const todaysSessions = sessionsArray.filter((s: SessionItem) =>
-      new Date(s.created_at) >= today
+      new Date(s.started_at || s.created_at) >= todayUTC
     ).length;
 
-    const activeSessions = sessionsArray.filter((s: SessionItem) =>
-      s.last_context_at && new Date(s.last_context_at) > new Date(Date.now() - 60 * 60 * 1000)
-    ).length;
+    // Active sessions = sessions that haven't been ended (ended_at is null or undefined)
+    const activeSessionsList = sessionsArray.filter((s: SessionItem) => !s.ended_at);
+    const activeSessions = activeSessionsList.length;
+
+    // Debug logging
+    console.log('[Stats] API total:', apiTotal);
+    console.log('[Stats] Sessions array length:', sessionsArray.length);
+    console.log('[Stats] Active sessions (no ended_at):', activeSessions);
+    console.log('[Stats] Sample ended_at values:', sessionsArray.slice(0, 5).map(s => ({
+      title: s.title?.substring(0, 20),
+      ended_at: s.ended_at,
+      has_ended: !!s.ended_at
+    })));
+
+    // Calculate average duration in minutes
+    const avgDuration = sessionsArray.length > 0
+      ? Math.round(
+          sessionsArray.reduce((sum, s: SessionItem) => {
+            const start = s.started_at ? new Date(s.started_at) : new Date(s.created_at);
+            const end = s.ended_at ? new Date(s.ended_at) : new Date();
+            const durationMs = end.getTime() - start.getTime();
+            return sum + durationMs;
+          }, 0) / sessionsArray.length / (1000 * 60) // Convert to minutes
+        )
+      : 0;
 
     setStats({
-      totalSessions: sessionsArray.length,
+      totalSessions: apiTotal || sessionsArray.length,  // Use API total if available, fallback to array length
       activeSessions,
       todaySessions: todaysSessions,
-      averageDuration: 0, // TODO: Calculate when we have duration data
+      averageDuration: avgDuration,
     });
   }, []);
 
   // Update stats when sessions data changes
   useEffect(() => {
     if (sessions.length > 0) {
-      calculateStats(sessions);
+      calculateStats(sessions, sessionsResponse?.total);
     }
-  }, [sessions, calculateStats]);
+  }, [sessions, sessionsResponse?.total, calculateStats]);
 
   // Handle error state
   useEffect(() => {
@@ -97,6 +146,91 @@ const Sessions: React.FC = () => {
       message.error('Failed to load sessions');
     }
   }, [error]);
+
+  // Fetch all active sessions on mount and after changes
+  useEffect(() => {
+    const fetchActiveSessions = async () => {
+      try {
+        const active = await sessionsClient.getAllActiveSessions();
+        console.log(`[Sessions] Fetched ${active.length} active sessions:`, active.map(s => ({
+          id: s.id?.substring(0, 8),
+          title: s.title,
+          started_at: s.started_at,
+          ended_at: s.ended_at
+        })));
+        setActiveSessions(active);
+
+        // Auto-select the first active session if only one exists
+        if (active.length === 1) {
+          setSelectedActiveSessionId(active[0].id);
+          console.log(`[Sessions] Auto-selected session: ${active[0].title}`);
+        } else if (active.length === 0) {
+          setSelectedActiveSessionId(null);
+          console.log('[Sessions] No active sessions');
+        } else {
+          console.log(`[Sessions] Multiple active sessions (${active.length}), user must select`);
+        }
+      } catch (error) {
+        console.error('Failed to fetch active sessions:', error);
+      }
+    };
+
+    fetchActiveSessions();
+  }, [sessions]); // Refresh when sessions list changes
+
+  // Handle start session
+  const handleStartSession = () => {
+    setStartModalVisible(true);
+  };
+
+  // Handle end session
+  const handleEndSession = async () => {
+    if (!selectedActiveSessionId) {
+      message.warning('Please select a session to end');
+      return;
+    }
+
+    const sessionToEnd = activeSessions.find(s => s.id === selectedActiveSessionId);
+    if (!sessionToEnd) {
+      message.error('Selected session not found');
+      return;
+    }
+
+    Modal.confirm({
+      title: 'End Active Session?',
+      content: (
+        <div>
+          <p>Are you sure you want to end this session?</p>
+          <p><strong>Title:</strong> {sessionToEnd.title || 'Untitled'}</p>
+          <p><strong>Started:</strong> {sessionToEnd.started_at ? new Date(sessionToEnd.started_at).toLocaleString() : 'Unknown'}</p>
+          <p style={{ marginTop: 12, color: '#666' }}>
+            This will sync git files, calculate final metrics, and mark the session as completed.
+          </p>
+        </div>
+      ),
+      icon: <StopOutlined style={{ color: '#ff4d4f' }} />,
+      okText: 'End Session',
+      okType: 'danger',
+      cancelText: 'Cancel',
+      onOk: async () => {
+        try {
+          const endedSession = await sessionsClient.endSession(selectedActiveSessionId);
+          message.success('Session ended successfully!');
+          refetch(); // Refresh the sessions list (will trigger active sessions refresh)
+          console.log('Session ended:', endedSession);
+        } catch (error) {
+          console.error('Failed to end session:', error);
+          message.error(`Failed to end session: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+      },
+    });
+  };
+
+  // Handle start session success
+  const handleStartSuccess = async () => {
+    setStartModalVisible(false);
+    refetch(); // Refresh the sessions list (will trigger active sessions refresh)
+  };
 
   // Session type icons and colors
   const getTypeIcon = (type?: string) => {
@@ -143,6 +277,12 @@ const Sessions: React.FC = () => {
     return `${hours}h ${mins}m`;
   };
 
+  // Helper to check if session is active (not ended)
+  const isSessionActive = (session: SessionItem): boolean => {
+    // A session is active if it hasn't been ended (ended_at is null)
+    return !session.ended_at;
+  };
+
   // Filter sessions
   const filteredSessions = sessions.filter((session: SessionItem) => {
     const matchesSearch = !searchText || 
@@ -150,7 +290,12 @@ const Sessions: React.FC = () => {
       (session.description?.toLowerCase().includes(searchText.toLowerCase())) ||
       (session.project_name?.toLowerCase().includes(searchText.toLowerCase()));
     
-    const matchesStatus = true; // No status filtering for now since we don't have status in data
+    // Status filtering based on activity
+    const matchesStatus = statusFilter === 'all' || 
+      (statusFilter === 'active' && isSessionActive(session)) ||
+      (statusFilter === 'inactive' && !isSessionActive(session) && session.last_context_at) ||
+      (statusFilter === 'disconnected' && !session.last_context_at);
+    
     const matchesProject = projectFilter === 'all' || session.project_id === projectFilter;
     
     return matchesSearch && matchesStatus && matchesProject;
@@ -161,20 +306,26 @@ const Sessions: React.FC = () => {
     {
       title: 'Session',
       key: 'session',
-      render: (record: SessionItem) => (
-        <Space direction="vertical" size="small">
-          <Space>
-            <span>{getTypeIcon(record.session_type)}</span>
-            <Text strong>{record.title || `Session ${record.id.slice(0, 8)}`}</Text>
-            <Tag color={getTypeColor(record.session_type)}>{record.session_type}</Tag>
+      render: (record: SessionItem) => {
+        const isActive = isSessionActive(record);
+        return (
+          <Space direction="vertical" size="small">
+            <Space>
+              <span>{getTypeIcon(record.session_type)}</span>
+              <Text strong>{record.title || `Session ${record.id.slice(0, 8)}`}</Text>
+              <Tag color={getTypeColor(record.session_type)}>{record.session_type}</Tag>
+              {isActive && (
+                <Badge status="processing" text="Active" />
+              )}
+            </Space>
+            {record.description && (
+              <Text type="secondary" ellipsis={{ tooltip: record.description }}>
+                {record.description}
+              </Text>
+            )}
           </Space>
-          {record.description && (
-            <Text type="secondary" ellipsis={{ tooltip: record.description }}>
-              {record.description}
-            </Text>
-          )}
-        </Space>
-      ),
+        );
+      },
     },
     {
       title: 'Project',
@@ -247,11 +398,11 @@ const Sessions: React.FC = () => {
       title: 'Tokens',
       key: 'tokens',
       render: (record: SessionItem) => (
-        <Tooltip title={`Input: ${(record.input_tokens || 0).toLocaleString()} | Output: ${(record.output_tokens || 0).toLocaleString()}`}>
-          <Text>{(record.total_tokens || 0).toLocaleString()}</Text>
+        <Tooltip title={`Input: ${Number(record.input_tokens || 0).toLocaleString()} | Output: ${Number(record.output_tokens || 0).toLocaleString()}`}>
+          <Text>{Number(record.total_tokens || 0).toLocaleString()}</Text>
         </Tooltip>
       ),
-      sorter: (a: SessionItem, b: SessionItem) => (a.total_tokens || 0) - (b.total_tokens || 0),
+      sorter: (a: SessionItem, b: SessionItem) => Number(a.total_tokens || 0) - Number(b.total_tokens || 0),
     },
     {
       title: 'Last Activity',
@@ -299,18 +450,68 @@ const Sessions: React.FC = () => {
         <Space style={{ width: '100%', justifyContent: 'space-between' }}>
           <Space direction="vertical">
             <Title level={2}>Session Management</Title>
-            <Text type="secondary">
-              Monitor and manage development sessions across projects
-            </Text>
+            <Space>
+              <Text type="secondary">
+                Monitor and manage development sessions across projects
+              </Text>
+              {activeSessions.length > 0 && (
+                <>
+                  {activeSessions.length === 1 ? (
+                    <Tag color="green" icon={<Badge status="processing" />}>
+                      Active: {activeSessions[0].title || 'Untitled'}
+                    </Tag>
+                  ) : (
+                    <Space>
+                      <Tag color="orange" icon={<Badge status="warning" />}>
+                        {activeSessions.length} Active Sessions
+                      </Tag>
+                      <Select
+                        style={{ minWidth: 200 }}
+                        placeholder="Select session to end"
+                        value={selectedActiveSessionId}
+                        onChange={setSelectedActiveSessionId}
+                        size="small"
+                      >
+                        {activeSessions.map(session => (
+                          <Option key={session.id} value={session.id}>
+                            {session.title || 'Untitled'} - {session.started_at ? new Date(session.started_at).toLocaleTimeString() : 'Unknown'}
+                          </Option>
+                        ))}
+                      </Select>
+                    </Space>
+                  )}
+                </>
+              )}
+            </Space>
           </Space>
-          <Button
-            type="primary"
-            icon={<ReloadOutlined />}
-            onClick={() => refetch()}
-            loading={loading}
-          >
-            Refresh
-          </Button>
+          <Space>
+            <Button
+              type="primary"
+              icon={<PlayCircleOutlined />}
+              onClick={handleStartSession}
+              disabled={loading}
+            >
+              Start Session
+            </Button>
+            <Button
+              danger
+              icon={<StopOutlined />}
+              onClick={handleEndSession}
+              disabled={loading || activeSessions.length === 0 || !selectedActiveSessionId}
+            >
+              End Session
+            </Button>
+            <Button
+              icon={<ReloadOutlined />}
+              onClick={() => {
+                console.log('[Sessions] Hard refresh triggered');
+                refetch();
+              }}
+              loading={loading}
+            >
+              Refresh
+            </Button>
+          </Space>
         </Space>
 
         {/* Stats Cards */}
@@ -430,6 +631,13 @@ const Sessions: React.FC = () => {
           setSelectedSession(null);
           refetch(); // Refresh the list
         }}
+      />
+
+      {/* Start Session Modal */}
+      <StartSessionModal
+        visible={startModalVisible}
+        onClose={() => setStartModalVisible(false)}
+        onSuccess={handleStartSuccess}
       />
     </div>
   );

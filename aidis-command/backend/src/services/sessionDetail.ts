@@ -9,33 +9,46 @@ export interface SessionDetail {
   started_at: string;
   ended_at?: string;
   duration_minutes: number;
-  
+
   // Token metrics
   total_tokens: number;
   prompt_tokens: number;
   completion_tokens: number;
-  
+
   // Activity counts
   contexts_created: number;
   decisions_created: number;
   tasks_created: number;
   tasks_completed: number;
+  tasks_updated: number;
   api_requests: number;
-  
+
   // Detailed activity lists
   contexts: SessionContext[];
   decisions: SessionDecision[];
   tasks: SessionTask[];
   code_components: SessionCodeComponent[];
-  
+
   // Git correlation data
   commits_contributed: number;
   linked_commits: SessionCommit[];
   git_correlation_confidence: number;
-  
+
   // Summary
   context_summary?: string;
   productivity_score: number;
+
+  // Phase 1 enhancement fields
+  files_modified_count?: number;
+  lines_added?: number;
+  lines_deleted?: number;
+  lines_net?: number;
+  ai_model?: string;
+  session_goal?: string;
+  tags?: string[];
+  active_branch?: string;
+  working_commit_sha?: string;
+  activity_count?: number;
 }
 
 export interface SessionContext {
@@ -114,11 +127,11 @@ export class SessionDetailService {
     try {
       // Get basic session info
       const sessionQuery = `
-        SELECT 
+        SELECT
           s.*,
           p.name as project_name,
           EXTRACT(EPOCH FROM (COALESCE(s.ended_at, CURRENT_TIMESTAMP) - s.started_at)) / 60 as duration_minutes
-        FROM user_sessions s
+        FROM sessions s
         LEFT JOIN projects p ON s.project_id = p.id
         WHERE s.id = $1
       `;
@@ -164,27 +177,22 @@ export class SessionDetailService {
       
       const decisionsResult = await pool.query(decisionsQuery, [sessionId]);
       
-      // Get tasks created or worked on during this session
+      // Get tasks linked to this session via session_id foreign key
       const tasksQuery = `
-        SELECT 
+        SELECT
           t.id,
           t.title,
           t.type,
           t.status,
           t.priority,
           t.created_at,
-          t.updated_at as completed_at
+          t.completed_at
         FROM tasks t
-        WHERE t.created_at BETWEEN $1 AND COALESCE($2, CURRENT_TIMESTAMP)
-          AND t.project_id = $3
+        WHERE t.session_id = $1
         ORDER BY t.created_at DESC
       `;
-      
-      const tasksResult = await pool.query(tasksQuery, [
-        session.started_at,
-        session.ended_at,
-        session.project_id
-      ]);
+
+      const tasksResult = await pool.query(tasksQuery, [sessionId]);
       
       // Get code components analyzed during this session
       const codeQuery = `
@@ -248,33 +256,48 @@ export class SessionDetailService {
         id: session.id,
         project_id: session.project_id,
         project_name: session.project_name,
-        session_type: session.session_type,
+        session_type: session.agent_type || session.session_type,
         started_at: session.started_at,
         ended_at: session.ended_at,
         duration_minutes: Math.round(session.duration_minutes),
-        
+
+        // Token metrics - sessions table uses input_tokens/output_tokens
         total_tokens: session.total_tokens || 0,
-        prompt_tokens: session.prompt_tokens || 0,
-        completion_tokens: session.completion_tokens || 0,
-        
+        prompt_tokens: session.input_tokens || session.prompt_tokens || 0,
+        completion_tokens: session.output_tokens || session.completion_tokens || 0,
+
+        // Activity counts - now from Phase 1 enhancement columns
         contexts_created: session.contexts_created || contextsResult.rows.length,
         decisions_created: session.decisions_created || decisionsResult.rows.length,
-        tasks_created: session.tasks_created || tasksResult.rows.filter(t => t.created_at >= session.started_at).length,
+        tasks_created: tasksResult.rows.length,
         tasks_completed: tasksResult.rows.filter(t => t.status === 'completed').length,
         api_requests: session.api_requests || 0,
-        
+
         contexts: contextsResult.rows.map(mapContext),
         decisions: decisionsResult.rows.map(mapDecision),
         tasks: tasksResult.rows.map(mapTask),
         code_components: codeResult.rows.map(mapCodeComponent),
-        
+
         // Git correlation data
         commits_contributed: commitsResult.rows.length,
         linked_commits: commitsResult.rows.map(mapCommit),
         git_correlation_confidence: Math.round(avgConfidence * 100) / 100,
-        
+
         context_summary: session.context_summary,
-        productivity_score: productivityScore
+        productivity_score: session.productivity_score || productivityScore,
+
+        // Phase 1 enhancement fields from sessions table
+        files_modified_count: session.files_modified_count || 0,
+        lines_added: session.lines_added || 0,
+        lines_deleted: session.lines_deleted || 0,
+        lines_net: session.lines_net || 0,
+        ai_model: session.ai_model,
+        session_goal: session.session_goal,
+        tags: session.tags || [],
+        active_branch: session.active_branch,
+        working_commit_sha: session.working_commit_sha,
+        activity_count: session.activity_count || 0,
+        tasks_updated: session.tasks_updated || 0,
       };
     } catch (error) {
       console.error('Get session detail error:', error);

@@ -273,3 +273,56 @@
 .task-card.status-blocked {
   box-shadow: 0 0 0 1px rgba(255, 77, 79, 0.3), 0 2px 8px rgba(255, 77, 79, 0.15);
 }
+
+/* ============================================
+   DARK MODE OVERRIDES
+   ============================================ */
+
+[data-theme='dark'] .task-card .ant-card-head {
+  border-bottom: 1px solid #434343 !important;
+  background: #262626 !important;
+  background-color: #262626 !important;
+}
+
+[data-theme='dark'] .task-card .ant-card-body {
+  padding: 16px;
+  background: #1f1f1f !important;
+  background-color: #1f1f1f !important;
+}
+
+[data-theme='dark'] .task-card .ant-card-actions {
+  border-top: 1px solid #434343 !important;
+  background: #262626 !important;
+  background-color: #262626 !important;
+}
+
+[data-theme='dark'] .task-card .ant-card-actions > li:hover {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-radius: 4px;
+}
+
+[data-theme='dark'] .task-empty-state {
+  color: rgba(255, 255, 255, 0.65);
+  background: #262626 !important;
+  border: 2px dashed #434343;
+}
+
+[data-theme='dark'] .task-empty-state .anticon {
+  color: #434343;
+}
+
+[data-theme='dark'] .task-card:hover {
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.45) !important;
+}
+
+[data-theme='dark'] .task-card.expanded {
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6) !important;
+}
+
+[data-theme='dark'] .task-card .expand-collapse-button:hover {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+[data-theme='dark'] .task-detail-section:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
+}

@@ -42,13 +42,13 @@ interface SessionDetailData {
   updated_at?: string;
   started_at: string;
   ended_at?: string;
-  duration_minutes: number;
+  duration_minutes?: string; // API returns string
   context_count?: number;
   last_context_at?: string;
-  
-  total_tokens: number;
-  prompt_tokens: number;
-  completion_tokens: number;
+
+  total_tokens?: string; // API returns string
+  prompt_tokens?: string; // API returns string
+  completion_tokens?: string; // API returns string
   
   contexts_created: number;
   decisions_created: number;
@@ -62,7 +62,7 @@ interface SessionDetailData {
   code_components: SessionCodeComponent[];
   
   context_summary?: string;
-  productivity_score: number;
+  productivity_score?: string; // API returns string
 }
 
 interface SessionContext {
@@ -135,11 +135,13 @@ const SessionDetail: React.FC<SessionDetailProps> = ({ sessionId }) => {
     return new Date(dateString).toLocaleString();
   };
 
-  const formatDuration = (minutes: number) => {
-    const hours = Math.floor(minutes / 60);
-    const mins = Math.round(minutes % 60);
+  const formatDuration = (minutes: string | number | undefined) => {
+    if (!minutes) return '0m';
+    const mins = typeof minutes === 'string' ? parseFloat(minutes) : minutes;
+    const hours = Math.floor(mins / 60);
+    const remainingMins = Math.round(mins % 60);
     if (hours > 0) {
-      return `${hours}h ${mins}m`;
+      return `${hours}h ${remainingMins}m`;
     }
     return `${mins}m`;
   };

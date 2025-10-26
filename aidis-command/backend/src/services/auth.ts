@@ -82,8 +82,10 @@ export class AuthService {
     const expiresAt = new Date();
     expiresAt.setHours(expiresAt.getHours() + 24); // 24 hours from now
 
+    // Create auth token (separate from work sessions)
     await pool.query(
-      'INSERT INTO user_sessions (user_id, token_id, expires_at) VALUES ($1, $2, $3)',
+      `INSERT INTO auth_tokens (user_id, token_id, expires_at) 
+       VALUES ($1, $2, $3)`,
       [userId, tokenId, expiresAt]
     );
 
@@ -91,8 +93,14 @@ export class AuthService {
   }
 
   static async validateSession(tokenId: string): Promise<boolean> {
+    // Update last_used_at and check validity
     const result = await pool.query(
-      'SELECT * FROM user_sessions WHERE token_id = $1 AND is_active = true AND expires_at > NOW()',
+      `UPDATE auth_tokens 
+       SET last_used_at = NOW()
+       WHERE token_id = $1 
+       AND expires_at > NOW()
+       AND invalidated_at IS NULL
+       RETURNING id`,
       [tokenId]
     );
     return result.rows.length > 0;
@@ -100,14 +108,18 @@ export class AuthService {
 
   static async invalidateSession(tokenId: string): Promise<void> {
     await pool.query(
-      'UPDATE user_sessions SET is_active = false WHERE token_id = $1',
+      `UPDATE auth_tokens 
+       SET invalidated_at = NOW() 
+       WHERE token_id = $1`,
       [tokenId]
     );
   }
 
   static async invalidateAllUserSessions(userId: string): Promise<void> {
     await pool.query(
-      'UPDATE user_sessions SET is_active = false WHERE user_id = $1',
+      `UPDATE auth_tokens 
+       SET invalidated_at = NOW() 
+       WHERE user_id = $1 AND invalidated_at IS NULL`,
       [userId]
     );
   }
@@ -160,17 +172,20 @@ export class AuthService {
       return null;
     }
 
-    // Get session info
-    const sessionResult = await pool.query(
-      'SELECT user_id FROM user_sessions WHERE token_id = $1 AND is_active = true',
+    // Get auth token info
+    const tokenResult = await pool.query(
+      `SELECT user_id FROM auth_tokens
+       WHERE token_id = $1
+       AND expires_at > NOW()
+       AND invalidated_at IS NULL`,
       [tokenId]
     );
 
-    if (sessionResult.rows.length === 0) {
+    if (tokenResult.rows.length === 0) {
       return null;
     }
 
-    const userId = sessionResult.rows[0].user_id;
+    const userId = tokenResult.rows[0].user_id;
     const user = await this.findUserById(userId);
     
     if (!user) {

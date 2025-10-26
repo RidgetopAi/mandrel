@@ -291,18 +291,21 @@ export class SessionAnalyticsService {
     total: number;
   }> {
     try {
-      const { projectId, status, limit = 50, offset = 0 } = options;
+      const { projectId, status, limit = 1000, offset = 0 } = options;
       
       let whereConditions: string[] = [];
       let params: any[] = [];
       let paramIndex = 1;
-      
+
+      // IMPORTANT: Filter out web-ui and web sessions by default (they're auth artifacts, not work sessions)
+      whereConditions.push(`(s.agent_type NOT IN ('web-ui', 'web') OR s.agent_type IS NULL)`);
+
       if (projectId) {
         whereConditions.push(`s.project_id = $${paramIndex}`);
         params.push(projectId);
         paramIndex++;
       }
-      
+
       // Map frontend status to session status logic
       if (status && status !== 'all') {
         if (status === 'active') {
@@ -329,11 +332,16 @@ export class SessionAnalyticsService {
       const sessionsQuery = `
         SELECT
           s.id,
+          s.display_id,
           s.project_id,
           s.title,
           s.description,
+          s.session_goal,
+          s.tags,
+          s.updated_at,
           s.started_at,
           s.ended_at,
+          s.last_activity_at,
           s.input_tokens,
           s.output_tokens,
           s.total_tokens,
@@ -341,24 +349,34 @@ export class SessionAnalyticsService {
           s.tasks_updated,
           s.tasks_completed,
           s.contexts_created,
+          s.lines_added,
+          s.lines_deleted,
+          s.lines_net,
+          s.files_modified_count,
+          s.productivity_score,
+          s.activity_count,
           p.name as project_name,
           EXTRACT(EPOCH FROM (COALESCE(s.ended_at, CURRENT_TIMESTAMP) - s.started_at)) / 60 as duration_minutes,
           COUNT(c.id) as contexts_count,
           COUNT(t.id) as tasks_count,
+          s.status,  -- Use actual status column, not calculated
+          s.agent_type as type,
+          s.ai_model,
           CASE
-            WHEN s.ended_at IS NULL THEN 'active'
-            WHEN s.ended_at > CURRENT_TIMESTAMP - INTERVAL '1 hour' THEN 'inactive'
-            ELSE 'disconnected'
-          END as status,
-          s.agent_type as type
+            WHEN s.tasks_created > 0 THEN ROUND((s.tasks_completed::numeric / s.tasks_created::numeric) * 100, 2)
+            ELSE 0
+          END as task_completion_rate
         FROM sessions s
         LEFT JOIN projects p ON s.project_id = p.id
         LEFT JOIN contexts c ON s.id = c.session_id
         LEFT JOIN tasks t ON s.project_id = t.project_id AND s.id::text = t.created_by
         ${whereClause}
-        GROUP BY s.id, s.project_id, s.title, s.description, s.started_at, s.ended_at,
+        GROUP BY s.id, s.display_id, s.project_id, s.title, s.description, s.session_goal, s.tags,
+                 s.updated_at, s.started_at, s.ended_at, s.last_activity_at,
                  s.input_tokens, s.output_tokens, s.total_tokens, s.tasks_created, s.tasks_updated,
-                 s.tasks_completed, s.contexts_created, p.name, s.agent_type
+                 s.tasks_completed, s.contexts_created, s.lines_added, s.lines_deleted, s.lines_net,
+                 s.files_modified_count, s.productivity_score, s.activity_count, p.name, s.status,
+                 s.agent_type, s.ai_model
         ORDER BY s.started_at DESC
         LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
       `;
@@ -367,14 +385,61 @@ export class SessionAnalyticsService {
       const sessionsResult = await pool.query(sessionsQuery, params);
       
       const sessions = sessionsResult.rows.map(row => ({
+        // Identification
         id: row.id,
-        title: row.title,
-        description: row.description,
+        display_id: row.display_id,
+
+        // Project association
         project_id: row.project_id,
         project_name: row.project_name,
-        created_at: row.started_at,
+
+        // Basic info
+        title: row.title,
+        description: row.description,
+        session_goal: row.session_goal,
+        tags: row.tags || [],
+
+        // Timestamps - CRITICAL FOR ACTIVE/ENDED STATUS
+        created_at: row.started_at,  // Sessions table uses started_at, not created_at
+        updated_at: row.updated_at,
+        started_at: row.started_at,
+        ended_at: row.ended_at,  // CRITICAL: Must include ended_at!
+        last_activity_at: row.last_activity_at,
+        last_context_at: row.last_activity_at,
+
+        // Status and type
         status: row.status,
-        type: row.type,
+        session_type: row.type,
+        agent_type: row.type,
+        ai_model: row.ai_model,
+
+        // File metrics
+        lines_added: row.lines_added || 0,
+        lines_deleted: row.lines_deleted || 0,
+        lines_net: row.lines_net || 0,
+        files_modified_count: row.files_modified_count || 0,
+
+        // Task metrics
+        tasks_created: row.tasks_created || 0,
+        tasks_updated: row.tasks_updated || 0,
+        tasks_completed: row.tasks_completed || 0,
+        task_completion_rate: row.task_completion_rate?.toString() || '0',
+
+        // Context metrics
+        contexts_created: row.contexts_created || 0,
+        context_count: parseInt(row.contexts_count) || 0,
+
+        // Duration and productivity
+        duration_minutes: row.duration_minutes?.toString(),
+        productivity_score: row.productivity_score?.toString() || '0',
+        activity_count: row.activity_count || 0,
+
+        // Token usage
+        input_tokens: row.input_tokens?.toString() || '0',
+        output_tokens: row.output_tokens?.toString() || '0',
+        total_tokens: row.total_tokens?.toString() || '0',
+
+        // Legacy fields for backward compatibility
         startedAt: row.started_at,
         lastActivity: row.ended_at || row.started_at,
         duration: Math.round(parseFloat(row.duration_minutes) || 0),

@@ -515,15 +515,17 @@ export class ContextHandler {
 
     // Get or create an active session using the SessionTracker
     try {
-      // TODO: ensureActiveSession function needs to be implemented
-      // const activeSessionId = await ensureActiveSession(projectId);
-      const activeSessionId = sessionId || null; // Fallback to current session
+      const { SessionTracker } = await import('../services/sessionTracker.js');
+      const activeSessionId = await SessionTracker.getActiveSession();
       if (activeSessionId) {
         console.log(`📋 Using active session: ${activeSessionId.substring(0, 8)}... for context storage`);
+        return activeSessionId;
       }
-      return activeSessionId;
+
+      console.warn('⚠️  No active session found - context will be stored without session association');
+      return null;
     } catch (error) {
-      console.warn('⚠️  Failed to get/create session, storing context without session:', error);
+      console.warn('⚠️  Failed to get active session, storing context without session:', error);
       return null; // Fallback to no session if session tracking fails
     }
   }
