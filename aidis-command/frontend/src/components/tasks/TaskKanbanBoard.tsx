@@ -215,12 +215,11 @@ const TaskKanbanBoard: React.FC<TaskKanbanBoardProps> = ({
             >
               <Card
                 hoverable
-                className={`task-card priority-${task.priority} status-${task.status}`}
+                className={`task-card kanban-card ${isBeingDragged ? 'kanban-card-dragging' : ''} priority-${task.priority} status-${task.status}`}
                 style={{
                   border: `2px solid ${getStatusColor(task.status)}40`,
                   borderRadius: '8px',
                   cursor: 'grab',
-                  backgroundColor: isBeingDragged ? '#f0f5ff' : '#fff',
                   boxShadow: snapshot.isDragging
                     ? '0 8px 16px rgba(0,0,0,0.2)'
                     : '0 2px 8px rgba(0,0,0,0.08)',
@@ -273,13 +272,12 @@ const TaskKanbanBoard: React.FC<TaskKanbanBoardProps> = ({
                 )}
 
                 {/* Task Metadata */}
-                <div style={{
+                <div className="kanban-card-metadata" style={{
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'center',
                   marginTop: 8,
-                  paddingTop: 8,
-                  borderTop: '1px solid #f0f0f0'
+                  paddingTop: 8
                 }}>
                   {/* Assignee */}
                   {task.assigned_to ? (
@@ -368,9 +366,9 @@ const TaskKanbanBoard: React.FC<TaskKanbanBoardProps> = ({
       >
         {/* Column Header */}
         <div
+          className="kanban-column-header"
           style={{
             padding: '12px 16px',
-            background: `linear-gradient(135deg, ${column.color}15 0%, ${column.color}05 100%)`,
             borderRadius: '8px 8px 0 0',
             border: `2px solid ${column.color}30`,
             borderBottom: `3px solid ${column.color}`,
@@ -407,10 +405,8 @@ const TaskKanbanBoard: React.FC<TaskKanbanBoardProps> = ({
             <div
               ref={provided.innerRef}
               {...provided.droppableProps}
+              className={`kanban-column ${snapshot.isDraggingOver ? 'kanban-column-dragging-over' : ''}`}
               style={{
-                background: snapshot.isDraggingOver
-                  ? `linear-gradient(135deg, ${column.color}10 0%, ${column.color}05 100%)`
-                  : '#fafafa',
                 padding: '8px',
                 borderRadius: '0 0 8px 8px',
                 border: `2px solid ${snapshot.isDraggingOver ? column.color : '#e8e8e8'}`,
