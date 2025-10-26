@@ -58,6 +58,8 @@ async function main() {
     logger.info('AIDIS MCP Server - Running');
 
   } catch (error) {
+    console.error('❌ FATAL ERROR:', error);
+    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack');
     logger.error('Fatal error starting AIDIS MCP Server:', error as Error);
 
     // Attempt graceful cleanup even on startup failure

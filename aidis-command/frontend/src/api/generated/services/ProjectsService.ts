@@ -106,6 +106,30 @@ export class ProjectsService {
         });
     }
     /**
+     * Set project as primary/default
+     * @returns ApiSuccessResponse Project set as primary successfully
+     * @throws ApiError
+     */
+    public static postProjectsSetPrimary({
+        id,
+    }: {
+        /**
+         * Project ID
+         */
+        id: string,
+    }): CancelablePromise<ApiSuccessResponse> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/projects/{id}/set-primary',
+            path: {
+                'id': id,
+            },
+            errors: {
+                404: `Project not found`,
+            },
+        });
+    }
+    /**
      * Get project by ID
      * @returns any Project retrieved successfully
      * @throws ApiError

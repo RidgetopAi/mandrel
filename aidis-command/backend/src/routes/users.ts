@@ -244,7 +244,9 @@ router.post('/revoke-sessions', authenticateToken, async (req: AuthenticatedRequ
 
     // Invalidate all sessions for this user
     await pool.query(
-      'UPDATE user_sessions SET is_active = false WHERE user_id = $1 AND is_active = true',
+      `UPDATE sessions 
+       SET status = 'inactive', ended_at = NOW() 
+       WHERE user_id = $1 AND status = 'active'`,
       [userId]
     );
 

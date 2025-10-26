@@ -3,6 +3,7 @@ import { Card, Spin, Alert, Select, Space, InputNumber, Button } from 'antd';
 import { Heatmap } from '@ant-design/plots';
 import { ReloadOutlined, SettingOutlined } from '@ant-design/icons';
 import { useProjectContext } from '../../contexts/ProjectContext';
+import { useTheme } from '../../contexts/ThemeContext';
 import {
   useSimilarityMatrixQuery,
 } from '../../hooks/useEmbeddings';
@@ -20,6 +21,7 @@ interface HeatmapData {
 const SimilarityHeatmap: React.FC = () => {
   const { currentProject } = useProjectContext();
   const projectId = currentProject?.id;
+  const { themeMode } = useTheme();
 
   const { heatmapSize, updateHeatmapSize } = useEmbeddingStore();
   const [showSettings, setShowSettings] = useState(false);
@@ -93,6 +95,12 @@ const SimilarityHeatmap: React.FC = () => {
         autoHide: true,
         style: {
           fontSize: 10,
+          fill: themeMode === 'dark' ? 'rgba(255, 255, 255, 0.65)' : '#666',
+        },
+      },
+      title: {
+        style: {
+          fill: themeMode === 'dark' ? 'rgba(255, 255, 255, 0.85)' : '#000',
         },
       },
     },
@@ -101,6 +109,12 @@ const SimilarityHeatmap: React.FC = () => {
         autoHide: true,
         style: {
           fontSize: 10,
+          fill: themeMode === 'dark' ? 'rgba(255, 255, 255, 0.65)' : '#666',
+        },
+      },
+      title: {
+        style: {
+          fill: themeMode === 'dark' ? 'rgba(255, 255, 255, 0.85)' : '#000',
         },
       },
     },
@@ -114,8 +128,14 @@ const SimilarityHeatmap: React.FC = () => {
     color: ['#313695', '#4575b4', '#74add1', '#abd9e9', '#e0f3f8', '#ffffcc', '#fee090', '#fdae61', '#f46d43', '#d73027', '#a50026'],
     legend: {
       position: 'right' as const,
+      label: {
+        style: {
+          fill: themeMode === 'dark' ? 'rgba(255, 255, 255, 0.85)' : '#000',
+        },
+      },
     },
     height: 500,
+    theme: themeMode === 'dark' ? 'dark' : 'light',
   };
 
   if (!projectId) {

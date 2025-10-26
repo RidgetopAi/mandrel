@@ -7,6 +7,7 @@ import { globalQueryErrorHandler } from './hooks/useQueryErrorHandler';
 import { AuthProvider } from './contexts/AuthContext';
 import { ProjectProvider } from './contexts/ProjectContext';
 import { FeatureFlagProvider } from './contexts/FeatureFlagContext';
+import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import AppLayout from './components/AppLayout';
 import GlobalErrorBoundary from './components/error/GlobalErrorBoundary';
@@ -52,24 +53,12 @@ const queryClient = new QueryClient({
   },
 });
 
-// Ant Design theme configuration
-const theme = {
-  token: {
-    colorPrimary: '#1890ff',
-    borderRadius: 8,
-    wireframe: false,
-  },
-  components: {
-    Layout: {
-      siderBg: '#001529',
-      headerBg: '#ffffff',
-    },
-  },
-};
+// Inner App component that uses the theme
+const AppContent: React.FC = () => {
+  const { antdThemeConfig } = useTheme();
 
-const App: React.FC = () => {
   return (
-    <ConfigProvider theme={theme}>
+    <ConfigProvider theme={antdThemeConfig}>
       <QueryClientProvider client={queryClient}>
         <GlobalErrorBoundary>
           <Router>
@@ -123,6 +112,15 @@ const App: React.FC = () => {
       </GlobalErrorBoundary>
       </QueryClientProvider>
     </ConfigProvider>
+  );
+};
+
+// Main App component with ThemeProvider
+const App: React.FC = () => {
+  return (
+    <ThemeProvider>
+      <AppContent />
+    </ThemeProvider>
   );
 };
 

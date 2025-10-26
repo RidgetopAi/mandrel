@@ -24,11 +24,7 @@ export const OpenAPI: OpenAPIConfig = {
     VERSION: '1.0.0',
     WITH_CREDENTIALS: false,
     CREDENTIALS: 'include',
-    TOKEN: async () => {
-        const token = typeof window !== 'undefined' ? localStorage.getItem('aidis_token') || '' : '';
-        console.log('[OpenAPI] Getting token:', token ? `${token.substring(0, 20)}...` : 'NO TOKEN');
-        return token;
-    },
+    TOKEN: undefined,
     USERNAME: undefined,
     PASSWORD: undefined,
     HEADERS: undefined,

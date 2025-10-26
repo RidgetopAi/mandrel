@@ -3,6 +3,7 @@ import { Typography, Card, Form, Input, Switch, Button, Space, Divider, Select, 
 import { SettingOutlined, UserOutlined, SecurityScanOutlined, ProjectOutlined } from '@ant-design/icons';
 import { useAuthContext } from '../contexts/AuthContext';
 import { useProjectContext } from '../contexts/ProjectContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { useSettings } from '../hooks/useSettings';
 import useFeatureFlag from '../hooks/useFeatureFlag';
 import { useQueryClient } from '@tanstack/react-query';
@@ -13,39 +14,22 @@ const Settings: React.FC = () => {
   const { user } = useAuthContext();
   const queryClient = useQueryClient();
   const { allProjects } = useProjectContext();
+  const { themeMode, setThemeMode } = useTheme();
   const { defaultProject, setDefaultProject, clearDefaultProject } = useSettings();
   const [form] = Form.useForm();
   const [passwordForm] = Form.useForm();
   const featureFlagUiEnabled = useFeatureFlag('phase1.featureFlags', false);
   const [isPasswordModalVisible, setIsPasswordModalVisible] = useState(false);
-  const [isDarkMode, setIsDarkMode] = useState(false);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [isSavingPassword, setIsSavingPassword] = useState(false);
 
   const apiBaseUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
   const token = localStorage.getItem('aidis_token') || '';
 
-  // Load user theme on mount
+  // Sync form field with theme mode
   useEffect(() => {
-    const loadUserTheme = async () => {
-      try {
-        const response = await fetch(`${apiBaseUrl}/auth/profile`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-        });
-        if (response.ok) {
-          const data = await response.json();
-          const theme = data.data?.user?.theme || 'light';
-          setIsDarkMode(theme === 'dark');
-          form.setFieldsValue({ darkMode: theme === 'dark' });
-        }
-      } catch (error) {
-        console.error('Failed to load user theme:', error);
-      }
-    };
-    loadUserTheme();
-  }, [apiBaseUrl, token, form]);
+    form.setFieldsValue({ darkMode: themeMode === 'dark' });
+  }, [themeMode, form]);
 
   const handleSave = async (values: any) => {
     setIsSavingProfile(true);
@@ -105,29 +89,35 @@ const Settings: React.FC = () => {
   };
 
   const handleDarkModeChange = async (checked: boolean) => {
-    try {
-      setIsDarkMode(checked);
+    const newTheme = checked ? 'dark' : 'light';
 
+    try {
+      // Apply theme immediately for instant feedback
+      setThemeMode(newTheme);
+
+      // Save preference to backend
       const response = await fetch(`${apiBaseUrl}/users/preferences`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify({ theme: checked ? 'dark' : 'light' }),
+        body: JSON.stringify({ theme: newTheme }),
       });
 
       const data = await response.json();
 
       if (response.ok && data.success) {
-        message.success(`Theme changed to ${checked ? 'dark' : 'light'} mode`);
+        message.success(`Theme changed to ${newTheme} mode`);
       } else {
-        setIsDarkMode(!checked); // Revert on failure
+        // Revert theme on backend failure
+        setThemeMode(checked ? 'light' : 'dark');
         message.error(data.message || 'Failed to update theme');
       }
     } catch (error) {
       console.error('Failed to update theme:', error);
-      setIsDarkMode(!checked); // Revert on failure
+      // Revert theme on error
+      setThemeMode(checked ? 'light' : 'dark');
       message.error('Failed to update theme. Please try again.');
     }
   };
@@ -290,7 +280,7 @@ const Settings: React.FC = () => {
             name="darkMode"
             valuePropName="checked"
           >
-            <Switch checked={isDarkMode} onChange={handleDarkModeChange} />
+            <Switch checked={themeMode === 'dark'} onChange={handleDarkModeChange} />
           </Form.Item>
 
           <Text type="secondary">

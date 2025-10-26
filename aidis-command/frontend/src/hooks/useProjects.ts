@@ -255,10 +255,18 @@ export const useAllSessions = () => {
 export const useSessionsList = (options?: {
   projectId?: string;
   status?: string;
+  limit?: number;
+  offset?: number;
 }) => {
   return useQuery({
     queryKey: ['sessions', 'list', options],
-    queryFn: () => SessionsService.getSessions(options || {}),
+    queryFn: () => SessionsService.getSessions({
+      projectId: options?.projectId,
+      status: options?.status,
+      // Default to large limit for stats pages, can be overridden
+      ...(options?.limit !== undefined ? { limit: options.limit } : {}),
+      ...(options?.offset !== undefined ? { offset: options.offset } : {}),
+    }),
     staleTime: 1000 * 60 * 5, // 5 minutes
     select: (response) => ({
       sessions: response.data?.sessions ?? [],

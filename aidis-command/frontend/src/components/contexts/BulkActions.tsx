@@ -11,6 +11,7 @@ import { useContextSelection } from '../../stores/contextStore';
 import { useBulkDeleteContexts } from '../../hooks/useContexts';
 import contextsClient from '../../api/contextsClient';
 import { useProjectContext } from '../../contexts/ProjectContext';
+import { useTheme } from '../../contexts/ThemeContext';
 
 const { Text } = Typography;
 const { Option } = Select;
@@ -41,6 +42,7 @@ const BulkActions: React.FC<BulkActionsProps> = ({
 
   const bulkDeleteMutation = useBulkDeleteContexts();
   const { currentProject } = useProjectContext();
+  const { themeMode } = useTheme();
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [exportModalVisible, setExportModalVisible] = useState(false);
   const [exportFormat, setExportFormat] = useState<'json' | 'csv' | 'md'>('json');
@@ -173,9 +175,9 @@ const BulkActions: React.FC<BulkActionsProps> = ({
         justifyContent: 'space-between',
         alignItems: 'center',
         padding: '12px 16px',
-        background: '#fafafa',
+        background: themeMode === 'dark' ? '#262626' : '#fafafa',
         borderRadius: '6px',
-        border: '1px solid #d9d9d9'
+        border: themeMode === 'dark' ? '1px solid #434343' : '1px solid #d9d9d9'
       }}>
         <Space>
           <Checkbox
