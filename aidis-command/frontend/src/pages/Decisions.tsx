@@ -130,7 +130,7 @@ const Decisions: React.FC = () => {
     refetchStats();
   };
 
-  const handleDecisionSelect = (id: number, selected: boolean) => {
+  const handleDecisionSelect = (id: string, selected: boolean) => {
     if (selected) {
       addSelectedDecision(id);
     } else {
@@ -139,11 +139,13 @@ const Decisions: React.FC = () => {
   };
 
   const handleDecisionView = (decision: any) => {
+    console.log('👁️ [Decisions] View decision:', { id: decision.id, idType: typeof decision.id, title: decision.title });
     setCurrentDecision(decision);
     setShowDetail(true);
   };
 
   const handleDecisionEdit = (decision: any) => {
+    console.log('✏️ [Decisions] Edit decision:', { id: decision.id, idType: typeof decision.id, title: decision.title });
     setCurrentDecision(decision);
     setShowDetail(true);
   };
@@ -195,6 +197,9 @@ const Decisions: React.FC = () => {
         decisions: updatedDecisions
       });
     }
+
+    // CRITICAL FIX: Update the current decision state so subsequent edits work
+    setCurrentDecision(updatedDecision);
   };
 
   const handlePaginationChange = (page: number, pageSize?: number) => {

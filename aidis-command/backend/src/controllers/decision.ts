@@ -247,25 +247,35 @@ export class DecisionController {
   static async updateDecision(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
-      const { outcome, lessons, status } = req.body;
+      const {
+        status,
+        outcomeStatus,
+        outcomeNotes,
+        lessonsLearned,
+        supersededBy,
+        supersededReason
+      } = req.body;
 
-      // Validate input
-      if (!outcome && !lessons && !status) {
+      // Validate input - at least one field must be provided
+      if (!status && !outcomeStatus && !outcomeNotes && !lessonsLearned && !supersededBy && !supersededReason) {
         res.status(400).json({
           success: false,
-          message: 'At least one field (outcome, lessons, status) is required'
+          message: 'At least one update field is required'
         });
         return;
       }
 
-      // Call AIDIS MCP decision_update
+      // Call AIDIS MCP decision_update with correct parameter names
       const result = await McpService.callTool('decision_update', {
-        decision_id: parseInt(id),
-        ...(outcome && { outcome }),
-        ...(lessons && { lessons }),
-        ...(status && { status })
+        decisionId: id, // String ID, not integer
+        ...(status && { status }),
+        ...(outcomeStatus && { outcomeStatus }),
+        ...(outcomeNotes && { outcomeNotes }),
+        ...(lessonsLearned && { lessonsLearned }),
+        ...(supersededBy && { supersededBy }),
+        ...(supersededReason && { supersededReason })
       });
-      
+
       if (!result.success) {
         console.error('AIDIS decision_update failed:', result.error);
         res.status(500).json({

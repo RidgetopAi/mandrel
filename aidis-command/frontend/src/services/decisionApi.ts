@@ -34,26 +34,27 @@ export class DecisionApi {
   /**
    * Get single decision by ID
    */
-  static async getDecision(id: number): Promise<TechnicalDecision> {
-    return decisionsClient.getDecision(String(id));
+  static async getDecision(id: string): Promise<TechnicalDecision> {
+    return decisionsClient.getDecision(id);
   }
 
   /**
    * Update decision
    */
   static async updateDecision(
-    id: number, 
+    id: string,
     updates: UpdateDecisionRequest
-  ): Promise<TechnicalDecision> {
-    await decisionsClient.updateDecision(String(id), updates);
-    return decisionsClient.getDecision(String(id));
+  ): Promise<void> {
+    await decisionsClient.updateDecision(id, updates);
+    // Don't refetch - the GET /api/decisions/:id endpoint doesn't work properly
+    // The caller will construct the updated decision locally
   }
 
   /**
    * Delete single decision
    */
-  static async deleteDecision(id: number): Promise<void> {
-    await decisionsClient.deleteDecision(String(id));
+  static async deleteDecision(id: string): Promise<void> {
+    await decisionsClient.deleteDecision(id);
   }
 
   /**

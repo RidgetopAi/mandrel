@@ -417,3 +417,31 @@
 [data-theme='dark'] .kanban-card-metadata {
   border-top-color: #434343 !important;
 }
+
+/* ============================================
+   TASK CARD LIST - DETAILED INFORMATION SECTION DARK MODE
+   ============================================ */
+
+/* Expanded details container background */
+[data-theme='dark'] .task-details-expand {
+  background: linear-gradient(135deg, #1f1f1f 0%, #141414 100%) !important;
+  border-color: #434343 !important;
+}
+
+/* Target ALL divs with inline background styles inside expanded details */
+[data-theme='dark'] .task-details-expand div[style*="background"] {
+  background: #262626 !important;
+  background-color: #262626 !important;
+  border-color: #434343 !important;
+}
+
+/* Specifically target the gradient background to override it */
+[data-theme='dark'] .task-details-expand[style*="background"] {
+  background: linear-gradient(135deg, #1f1f1f 0%, #141414 100%) !important;
+}
+
+/* Border below "Detailed Information" header */
+[data-theme='dark'] .task-details-expand > div[style*="border"] {
+  border-color: #434343 !important;
+  border-bottom-color: #434343 !important;
+}

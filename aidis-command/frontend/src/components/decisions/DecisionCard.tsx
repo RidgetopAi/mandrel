@@ -23,7 +23,7 @@ interface DecisionCardProps {
   selected?: boolean;
   showCheckbox?: boolean;
   searchTerm?: string;
-  onSelect?: (id: number, selected: boolean) => void;
+  onSelect?: (id: string, selected: boolean) => void;
   onView?: (decision: TechnicalDecision) => void;
   onEdit?: (decision: TechnicalDecision) => void;
   onDelete?: (decision: TechnicalDecision) => void;

@@ -26,10 +26,8 @@ const ensureSuccess = <T extends ApiSuccessResponse>(response: T, failureMessage
 };
 
 const normalizeDecision = (entity: DecisionEntity): TechnicalDecision => {
-  const numericId = Number(entity.id);
-
   return {
-    id: Number.isNaN(numericId) ? -1 : numericId,
+    id: entity.id, // Keep as UUID string
     project_id: entity.project_id ?? UNASSIGNED_PROJECT_ID,
     project_name: entity.project_name,
     title: entity.title,
