@@ -202,20 +202,36 @@ export class SessionAnalyticsHandler {
   /**
    * Start a new session with analytics tracking
    */
-  static async startSession(projectId?: string): Promise<SessionAnalyticsResult> {
+  static async startSession(
+    projectId?: string,
+    title?: string,
+    description?: string,
+    sessionGoal?: string,
+    tags?: string[],
+    aiModel?: string
+  ): Promise<SessionDetailsResult> {
     try {
-      console.log(`🚀 Starting new session for project: ${projectId || 'none'}`);
-      
+      console.log(`🚀 Starting new session for project: ${projectId || 'auto-detect'}`);
+      if (title) console.log(`   Title: ${title}`);
+      if (sessionGoal) console.log(`   Goal: ${sessionGoal}`);
+
       const startTime = Date.now();
-      
-      // Start session using SessionTracker
-      const sessionId = await SessionTracker.startSession(projectId);
-      
+
+      // Start session using SessionTracker with full parameters
+      const sessionId = await SessionTracker.startSession(
+        projectId,
+        title,
+        description,
+        sessionGoal,
+        tags,
+        aiModel
+      );
+
       const duration = Date.now() - startTime;
-      
+
       // Get the newly created session data
-      // const sessionData = await SessionTracker.getSessionData(sessionId);
-      
+      const sessionData = await SessionTracker.getSessionData(sessionId);
+
       // Log session start analytics event
       await logEvent({
         actor: 'ai',
@@ -226,31 +242,26 @@ export class SessionAnalyticsHandler {
         duration_ms: duration,
         metadata: {
           session_id: sessionId,
-          project_id: projectId
+          project_id: projectId,
+          title,
+          session_goal: sessionGoal,
+          tags,
+          ai_model: aiModel
         },
         tags: ['analytics', 'session', 'start']
       });
-      
+
       console.log(`✅ Session started: ${sessionId.substring(0, 8)}... in ${duration}ms`);
-      
-      // Create fake SessionStats for consistency with the interface
-      const stats: SessionStats = {
-        totalSessions: 1,
-        avgDuration: 0,
-        productivityScore: 0,
-        retentionRate: 0,
-        sessionsByDay: []
-      };
-      
+
       return {
         success: true,
-        data: stats,
+        data: sessionData || undefined,
         timestamp: new Date().toISOString()
       };
-      
+
     } catch (error) {
       console.error('❌ Failed to start session:', error);
-      
+
       // Log the error
       await logEvent({
         actor: 'ai',
@@ -262,7 +273,7 @@ export class SessionAnalyticsHandler {
         },
         tags: ['analytics', 'session', 'start', 'error']
       });
-      
+
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',

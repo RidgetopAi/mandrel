@@ -133,22 +133,57 @@ export class SessionTracker {
     try {
       const sessionId = randomUUID();
       const startTime = new Date();
-      
+
       // Implement project inheritance hierarchy if no project specified
       let resolvedProjectId: string | null = projectId || null;
 
       if (!resolvedProjectId) {
         resolvedProjectId = await this.resolveProjectForSession(sessionId);
       }
-      
+
       console.log(`🚀 Starting session: ${sessionId.substring(0, 8)}... for project: ${resolvedProjectId || 'none'}`);
-      
+
+      // Capture git information (branch and commit SHA)
+      let activeBranch: string | null = null;
+      let workingCommitSha: string | null = null;
+
+      try {
+        const { execSync } = await import('child_process');
+
+        // Get current branch
+        try {
+          activeBranch = execSync('git rev-parse --abbrev-ref HEAD', {
+            encoding: 'utf8',
+            cwd: process.cwd(),
+            stdio: ['ignore', 'pipe', 'ignore']
+          }).trim();
+          console.log(`🌿 Git branch: ${activeBranch}`);
+        } catch (error) {
+          console.warn('⚠️  Could not detect git branch (not in a git repository?)');
+        }
+
+        // Get current commit SHA
+        try {
+          workingCommitSha = execSync('git rev-parse HEAD', {
+            encoding: 'utf8',
+            cwd: process.cwd(),
+            stdio: ['ignore', 'pipe', 'ignore']
+          }).trim();
+          console.log(`📌 Git commit: ${workingCommitSha.substring(0, 8)}...`);
+        } catch (error) {
+          console.warn('⚠️  Could not detect git commit SHA');
+        }
+      } catch (error) {
+        console.warn('⚠️  Failed to capture git information:', error);
+        // Continue without git info - not a fatal error
+      }
+
       // Create actual session record in sessions table
       const sessionSql = `
         INSERT INTO sessions (
           id, project_id, agent_type, started_at, title, description,
-          session_goal, tags, ai_model, metadata
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+          session_goal, tags, ai_model, active_branch, working_commit_sha, metadata
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
         RETURNING id, started_at
       `;
 
@@ -165,6 +200,8 @@ export class SessionTracker {
         sessionGoal || null,                           // Phase 2: Session goal
         tags || [],                                    // Phase 2: Tags array
         aiModel || null,                               // Phase 2: AI model
+        activeBranch,                                  // Git: Active branch
+        workingCommitSha,                              // Git: Starting commit SHA
         JSON.stringify({
           start_time: startTime.toISOString(),
           created_by: 'aidis-session-tracker',
@@ -173,6 +210,8 @@ export class SessionTracker {
           agent_detection_confidence: agentInfo.confidence,
           agent_version: agentInfo.version,
           ai_model: aiModel || null,
+          git_branch: activeBranch,
+          git_start_commit: workingCommitSha,
           project_resolution_method: resolvedProjectId === projectId ? 'explicit' : 'inherited',
           title_provided: !!title,
           description_provided: !!description,
@@ -220,16 +259,26 @@ export class SessionTracker {
   static async endSession(sessionId: string): Promise<SessionData> {
     try {
       const endTime = new Date();
-      
+
       console.log(`🏁 Ending session: ${sessionId.substring(0, 8)}...`);
-      
+
+      // Sync file changes from git before calculating final metrics
+      console.log(`📁 Syncing file changes from git...`);
+      try {
+        const fileSync = await this.syncFilesFromGit(sessionId);
+        console.log(`✅ File sync complete: ${fileSync.filesProcessed} files, +${fileSync.totalLinesAdded}/-${fileSync.totalLinesDeleted} lines`);
+      } catch (error) {
+        console.warn('⚠️  Failed to sync files from git:', error);
+        // Don't fail session end if file sync fails
+      }
+
       // Get session data from analytics_events
       const sessionData = await this.getSessionData(sessionId);
-      
+
       if (!sessionData) {
         throw new Error(`Session ${sessionId} not found`);
       }
-      
+
       // Calculate duration
       const durationMs = endTime.getTime() - sessionData.start_time.getTime();
       
@@ -842,17 +891,32 @@ export class SessionTracker {
   ): Promise<void> {
     try {
       // Upsert into session_files table
-      const upsertSql = `
-        INSERT INTO session_files (
-          session_id, file_path, lines_added, lines_deleted, source, first_modified, last_modified
-        ) VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
-        ON CONFLICT (session_id, file_path)
-        DO UPDATE SET
-          lines_added = session_files.lines_added + EXCLUDED.lines_added,
-          lines_deleted = session_files.lines_deleted + EXCLUDED.lines_deleted,
-          last_modified = NOW()
-        RETURNING id
-      `;
+      // For 'git' source: REPLACE values (git diff is absolute, not incremental)
+      // For 'tool'/'manual' source: ADD values (incremental edits during session)
+      const upsertSql = source === 'git'
+        ? `
+          INSERT INTO session_files (
+            session_id, file_path, lines_added, lines_deleted, source, first_modified, last_modified
+          ) VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
+          ON CONFLICT (session_id, file_path)
+          DO UPDATE SET
+            lines_added = EXCLUDED.lines_added,
+            lines_deleted = EXCLUDED.lines_deleted,
+            source = EXCLUDED.source,
+            last_modified = NOW()
+          RETURNING id
+        `
+        : `
+          INSERT INTO session_files (
+            session_id, file_path, lines_added, lines_deleted, source, first_modified, last_modified
+          ) VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
+          ON CONFLICT (session_id, file_path)
+          DO UPDATE SET
+            lines_added = session_files.lines_added + EXCLUDED.lines_added,
+            lines_deleted = session_files.lines_deleted + EXCLUDED.lines_deleted,
+            last_modified = NOW()
+          RETURNING id
+        `;
 
       await db.query(upsertSql, [sessionId, filePath, linesAdded, linesDeleted, source]);
 
@@ -1396,6 +1460,333 @@ export class SessionTracker {
         metadata: { sessionId }
       });
       throw error;
+    }
+  }
+
+  /**
+   * Flush in-memory token usage to database
+   * Called periodically and on shutdown
+   */
+  static async flushTokensToDatabase(): Promise<void> {
+    try {
+      const flushPromises: Array<{ sessionId: string; promise: Promise<any> }> = [];
+
+      for (const [sessionId, tokens] of this.sessionTokens.entries()) {
+        const updatePromise = db.query(
+          `UPDATE sessions
+           SET input_tokens = input_tokens + $1,
+               output_tokens = output_tokens + $2,
+               total_tokens = total_tokens + $3
+           WHERE id = $4`,
+          [tokens.input, tokens.output, tokens.total, sessionId]
+        );
+        flushPromises.push({ sessionId, promise: updatePromise });
+      }
+
+      if (flushPromises.length > 0) {
+        // Use allSettled to prevent one failure from killing all flushes
+        const results = await Promise.allSettled(flushPromises.map(f => f.promise));
+
+        let successCount = 0;
+        let failureCount = 0;
+        const failedSessions: string[] = [];
+
+        results.forEach((result, index) => {
+          const sessionId = flushPromises[index].sessionId;
+
+          if (result.status === 'fulfilled') {
+            successCount++;
+            // Remove successfully flushed session from memory
+            this.sessionTokens.delete(sessionId);
+          } else {
+            failureCount++;
+            failedSessions.push(sessionId.substring(0, 8));
+            console.error(`❌ Failed to flush tokens for session ${sessionId.substring(0, 8)}:`, result.reason);
+          }
+        });
+
+        console.log(`💾 Flushed token data: ${successCount} succeeded, ${failureCount} failed`);
+        if (failedSessions.length > 0) {
+          console.error(`⚠️  Failed sessions (will retry): ${failedSessions.join(', ')}`);
+        }
+      }
+    } catch (error) {
+      console.error('❌ FLUSH TOKENS ERROR:', error);
+      console.error('Error type:', error instanceof Error ? error.constructor.name : typeof error);
+      console.error('Error message:', error instanceof Error ? error.message : String(error));
+      console.error('Stack trace:', error instanceof Error ? error.stack : 'No stack trace');
+      console.error('Session tokens map size:', this.sessionTokens.size);
+      console.error('Session tokens:', Array.from(this.sessionTokens.entries()).map(([id, tokens]) => ({
+        sessionId: id.substring(0, 8),
+        input: tokens.input,
+        output: tokens.output,
+        total: tokens.total
+      })));
+
+      logger.error('Failed to flush tokens to database', error instanceof Error ? error : new Error('Unknown error'), {
+        component: 'SessionTracker',
+        operation: 'flushTokensToDatabase'
+      });
+    }
+  }
+
+  /**
+   * Flush in-memory activity counts to database
+   * Called periodically and on shutdown
+   */
+  static async flushActivityToDatabase(): Promise<void> {
+    try {
+      const flushPromises: Array<{ sessionId: string; promise: Promise<any> }> = [];
+
+      for (const [sessionId, activity] of this.sessionActivity.entries()) {
+        const updatePromise = db.query(
+          `UPDATE sessions
+           SET tasks_created = tasks_created + $1,
+               tasks_updated = tasks_updated + $2,
+               tasks_completed = tasks_completed + $3,
+               contexts_created = contexts_created + $4,
+               last_activity_at = NOW()
+           WHERE id = $5`,
+          [
+            activity.tasks_created,
+            activity.tasks_updated,
+            activity.tasks_completed,
+            activity.contexts_created,
+            sessionId
+          ]
+        );
+        flushPromises.push({ sessionId, promise: updatePromise });
+      }
+
+      if (flushPromises.length > 0) {
+        // Use allSettled to prevent one failure from killing all flushes
+        const results = await Promise.allSettled(flushPromises.map(f => f.promise));
+
+        let successCount = 0;
+        let failureCount = 0;
+        const failedSessions: string[] = [];
+
+        results.forEach((result, index) => {
+          const sessionId = flushPromises[index].sessionId;
+
+          if (result.status === 'fulfilled') {
+            successCount++;
+            // Remove successfully flushed session from memory
+            this.sessionActivity.delete(sessionId);
+          } else {
+            failureCount++;
+            failedSessions.push(sessionId.substring(0, 8));
+            console.error(`❌ Failed to flush activity for session ${sessionId.substring(0, 8)}:`, result.reason);
+          }
+        });
+
+        console.log(`💾 Flushed activity data: ${successCount} succeeded, ${failureCount} failed`);
+        if (failedSessions.length > 0) {
+          console.error(`⚠️  Failed sessions (will retry): ${failedSessions.join(', ')}`);
+        }
+      }
+    } catch (error) {
+      console.error('❌ FLUSH ACTIVITY ERROR:', error);
+      console.error('Error type:', error instanceof Error ? error.constructor.name : typeof error);
+      console.error('Error message:', error instanceof Error ? error.message : String(error));
+      console.error('Stack trace:', error instanceof Error ? error.stack : 'No stack trace');
+      console.error('Session activity map size:', this.sessionActivity.size);
+      console.error('Session activities:', Array.from(this.sessionActivity.entries()).map(([id, activity]) => ({
+        sessionId: id.substring(0, 8),
+        tasks_created: activity.tasks_created,
+        tasks_updated: activity.tasks_updated,
+        tasks_completed: activity.tasks_completed,
+        contexts_created: activity.contexts_created
+      })));
+
+      logger.error('Failed to flush activity to database', error instanceof Error ? error : new Error('Unknown error'), {
+        component: 'SessionTracker',
+        operation: 'flushActivityToDatabase'
+      });
+    }
+  }
+
+  /**
+   * Get project root directory for a session
+   * Returns null if no project assigned or no root_directory set
+   */
+  private static async getProjectRootDir(sessionId: string): Promise<string | null> {
+    try {
+      const result = await db.query(`
+        SELECT p.root_directory
+        FROM sessions s
+        LEFT JOIN projects p ON s.project_id = p.id
+        WHERE s.id = $1
+      `, [sessionId]);
+
+      const rootDir = result.rows[0]?.root_directory;
+      return rootDir && rootDir.trim() !== '' ? rootDir.trim() : null;
+    } catch (error) {
+      logger.error('Failed to get project root directory', error instanceof Error ? error : new Error('Unknown error'), {
+        component: 'SessionTracker',
+        operation: 'getProjectRootDir',
+        metadata: { sessionId }
+      });
+      return null;
+    }
+  }
+
+  /**
+   * Sync file changes from git diff to session_files table
+   * This captures all file modifications since session started
+   */
+  static async syncFilesFromGit(sessionId: string): Promise<{
+    filesProcessed: number;
+    totalLinesAdded: number;
+    totalLinesDeleted: number;
+    error?: string;
+  }> {
+    try {
+      // Get session details and project root directory
+      const sessionResult = await db.query(
+        'SELECT started_at, working_commit_sha FROM sessions WHERE id = $1',
+        [sessionId]
+      );
+
+      if (sessionResult.rows.length === 0) {
+        throw new Error(`Session ${sessionId} not found`);
+      }
+
+      const session = sessionResult.rows[0];
+      const startCommitSha = session.working_commit_sha;
+
+      // Get project root directory (falls back to process.cwd() if not set)
+      const projectRootDir = await this.getProjectRootDir(sessionId);
+      const gitWorkingDir = projectRootDir || process.cwd();
+
+      logger.info('Syncing file changes from git', {
+        component: 'SessionTracker',
+        operation: 'syncFilesFromGit',
+        metadata: {
+          sessionId: sessionId.substring(0, 8),
+          startCommit: startCommitSha?.substring(0, 8) || 'none',
+          workingDir: gitWorkingDir,
+          usingProjectDir: !!projectRootDir
+        }
+      });
+
+      // Run git diff to get file changes
+      // If we have a starting commit, diff from that commit to HEAD
+      // Otherwise, diff from session start time
+      let gitDiffCommand: string;
+
+      if (startCommitSha) {
+        // Diff from start commit to current state (including uncommitted changes)
+        gitDiffCommand = `git diff ${startCommitSha} HEAD --numstat && git diff HEAD --numstat`;
+      } else {
+        // Diff uncommitted changes only
+        gitDiffCommand = 'git diff HEAD --numstat';
+      }
+
+      const { execSync } = await import('child_process');
+      let diffOutput: string;
+
+      try {
+        diffOutput = execSync(gitDiffCommand, {
+          encoding: 'utf8',
+          cwd: gitWorkingDir,
+          maxBuffer: 10 * 1024 * 1024 // 10MB buffer for large diffs
+        });
+      } catch (error) {
+        // If git diff fails, try just uncommitted changes
+        console.warn('Git diff with commit SHA failed, trying uncommitted changes only');
+        diffOutput = execSync('git diff HEAD --numstat', {
+          encoding: 'utf8',
+          cwd: gitWorkingDir,
+          maxBuffer: 10 * 1024 * 1024
+        });
+      }
+
+      if (!diffOutput.trim()) {
+        logger.info('No file changes detected in git diff', {
+          component: 'SessionTracker',
+          operation: 'syncFilesFromGit',
+          metadata: { sessionId: sessionId.substring(0, 8) }
+        });
+        return {
+          filesProcessed: 0,
+          totalLinesAdded: 0,
+          totalLinesDeleted: 0
+        };
+      }
+
+      // Parse git diff --numstat output
+      // Format: <lines-added>\t<lines-deleted>\t<filename>
+      const lines = diffOutput.trim().split('\n');
+      const fileChanges: Map<string, { added: number; deleted: number }> = new Map();
+
+      for (const line of lines) {
+        if (!line.trim()) continue;
+
+        const parts = line.split('\t');
+        if (parts.length < 3) continue;
+
+        const added = parts[0] === '-' ? 0 : parseInt(parts[0]) || 0;
+        const deleted = parts[1] === '-' ? 0 : parseInt(parts[1]) || 0;
+        const filePath = parts[2];
+
+        // Aggregate changes for same file (in case it appears multiple times)
+        const existing = fileChanges.get(filePath) || { added: 0, deleted: 0 };
+        fileChanges.set(filePath, {
+          added: existing.added + added,
+          deleted: existing.deleted + deleted
+        });
+      }
+
+      // Record each file change to session_files table
+      let filesProcessed = 0;
+      let totalLinesAdded = 0;
+      let totalLinesDeleted = 0;
+
+      for (const [filePath, changes] of fileChanges.entries()) {
+        await this.recordFileModification(
+          sessionId,
+          filePath,
+          changes.added,
+          changes.deleted,
+          'git'
+        );
+        filesProcessed++;
+        totalLinesAdded += changes.added;
+        totalLinesDeleted += changes.deleted;
+      }
+
+      logger.info('File sync from git completed', {
+        component: 'SessionTracker',
+        operation: 'syncFilesFromGit',
+        metadata: {
+          sessionId: sessionId.substring(0, 8),
+          filesProcessed,
+          totalLinesAdded,
+          totalLinesDeleted,
+          netChange: totalLinesAdded - totalLinesDeleted
+        }
+      });
+
+      return {
+        filesProcessed,
+        totalLinesAdded,
+        totalLinesDeleted
+      };
+
+    } catch (error) {
+      logger.error('Failed to sync files from git', error instanceof Error ? error : new Error('Unknown error'), {
+        component: 'SessionTracker',
+        operation: 'syncFilesFromGit',
+        metadata: { sessionId }
+      });
+
+      return {
+        filesProcessed: 0,
+        totalLinesAdded: 0,
+        totalLinesDeleted: 0,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
     }
   }
 
