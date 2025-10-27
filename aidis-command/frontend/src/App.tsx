@@ -2,7 +2,6 @@ import React, { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ConfigProvider } from 'antd';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { globalQueryErrorHandler } from './hooks/useQueryErrorHandler';
 import { AuthProvider } from './contexts/AuthContext';
 import { ProjectProvider } from './contexts/ProjectContext';
@@ -108,7 +107,6 @@ const AppContent: React.FC = () => {
             </FeatureFlagProvider>
           </AuthProvider>
         </Router>
-        <ReactQueryDevtools initialIsOpen={false} />
       </GlobalErrorBoundary>
       </QueryClientProvider>
     </ConfigProvider>
