@@ -1,13 +1,13 @@
 import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { 
-  Typography, 
-  Card, 
-  Button, 
-  Space, 
-  Spin, 
-  message, 
-  Row, 
+import {
+  Typography,
+  Card,
+  Button,
+  Space,
+  Spin,
+  message,
+  Row,
   Col,
   Statistic,
   Tag,
@@ -16,7 +16,7 @@ import {
   Alert,
   Empty
 } from 'antd';
-import { 
+import {
   ArrowLeftOutlined,
   FolderOutlined,
   GithubOutlined,
@@ -28,6 +28,7 @@ import {
 import { useProject, useProjectSessions } from '../hooks/useProjects';
 import SessionList from '../components/projects/SessionList';
 import type { Session } from '../types/session';
+import { useTheme } from '../contexts/ThemeContext';
 
 const { Title, Text, Paragraph } = Typography;
 const { TabPane } = Tabs;
@@ -35,6 +36,7 @@ const { TabPane } = Tabs;
 const ProjectDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { themeMode } = useTheme();
 
   // React Query hooks for data fetching
   const {
@@ -191,7 +193,12 @@ const ProjectDetail: React.FC = () => {
           )}
           {project?.metadata && Object.keys(project.metadata).length > 0 && (
             <Descriptions.Item label="Metadata" span={2}>
-              <pre style={{ background: '#f5f5f5', padding: '8px', borderRadius: '4px' }}>
+              <pre style={{
+                background: themeMode === 'dark' ? '#262626' : '#f5f5f5',
+                padding: '8px',
+                borderRadius: '4px',
+                color: themeMode === 'dark' ? 'rgba(255, 255, 255, 0.85)' : 'inherit'
+              }}>
                 {JSON.stringify(project.metadata, null, 2)}
               </pre>
             </Descriptions.Item>
