@@ -9,7 +9,7 @@ import type { Context } from '../../types/context';
 import {
   getTypeColor,
   getTypeDisplayName,
-  highlightSearchTerms,
+  highlightSearchTermsAsNodes,
   truncateContent,
 } from '../../utils/contextHelpers';
 import dayjs from 'dayjs';
@@ -54,9 +54,7 @@ const ContextCard: React.FC<ContextCardProps> = ({
   };
 
   const truncatedContent = truncateContent(context.content, 120);
-  const highlightedContent = searchTerm 
-    ? highlightSearchTerms(truncatedContent, searchTerm)
-    : truncatedContent;
+  const highlightedContent = highlightSearchTermsAsNodes(truncatedContent, searchTerm);
 
   const actions = [
     <Tooltip title="View Details" key="view">
@@ -161,9 +159,7 @@ const ContextCard: React.FC<ContextCardProps> = ({
             style={{ margin: 0 }}
             ellipsis={{ rows: 3, expandable: false }}
           >
-            <span 
-              dangerouslySetInnerHTML={{ __html: highlightedContent }}
-            />
+            {highlightedContent}
           </Paragraph>
 
           {/* Tags */}

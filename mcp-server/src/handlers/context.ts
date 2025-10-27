@@ -83,7 +83,9 @@ export class ContextHandler {
    * Combines title + tags + type + content for better semantic search
    */
   async storeContext(request: StoreContextRequest): Promise<ContextEntry> {
-    console.log(`📝 Storing ${request.type} context: "${request.content.substring(0, 60)}..."`);
+    if (process.env.AIDIS_DETAILED_LOGGING === 'true') {
+        console.log(`📝 Storing ${request.type} context: "${request.content.substring(0, 60)}..."`);
+      }
 
     try {
       // Validate required fields
@@ -155,9 +157,11 @@ export class ContextHandler {
         contextData.metadata
       ];
 
-      console.log(`🔍 DEBUG: Executing SQL query with parameters:`);
-      console.log(`🔍 DEBUG: SQL: ${sqlQuery.replace(/\s+/g, ' ').trim()}`);
-      console.log(`🔍 DEBUG: Param $3 (context_type): "${sqlParams[2]}" (${typeof sqlParams[2]})`);
+      if (process.env.AIDIS_DETAILED_LOGGING === 'true') {
+        console.log(`🔍 DEBUG: Executing SQL query with parameters:`);
+        console.log(`🔍 DEBUG: SQL: ${sqlQuery.replace(/\s+/g, ' ').trim()}`);
+        console.log(`🔍 DEBUG: Param $3 (context_type): "${sqlParams[2]}" (${typeof sqlParams[2]})`);
+      }
       
       const result = await db.query(sqlQuery, sqlParams);
 
@@ -182,9 +186,11 @@ export class ContextHandler {
         embedding: embeddingResult.embedding
       };
 
-      console.log(`✅ Context stored successfully! ID: ${storedContext.id}`);
-      console.log(`🔍 Embedding: ${embeddingResult.dimensions}D vector (${embeddingResult.model})`);
-      console.log(`🏷️  Tags: [${storedContext.tags.join(', ')}]`);
+      if (process.env.AIDIS_DETAILED_LOGGING === 'true') {
+        console.log(`✅ Context stored successfully! ID: ${storedContext.id}`);
+        console.log(`🔍 Embedding: ${embeddingResult.dimensions}D vector (${embeddingResult.model})`);
+        console.log(`🏷️  Tags: [${storedContext.tags.join(', ')}]`);
+      }
       
       // Log the context creation event
       await logContextEvent(storedContext.id, 'stored', {

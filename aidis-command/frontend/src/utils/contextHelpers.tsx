@@ -1,3 +1,5 @@
+import React from 'react';
+
 export const getTypeDisplayName = (type: string): string => {
   const typeMap: Record<string, string> = {
     code: 'Code',
@@ -46,6 +48,45 @@ export const highlightSearchTerms = (text: string, searchTerm?: string): string 
   });
 
   return highlightedText;
+};
+
+/**
+ * Safe search term highlighting that returns React nodes instead of HTML strings
+ * Prevents XSS vulnerabilities from dangerouslySetInnerHTML
+ */
+export const highlightSearchTermsAsNodes = (
+  text: string,
+  searchTerm?: string
+): React.ReactNode => {
+  if (!searchTerm?.trim()) {
+    return text;
+  }
+
+  const terms = searchTerm.trim().split(/\s+/).filter(Boolean);
+  if (terms.length === 0) {
+    return text;
+  }
+
+  // Escape special regex characters in search terms
+  const escapedTerms = terms.map(t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+  const regex = new RegExp(`(${escapedTerms.join('|')})`, 'gi');
+  
+  const parts = text.split(regex);
+  
+  return parts.map((part, i) => {
+    // Check if this part matches any search term
+    const isMatch = terms.some(term => 
+      part.toLowerCase() === term.toLowerCase()
+    );
+    
+    return isMatch ? (
+      <mark key={i} style={{ backgroundColor: '#fff3cd', padding: 2 }}>
+        {part}
+      </mark>
+    ) : (
+      <span key={i}>{part}</span>
+    );
+  });
 };
 
 export const formatFileSize = (bytes: number): string => {

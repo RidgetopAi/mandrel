@@ -1,145 +1,218 @@
-# AIDIS Command
+# AIDIS Command - Web Interface
 
-Database viewer and admin tool for AIDIS (AI Development Intelligence System). This application provides a web interface for managing contexts, agents, tasks, decisions, and naming registry with data cleanup capabilities.
+Production-ready web interface for AIDIS MCP Server.
 
-## Project Structure
+![Status](https://img.shields.io/badge/Status-Beta-yellow)
+![License](https://img.shields.io/badge/License-MIT-green)
 
-```
-aidis-command/
-├── frontend/          # React TypeScript frontend
-├── backend/           # Express TypeScript backend
-├── shared/            # Shared TypeScript types
-├── .env.example       # Environment configuration template
-└── README.md          # This file
-```
+---
+
+## Overview
+
+AIDIS Command provides a comprehensive web dashboard for managing projects, contexts, technical decisions, and tasks stored in the AIDIS MCP Server.
+
+**Features:**
+- 📊 Project management and switching
+- 🔍 Context search with semantic similarity
+- 📝 Technical decision tracking
+- ✅ Task coordination and analytics
+- 📈 Real-time updates via WebSocket
+- 🎨 Modern UI with Ant Design
+
+---
+
+## Prerequisites
+
+- Node.js 16+
+- AIDIS MCP Server running (see main README)
+
+---
 
 ## Quick Start
 
-### Prerequisites
+### 1. Install Dependencies
 
-- Node.js 18+ and npm
-- PostgreSQL database with AIDIS schema
-- AIDIS MCP server running (optional for full functionality)
-
-### Installation
-
-1. Clone and setup:
 ```bash
-cd aidis-command
+cd aidis-command/frontend
 npm install
 ```
 
-2. Configure environment:
+### 2. Configure Environment
+
+Copy `.env.example` to `.env`:
+
 ```bash
 cp .env.example .env
-# Edit .env with your database and server configuration
 ```
 
-3. Start development servers:
+Update environment variables as needed:
+
+```env
+# Backend REST API URL
+REACT_APP_API_URL=http://localhost:5000/api
+
+# MCP Server HTTP Bridge URL
+REACT_APP_MCP_URL=http://localhost:8080
+
+# WebSocket URL for real-time updates
+REACT_APP_WS_URL=ws://localhost:5000/ws
+
+# Sentry Error Tracking (Optional)
+REACT_APP_SENTRY_DSN=
+REACT_APP_SENTRY_ENABLED=false
+```
+
+### 3. Run Development Server
+
 ```bash
+npm start
+```
+
+Or run the full stack:
+
+```bash
+cd ../..
 npm run dev:full
 ```
 
-This will start:
-- Backend API server on http://localhost:5000
-- Frontend React app on http://localhost:3000
+### 4. Access
 
-### Development Scripts
+Open http://localhost:3000
 
-```bash
-# Start both frontend and backend in development mode
-npm run dev:full
+**Default Login**: admin / admin123!
 
-# Start individual services
-npm run dev:frontend    # React dev server
-npm run dev:backend     # Express dev server with hot reload
+---
 
-# Build for production
-npm run build
+## Configuration
 
-# Linting and formatting
-npm run lint
-npm run lint:fix
-npm run format
-```
+### Environment Variables
 
-## Technology Stack
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `REACT_APP_API_URL` | Backend REST API base URL | `http://localhost:5000/api` |
+| `REACT_APP_MCP_URL` | MCP tools endpoint | `http://localhost:8080` |
+| `REACT_APP_WS_URL` | WebSocket for real-time updates | `ws://localhost:5000/ws` |
+| `REACT_APP_SENTRY_DSN` | (Optional) Sentry error tracking | - |
+| `REACT_APP_SENTRY_ENABLED` | (Optional) Enable Sentry | `false` |
+
+### Ports
+
+- **Frontend**: 3000 (React dev server)
+- **Backend API**: 5000 (Express)
+- **MCP Server**: 8080 (HTTP bridge)
+- **WebSocket**: 5000 (same as backend API)
+
+---
+
+## Architecture
 
 ### Frontend
 - **React 18** with TypeScript
-- **Ant Design** for UI components
-- **React Router** for navigation
-- **Axios** for API communication
+- **Ant Design 5** for UI components
+- **React Query** for server state management
+- **React Router 6** with lazy-loaded routes
+- **Code splitting** for optimal performance
 
-### Backend
-- **Express** with TypeScript
-- **PostgreSQL** for database
-- **CORS** and **Helmet** for security
-- **Morgan** for logging
+### Backend API
+- **Express.js** REST API
+- **JWT authentication**
+- **WebSocket** for real-time updates
+- **OpenAPI** generated TypeScript client
 
-### Shared
-- **TypeScript** definitions
-- Database model types
-- API request/response interfaces
+---
 
-## API Endpoints
+## Production Build
 
-### Health Check
-- `GET /api/health` - Basic health check
-- `GET /api/health/db` - Database connectivity check
+```bash
+npm run build
+```
 
-### Planned Endpoints (Phase 2)
-- `/api/projects` - Project management
-- `/api/contexts` - Context storage and search
-- `/api/agents` - Agent coordination
-- `/api/tasks` - Task management
-- `/api/decisions` - Technical decisions
-- `/api/naming` - Naming registry
+Outputs to `build/` directory. Serve with any static file server.
 
-## Database Integration
+---
 
-This application connects to the same PostgreSQL database used by AIDIS MCP server. The database schema includes:
+## Optional: Sentry Integration
 
-- **projects** - Project management
-- **contexts** - Context storage with vector embeddings
-- **agents** - Multi-agent coordination
-- **tasks** - Task breakdown and tracking
-- **technical_decisions** - Architectural decision records
-- **naming_registry** - Naming consistency enforcement
-- **code_components** - Code structure analysis
+To enable error tracking in production:
 
-## Development Phases
+1. Sign up for Sentry account
+2. Create a new React project
+3. Copy your DSN
+4. Set environment variables:
+   ```bash
+   REACT_APP_SENTRY_DSN=your-dsn-here
+   REACT_APP_SENTRY_ENABLED=true
+   ```
+5. Rebuild: `npm run build`
 
-### Phase 1: Foundation ✅ COMPLETE
-- [x] Project structure setup
-- [x] Frontend React application
-- [x] Backend Express server
-- [x] Shared TypeScript types
-- [x] Development environment configuration
-- [x] Basic health check endpoints
+---
 
-### Phase 2: Core API Integration (Next)
-- [ ] Database connection and models
-- [ ] CRUD endpoints for all AIDIS tables
-- [ ] Authentication and authorization
-- [ ] API documentation with Swagger
+## Development
 
-### Phase 3: Advanced UI (Future)
-- [ ] Data visualization dashboards
-- [ ] Real-time updates with WebSockets
-- [ ] Advanced search and filtering
-- [ ] Export/import functionality
+### Available Scripts
 
-### Phase 4: Production Ready (Future)
-- [ ] Comprehensive test suite
-- [ ] Performance optimization
-- [ ] Security hardening
-- [ ] Deployment configuration
+- `npm start` - Start development server
+- `npm run build` - Production build
+- `npm test` - Run tests
+- `npm run lint` - Run ESLint
+- `npm run type-check` - TypeScript type checking
 
-## Contributing
+### Project Structure
 
-This is an internal tool for AIDIS development. Follow TypeScript best practices and maintain consistency with existing code patterns.
+```
+frontend/
+├── src/
+│   ├── api/          # API clients and generated types
+│   ├── components/   # Reusable UI components
+│   ├── contexts/     # React contexts
+│   ├── hooks/        # Custom React hooks
+│   ├── pages/        # Route components
+│   ├── services/     # Business logic
+│   ├── types/        # TypeScript types
+│   └── utils/        # Utility functions
+├── public/           # Static assets
+└── package.json
+```
+
+---
+
+## Troubleshooting
+
+### "Failed to connect to MCP server"
+- Ensure AIDIS MCP Server is running on port 8080
+- Check `REACT_APP_MCP_URL` in your `.env` file
+
+### "WebSocket connection failed"
+- Ensure backend is running on port 5000
+- Check `REACT_APP_WS_URL` in your `.env` file
+
+### "401 Unauthorized"
+- Check that you're logged in
+- Try logging out and back in
+- Clear localStorage: `localStorage.clear()`
+
+---
 
 ## License
 
-MIT License - Internal use only
+MIT
+
+---
+
+## Contributing
+
+This is beta software. Contributions welcome!
+
+**Known Limitations:**
+- Performance tuning ongoing
+- Additional test coverage needed
+- Documentation improvements in progress
+
+**Reporting Issues:**
+- Include browser console errors
+- Describe steps to reproduce
+- Note your environment (OS, Node version, browser)
+
+---
+
+**Status**: Beta - expect rough edges, but core functionality is solid!

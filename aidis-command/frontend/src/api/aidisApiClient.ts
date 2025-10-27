@@ -76,7 +76,7 @@ export class AidisApiClient {
     timeout?: number;
     retryConfig?: Partial<RetryConfig>;
   }) {
-    this.baseUrl = config?.baseUrl || (import.meta.env?.VITE_MCP_BASE_URL as string | undefined) || 'http://localhost:8080';
+    this.baseUrl = config?.baseUrl || process.env.REACT_APP_MCP_URL || 'http://localhost:8080';
     this.timeout = config?.timeout || 30000;
     this.retryConfig = { ...DEFAULT_RETRY_CONFIG, ...config?.retryConfig };
   }
