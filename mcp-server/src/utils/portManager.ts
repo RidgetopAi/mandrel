@@ -28,7 +28,7 @@ export class PortManager {
 
   constructor(config?: Partial<PortDiscoveryConfig>) {
     this.config = {
-      registryFile: '/home/ridgetop/aidis/run/port-registry.json',
+      registryFile: process.env.AIDIS_PORT_REGISTRY || path.resolve(process.cwd(), 'run/port-registry.json'),
       defaultPorts: {
         'aidis-mcp': 8080,
         'aidis-command-dev': 5000,
