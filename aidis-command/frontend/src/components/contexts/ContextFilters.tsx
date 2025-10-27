@@ -9,6 +9,7 @@ import {
 } from '@ant-design/icons';
 import { useContextSearch } from '../../stores/contextStore';
 // Oracle Phase 1: Removed useProjectContext - project scoping handled by API interceptor
+import { useTheme } from '../../contexts/ThemeContext';
 import { getTypeColor } from '../../utils/contextHelpers';
 import dayjs, { Dayjs } from 'dayjs';
 
@@ -40,6 +41,7 @@ const SORT_OPTIONS = [
 const ContextFilters: React.FC<ContextFiltersProps> = ({ onSearch, loading }) => {
   const { searchParams, updateSearchParam, clearFilters, isFiltered } = useContextSearch();
   // Oracle Phase 1: Removed currentProject - project scoping handled by API interceptor
+  const { themeMode } = useTheme();
   const [localQuery, setLocalQuery] = useState(searchParams.query || '');
   const [hasMounted, setHasMounted] = useState(false);
   const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -330,7 +332,11 @@ const ContextFilters: React.FC<ContextFiltersProps> = ({ onSearch, loading }) =>
 
         {/* Search Stats */}
         {isFiltered && (
-          <div style={{ padding: '8px 12px', background: '#f0f8ff', borderRadius: 4 }}>
+          <div style={{
+            padding: '8px 12px',
+            background: themeMode === 'dark' ? '#262626' : '#f0f8ff',
+            borderRadius: 4
+          }}>
             <Text type="secondary" style={{ fontSize: '12px' }}>
               <SearchOutlined /> Active search with {activeFiltersCount} filter{activeFiltersCount !== 1 ? 's' : ''}
             </Text>

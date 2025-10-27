@@ -10,6 +10,7 @@ export interface McpResponse {
     resource?: string;
   }>;
   isError?: boolean;
+  data?: any; // Structured data for API consumers (optional)
 }
 
 export interface FormatOptions {

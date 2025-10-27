@@ -29,12 +29,12 @@ class DashboardController {
       // Oracle Phase 2: Use dedicated count methods for maximum efficiency
       const [
         contextCount,
-        activeTaskCount, 
+        activeTaskCount,
         taskStats,
         projectStats
       ] = await Promise.all([
         ContextService.count(),                   // Total count (no project filter)
-        TaskService.countActive(projectId),       // Active tasks count
+        TaskService.countActive(),                // AIDIS-wide active tasks (no project filter)
         TaskService.getTaskStats(projectId),      // For completed tasks
         ProjectService.getProjectStats()          // Project statistics
       ]);

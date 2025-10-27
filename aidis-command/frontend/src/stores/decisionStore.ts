@@ -4,27 +4,27 @@ import { TechnicalDecision, DecisionSearchParams, DecisionStats, DecisionSearchR
 interface DecisionState {
   // Data
   decisions: TechnicalDecision[];
-  selectedDecisions: number[];
+  selectedDecisions: string[];
   currentDecision: TechnicalDecision | null;
   relatedDecisions: TechnicalDecision[];
   stats: DecisionStats | null;
-  
+
   // Search & Filter State
   searchParams: DecisionSearchParams;
   searchResults: DecisionSearchResult | null;
-  
+
   // UI State
   isLoading: boolean;
   isSearching: boolean;
   error: string | null;
   showDetail: boolean;
   showFilters: boolean;
-  
+
   // Actions
   setDecisions: (decisions: TechnicalDecision[]) => void;
-  setSelectedDecisions: (ids: number[]) => void;
-  addSelectedDecision: (id: number) => void;
-  removeSelectedDecision: (id: number) => void;
+  setSelectedDecisions: (ids: string[]) => void;
+  addSelectedDecision: (id: string) => void;
+  removeSelectedDecision: (id: string) => void;
   selectAllDecisions: () => void;
   clearSelection: () => void;
   setCurrentDecision: (decision: TechnicalDecision | null) => void;

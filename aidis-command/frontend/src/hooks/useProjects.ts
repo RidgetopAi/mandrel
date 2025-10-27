@@ -6,6 +6,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   ProjectsService,
+  SessionsService,
   type ApiSuccessResponse,
   type CreateProjectRequest,
   type ProjectListResponse,
@@ -243,6 +244,35 @@ export const useAllSessions = () => {
       total: (response.data as ProjectSessionsResponse | undefined)?.total ?? 0,
       raw: response as ApiSuccessResponse & { data?: ProjectSessionsResponse },
       data: response.data as ProjectSessionsResponse | undefined,
+    }),
+  });
+};
+
+/**
+ * Hook to fetch rich sessions list from /api/sessions endpoint (Phase 2.1)
+ * Returns sessions with full metrics: tokens, tasks, contexts, duration
+ */
+export const useSessionsList = (options?: {
+  projectId?: string;
+  status?: string;
+  limit?: number;
+  offset?: number;
+}) => {
+  return useQuery({
+    queryKey: ['sessions', 'list', options],
+    queryFn: () => SessionsService.getSessions({
+      projectId: options?.projectId,
+      status: options?.status,
+      // Default to large limit for stats pages, can be overridden
+      ...(options?.limit !== undefined ? { limit: options.limit } : {}),
+      ...(options?.offset !== undefined ? { offset: options.offset } : {}),
+    }),
+    staleTime: 1000 * 60 * 5, // 5 minutes
+    select: (response) => ({
+      sessions: response.data?.sessions ?? [],
+      total: response.data?.total ?? 0,
+      raw: response,
+      data: response.data,
     }),
   });
 };

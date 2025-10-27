@@ -131,7 +131,7 @@ const Dashboard: React.FC = () => {
               valueStyle={{ color: '#fa8c16' }}
             />
             <Text type="secondary" style={{ fontSize: '12px' }}>
-              {currentProject ? `In ${currentProject.name}` : 'Tasks in progress'}
+              Across all projects
             </Text>
           </Card>
         </Col>

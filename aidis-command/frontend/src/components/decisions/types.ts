@@ -1,5 +1,5 @@
 export interface TechnicalDecision {
-  id: number;
+  id: string; // UUID from database
   project_id: string;
   project_name?: string;
   title: string;

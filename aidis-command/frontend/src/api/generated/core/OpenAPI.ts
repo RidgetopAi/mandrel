@@ -20,15 +20,11 @@ export type OpenAPIConfig = {
 };
 
 export const OpenAPI: OpenAPIConfig = {
-    BASE: 'http://localhost:5000/api',
+    BASE: process.env.REACT_APP_API_URL || 'http://localhost:5000/api',
     VERSION: '1.0.0',
     WITH_CREDENTIALS: false,
     CREDENTIALS: 'include',
-    TOKEN: async () => {
-        const token = typeof window !== 'undefined' ? localStorage.getItem('aidis_token') || '' : '';
-        console.log('[OpenAPI] Getting token:', token ? `${token.substring(0, 20)}...` : 'NO TOKEN');
-        return token;
-    },
+    TOKEN: undefined,
     USERNAME: undefined,
     PASSWORD: undefined,
     HEADERS: undefined,

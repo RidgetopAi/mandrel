@@ -4,8 +4,7 @@ import { PlusOutlined, BarChartOutlined, ProjectOutlined, ReloadOutlined } from 
 import useWebSocketSingleton from '../hooks/useWebSocketSingleton';
 import { apiService } from '../services/api';
 import { useProjectContext } from '../contexts/ProjectContext';
-// TODO: Import remaining components once they're fixed
-// import TaskKanbanBoard from '../components/tasks/TaskKanbanBoard';
+import TaskKanbanBoard from '../components/tasks/TaskKanbanBoard';
 import TaskList from '../components/tasks/TaskList';
 import TaskCardList from '../components/tasks/TaskCardList';
 import TaskForm from '../components/tasks/TaskForm';
@@ -49,8 +48,7 @@ const Tasks: React.FC = () => {
 
   // WebSocket for real-time updates  
   const token = localStorage.getItem('aidis_token');
-  const backendPort = process.env.REACT_APP_BACKEND_PORT || '5001';
-  const wsUrl = token ? `ws://localhost:${backendPort}/ws?token=${encodeURIComponent(token)}` : null;
+  const wsUrl = token ? `${process.env.REACT_APP_WS_URL || 'ws://localhost:5000/ws'}?token=${encodeURIComponent(token)}` : null;
   
   const projectId = currentProject?.id;
 
@@ -272,6 +270,19 @@ const Tasks: React.FC = () => {
     }
   };
 
+  const handleBulkUpdateTasks = async (updates: Array<{ id: string; status: string }>) => {
+    try {
+      await apiService.post('/tasks/bulk-update', { updates });
+      // Updates will be handled via WebSocket (tasks_bulk_updated event)
+    } catch (error) {
+      console.error('Failed to bulk update tasks:', error);
+      notification.error({
+        message: 'Update Error',
+        description: 'Failed to update task status.'
+      });
+    }
+  };
+
   const selectedProjectName = currentProject?.name || 'No Project Selected';
 
   return (
@@ -348,10 +359,14 @@ const Tasks: React.FC = () => {
               </TabPane>
 
               <TabPane tab="Kanban Board" key="kanban">
-                <div style={{ padding: '40px', textAlign: 'center' }}>
-                  <h3>Kanban Board</h3>
-                  <p>Coming soon - drag and drop task management</p>
-                </div>
+                <TaskKanbanBoard
+                  tasks={tasks}
+                  loading={loading}
+                  onUpdateTask={handleUpdateTask}
+                  onDeleteTask={handleDeleteTask}
+                  onBulkUpdateTasks={handleBulkUpdateTasks}
+                  projects={allProjects}
+                />
               </TabPane>
 
               <TabPane tab={<span><BarChartOutlined />Analytics</span>} key="analytics">

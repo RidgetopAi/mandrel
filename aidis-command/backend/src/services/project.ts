@@ -292,48 +292,22 @@ export class ProjectService {
   }
 
   /**
-   * Get all sessions across all projects
+   * Get all sessions across all projects (unified from sessions table)
    */
   static async getAllSessions(): Promise<Session[]> {
     try {
       const result = await pool.query(`
-        WITH all_sessions AS (
-          -- User sessions (web sessions)
-          SELECT 
-            us.id,
-            us.project_id,
-            p.name as project_name,
-            us.started_at as created_at,
-            'web' as session_type,
-            us.contexts_created as context_count,
-            us.last_activity as last_context_at
-          FROM user_sessions us
-          LEFT JOIN projects p ON us.project_id = p.id
-          
-          UNION ALL
-          
-          -- Agent sessions (Claude Code, etc.)
-          SELECT 
-            s.id,
-            s.project_id,
-            p.name as project_name,
-            s.started_at as created_at,
-            s.agent_type as session_type,
-            COALESCE((SELECT COUNT(*) FROM contexts c WHERE c.session_id = s.id), 0) as context_count,
-            COALESCE(s.ended_at, s.started_at) as last_context_at
-          FROM sessions s
-          LEFT JOIN projects p ON s.project_id = p.id
-        )
         SELECT 
-          id,
-          project_id,
-          project_name,
-          created_at,
-          session_type,
-          context_count,
-          last_context_at
-        FROM all_sessions
-        ORDER BY created_at DESC
+          s.id,
+          s.project_id,
+          p.name as project_name,
+          s.started_at as created_at,
+          s.agent_type as session_type,
+          s.contexts_created as context_count,
+          COALESCE(s.last_activity_at, s.ended_at, s.started_at) as last_context_at
+        FROM sessions s
+        LEFT JOIN projects p ON s.project_id = p.id
+        ORDER BY s.started_at DESC
       `);
 
       return result.rows.map(row => ({

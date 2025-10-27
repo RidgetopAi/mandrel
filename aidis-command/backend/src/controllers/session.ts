@@ -180,33 +180,72 @@ export class SessionController {
 
   /**
    * GET /sessions/current - Get current active session
+   * Returns the most recent MCP/agent session with activity
    */
   static async getCurrentSession(_req: Request, res: Response): Promise<void> {
     try {
-      // Import dynamically to avoid circular dependencies
-      const { MCPIntegrationService } = await import('../services/mcpIntegration');
-      
-      // Get current session from MCP server
-      const mcpSession = await MCPIntegrationService.getCurrentSession();
-      
-      if (!mcpSession) {
+      // Get the most recently active session (prefer MCP sessions, then any with recent activity)
+      const result = await pool.query(`
+        SELECT
+          s.id,
+          s.project_id,
+          s.title,
+          s.description,
+          s.started_at,
+          s.ended_at,
+          s.last_activity_at,
+          s.agent_type,
+          s.status,
+          s.ai_model,
+          s.input_tokens,
+          s.output_tokens,
+          s.total_tokens,
+          s.tasks_created,
+          s.tasks_updated,
+          s.tasks_completed,
+          s.contexts_created,
+          p.name as project_name,
+          (SELECT COUNT(*) FROM contexts WHERE session_id = s.id) as context_count
+        FROM sessions s
+        LEFT JOIN projects p ON s.project_id = p.id
+        WHERE s.agent_type != 'web-ui' OR s.agent_type IS NULL
+        ORDER BY
+          CASE WHEN s.agent_type = 'mcp-client' THEN 0 ELSE 1 END,
+          s.last_activity_at DESC NULLS LAST,
+          s.started_at DESC
+        LIMIT 1
+      `);
+
+      if (result.rows.length === 0) {
         res.json({
           success: true,
           data: { session: null }
         });
         return;
       }
-      
-      // Transform MCP session to UI session format
+
+      const row = result.rows[0];
       const session = {
-        id: mcpSession.sessionId,
-        project_id: mcpSession.projectId || 'unknown',
-        project_name: mcpSession.projectName || 'Unknown',
-        title: mcpSession.title || `Session ${mcpSession.sessionId.substring(0, 8)}`,
-        description: mcpSession.description || '',
-        created_at: mcpSession.startedAt || new Date().toISOString(),
-        context_count: mcpSession.contextCount || 0,
-        last_context_at: mcpSession.lastContextAt || null
+        id: row.id,
+        project_id: row.project_id,
+        project_name: row.project_name || 'Unknown',
+        title: row.title || `Session ${row.id.substring(0, 8)}`,
+        description: row.description || '',
+        created_at: row.started_at,
+        ended_at: row.ended_at,
+        last_activity_at: row.last_activity_at,
+        agent_type: row.agent_type,
+        status: row.status,
+        ai_model: row.ai_model,
+        input_tokens: parseInt(row.input_tokens) || 0,
+        output_tokens: parseInt(row.output_tokens) || 0,
+        total_tokens: parseInt(row.total_tokens) || 0,
+        tasks_created: parseInt(row.tasks_created) || 0,
+        tasks_updated: parseInt(row.tasks_updated) || 0,
+        tasks_completed: parseInt(row.tasks_completed) || 0,
+        contexts_created: parseInt(row.contexts_created) || 0,
+        context_count: parseInt(row.context_count) || 0,
+        last_context_at: row.last_activity_at
       };
 
       res.json({
@@ -215,10 +254,9 @@ export class SessionController {
       });
     } catch (error) {
       console.error('Get current session error:', error);
-      // If MCP integration fails, return null instead of erroring
-      res.json({
-        success: true,
-        data: { session: null }
+      res.status(500).json({
+        success: false,
+        error: { type: 'internal', message: 'Failed to get current session' }
       });
     }
   }
@@ -242,7 +280,7 @@ export class SessionController {
       const { id } = req.params;
       const updates = req.body as UpdateSessionData;
 
-      const existingSession = await this.fetchSessionSummary(id);
+      const existingSession = await SessionController.fetchSessionSummary(id);
       if (!existingSession) {
         res.status(404).json({
           success: false,
@@ -254,8 +292,9 @@ export class SessionController {
         return;
       }
 
+      // Update sessions table (unified table)
       const fields: string[] = [];
-      const values: Array<string> = [id];
+      const values: Array<any> = [id];
 
       if (typeof updates.title !== 'undefined') {
         fields.push(`title = $${values.length + 1}`);
@@ -267,13 +306,33 @@ export class SessionController {
         values.push(updates.description);
       }
 
+      if (typeof updates.session_goal !== 'undefined') {
+        fields.push(`session_goal = $${values.length + 1}`);
+        values.push(updates.session_goal);
+      }
+
+      if (typeof updates.tags !== 'undefined') {
+        fields.push(`tags = $${values.length + 1}`);
+        values.push(updates.tags);
+      }
+
+      if (typeof updates.ai_model !== 'undefined') {
+        fields.push(`ai_model = $${values.length + 1}`);
+        values.push(updates.ai_model);
+      }
+
+      if (typeof updates.project_id !== 'undefined') {
+        fields.push(`project_id = $${values.length + 1}::uuid`);
+        values.push(updates.project_id);
+      }
+
       if (fields.length > 0) {
         fields.push('updated_at = NOW()');
-        const updateQuery = `UPDATE user_sessions SET ${fields.join(', ')} WHERE id = $1`;
+        const updateQuery = `UPDATE sessions SET ${fields.join(', ')} WHERE id = $1`;
         await pool.query(updateQuery, values);
       }
 
-      const updatedSession = await this.fetchSessionSummary(id);
+      const updatedSession = await SessionController.fetchSessionSummary(id);
       if (!updatedSession) {
         res.status(500).json({
           success: false,
@@ -366,30 +425,30 @@ export class SessionController {
     }
   }
   private static async fetchSessionSummary(sessionId: string): Promise<SessionSummary | null> {
-    const query = `
+    // Query unified sessions table
+    const sessionsQuery = `
       SELECT
         s.id,
         s.project_id,
         p.name AS project_name,
         s.title,
         s.description,
-        s.session_type,
+        s.session_goal,
+        s.tags,
+        s.ai_model,
+        s.agent_type as session_type,
         s.status,
-        s.created_at,
+        s.started_at as created_at,
         s.updated_at,
-        ctx.total_contexts AS context_count,
-        ctx.last_context_at
-      FROM user_sessions s
+        s.contexts_created AS context_count,
+        COALESCE(s.last_activity_at, s.ended_at, s.started_at) AS last_context_at
+      FROM sessions s
       LEFT JOIN projects p ON p.id = s.project_id
-      LEFT JOIN (
-        SELECT session_id, COUNT(*)::text AS total_contexts, MAX(created_at) AS last_context_at
-        FROM contexts
-        GROUP BY session_id
-      ) ctx ON ctx.session_id = s.id
       WHERE s.id = $1
     `;
 
-    const { rows } = await pool.query<SessionSummaryRow>(query, [sessionId]);
+    const { rows } = await pool.query<SessionSummaryRow>(sessionsQuery, [sessionId]);
+    
     if (rows.length === 0) {
       return null;
     }
@@ -401,6 +460,9 @@ export class SessionController {
       project_name: row.project_name,
       title: row.title,
       description: row.description,
+      session_goal: row.session_goal,
+      tags: row.tags,
+      ai_model: row.ai_model,
       session_type: row.session_type,
       status: row.status,
       created_at: row.created_at,
@@ -417,6 +479,9 @@ interface SessionSummaryRow {
   project_name: string | null;
   title: string | null;
   description: string | null;
+  session_goal?: string | null;
+  tags?: string[] | null;
+  ai_model?: string | null;
   session_type: string | null;
   status: string | null;
   created_at: string;
@@ -431,6 +496,9 @@ interface SessionSummary {
   project_name?: string | null;
   title?: string | null;
   description?: string | null;
+  session_goal?: string | null;
+  tags?: string[] | null;
+  ai_model?: string | null;
   session_type?: string | null;
   status?: string | null;
   created_at: string;

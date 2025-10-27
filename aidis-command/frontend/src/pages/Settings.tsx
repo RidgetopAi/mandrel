@@ -1,34 +1,75 @@
-import React from 'react';
-import { Typography, Card, Form, Input, Switch, Button, Space, Divider, Select, message } from 'antd';
-import { SettingOutlined, UserOutlined, BellOutlined, SecurityScanOutlined, ProjectOutlined } from '@ant-design/icons';
+import React, { useState, useEffect } from 'react';
+import { Typography, Card, Form, Input, Switch, Button, Space, Divider, Select, message, Tooltip, Modal } from 'antd';
+import { SettingOutlined, UserOutlined, SecurityScanOutlined, ProjectOutlined } from '@ant-design/icons';
 import { useAuthContext } from '../contexts/AuthContext';
 import { useProjectContext } from '../contexts/ProjectContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { useSettings } from '../hooks/useSettings';
 import useFeatureFlag from '../hooks/useFeatureFlag';
+import { useQueryClient } from '@tanstack/react-query';
 
 const { Title, Text } = Typography;
 
 const Settings: React.FC = () => {
   const { user } = useAuthContext();
+  const queryClient = useQueryClient();
   const { allProjects } = useProjectContext();
+  const { themeMode, setThemeMode } = useTheme();
   const { defaultProject, setDefaultProject, clearDefaultProject } = useSettings();
   const [form] = Form.useForm();
+  const [passwordForm] = Form.useForm();
   const featureFlagUiEnabled = useFeatureFlag('phase1.featureFlags', false);
+  const [isPasswordModalVisible, setIsPasswordModalVisible] = useState(false);
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [isSavingPassword, setIsSavingPassword] = useState(false);
 
-  const handleSave = (values: any) => {
-    console.log('Settings saved:', values);
+  const apiBaseUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+  const token = localStorage.getItem('aidis_token') || '';
 
-    // Save all form values including default project
-    // Note: Default project is handled separately via dropdown onChange
-    // but we should also handle it here for consistency
+  // Sync form field with theme mode
+  useEffect(() => {
+    form.setFieldsValue({ darkMode: themeMode === 'dark' });
+  }, [themeMode, form]);
+
+  const handleSave = async (values: any) => {
+    setIsSavingProfile(true);
     try {
-      // Other settings would go here (profile, notifications, etc.)
-      // For now, just show success message
-      message.success('Settings saved successfully!');
-      console.log('✅ Settings form submitted successfully:', values);
+      const { username, email } = values;
+
+      // Only send fields that have changed
+      const updates: any = {};
+      if (username !== user?.username) updates.username = username;
+      if (email !== user?.email) updates.email = email;
+
+      if (Object.keys(updates).length === 0) {
+        message.info('No changes to save');
+        setIsSavingProfile(false);
+        return;
+      }
+
+      const response = await fetch(`${apiBaseUrl}/users/profile`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(updates),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        message.success('Profile updated successfully!');
+        // Invalidate auth profile query to refetch user data
+        queryClient.invalidateQueries({ queryKey: ['auth', 'profile'] });
+      } else {
+        message.error(data.message || 'Failed to update profile');
+      }
     } catch (error) {
-      console.error('Failed to save settings:', error);
-      message.error('Failed to save settings. Please try again.');
+      console.error('Failed to save profile:', error);
+      message.error('Failed to save profile. Please try again.');
+    } finally {
+      setIsSavingProfile(false);
     }
   };
 
@@ -45,6 +86,119 @@ const Settings: React.FC = () => {
       clearDefaultProject();
       message.info('Default project cleared');
     }
+  };
+
+  const handleDarkModeChange = async (checked: boolean) => {
+    const newTheme = checked ? 'dark' : 'light';
+
+    try {
+      // Apply theme immediately for instant feedback
+      setThemeMode(newTheme);
+
+      // Save preference to backend
+      const response = await fetch(`${apiBaseUrl}/users/preferences`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ theme: newTheme }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        message.success(`Theme changed to ${newTheme} mode`);
+      } else {
+        // Revert theme on backend failure
+        setThemeMode(checked ? 'light' : 'dark');
+        message.error(data.message || 'Failed to update theme');
+      }
+    } catch (error) {
+      console.error('Failed to update theme:', error);
+      // Revert theme on error
+      setThemeMode(checked ? 'light' : 'dark');
+      message.error('Failed to update theme. Please try again.');
+    }
+  };
+
+  const handlePasswordChange = async (values: any) => {
+    setIsSavingPassword(true);
+    try {
+      const { currentPassword, newPassword, confirmPassword } = values;
+
+      if (newPassword !== confirmPassword) {
+        message.error('New passwords do not match');
+        setIsSavingPassword(false);
+        return;
+      }
+
+      const response = await fetch(`${apiBaseUrl}/users/change-password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ currentPassword, newPassword }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        message.success('Password changed successfully!');
+        setIsPasswordModalVisible(false);
+        passwordForm.resetFields();
+      } else {
+        // Show specific validation errors if available
+        if (data.details && Array.isArray(data.details) && data.details.length > 0) {
+          const errorList = data.details.join('; ');
+          message.error(`Password requirements not met: ${errorList}`, 6);
+        } else {
+          message.error(data.message || 'Failed to change password');
+        }
+      }
+    } catch (error) {
+      console.error('Failed to change password:', error);
+      message.error('Failed to change password. Please try again.');
+    } finally {
+      setIsSavingPassword(false);
+    }
+  };
+
+  const handleRevokeAllSessions = async () => {
+    Modal.confirm({
+      title: 'Revoke All Sessions',
+      content: 'This will log you out from all devices and sessions. You will need to log in again. Continue?',
+      okText: 'Yes, Revoke All',
+      okType: 'danger',
+      cancelText: 'Cancel',
+      onOk: async () => {
+        try {
+          const response = await fetch(`${apiBaseUrl}/users/revoke-sessions`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+            },
+          });
+
+          const data = await response.json();
+
+          if (response.ok && data.success) {
+            message.success('All sessions revoked. Logging out...');
+            // Clear local storage and redirect to login
+            setTimeout(() => {
+              localStorage.removeItem('aidis_token');
+              window.location.href = '/login';
+            }, 1500);
+          } else {
+            message.error(data.message || 'Failed to revoke sessions');
+          }
+        } catch (error) {
+          console.error('Failed to revoke sessions:', error);
+          message.error('Failed to revoke sessions. Please try again.');
+        }
+      },
+    });
   };
 
   return (
@@ -64,9 +218,7 @@ const Settings: React.FC = () => {
         initialValues={{
           username: user?.username,
           email: user?.email,
-          notifications: true,
           darkMode: false,
-          autoSave: true,
         }}
       >
         {/* Profile Settings */}
@@ -121,21 +273,6 @@ const Settings: React.FC = () => {
           </Text>
         </Card>
 
-        {/* Notification Settings */}
-        <Card title={<><BellOutlined /> Notifications</>}>
-          <Form.Item
-            label="Enable Notifications"
-            name="notifications"
-            valuePropName="checked"
-          >
-            <Switch />
-          </Form.Item>
-
-          <Text type="secondary">
-            Receive notifications about system updates and important events
-          </Text>
-        </Card>
-
         {/* Application Settings */}
         <Card title={<><SettingOutlined /> Application Preferences</>}>
           <Form.Item
@@ -143,19 +280,11 @@ const Settings: React.FC = () => {
             name="darkMode"
             valuePropName="checked"
           >
-            <Switch />
-          </Form.Item>
-
-          <Form.Item
-            label="Auto-save Context"
-            name="autoSave"
-            valuePropName="checked"
-          >
-            <Switch />
+            <Switch checked={themeMode === 'dark'} onChange={handleDarkModeChange} />
           </Form.Item>
 
           <Text type="secondary">
-            Automatically save context changes without manual confirmation
+            Toggle between light and dark theme
           </Text>
         </Card>
 
@@ -171,9 +300,13 @@ const Settings: React.FC = () => {
         {/* Security Settings */}
         <Card title={<><SecurityScanOutlined /> Security</>}>
           <Space direction="vertical" style={{ width: '100%' }}>
-            <Button type="default">Change Password</Button>
-            <Button type="default">Manage API Keys</Button>
-            <Button type="default" danger>
+            <Button type="default" onClick={() => setIsPasswordModalVisible(true)}>
+              Change Password
+            </Button>
+            <Tooltip title="API key management coming soon">
+              <Button type="default" disabled>Manage API Keys</Button>
+            </Tooltip>
+            <Button type="default" danger onClick={handleRevokeAllSessions}>
               Revoke All Sessions
             </Button>
           </Space>
@@ -183,7 +316,7 @@ const Settings: React.FC = () => {
 
         {/* Action Buttons */}
         <Space>
-          <Button type="primary" htmlType="submit">
+          <Button type="primary" htmlType="submit" loading={isSavingProfile}>
             Save Changes
           </Button>
           <Button type="default" onClick={() => form.resetFields()}>
@@ -191,6 +324,77 @@ const Settings: React.FC = () => {
           </Button>
         </Space>
       </Form>
+
+      {/* Password Change Modal */}
+      <Modal
+        title="Change Password"
+        open={isPasswordModalVisible}
+        onCancel={() => {
+          setIsPasswordModalVisible(false);
+          passwordForm.resetFields();
+        }}
+        footer={null}
+      >
+        <Form
+          form={passwordForm}
+          layout="vertical"
+          onFinish={handlePasswordChange}
+        >
+          <Text type="secondary" style={{ display: 'block', marginBottom: 16 }}>
+            Password must contain:
+            <ul style={{ marginTop: 8, marginBottom: 0 }}>
+              <li>At least 8 characters</li>
+              <li>One uppercase letter (A-Z)</li>
+              <li>One lowercase letter (a-z)</li>
+              <li>One number (0-9)</li>
+              <li>One special character (!@#$%^&*...)</li>
+            </ul>
+          </Text>
+
+          <Form.Item
+            label="Current Password"
+            name="currentPassword"
+            rules={[{ required: true, message: 'Please enter your current password' }]}
+          >
+            <Input.Password placeholder="Enter current password" />
+          </Form.Item>
+
+          <Form.Item
+            label="New Password"
+            name="newPassword"
+            rules={[
+              { required: true, message: 'Please enter a new password' },
+              { min: 8, message: 'Password must be at least 8 characters' },
+            ]}
+          >
+            <Input.Password placeholder="Enter new password" />
+          </Form.Item>
+
+          <Form.Item
+            label="Confirm New Password"
+            name="confirmPassword"
+            rules={[
+              { required: true, message: 'Please confirm your new password' },
+            ]}
+          >
+            <Input.Password placeholder="Confirm new password" />
+          </Form.Item>
+
+          <Form.Item>
+            <Space>
+              <Button type="primary" htmlType="submit" loading={isSavingPassword}>
+                Change Password
+              </Button>
+              <Button onClick={() => {
+                setIsPasswordModalVisible(false);
+                passwordForm.resetFields();
+              }}>
+                Cancel
+              </Button>
+            </Space>
+          </Form.Item>
+        </Form>
+      </Modal>
     </Space>
   );
 };

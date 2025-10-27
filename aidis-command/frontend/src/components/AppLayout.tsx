@@ -30,6 +30,7 @@ import {
 } from '@ant-design/icons';
 import { useAuthContext } from '../contexts/AuthContext';
 import { useProjectContext } from '../contexts/ProjectContext';
+import { useTheme } from '../contexts/ThemeContext';
 import ProjectSwitcher from './projects/ProjectSwitcher';
 import SectionErrorBoundary from './error/SectionErrorBoundary';
 
@@ -42,6 +43,7 @@ const AppLayout: React.FC = () => {
   const location = useLocation();
   const { user, logout } = useAuthContext();
   const { currentProject, setCurrentProject } = useProjectContext();
+  const { themeMode } = useTheme();
 
   // Navigation menu items
   const menuItems = [
@@ -198,8 +200,10 @@ const AppLayout: React.FC = () => {
         <Header
           style={{
             padding: '0 24px',
-            background: '#fff',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+            background: themeMode === 'dark' ? '#1f1f1f' : '#fff',
+            boxShadow: themeMode === 'dark'
+              ? '0 2px 8px rgba(0,0,0,0.45)'
+              : '0 2px 8px rgba(0,0,0,0.06)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
@@ -244,7 +248,10 @@ const AppLayout: React.FC = () => {
         </Header>
 
         {/* Breadcrumb */}
-        <div style={{ padding: '16px 24px 0' }}>
+        <div style={{
+          padding: '16px 24px 0',
+          background: themeMode === 'dark' ? '#141414' : '#f0f2f5',
+        }}>
           <Breadcrumb items={getBreadcrumbItems()} />
         </div>
 
@@ -253,9 +260,11 @@ const AppLayout: React.FC = () => {
           style={{
             margin: '24px',
             padding: '24px',
-            background: '#fff',
+            background: themeMode === 'dark' ? '#1f1f1f' : '#fff',
             borderRadius: '8px',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+            boxShadow: themeMode === 'dark'
+              ? '0 2px 8px rgba(0,0,0,0.45)'
+              : '0 2px 8px rgba(0,0,0,0.06)',
             minHeight: 'calc(100vh - 180px)',
           }}
         >

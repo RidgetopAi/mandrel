@@ -412,8 +412,26 @@ export default class AidisMcpServer {
         console.log('📋 Ensuring session exists for this AIDIS instance...');
         try {
           const currentProject = await projectHandler.getCurrentProject();
+
+          // Detect AI model from environment variables
+          const aiModel =
+            process.env.ANTHROPIC_MODEL ||
+            process.env.CLAUDE_MODEL ||
+            process.env.AI_MODEL ||
+            process.env.MODEL ||
+            'claude-sonnet-4-5'; // Default to Claude Sonnet 4.5
+
+          console.log(`🤖 AI Model detected: ${aiModel}`);
+
           // Use ensureActiveSession to reuse existing active session or create new one
-          const sessionId = await ensureActiveSession(currentProject?.id);
+          const sessionId = await ensureActiveSession(
+            currentProject?.id,
+            undefined, // title
+            undefined, // description
+            undefined, // sessionGoal
+            undefined, // tags
+            aiModel    // AI model
+          );
           console.log(`✅ Session tracking initialized: ${sessionId.substring(0, 8)}...`);
         } catch (error) {
           console.warn('⚠️  Failed to initialize session tracking:', error);
@@ -494,6 +512,16 @@ export default class AidisMcpServer {
 
     try {
       if (!SKIP_DATABASE) {
+        // Flush in-memory data before ending session
+        console.log('💾 Flushing in-memory session data...');
+        try {
+          await SessionTracker.flushTokensToDatabase();
+          await SessionTracker.flushActivityToDatabase();
+          console.log('✅ Session data flushed to database');
+        } catch (error) {
+          console.warn('⚠️  Failed to flush session data:', error);
+        }
+
         // End current session if active
         console.log('📋 Ending active session...');
         try {

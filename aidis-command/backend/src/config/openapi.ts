@@ -20,11 +20,11 @@ const options: swaggerJSDoc.Options = {
     },
     servers: [
       {
-        url: 'http://localhost:3001/api',
+        url: 'http://localhost:5000/api',
         description: 'Development server'
       },
       {
-        url: 'http://localhost:3002/api',
+        url: 'http://localhost:5000/api',
         description: 'Production server'
       }
     ],
@@ -912,14 +912,61 @@ const options: swaggerJSDoc.Options = {
             {
               type: 'object',
               properties: {
+                // Identification
+                display_id: { type: 'string', description: 'Human-readable session ID' },
+
+                // Project association
                 project_id: { type: 'string', format: 'uuid' },
                 project_name: { type: 'string' },
+
+                // Basic info
                 title: { type: 'string' },
                 description: { type: 'string' },
-                context_count: { type: 'integer' },
+                session_goal: { type: 'string' },
+                tags: { type: 'array', items: { type: 'string' } },
+
+                // Timestamps - CRITICAL FIELDS FOR ACTIVE/ENDED STATUS
+                started_at: { type: 'string', format: 'date-time' },
+                ended_at: { type: 'string', format: 'date-time', nullable: true, description: 'Session end time - null means active' },
+                duration_minutes: { type: 'string', description: 'Decimal string of duration in minutes' },
+                last_activity_at: { type: 'string', format: 'date-time' },
                 last_context_at: { type: 'string', format: 'date-time' },
+
+                // Status
+                status: { type: 'string', description: 'Session status indicator' },
                 session_type: { type: 'string' },
-                status: { type: 'string', description: 'Session status indicator' }
+                agent_type: { type: 'string', description: 'Type of AI agent' },
+                ai_model: { type: 'string', description: 'AI model used' },
+
+                // File metrics
+                lines_added: { type: 'integer' },
+                lines_deleted: { type: 'integer' },
+                lines_net: { type: 'integer' },
+                files_modified_count: { type: 'integer' },
+
+                // Task metrics
+                tasks_created: { type: 'integer' },
+                tasks_updated: { type: 'integer' },
+                tasks_completed: { type: 'integer' },
+                task_completion_rate: { type: 'string', description: 'Decimal string percentage' },
+
+                // Context metrics
+                contexts_created: { type: 'integer' },
+                context_count: { type: 'integer' },
+
+                // Token usage
+                input_tokens: { type: 'string', description: 'Input tokens consumed' },
+                output_tokens: { type: 'string', description: 'Output tokens generated' },
+                total_tokens: { type: 'string', description: 'Total tokens (input + output)' },
+
+                // Productivity
+                productivity_score: { type: 'string', description: 'Decimal productivity score 0-100' },
+
+                // Activity
+                activity_count: { type: 'integer' },
+
+                // Metadata
+                metadata: { type: 'object', additionalProperties: true }
               }
             }
           ]

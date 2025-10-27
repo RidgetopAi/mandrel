@@ -132,12 +132,13 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
 
         <Form.Item
           name="root_directory"
-          label="Root Directory"
+          label="Git Repository Path"
           rules={[
-            { max: 255, message: 'Root directory path must be less than 255 characters' }
+            { max: 255, message: 'Repository path must be less than 255 characters' }
           ]}
+          help="Absolute path to git repository (used for file sync). Example: /home/user/my-project"
         >
-          <Input placeholder="/path/to/project/root (optional)" />
+          <Input placeholder="/home/user/my-project" />
         </Form.Item>
       </Form>
     </Modal>
