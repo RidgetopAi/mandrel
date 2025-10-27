@@ -121,7 +121,21 @@ export class DecisionsHandler {
 
     try {
       const projectId = await this.ensureProjectId(request.projectId);
-      
+
+      // Get active session for decision tracking
+      let sessionId: string | null = request.sessionId || null;
+      if (!sessionId) {
+        try {
+          const { SessionTracker } = await import('../services/sessionTracker.js');
+          sessionId = await SessionTracker.getActiveSession();
+          if (sessionId) {
+            console.log(`📋 Linking decision to active session: ${sessionId.substring(0, 8)}...`);
+          }
+        } catch (error) {
+          console.warn('⚠️  Failed to get active session for decision:', error);
+        }
+      }
+
       // Validate required fields
       if (!request.title?.trim()) {
         throw new Error('Decision title is required');
@@ -135,8 +149,8 @@ export class DecisionsHandler {
 
       // Check for duplicate decisions
       const existingDecision = await this.checkForDuplicate(
-        projectId, 
-        request.title, 
+        projectId,
+        request.title,
         request.decisionType
       );
 
@@ -156,7 +170,7 @@ export class DecisionsHandler {
         RETURNING *
       `, [
         projectId,
-        request.sessionId || null,
+        sessionId,
         request.decisionType,
         request.title.trim(),
         request.description.trim(),

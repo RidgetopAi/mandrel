@@ -65,6 +65,17 @@ export class BackgroundServices {
         console.warn('   Session timeouts will not be automatic');
       }
 
+      // Initialize session data flush service (30-second periodic flush)
+      console.log('💾 Starting session data flush service...');
+      try {
+        const { SessionFlushService } = await import('./sessionFlush.js');
+        SessionFlushService.start();
+        console.log('✅ Session flush service initialized successfully');
+      } catch (error) {
+        console.warn('⚠️  Failed to initialize session flush service:', error);
+        console.warn('   Session data will only flush on shutdown');
+      }
+
       this.servicesStarted = true;
       logger.info('✅ All background services started');
 
@@ -111,6 +122,16 @@ export class BackgroundServices {
         console.log('✅ Session timeout service stopped gracefully');
       } catch (error) {
         console.warn('⚠️  Failed to stop session timeout service:', error);
+      }
+
+      // Stop session flush service
+      console.log('💾 Stopping session flush service...');
+      try {
+        const { SessionFlushService } = await import('./sessionFlush.js');
+        SessionFlushService.stop();
+        console.log('✅ Session flush service stopped gracefully');
+      } catch (error) {
+        console.warn('⚠️  Failed to stop session flush service:', error);
       }
 
       this.servicesStarted = false;

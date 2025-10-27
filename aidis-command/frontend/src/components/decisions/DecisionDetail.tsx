@@ -96,14 +96,40 @@ const DecisionDetail: React.FC<DecisionDetailProps> = ({
   const handleSave = async () => {
     try {
       setLoading(true);
+
+      // Debug logging
+      console.log('🔍 [DecisionDetail] Attempting to save decision:', {
+        id: decision.id,
+        idType: typeof decision.id,
+        title: decision.title
+      });
+
+      if (!decision || !decision.id) {
+        console.error('❌ [DecisionDetail] Invalid decision object:', decision);
+        message.error('Cannot update decision: Invalid decision data');
+        return;
+      }
+
       const values = await form.validateFields();
-      const updatedDecision = await DecisionApi.updateDecision(decision.id, values);
-      
+      console.log('📝 [DecisionDetail] Form values:', values);
+
+      // Call update API (returns void)
+      await DecisionApi.updateDecision(decision.id, values);
+
+      // Construct the updated decision locally instead of refetching
+      const updatedDecision: TechnicalDecision = {
+        ...decision,
+        ...values,
+        updated_at: new Date().toISOString()
+      };
+
+      console.log('✅ [DecisionDetail] Update successful:', updatedDecision);
+
       message.success('Decision updated successfully');
       onUpdate?.(updatedDecision);
       setEditMode(false);
     } catch (error) {
-      console.error('Failed to update decision:', error);
+      console.error('❌ [DecisionDetail] Failed to update decision:', error);
       message.error('Failed to update decision');
     } finally {
       setLoading(false);

@@ -23,7 +23,7 @@ interface DecisionCardProps {
   selected?: boolean;
   showCheckbox?: boolean;
   searchTerm?: string;
-  onSelect?: (id: number, selected: boolean) => void;
+  onSelect?: (id: string, selected: boolean) => void;
   onView?: (decision: TechnicalDecision) => void;
   onEdit?: (decision: TechnicalDecision) => void;
   onDelete?: (decision: TechnicalDecision) => void;
@@ -174,9 +174,7 @@ const DecisionCard: React.FC<DecisionCardProps> = ({
                 style={{ margin: '4px 0 0 0' }}
                 ellipsis={{ rows: 2, expandable: false }}
               >
-                <span 
-                  dangerouslySetInnerHTML={{ __html: highlightedProblem }}
-                />
+                {highlightedProblem}
               </Paragraph>
             </div>
 

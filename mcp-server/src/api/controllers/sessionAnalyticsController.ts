@@ -171,16 +171,26 @@ export class SessionAnalyticsController {
         return;
       }
 
-      const result = await SessionManagementHandler.getSessionFilesHandler(sessionId);
+      // Get files array directly from SessionTracker (not MCP handler)
+      const files = await SessionTracker.getSessionFiles(sessionId);
 
-      // Extract text from MCP response format
-      const textContent = result.content[0].text;
+      // Map field names to match frontend SessionFile interface
+      const mappedFiles = files.map(file => ({
+        id: file.id,
+        session_id: file.session_id,
+        file_path: file.file_path,
+        lines_added: file.lines_added,
+        lines_deleted: file.lines_deleted,
+        source: file.source,
+        first_modified_at: file.first_modified,
+        last_modified_at: file.last_modified
+      }));
 
       res.json({
         success: true,
         data: {
           sessionId,
-          files: textContent
+          files: mappedFiles
         }
       });
     } catch (error) {
@@ -393,6 +403,56 @@ export class SessionAnalyticsController {
   }
 
   /**
+   * Get session detail by ID
+   * GET /api/v2/sessions/:sessionId
+   */
+  async getSessionDetail(req: Request, res: Response): Promise<void> {
+    try {
+      const { sessionId } = req.params;
+
+      if (!sessionId) {
+        res.status(400).json({
+          success: false,
+          error: 'sessionId is required'
+        });
+        return;
+      }
+
+      // Query session from v_session_summaries view
+      const query = `
+        SELECT * FROM v_session_summaries
+        WHERE id = $1
+      `;
+
+      const result = await db.query(query, [sessionId]);
+
+      if (result.rows.length === 0) {
+        res.status(404).json({
+          success: false,
+          error: 'Session not found'
+        });
+        return;
+      }
+
+      const session = result.rows[0];
+
+      res.json({
+        success: true,
+        data: {
+          session
+        }
+      });
+    } catch (error) {
+      const err = error as Error;
+      logger.error('Failed to get session detail', err);
+      res.status(500).json({
+        success: false,
+        error: err.message || 'Unknown error'
+      });
+    }
+  }
+
+  /**
    * Get session statistics
    * GET /api/v2/sessions/stats?projectId=&period=&groupBy=&phase2Only=
    */
@@ -431,6 +491,64 @@ export class SessionAnalyticsController {
     } catch (error) {
       const err = error as Error;
       logger.error('Failed to get session stats', err);
+      res.status(500).json({
+        success: false,
+        error: err.message || 'Unknown error'
+      });
+    }
+  }
+
+  /**
+   * Sync files from git for a session (manual trigger)
+   * POST /api/v2/sessions/:sessionId/sync-files
+   */
+  async syncFiles(req: Request, res: Response): Promise<void> {
+    try {
+      const { sessionId } = req.params;
+
+      if (!sessionId) {
+        res.status(400).json({
+          success: false,
+          error: 'sessionId is required'
+        });
+        return;
+      }
+
+      logger.info('Manual file sync triggered', {
+        component: 'SessionAnalyticsController',
+        operation: 'syncFiles',
+        metadata: { sessionId }
+      });
+
+      const result = await SessionTracker.syncFilesFromGit(sessionId);
+
+      if (result.error) {
+        res.status(500).json({
+          success: false,
+          error: result.error,
+          data: {
+            filesProcessed: result.filesProcessed,
+            totalLinesAdded: result.totalLinesAdded,
+            totalLinesDeleted: result.totalLinesDeleted
+          }
+        });
+        return;
+      }
+
+      res.json({
+        success: true,
+        data: {
+          sessionId,
+          filesProcessed: result.filesProcessed,
+          totalLinesAdded: result.totalLinesAdded,
+          totalLinesDeleted: result.totalLinesDeleted,
+          netChange: result.totalLinesAdded - result.totalLinesDeleted,
+          message: `Synced ${result.filesProcessed} files from git (+${result.totalLinesAdded}/-${result.totalLinesDeleted} lines)`
+        }
+      });
+    } catch (error) {
+      const err = error as Error;
+      logger.error('Failed to sync files', err);
       res.status(500).json({
         success: false,
         error: err.message || 'Unknown error'
@@ -494,6 +612,131 @@ export class SessionAnalyticsController {
     } catch (error) {
       const err = error as Error;
       logger.error('Failed to compare sessions', err);
+      res.status(500).json({
+        success: false,
+        error: err.message || 'Unknown error'
+      });
+    }
+  }
+
+  /**
+   * Start a new session
+   * POST /api/v2/sessions/start
+   */
+  async startSession(req: Request, res: Response): Promise<void> {
+    try {
+      const { projectId, title, description, sessionGoal, tags, aiModel } = req.body;
+
+      logger.info(`Starting new session for project: ${projectId || 'auto-detect'}`);
+
+      const { SessionAnalyticsHandler } = await import('../../handlers/sessionAnalytics.js');
+      const result = await SessionAnalyticsHandler.startSession(
+        projectId,
+        title,
+        description,
+        sessionGoal,
+        tags,
+        aiModel
+      );
+
+      if (!result.success) {
+        res.status(500).json(result);
+        return;
+      }
+
+      logger.info(`Session started successfully: ${result.data?.session_id?.substring(0, 8)}...`);
+
+      res.status(201).json({
+        success: true,
+        data: result.data,
+        message: 'Session started successfully'
+      });
+    } catch (error) {
+      const err = error as Error;
+      logger.error('Failed to start session', err);
+      res.status(500).json({
+        success: false,
+        error: err.message || 'Unknown error'
+      });
+    }
+  }
+
+  /**
+   * End a session
+   * POST /api/v2/sessions/:sessionId/end
+   */
+  async endSession(req: Request, res: Response): Promise<void> {
+    try {
+      const { sessionId } = req.params;
+
+      if (!sessionId) {
+        res.status(400).json({
+          success: false,
+          error: 'sessionId is required'
+        });
+        return;
+      }
+
+      logger.info(`Ending session: ${sessionId.substring(0, 8)}...`);
+
+      const { SessionAnalyticsHandler } = await import('../../handlers/sessionAnalytics.js');
+      const result = await SessionAnalyticsHandler.endSession(sessionId);
+
+      if (!result.success) {
+        res.status(500).json(result);
+        return;
+      }
+
+      logger.info(`Session ended successfully: ${sessionId.substring(0, 8)}...`);
+      logger.info(`  Productivity score: ${result.data?.productivity_score}`);
+      logger.info(`  Contexts created: ${result.data?.contexts_created}`);
+
+      res.json({
+        success: true,
+        data: result.data,
+        message: 'Session ended successfully'
+      });
+    } catch (error) {
+      const err = error as Error;
+      logger.error('Failed to end session', err);
+      res.status(500).json({
+        success: false,
+        error: err.message || 'Unknown error'
+      });
+    }
+  }
+
+  /**
+   * Get active session
+   * GET /api/v2/sessions/active
+   */
+  async getActiveSession(_req: Request, res: Response): Promise<void> {
+    try {
+      logger.debug('Getting active session');
+
+      const { SessionAnalyticsHandler } = await import('../../handlers/sessionAnalytics.js');
+      const result = await SessionAnalyticsHandler.getActiveSession();
+
+      if (!result.success) {
+        // No active session is not an error, return 200 with null data
+        res.json({
+          success: true,
+          data: null,
+          message: 'No active session found'
+        });
+        return;
+      }
+
+      logger.debug(`Active session: ${result.data?.session_id?.substring(0, 8)}...`);
+
+      res.json({
+        success: true,
+        data: result.data,
+        message: 'Active session retrieved'
+      });
+    } catch (error) {
+      const err = error as Error;
+      logger.error('Failed to get active session', err);
       res.status(500).json({
         success: false,
         error: err.message || 'Unknown error'

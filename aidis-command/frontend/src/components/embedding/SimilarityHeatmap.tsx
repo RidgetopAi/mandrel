@@ -1,8 +1,10 @@
 import React, { useMemo, useState } from 'react';
 import { Card, Spin, Alert, Select, Space, InputNumber, Button } from 'antd';
-import { Heatmap } from '@ant-design/plots';
 import { ReloadOutlined, SettingOutlined } from '@ant-design/icons';
+// @ts-ignore - Plotly types can be complex, using runtime import
+import Plot from 'react-plotly.js';
 import { useProjectContext } from '../../contexts/ProjectContext';
+import { useTheme } from '../../contexts/ThemeContext';
 import {
   useSimilarityMatrixQuery,
 } from '../../hooks/useEmbeddings';
@@ -11,15 +13,10 @@ import { useEmbeddingDatasetSelection } from '../../hooks/useEmbeddingDatasetSel
 
 const { Option } = Select;
 
-interface HeatmapData {
-  x: string;
-  y: string;
-  value: number;
-}
-
 const SimilarityHeatmap: React.FC = () => {
   const { currentProject } = useProjectContext();
   const projectId = currentProject?.id;
+  const { themeMode } = useTheme();
 
   const { heatmapSize, updateHeatmapSize } = useEmbeddingStore();
   const [showSettings, setShowSettings] = useState(false);
@@ -45,26 +42,129 @@ const SimilarityHeatmap: React.FC = () => {
   const error = (datasetsQuery.error as Error) ?? (similarityQuery.error as Error) ?? null;
   const similarityMatrix = similarityQuery.data ?? null;
 
-  const heatmapData = useMemo<HeatmapData[]>(() => {
+  const plotlyData = useMemo(() => {
     if (!similarityMatrix) {
       return [];
     }
 
-    const data: HeatmapData[] = [];
     const { matrix, labels } = similarityMatrix;
 
-    for (let i = 0; i < matrix.length; i++) {
-      for (let j = 0; j < matrix[i].length; j++) {
-        data.push({
-          x: labels[j] || `Item ${j}`,
-          y: labels[i] || `Item ${i}`,
-          value: matrix[i][j],
-        });
-      }
-    }
+    return [{
+      type: 'heatmap' as const,
+      z: matrix,
+      x: labels,
+      y: labels,
+      colorscale: [
+        [0, '#313695'],
+        [0.1, '#4575b4'],
+        [0.2, '#74add1'],
+        [0.3, '#abd9e9'],
+        [0.4, '#e0f3f8'],
+        [0.5, '#ffffcc'],
+        [0.6, '#fee090'],
+        [0.7, '#fdae61'],
+        [0.8, '#f46d43'],
+        [0.9, '#d73027'],
+        [1, '#a50026']
+      ] as Array<[number, string]>,
+      colorbar: {
+        title: {
+          text: 'Cosine<br>Similarity',
+          side: 'right',
+        },
+        tickfont: {
+          color: themeMode === 'dark' ? 'rgba(255, 255, 255, 0.85)' : '#000',
+          size: 11,
+        },
+        titlefont: {
+          color: themeMode === 'dark' ? 'rgba(255, 255, 255, 0.85)' : '#000',
+          size: 12,
+        },
+        thickness: 20,
+        len: 0.7,
+      },
+      hovertemplate:
+        '<b>X:</b> %{x}<br>' +
+        '<b>Y:</b> %{y}<br>' +
+        '<b>Similarity:</b> %{z:.3f}<br>' +
+        '<extra></extra>',
+      zmin: 0,
+      zmax: 1,
+      showscale: true,
+      xgap: 1,
+      ygap: 1,
+    }] as any;
+  }, [similarityMatrix, themeMode]);
 
-    return data;
-  }, [similarityMatrix]);
+  const layout = useMemo(() => ({
+    width: 1100,
+    height: 1100,
+    autosize: false,
+    xaxis: {
+      title: {
+        text: 'Context Items',
+        font: {
+          size: 12,
+          color: themeMode === 'dark' ? 'rgba(255, 255, 255, 0.85)' : '#000',
+        },
+      },
+      tickangle: -45,
+      tickfont: {
+        size: 9,
+        color: themeMode === 'dark' ? 'rgba(255, 255, 255, 0.85)' : '#666',
+      },
+      ticklabelstandoff: -20,
+      side: 'bottom' as const,
+      gridcolor: themeMode === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
+      showgrid: false,
+    },
+    yaxis: {
+      title: {
+        text: 'Context Items',
+        font: {
+          size: 12,
+          color: themeMode === 'dark' ? 'rgba(255, 255, 255, 0.85)' : '#000',
+        },
+      },
+      tickfont: {
+        size: 9,
+        color: themeMode === 'dark' ? 'rgba(255, 255, 255, 0.85)' : '#666',
+      },
+      ticklabelstandoff: 5,
+      autorange: 'reversed' as const,
+      gridcolor: themeMode === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
+      showgrid: false,
+      scaleanchor: 'x' as const,
+      scaleratio: 1,
+      automargin: true,
+    },
+    plot_bgcolor: themeMode === 'dark' ? '#141414' : '#fff',
+    paper_bgcolor: themeMode === 'dark' ? '#141414' : '#fff',
+    font: {
+      color: themeMode === 'dark' ? 'rgba(255, 255, 255, 0.85)' : '#000',
+    },
+    margin: {
+      l: 305,
+      r: 85,
+      t: 35,
+      b: 130,
+      pad: 0,
+    },
+  }), [themeMode]);
+
+  const config = useMemo(() => ({
+    displayModeBar: true,
+    displaylogo: false,
+    modeBarButtonsToRemove: ['select2d', 'lasso2d'] as any,
+    toImageButtonOptions: {
+      format: 'png' as const,
+      filename: 'similarity-heatmap',
+      height: 1200,
+      width: 1200,
+      scale: 2,
+    },
+    responsive: true,
+  }), []);
 
   const handleRetry = () => {
     void Promise.all([datasetsQuery.refetch(), similarityQuery.refetch()]);
@@ -72,50 +172,6 @@ const SimilarityHeatmap: React.FC = () => {
 
   const handleRefresh = () => {
     void similarityQuery.refetch();
-  };
-
-  const heatmapConfig = {
-    data: heatmapData,
-    xField: 'x',
-    yField: 'y',
-    colorField: 'value',
-    reflect: 'y' as const,
-    shape: 'square' as const,
-    meta: {
-      value: {
-        min: 0,
-        max: 1,
-      },
-    },
-    xAxis: {
-      label: {
-        autoRotate: true,
-        autoHide: true,
-        style: {
-          fontSize: 10,
-        },
-      },
-    },
-    yAxis: {
-      label: {
-        autoHide: true,
-        style: {
-          fontSize: 10,
-        },
-      },
-    },
-    tooltip: {
-      title: 'Similarity',
-      formatter: (datum: HeatmapData) => ({
-        name: 'Cosine Similarity',
-        value: datum.value.toFixed(3),
-      }),
-    },
-    color: ['#313695', '#4575b4', '#74add1', '#abd9e9', '#e0f3f8', '#ffffcc', '#fee090', '#fdae61', '#f46d43', '#d73027', '#a50026'],
-    legend: {
-      position: 'right' as const,
-    },
-    height: 500,
   };
 
   if (!projectId) {
@@ -182,7 +238,13 @@ const SimilarityHeatmap: React.FC = () => {
       }
     >
       {showSettings && (
-        <Card size="small" style={{ marginBottom: 16, backgroundColor: '#f9f9f9' }}>
+        <Card
+          size="small"
+          style={{
+            marginBottom: 16,
+            backgroundColor: themeMode === 'dark' ? '#1f1f1f' : '#f9f9f9'
+          }}
+        >
           <Space wrap>
             <div>
               <label>Dataset: </label>
@@ -236,7 +298,18 @@ const SimilarityHeatmap: React.FC = () => {
       )}
 
       {selectedDatasetId && similarityMatrix && (
-        <Heatmap {...heatmapConfig} />
+        <div style={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+        }}>
+          <Plot
+            data={plotlyData}
+            layout={layout}
+            config={config}
+            useResizeHandler={false}
+          />
+        </div>
       )}
     </Card>
   );

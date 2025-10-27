@@ -88,6 +88,12 @@ export class DecisionsRoutes {
                   `• Different decision types or impact levels\n` +
                   `• Removing some filters`
           }],
+          data: {
+            results: [],
+            total: 0,
+            page: 1,
+            limit: args.limit || 20
+          }
         };
       }
 
@@ -105,11 +111,44 @@ export class DecisionsRoutes {
                `   🏷️  [${decision.tags.join(', ')}]`;
       }).join('\n\n');
 
+      // Map decisions to structured format with proper field names for frontend
+      const structuredDecisions = decisions.map(decision => ({
+        id: decision.id,
+        project_id: decision.projectId,
+        session_id: decision.sessionId,
+        title: decision.title,
+        problem: decision.problemStatement || decision.description,
+        decision: decision.description,
+        rationale: decision.rationale,
+        decision_type: decision.decisionType,
+        impact_level: decision.impactLevel,
+        status: decision.status,
+        outcomeStatus: decision.outcomeStatus,
+        outcomeNotes: decision.outcomeNotes,
+        lessonsLearned: decision.lessonsLearned,
+        supersededBy: decision.supersededBy,
+        supersededReason: decision.supersededReason,
+        // Convert Alternative objects to strings for frontend compatibility
+        alternatives: decision.alternativesConsidered.map(alt =>
+          typeof alt === 'string' ? alt : alt.name
+        ),
+        affected_components: decision.affectedComponents,
+        tags: decision.tags,
+        created_at: decision.decisionDate.toISOString(),
+        updated_at: decision.decisionDate.toISOString()
+      }));
+
       return {
         content: [{
           type: 'text',
           text: searchSummary + resultDetails
         }],
+        data: {
+          results: structuredDecisions,
+          total: decisions.length,
+          page: 1,
+          limit: args.limit || 20
+        }
       };
     } catch (error) {
       return formatMcpError(error as Error, 'decision_search');

@@ -12,12 +12,26 @@ export const authenticateToken = async (
     if (req.method === 'OPTIONS') {
       return next();
     }
-    
+
+    // Development mode bypass - attach mock user
+    if (process.env.NODE_ENV === 'development' && !req.headers.authorization) {
+      req.user = {
+        id: 'dev-user',
+        username: 'developer',
+        email: 'developer@localhost',
+        role: 'admin',
+        is_active: true,
+        created_at: new Date(),
+        updated_at: new Date()
+      };
+      return next();
+    }
+
     const authHeader = req.headers.authorization;
-    
+
     // Validate authorization header format
     if (!authHeader) {
-      res.status(401).json({ 
+      res.status(401).json({
         success: false,
         error: 'Authentication required',
         message: 'Authorization header is required'
@@ -26,7 +40,7 @@ export const authenticateToken = async (
     }
 
     if (!authHeader.startsWith('Bearer ')) {
-      res.status(401).json({ 
+      res.status(401).json({
         success: false,
         error: 'Invalid authorization format',
         message: 'Authorization header must use Bearer token format'
@@ -35,23 +49,23 @@ export const authenticateToken = async (
     }
 
     const token = authHeader.split(' ')[1];
-    
+
     // Validate token presence
     if (!token || token.trim().length === 0) {
-      res.status(401).json({ 
+      res.status(401).json({
         success: false,
-        error: 'Access denied', 
-        message: 'No token provided' 
+        error: 'Access denied',
+        message: 'No token provided'
       });
       return;
     }
 
     // Validate token format (basic check for JWT structure)
     if (token.split('.').length !== 3) {
-      res.status(401).json({ 
+      res.status(401).json({
         success: false,
-        error: 'Invalid token format', 
-        message: 'Token must be a valid JWT' 
+        error: 'Invalid token format',
+        message: 'Token must be a valid JWT'
       });
       return;
     }
@@ -59,10 +73,10 @@ export const authenticateToken = async (
     // Verify JWT token
     const payload = AuthService.verifyJWT(token);
     if (!payload) {
-      res.status(401).json({ 
+      res.status(401).json({
         success: false,
-        error: 'Invalid token', 
-        message: 'Token verification failed' 
+        error: 'Invalid token',
+        message: 'Token verification failed'
       });
       return;
     }
@@ -70,10 +84,10 @@ export const authenticateToken = async (
     // Validate session is still active
     const isValidSession = await AuthService.validateSession(payload.tokenId);
     if (!isValidSession) {
-      res.status(401).json({ 
+      res.status(401).json({
         success: false,
-        error: 'Session expired', 
-        message: 'Please log in again' 
+        error: 'Session expired',
+        message: 'Please log in again'
       });
       return;
     }
@@ -81,20 +95,20 @@ export const authenticateToken = async (
     // Get user from database
     const user = await AuthService.findUserById(payload.userId);
     if (!user) {
-      res.status(401).json({ 
+      res.status(401).json({
         success: false,
-        error: 'User not found', 
-        message: 'User account no longer exists' 
+        error: 'User not found',
+        message: 'User account no longer exists'
       });
       return;
     }
 
     // Check if user account is still active
     if (!user.is_active) {
-      res.status(403).json({ 
+      res.status(403).json({
         success: false,
-        error: 'Account disabled', 
-        message: 'Your account has been deactivated' 
+        error: 'Account disabled',
+        message: 'Your account has been deactivated'
       });
       return;
     }
@@ -102,7 +116,7 @@ export const authenticateToken = async (
     // Attach user and token info to request
     req.user = user;
     req.tokenId = payload.tokenId;
-    
+
     next();
   } catch (error) {
     console.error('Authentication error:', {
@@ -113,34 +127,34 @@ export const authenticateToken = async (
       method: req.method,
       ip: req.ip
     });
-    
-    res.status(401).json({ 
+
+    res.status(401).json({
       success: false,
-      error: 'Authentication failed', 
-      message: 'Invalid or expired token' 
+      error: 'Authentication failed',
+      message: 'Invalid or expired token'
     });
   }
 };
 
 export const requireRole = (requiredRoles: string | string[]) => {
   const roles = Array.isArray(requiredRoles) ? requiredRoles : [requiredRoles];
-  
+
   return (req: AuthenticatedRequest, res: Response, next: NextFunction): void => {
     if (!req.user) {
-      res.status(401).json({ 
+      res.status(401).json({
         success: false,
-        error: 'Authentication required', 
-        message: 'Please authenticate first to access this resource' 
+        error: 'Authentication required',
+        message: 'Please authenticate first to access this resource'
       });
       return;
     }
 
     // Validate user role
     if (!req.user.role) {
-      res.status(403).json({ 
+      res.status(403).json({
         success: false,
-        error: 'Access denied', 
-        message: 'User role not assigned' 
+        error: 'Access denied',
+        message: 'User role not assigned'
       });
       return;
     }
@@ -155,10 +169,10 @@ export const requireRole = (requiredRoles: string | string[]) => {
         timestamp: new Date().toISOString()
       });
 
-      res.status(403).json({ 
+      res.status(403).json({
         success: false,
-        error: 'Insufficient permissions', 
-        message: `Required role: ${roles.join(' or ')}. Your role: ${req.user.role}` 
+        error: 'Insufficient permissions',
+        message: `Required role: ${roles.join(' or ')}. Your role: ${req.user.role}`
       });
       return;
     }
@@ -171,10 +185,10 @@ export const requireAdmin = requireRole('admin');
 
 export const requireActiveUser = (req: AuthenticatedRequest, res: Response, next: NextFunction): void => {
   if (!req.user) {
-    res.status(401).json({ 
+    res.status(401).json({
       success: false,
-      error: 'Authentication required', 
-      message: 'Please log in first' 
+      error: 'Authentication required',
+      message: 'Please log in first'
     });
     return;
   }
@@ -188,10 +202,10 @@ export const requireActiveUser = (req: AuthenticatedRequest, res: Response, next
       timestamp: new Date().toISOString()
     });
 
-    res.status(403).json({ 
+    res.status(403).json({
       success: false,
-      error: 'Account disabled', 
-      message: 'Your account has been deactivated. Contact administrator.' 
+      error: 'Account disabled',
+      message: 'Your account has been deactivated. Contact administrator.'
     });
     return;
   }

@@ -76,11 +76,17 @@ export class McpService {
 
               // Extract the actual result from AIDIS response
               let result = parsed.result !== undefined ? parsed.result : parsed;
-              
-              // Handle AIDIS text-based responses
+
+              // Check for structured data first (new format)
+              if (result && result.data) {
+                resolve(result.data);
+                return;
+              }
+
+              // Handle AIDIS text-based responses (legacy format)
               if (result && result.content && result.content[0] && result.content[0].text) {
                 const textResult = result.content[0].text;
-                
+
                 // Try to parse structured data from AIDIS text responses
                 if (toolName === 'naming_stats') {
                   result = this.parseNamingStats(textResult);
@@ -99,7 +105,7 @@ export class McpService {
                   result = textResult;
                 }
               }
-              
+
               resolve(result);
             } else {
               reject(new Error(`HTTP ${res.statusCode}: ${data}`));

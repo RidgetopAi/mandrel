@@ -1,6 +1,7 @@
-import { Router } from 'express';
+import { Router, Request, Response } from 'express';
 import healthRoutes from './health';
 import authRoutes from './auth';
+import userRoutes from './users';
 import contextRoutes from './contexts';
 import projectRoutes from './projects';
 import sessionRoutes from './sessions';
@@ -21,6 +22,7 @@ const router = Router();
 router.use('/', healthRoutes);
 router.use('/openapi', openApiRoutes);
 router.use('/auth', authRoutes);
+router.use('/users', userRoutes);
 router.use('/contexts', contextRoutes);
 router.use('/projects', projectRoutes);
 router.use('/sessions', sessionRoutes);
@@ -33,5 +35,64 @@ router.use('/monitoring', monitoringRoutes);
 router.use('/validation', validationRoutes);
 router.use('/type-safety', typeSafetyRoutes);
 router.use('/embedding', embeddingRoutes);
+
+// MCP Proxy Routes - Forward session file endpoints to MCP server
+// This eliminates hard-coded localhost:8080 in frontend for OSS deployment
+const MCP_BASE = `http://localhost:${process.env.AIDIS_MCP_PORT || '8080'}`;
+
+/**
+ * Proxy GET /api/v2/sessions/:sessionId/files to MCP server
+ */
+router.get('/v2/sessions/:sessionId/files', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { sessionId } = req.params;
+    const url = `${MCP_BASE}/api/v2/sessions/${sessionId}/files`;
+    
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    const data = await response.json();
+    res.status(response.status).json(data);
+  } catch (error) {
+    console.error('MCP proxy error (GET files):', error);
+    res.status(503).json({
+      success: false,
+      error: 'MCP service unavailable',
+      message: error instanceof Error ? error.message : 'Failed to proxy request to MCP server'
+    });
+  }
+});
+
+/**
+ * Proxy POST /api/v2/sessions/:sessionId/sync-files to MCP server
+ */
+router.post('/v2/sessions/:sessionId/sync-files', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { sessionId } = req.params;
+    const url = `${MCP_BASE}/api/v2/sessions/${sessionId}/sync-files`;
+    
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(req.body),
+    });
+
+    const data = await response.json();
+    res.status(response.status).json(data);
+  } catch (error) {
+    console.error('MCP proxy error (POST sync-files):', error);
+    res.status(503).json({
+      success: false,
+      error: 'MCP service unavailable',
+      message: error instanceof Error ? error.message : 'Failed to proxy request to MCP server'
+    });
+  }
+});
 
 export default router;

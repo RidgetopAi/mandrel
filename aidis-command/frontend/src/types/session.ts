@@ -1,20 +1,17 @@
 import type { SessionEntity } from '../api/generated';
 
 export interface Session extends SessionEntity {
-  project_name?: string;
-  session_type?: string;
-  context_count?: number;
-  last_context_at?: string;
-  input_tokens?: number;     // TS006-2: Input tokens consumed
-  output_tokens?: number;    // TS006-2: Output tokens generated
-  total_tokens?: number;     // TS006-2: Total tokens (input + output)
-  tasks_created?: number;    // TS007-2: Tasks created in session
-  tasks_updated?: number;    // TS007-2: Tasks updated in session
-  tasks_completed?: number;  // TS007-2: Tasks completed in session
-  contexts_created?: number; // TS007-2: Contexts created (tracked)
+  // SessionEntity now has all the fields we need, but we can add overrides if needed
+
+  // Git integration (not in SessionEntity)
+  active_branch?: string;
+  working_commit_sha?: string;
 }
 
 export interface SessionDetail extends Session {
+  session_id?: string;  // Backend returns session_id instead of id
+  start_time?: string;  // Backend also uses start_time
+  end_time?: string;    // Backend also uses end_time
   contexts?: Array<{
     id: string;
     type: string;
@@ -29,4 +26,32 @@ export interface SessionDetail extends Session {
 export interface UpdateSessionRequest {
   title?: string;
   description?: string;
+  session_goal?: string;
+  tags?: string[];
+  ai_model?: string;
+  project_id?: string;
+}
+
+export interface SessionFile {
+  id: string;
+  session_id: string;
+  file_path: string;
+  lines_added: number;
+  lines_deleted: number;
+  source: 'tool' | 'git' | 'manual';
+  first_modified_at: string;
+  last_modified_at: string;
+}
+
+export interface FileSyncResponse {
+  success: boolean;
+  data?: {
+    sessionId: string;
+    filesProcessed: number;
+    totalLinesAdded: number;
+    totalLinesDeleted: number;
+    netChange: number;
+    message: string;
+  };
+  error?: string;
 }

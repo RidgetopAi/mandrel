@@ -15,7 +15,7 @@
       "description": "Development server"
     },
     {
-      "url": "http://localhost:3002/api",
+      "url": "http://localhost:5000/api",
       "description": "Production server"
     }
   ],
@@ -1259,6 +1259,10 @@
           {
             "type": "object",
             "properties": {
+              "display_id": {
+                "type": "string",
+                "description": "Human-readable session ID"
+              },
               "project_id": {
                 "type": "string",
                 "format": "uuid"
@@ -1272,19 +1276,105 @@
               "description": {
                 "type": "string"
               },
-              "context_count": {
-                "type": "integer"
+              "session_goal": {
+                "type": "string"
+              },
+              "tags": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "started_at": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "ended_at": {
+                "type": "string",
+                "format": "date-time",
+                "nullable": true,
+                "description": "Session end time - null means active"
+              },
+              "duration_minutes": {
+                "type": "string",
+                "description": "Decimal string of duration in minutes"
+              },
+              "last_activity_at": {
+                "type": "string",
+                "format": "date-time"
               },
               "last_context_at": {
                 "type": "string",
                 "format": "date-time"
               },
-              "session_type": {
-                "type": "string"
-              },
               "status": {
                 "type": "string",
                 "description": "Session status indicator"
+              },
+              "session_type": {
+                "type": "string"
+              },
+              "agent_type": {
+                "type": "string",
+                "description": "Type of AI agent"
+              },
+              "ai_model": {
+                "type": "string",
+                "description": "AI model used"
+              },
+              "lines_added": {
+                "type": "integer"
+              },
+              "lines_deleted": {
+                "type": "integer"
+              },
+              "lines_net": {
+                "type": "integer"
+              },
+              "files_modified_count": {
+                "type": "integer"
+              },
+              "tasks_created": {
+                "type": "integer"
+              },
+              "tasks_updated": {
+                "type": "integer"
+              },
+              "tasks_completed": {
+                "type": "integer"
+              },
+              "task_completion_rate": {
+                "type": "string",
+                "description": "Decimal string percentage"
+              },
+              "contexts_created": {
+                "type": "integer"
+              },
+              "context_count": {
+                "type": "integer"
+              },
+              "input_tokens": {
+                "type": "string",
+                "description": "Input tokens consumed"
+              },
+              "output_tokens": {
+                "type": "string",
+                "description": "Output tokens generated"
+              },
+              "total_tokens": {
+                "type": "string",
+                "description": "Total tokens (input + output)"
+              },
+              "productivity_score": {
+                "type": "string",
+                "description": "Decimal productivity score 0-100"
+              },
+              "activity_count": {
+                "type": "integer"
+              },
+              "metadata": {
+                "type": "object",
+                "additionalProperties": true
               }
             }
           }
@@ -5199,6 +5289,48 @@
                       }
                     }
                   ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/projects/{id}/set-primary": {
+      "post": {
+        "summary": "Set project as primary/default",
+        "tags": [
+          "Projects"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Project ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Project set as primary successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiSuccessResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Project not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
                 }
               }
             }

@@ -1,0 +1,190 @@
+{
+  "passed": 14,
+  "failed": 6,
+  "warnings": 6,
+  "tests": [
+    {
+      "name": "Authentication",
+      "passed": true,
+      "message": "Logged in as admin",
+      "warning": false,
+      "timestamp": "2025-08-17T20:27:26.603Z"
+    },
+    {
+      "name": "Backend Root Endpoint",
+      "passed": true,
+      "message": "Status: 200, Message: AIDIS Command Backend API",
+      "warning": false,
+      "timestamp": "2025-08-17T20:27:26.604Z"
+    },
+    {
+      "name": "Health Endpoint",
+      "passed": true,
+      "message": "Status: 200",
+      "warning": false,
+      "timestamp": "2025-08-17T20:27:26.607Z"
+    },
+    {
+      "name": "Database Status",
+      "passed": true,
+      "message": "DB Status: N/A",
+      "warning": false,
+      "timestamp": "2025-08-17T20:27:26.616Z"
+    },
+    {
+      "name": "Dataset List",
+      "passed": false,
+      "message": "Status: 500, Response type: object",
+      "warning": false,
+      "timestamp": "2025-08-17T20:27:26.625Z"
+    },
+    {
+      "name": "Similarity Matrix",
+      "passed": false,
+      "message": "Status: 400, Response type: object",
+      "warning": false,
+      "timestamp": "2025-08-17T20:27:26.634Z"
+    },
+    {
+      "name": "2D/3D Projections",
+      "passed": false,
+      "message": "Status: 400, Response type: object",
+      "warning": false,
+      "timestamp": "2025-08-17T20:27:26.638Z"
+    },
+    {
+      "name": "Clustering Results",
+      "passed": false,
+      "message": "Status: 400, Response type: object",
+      "warning": false,
+      "timestamp": "2025-08-17T20:27:26.642Z"
+    },
+    {
+      "name": "Quality Metrics",
+      "passed": false,
+      "message": "Status: 400, Response type: object",
+      "warning": false,
+      "timestamp": "2025-08-17T20:27:26.646Z"
+    },
+    {
+      "name": "Frontend Root Access",
+      "passed": true,
+      "message": "Status: 200, Content-Type: text/html; charset=utf-8",
+      "warning": false,
+      "timestamp": "2025-08-17T20:27:26.648Z"
+    },
+    {
+      "name": "Embedding Route Navigation",
+      "passed": null,
+      "message": "Route structure confirmed in codebase analysis",
+      "warning": true,
+      "timestamp": "2025-08-17T20:27:26.648Z"
+    },
+    {
+      "name": "Context Data Access",
+      "passed": true,
+      "message": "Status: 200 (expected with auth)",
+      "warning": false,
+      "timestamp": "2025-08-17T20:27:26.661Z"
+    },
+    {
+      "name": "111 Embeddings Available",
+      "passed": null,
+      "message": "Confirmed in implementation docs - 111/114 contexts have embeddings",
+      "warning": true,
+      "timestamp": "2025-08-17T20:27:26.661Z"
+    },
+    {
+      "name": "Unauthenticated Access Blocked",
+      "passed": true,
+      "message": "Status: 401 - Authorization header is required",
+      "warning": false,
+      "timestamp": "2025-08-17T20:27:26.662Z"
+    },
+    {
+      "name": "CORS Headers Present",
+      "passed": true,
+      "message": "CORS Origin: http://localhost:3000",
+      "warning": false,
+      "timestamp": "2025-08-17T20:27:26.664Z"
+    },
+    {
+      "name": "Security Headers (Helmet)",
+      "passed": true,
+      "message": "Security headers detected: true",
+      "warning": false,
+      "timestamp": "2025-08-17T20:27:26.665Z"
+    },
+    {
+      "name": "Backend API Routes Structure",
+      "passed": true,
+      "message": "File: backend/src/routes/embedding.ts",
+      "warning": false,
+      "timestamp": "2025-08-17T20:27:26.665Z"
+    },
+    {
+      "name": "Embedding Service Implementation",
+      "passed": true,
+      "message": "File: backend/src/services/EmbeddingService.ts",
+      "warning": false,
+      "timestamp": "2025-08-17T20:27:26.665Z"
+    },
+    {
+      "name": "Frontend Heatmap Component",
+      "passed": true,
+      "message": "File: frontend/src/components/embedding/SimilarityHeatmap.tsx",
+      "warning": false,
+      "timestamp": "2025-08-17T20:27:26.665Z"
+    },
+    {
+      "name": "Zustand Store Implementation",
+      "passed": true,
+      "message": "File: frontend/src/stores/embeddingStore.ts",
+      "warning": false,
+      "timestamp": "2025-08-17T20:27:26.665Z"
+    },
+    {
+      "name": "TypeScript Types Definition",
+      "passed": false,
+      "message": "File: shared/src/types/embedding.ts",
+      "warning": false,
+      "timestamp": "2025-08-17T20:27:26.665Z"
+    },
+    {
+      "name": "@ant-design/plots Integration",
+      "passed": null,
+      "message": "Confirmed in package.json and component implementation",
+      "warning": true,
+      "timestamp": "2025-08-17T20:27:26.665Z"
+    },
+    {
+      "name": "Zustand State Management",
+      "passed": null,
+      "message": "Store implementation confirmed",
+      "warning": true,
+      "timestamp": "2025-08-17T20:27:26.665Z"
+    },
+    {
+      "name": "ml-kmeans & ml-pca Ready",
+      "passed": null,
+      "message": "Dependencies installed for future phases",
+      "warning": true,
+      "timestamp": "2025-08-17T20:27:26.665Z"
+    },
+    {
+      "name": "API Response Time",
+      "passed": true,
+      "message": "Health endpoint: 1ms (target: <1000ms)",
+      "warning": false,
+      "timestamp": "2025-08-17T20:27:26.666Z"
+    },
+    {
+      "name": "Concurrent Request Handling",
+      "passed": null,
+      "message": "Express.js with proper middleware stack supports concurrency",
+      "warning": true,
+      "timestamp": "2025-08-17T20:27:26.666Z"
+    }
+  ],
+  "timestamp": "2025-08-17T20:27:26.400Z"
+}
