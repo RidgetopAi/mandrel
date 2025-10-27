@@ -120,27 +120,38 @@ export async function initializeDatabase(): Promise<void> {
     const client = await db.connect();
     console.log('✅ Database connection established successfully');
     
-    // Check if pgvector extension is installed
-    try {
-      await client.query('CREATE EXTENSION IF NOT EXISTS vector');
-      console.log('✅ pgvector extension is ready');
-    } catch (error) {
-      console.warn('⚠️  pgvector extension not available - vector search will be limited');
-      console.warn('Please install postgresql-pgvector package on your system');
-    }
+    // Only run self-tests in development or when explicitly enabled
+    // In production, assume DB is properly configured and skip CREATE EXTENSION/test tables
+    const shouldRunSelfTests = 
+      process.env.NODE_ENV !== 'production' || 
+      process.env.AIDIS_DB_SELFTEST === 'true';
     
-    // Verify we can create vector columns (test)
-    try {
-      await client.query(`
-        CREATE TABLE IF NOT EXISTS vector_test (
-          id SERIAL PRIMARY KEY,
-          embedding VECTOR(1536)
-        )
-      `);
-      await client.query('DROP TABLE vector_test');
-      console.log('✅ Vector operations confirmed working');
-    } catch (error) {
-      console.warn('⚠️  Vector operations not available');
+    if (shouldRunSelfTests) {
+      // Check if pgvector extension is installed
+      try {
+        await client.query('CREATE EXTENSION IF NOT EXISTS vector');
+        console.log('✅ pgvector extension is ready');
+      } catch (error) {
+        console.warn('⚠️  pgvector extension not available - vector search will be limited');
+        console.warn('Please install postgresql-pgvector package on your system');
+      }
+      
+      // Verify we can create vector columns (test)
+      try {
+        await client.query(`
+          CREATE TABLE IF NOT EXISTS vector_test (
+            id SERIAL PRIMARY KEY,
+            embedding VECTOR(1536)
+          )
+        `);
+        await client.query('DROP TABLE vector_test');
+        console.log('✅ Vector operations confirmed working');
+      } catch (error) {
+        console.warn('⚠️  Vector operations not available');
+      }
+    } else {
+      console.log('⏭️  Skipping DB self-tests (production mode)');
+      console.log('💡 Ensure pgvector extension is installed: CREATE EXTENSION vector;');
     }
     
     client.release();

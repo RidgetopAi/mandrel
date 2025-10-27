@@ -50,7 +50,7 @@ export class HttpMcpBridge {
     // Mount session analytics REST API routes
     const sessionRouter = createSessionRouter();
     this.app.use('/api/v2/sessions', sessionRouter);
-    console.log('📊 Session Analytics API mounted: /api/v2/sessions/* (8 endpoints)');
+    console.log('📊 Session Analytics API mounted: /api/v2/sessions/* (9 endpoints)');
 
     // MCP tool forwarding endpoint
     this.app.post('/mcp/tools/:toolName', async (req, res) => {

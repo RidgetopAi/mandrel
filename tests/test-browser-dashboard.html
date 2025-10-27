@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dashboard Test</title>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+</head>
+<body>
+    <h1>AIDIS Dashboard API Test</h1>
+    
+    <div id="login-section">
+        <h2>Login</h2>
+        <button onclick="testLogin()">Login as Admin</button>
+        <div id="login-result"></div>
+    </div>
+    
+    <div id="dashboard-section" style="display: none;">
+        <h2>Dashboard Stats</h2>
+        <button onclick="fetchDashboardStats()">Fetch Dashboard Stats</button>
+        <div id="dashboard-result"></div>
+        
+        <h3>Raw Responses</h3>
+        <div id="raw-responses"></div>
+    </div>
+
+    <script>
+        let authToken = null;
+        const API_BASE = 'http://localhost:5000/api';
+        
+        axios.defaults.headers.common['Content-Type'] = 'application/json';
+        
+        async function testLogin() {
+            try {
+                document.getElementById('login-result').innerHTML = 'Logging in...';
+                
+                const response = await axios.post(`${API_BASE}/auth/login`, {
+                    username: 'admin',
+                    password: 'admin123!'
+                });
+                
+                authToken = response.data.token;
+                axios.defaults.headers.common['Authorization'] = `Bearer ${authToken}`;
+                
+                document.getElementById('login-result').innerHTML = 
+                    `✅ Login successful! Token: ${authToken.substring(0, 20)}...`;
+                document.getElementById('dashboard-section').style.display = 'block';
+                
+            } catch (error) {
+                console.error('Login error:', error);
+                document.getElementById('login-result').innerHTML = 
+                    `❌ Login failed: ${error.response?.data?.message || error.message}`;
+            }
+        }
+        
+        async function fetchDashboardStats() {
+            try {
+                document.getElementById('dashboard-result').innerHTML = 'Fetching stats...';
+                document.getElementById('raw-responses').innerHTML = '';
+                
+                // Fetch both endpoints in parallel like the frontend does
+                const [projectStatsResponse, contextStatsResponse] = await Promise.all([
+                    axios.get(`${API_BASE}/projects/stats`),
+                    axios.get(`${API_BASE}/contexts/stats`)
+                ]);
+                
+                // Extract data like the fixed frontend code
+                const projectStats = projectStatsResponse.data.data.stats;
+                const contextStats = contextStatsResponse.data.data;
+                
+                // Map to dashboard format
+                const dashboardStats = {
+                    contexts: contextStats.total_contexts,
+                    agents: 0,
+                    projects: projectStats.total_projects,
+                    activeTasks: 0,
+                    recentActivity: {
+                        contextsThisWeek: projectStats.recent_activity.contexts_last_week,
+                        sessionsThisWeek: projectStats.recent_activity.sessions_last_week
+                    }
+                };
+                
+                // Display results
+                document.getElementById('dashboard-result').innerHTML = `
+                    <h4>Dashboard Stats (What UI Shows)</h4>
+                    <ul>
+                        <li><strong>Contexts:</strong> ${dashboardStats.contexts}</li>
+                        <li><strong>Projects:</strong> ${dashboardStats.projects}</li>
+                        <li><strong>Agents:</strong> ${dashboardStats.agents}</li>
+                        <li><strong>Active Tasks:</strong> ${dashboardStats.activeTasks}</li>
+                        <li><strong>Contexts This Week:</strong> ${dashboardStats.recentActivity.contextsThisWeek}</li>
+                        <li><strong>Sessions This Week:</strong> ${dashboardStats.recentActivity.sessionsThisWeek}</li>
+                    </ul>
+                `;
+                
+                document.getElementById('raw-responses').innerHTML = `
+                    <h4>Raw API Responses</h4>
+                    <h5>Project Stats:</h5>
+                    <pre>${JSON.stringify(projectStatsResponse.data, null, 2)}</pre>
+                    <h5>Context Stats:</h5>
+                    <pre>${JSON.stringify(contextStatsResponse.data, null, 2)}</pre>
+                `;
+                
+            } catch (error) {
+                console.error('Dashboard fetch error:', error);
+                document.getElementById('dashboard-result').innerHTML = 
+                    `❌ Failed to fetch dashboard stats: ${error.response?.data?.message || error.message}`;
+            }
+        }
+        
+        // Test on page load
+        console.log('Page loaded. Ready to test dashboard API.');
+    </script>
+</body>
+</html>

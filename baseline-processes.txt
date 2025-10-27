@@ -1,0 +1,20 @@
+USER         PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND
+ridgetop   32217  7.9  1.4 11931636 239136 pts/2 Rl+  15:00   2:30 node --no-warnings /home/ridgetop/.nvm/versions/node/v22.18.0/bin/amp
+ridgetop   10813  2.4  6.4 55392808 1035188 pts/6 Rl+ 13:20   3:12 /home/ridgetop/.vscode-server/bin/6f17636121051a53c88d3e605c491d22af2ba755/node --dns-result-order=ipv4first /home/ridgetop/.vscode-server/bin/6f17636121051a53c88d3e605c491d22af2ba755/out/bootstrap-fork --type=extensionHost --transformURIs --useHostProxy=true
+ridgetop   32554  0.5  4.6 43917908 749216 pts/0 Sl+  15:01   0:10 /home/ridgetop/.nvm/versions/node/v22.18.0/bin/node /home/ridgetop/aidis/aidis-command/node_modules/react-scripts/scripts/start.js
+ridgetop   30679  0.4  1.8 1518604 298776 ?      Sl   14:51   0:10 node /home/ridgetop/aidis/aidis-command/node_modules/.bin/ts-node src/server.ts
+ridgetop   32579  0.3  2.5 1352860 416956 pts/0  Sl+  15:01   0:07 /home/ridgetop/.nvm/versions/node/v22.18.0/bin/node --max-old-space-size=2048 /home/ridgetop/aidis/aidis-command/node_modules/fork-ts-checker-webpack-plugin/lib/typescript-reporter/reporter/TypeScriptReporterRpcService.js
+ridgetop   10527  0.3  1.7 1459648 287604 pts/6  Sl+  13:20   0:29 /home/ridgetop/.vscode-server/bin/6f17636121051a53c88d3e605c491d22af2ba755/node /home/ridgetop/.vscode-server/bin/6f17636121051a53c88d3e605c491d22af2ba755/out/bootstrap-fork --type=fileWatcher
+ridgetop   30678  0.3  1.7 1314628 290032 ?      Sl   14:51   0:08 node /home/ridgetop/aidis/aidis-command/node_modules/.bin/ts-node src/server.ts
+ridgetop   30699  0.3  1.7 1314900 289524 ?      Sl   14:51   0:08 node /home/ridgetop/aidis/aidis-command/node_modules/.bin/ts-node src/server.ts
+ridgetop   32270  0.2  1.3 44725400 211344 pts/2 Sl+  15:00   0:04 /home/ridgetop/.nvm/versions/node/v22.18.0/bin/node --require /home/ridgetop/aidis/mcp-server/node_modules/tsx/dist/preflight.cjs --import file:///home/ridgetop/aidis/mcp-server/node_modules/tsx/dist/loader.mjs src/server.ts
+ridgetop   10472  0.1  1.0 11899360 166480 pts/6 Sl+  13:20   0:13 /home/ridgetop/.vscode-server/bin/6f17636121051a53c88d3e605c491d22af2ba755/node /home/ridgetop/.vscode-server/bin/6f17636121051a53c88d3e605c491d22af2ba755/out/server-main.js --host=127.0.0.1 --port=0 --connection-token=1303380028-3064785569-2755077904-104171490 --use-host-proxy --without-browser-env-var --disable-websocket-compression --accept-server-license-terms --telemetry-level=all
+ridgetop   11233  0.1  1.2 1429224 197700 pts/6  Sl+  13:20   0:11 /home/ridgetop/.vscode-server/bin/6f17636121051a53c88d3e605c491d22af2ba755/node /home/ridgetop/.vscode-server/extensions/streetsidesoftware.code-spell-checker-4.2.6/packages/_server/dist/main.cjs --node-ipc --clientProcessId=10813
+root         233  0.1  0.2 2246340 45936 ?       Ssl  08:52   0:25 /usr/bin/containerd
+ridgetop   32282  0.0  0.0 1237748 11768 pts/2   Sl+  15:00   0:01 /home/ridgetop/aidis/mcp-server/node_modules/@esbuild/linux-x64/bin/esbuild --service=0.25.9 --ping
+ridgetop   32237  0.0  0.5 1334240 89988 pts/2   Sl+  15:00   0:01 npm exec @playwright/mcp@latest --headless --isolated
+ridgetop   30462  0.0  0.3 1312100 63492 ?       Sl   14:51   0:01 node /home/ridgetop/aidis/aidis-command/node_modules/.bin/nodemon src/server.ts
+ridgetop   32540  0.0  0.3 1309532 59236 pts/0   Sl+  15:01   0:00 node /home/ridgetop/aidis/aidis-command/node_modules/.bin/nodemon src/server.ts
+ridgetop   27457  0.0  0.3 1310436 61396 ?       Sl   14:36   0:01 node /home/ridgetop/aidis/aidis-command/node_modules/.bin/nodemon src/server.ts
+ridgetop   27403  0.0  0.3 1310048 61512 ?       Sl   14:36   0:01 node /home/ridgetop/aidis/aidis-command/node_modules/.bin/nodemon src/server.ts
+ridgetop   27751  0.0  0.3 1310308 61872 ?       Sl   14:37   0:01 node /home/ridgetop/aidis/aidis-command/node_modules/.bin/nodemon src/server.ts

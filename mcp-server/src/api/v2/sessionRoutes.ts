@@ -41,32 +41,19 @@ export class SessionAnalyticsRouter {
    * Setup all session analytics routes
    */
   private setupRoutes(): void {
-    // Phase 2D/2E: Activity Tracking
+    // Session Lifecycle (NEW)
+    // Note: These must be defined BEFORE the /:sessionId routes to avoid conflicts
+
+    // Start new session
     this.router.post(
-      '/:sessionId/activities',
-      this.controller.recordActivity.bind(this.controller)
+      '/start',
+      this.controller.startSession.bind(this.controller)
     );
 
+    // Get active session
     this.router.get(
-      '/:sessionId/activities',
-      this.controller.getActivities.bind(this.controller)
-    );
-
-    // Phase 2D/2E: File Tracking
-    this.router.post(
-      '/:sessionId/files',
-      this.controller.recordFileEdit.bind(this.controller)
-    );
-
-    this.router.get(
-      '/:sessionId/files',
-      this.controller.getFiles.bind(this.controller)
-    );
-
-    // Phase 2D/2E: Productivity
-    this.router.post(
-      '/:sessionId/productivity',
-      this.controller.calculateProductivity.bind(this.controller)
+      '/active',
+      this.controller.getActiveSession.bind(this.controller)
     );
 
     // Phase 3: Analytics
@@ -89,7 +76,54 @@ export class SessionAnalyticsRouter {
       this.controller.listSessions.bind(this.controller)
     );
 
-    logger.info('Session analytics routes initialized: 8 endpoints');
+    // Phase 2D/2E: Activity Tracking
+    this.router.post(
+      '/:sessionId/activities',
+      this.controller.recordActivity.bind(this.controller)
+    );
+
+    this.router.get(
+      '/:sessionId/activities',
+      this.controller.getActivities.bind(this.controller)
+    );
+
+    // Phase 2D/2E: File Tracking
+    this.router.post(
+      '/:sessionId/files',
+      this.controller.recordFileEdit.bind(this.controller)
+    );
+
+    this.router.get(
+      '/:sessionId/files',
+      this.controller.getFiles.bind(this.controller)
+    );
+
+    // File Sync (Manual Trigger)
+    this.router.post(
+      '/:sessionId/sync-files',
+      this.controller.syncFiles.bind(this.controller)
+    );
+
+    // Phase 2D/2E: Productivity
+    this.router.post(
+      '/:sessionId/productivity',
+      this.controller.calculateProductivity.bind(this.controller)
+    );
+
+    // End session
+    this.router.post(
+      '/:sessionId/end',
+      this.controller.endSession.bind(this.controller)
+    );
+
+    // '/:sessionId' route (get single session detail)
+    // IMPORTANT: Must be defined LAST to avoid conflicts with named routes above
+    this.router.get(
+      '/:sessionId',
+      this.controller.getSessionDetail.bind(this.controller)
+    );
+
+    logger.info('Session analytics routes initialized: 13 endpoints');
   }
 
   /**

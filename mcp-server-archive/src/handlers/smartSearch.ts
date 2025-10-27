@@ -1,0 +1,474 @@
+import { Pool } from 'pg';
+import { db } from '../config/database.js';
+import { contextHandler } from './context.js';
+import { namingHandler } from './naming.js';
+import { decisionsHandler } from './decisions.js';
+import { codeAnalysisHandler } from './codeAnalysis.js';
+
+export interface SmartSearchResult {
+    type: 'context' | 'component' | 'decision' | 'naming' | 'task' | 'agent';
+    id: string;
+    title: string;
+    summary: string;
+    relevanceScore: number;
+    metadata: Record<string, any>;
+    source: string;
+}
+
+export interface Recommendation {
+    type: 'naming' | 'pattern' | 'decision' | 'refactor' | 'task';
+    title: string;
+    description: string;
+    confidence: number;
+    actionable: boolean;
+    references: string[];
+    metadata: Record<string, any>;
+}
+
+export class SmartSearchHandler {
+    constructor(private pool: Pool = db) {}
+
+    async smartSearch(
+        projectId: string,
+        query: string,
+        includeTypes: string[] = ['context', 'component', 'decision', 'naming'],
+        limit: number = 10
+    ): Promise<SmartSearchResult[]> {
+        console.log(`🔍 Smart search for: "${query}" in project ${projectId}`);
+        
+        const results: SmartSearchResult[] = [];
+
+        try {
+            // Search contexts using semantic search
+            if (includeTypes.includes('context')) {
+                const contextResults = await contextHandler.searchContext(projectId, query, Math.ceil(limit / 2));
+                for (const context of contextResults) {
+                    results.push({
+                        type: 'context',
+                        id: context.id,
+                        title: `${context.type.toUpperCase()}: ${context.content.substring(0, 60)}...`,
+                        summary: context.content,
+                        relevanceScore: context.similarityScore || 0,
+                        metadata: { 
+                            tags: context.tags, 
+                            type: context.type,
+                            createdAt: context.createdAt
+                        },
+                        source: 'semantic_search'
+                    });
+                }
+            }
+
+            // Search technical decisions
+            if (includeTypes.includes('decision')) {
+                const decisions = await decisionsHandler.searchDecisions({
+                    projectId,
+                    query,
+                    limit: Math.ceil(limit / 4)
+                });
+                for (const decision of decisions) {
+                    results.push({
+                        type: 'decision',
+                        id: decision.id,
+                        title: `DECISION: ${decision.title}`,
+                        summary: decision.description,
+                        relevanceScore: 0.8, // High relevance for decisions
+                        metadata: {
+                            decisionType: decision.decisionType,
+                            impactLevel: decision.impactLevel,
+                            tags: decision.tags
+                        },
+                        source: 'decision_search'
+                    });
+                }
+            }
+
+            // Search naming registry
+            if (includeTypes.includes('naming')) {
+                const client = await this.pool.connect();
+                try {
+                    const namingResult = await client.query(`
+                        SELECT canonical_name, entity_type, description, metadata
+                        FROM naming_registry 
+                        WHERE project_id = $1 AND (
+                            canonical_name ILIKE $2 OR 
+                            description ILIKE $2 OR
+                            $2 = ANY(tags)
+                        )
+                        LIMIT $3
+                    `, [projectId, `%${query}%`, Math.ceil(limit / 4)]);
+
+                    for (const naming of namingResult.rows) {
+                        results.push({
+                            type: 'naming',
+                            id: naming.canonical_name,
+                            title: `NAME: ${naming.canonical_name}`,
+                            summary: naming.description || `${naming.entity_type} name`,
+                            relevanceScore: 0.6,
+                            metadata: {
+                                entityType: naming.entity_type,
+                                ...naming.metadata
+                            },
+                            source: 'naming_registry'
+                        });
+                    }
+                } finally {
+                    client.release();
+                }
+            }
+
+            // Search code components
+            if (includeTypes.includes('component')) {
+                const client = await this.pool.connect();
+                try {
+                    const componentResult = await client.query(`
+                        SELECT id, name, component_type, file_path, signature, complexity_score, documentation
+                        FROM code_components 
+                        WHERE project_id = $1 AND (
+                            name ILIKE $2 OR
+                            signature ILIKE $2 OR
+                            documentation ILIKE $2 OR
+                            $2 = ANY(tags)
+                        )
+                        ORDER BY complexity_score DESC
+                        LIMIT $3
+                    `, [projectId, `%${query}%`, Math.ceil(limit / 4)]);
+
+                    for (const component of componentResult.rows) {
+                        results.push({
+                            type: 'component',
+                            id: component.id,
+                            title: `CODE: ${component.name} (${component.component_type})`,
+                            summary: component.documentation || component.signature || `${component.component_type} in ${component.file_path}`,
+                            relevanceScore: Math.min(component.complexity_score / 10, 1.0),
+                            metadata: {
+                                componentType: component.component_type,
+                                filePath: component.file_path,
+                                complexity: component.complexity_score
+                            },
+                            source: 'code_analysis'
+                        });
+                    }
+                } finally {
+                    client.release();
+                }
+            }
+        } catch (error) {
+            console.error('Error in smart search:', error);
+        }
+
+        // Sort by relevance score and limit
+        results.sort((a, b) => b.relevanceScore - a.relevanceScore);
+        const limitedResults = results.slice(0, limit);
+        
+        console.log(`✅ Smart search found ${limitedResults.length} results`);
+        return limitedResults;
+    }
+
+    async getRecommendations(
+        projectId: string,
+        context: string,
+        type: 'naming' | 'implementation' | 'architecture' | 'testing' = 'implementation'
+    ): Promise<Recommendation[]> {
+        console.log(`💡 Generating ${type} recommendations for project ${projectId}`);
+        
+        const recommendations: Recommendation[] = [];
+
+        try {
+            if (type === 'naming' || type === 'implementation') {
+                // Naming recommendations based on existing patterns
+                const suggestedNames = await namingHandler.suggestNames(projectId, context, 'function');
+                for (const suggestion of suggestedNames) {
+                    recommendations.push({
+                        type: 'naming',
+                        title: `Use consistent naming: ${suggestion.suggestedName}`,
+                        description: suggestion.explanation,
+                        confidence: suggestion.confidence,
+                        actionable: true,
+                        references: suggestion.similarExamples,
+                        metadata: { 
+                            entityType: 'function',
+                            pattern: suggestion.suggestedName 
+                        }
+                    });
+                }
+            }
+
+            if (type === 'implementation' || type === 'architecture') {
+                // Find similar implementations using semantic search
+                const similarContexts = await contextHandler.searchContext(projectId, context, 3);
+                for (const ctx of similarContexts) {
+                    if (ctx.type === 'code' && ctx.similarityScore && ctx.similarityScore > 0.7) {
+                        recommendations.push({
+                            type: 'pattern',
+                            title: `Consider similar implementation pattern`,
+                            description: `Found similar code: ${ctx.content.substring(0, 100)}...`,
+                            confidence: ctx.similarityScore,
+                            actionable: true,
+                            references: [ctx.id],
+                            metadata: {
+                                contextType: ctx.type,
+                                tags: ctx.tags
+                            }
+                        });
+                    }
+                }
+
+                // Architecture recommendations from decisions
+                const archDecisions = await decisionsHandler.searchDecisions({
+                    projectId,
+                    decisionType: 'architecture',
+                    limit: 2
+                });
+
+                for (const decision of archDecisions) {
+                    recommendations.push({
+                        type: 'decision',
+                        title: `Follow architecture decision: ${decision.title}`,
+                        description: decision.rationale,
+                        confidence: 0.9,
+                        actionable: true,
+                        references: [decision.id],
+                        metadata: {
+                            impactLevel: decision.impactLevel,
+                            components: decision.affectedComponents
+                        }
+                    });
+                }
+            }
+
+            if (type === 'testing') {
+                // Find components that might need testing
+                const client = await this.pool.connect();
+                try {
+                    const untested = await client.query(`
+                        SELECT name, component_type, complexity_score, file_path
+                        FROM code_components 
+                        WHERE project_id = $1 AND is_exported = true 
+                        AND complexity_score > 2
+                        ORDER BY complexity_score DESC
+                        LIMIT 3
+                    `, [projectId]);
+
+                    for (const component of untested.rows) {
+                        recommendations.push({
+                            type: 'task',
+                            title: `Add tests for complex component: ${component.name}`,
+                            description: `${component.component_type} has complexity score ${component.complexity_score} and should have comprehensive tests`,
+                            confidence: Math.min(component.complexity_score / 5, 1.0),
+                            actionable: true,
+                            references: [],
+                            metadata: {
+                                componentType: component.component_type,
+                                filePath: component.file_path,
+                                complexity: component.complexity_score
+                            }
+                        });
+                    }
+                } finally {
+                    client.release();
+                }
+            }
+        } catch (error) {
+            console.error('Error generating recommendations:', error);
+        }
+
+        recommendations.sort((a, b) => b.confidence - a.confidence);
+        console.log(`✅ Generated ${recommendations.length} recommendations`);
+        return recommendations;
+    }
+
+    async getProjectInsights(projectId: string): Promise<any> {
+        console.log(`🔍 Analyzing project insights for ${projectId}`);
+        
+        const client = await this.pool.connect();
+        try {
+            // Get high-level project metrics
+            const [codeStats, contextStats, decisionStats, taskStats] = await Promise.all([
+                codeAnalysisHandler.getProjectAnalysisStats(projectId),
+                this.getContextInsights(projectId),
+                this.getDecisionInsights(projectId),
+                this.getTaskInsights(projectId)
+            ]);
+
+            // Generate insights
+            const insights = {
+                codeHealth: this.assessCodeHealth(codeStats),
+                knowledgeGaps: this.identifyKnowledgeGaps(contextStats),
+                decisionGaps: this.identifyDecisionGaps(decisionStats),
+                teamEfficiency: this.assessTeamEfficiency(taskStats),
+                recommendations: await this.getRecommendations(projectId, 'project overview', 'architecture')
+            };
+
+            return {
+                projectId,
+                generatedAt: new Date(),
+                codeStats,
+                contextStats,
+                decisionStats,
+                taskStats,
+                insights
+            };
+        } finally {
+            client.release();
+        }
+    }
+
+    private async getContextInsights(projectId: string): Promise<any> {
+        const client = await this.pool.connect();
+        try {
+            const result = await client.query(`
+                SELECT 
+                    context_type as type,
+                    COUNT(*) as count,
+                    AVG(relevance_score) as avg_relevance
+                FROM contexts 
+                WHERE project_id = $1 
+                GROUP BY context_type
+            `, [projectId]);
+            
+            return result.rows.reduce((acc, row) => {
+                acc[row.type] = {
+                    count: parseInt(row.count),
+                    avgRelevance: parseFloat(row.avg_relevance)
+                };
+                return acc;
+            }, {});
+        } finally {
+            client.release();
+        }
+    }
+
+    private async getDecisionInsights(projectId: string): Promise<any> {
+        const client = await this.pool.connect();
+        try {
+            const result = await client.query(`
+                SELECT 
+                    decision_type,
+                    impact_level,
+                    COUNT(*) as count
+                FROM technical_decisions 
+                WHERE project_id = $1 
+                GROUP BY decision_type, impact_level
+            `, [projectId]);
+            
+            return {
+                total: result.rows.reduce((sum, row) => sum + parseInt(row.count), 0),
+                byType: result.rows.reduce((acc, row) => {
+                    if (!acc[row.decision_type]) acc[row.decision_type] = {};
+                    acc[row.decision_type][row.impact_level] = parseInt(row.count);
+                    return acc;
+                }, {})
+            };
+        } finally {
+            client.release();
+        }
+    }
+
+    private async getTaskInsights(projectId: string): Promise<any> {
+        const client = await this.pool.connect();
+        try {
+            const result = await client.query(`
+                SELECT 
+                    status,
+                    priority,
+                    COUNT(*) as count
+                FROM agent_tasks 
+                WHERE project_id = $1 
+                GROUP BY status, priority
+            `, [projectId]);
+            
+            return {
+                total: result.rows.reduce((sum, row) => sum + parseInt(row.count), 0),
+                byStatus: result.rows.reduce((acc, row) => {
+                    if (!acc[row.status]) acc[row.status] = {};
+                    acc[row.status][row.priority] = parseInt(row.count);
+                    return acc;
+                }, {})
+            };
+        } finally {
+            client.release();
+        }
+    }
+
+    private assessCodeHealth(codeStats: any): any {
+        const avgComplexity = codeStats.averageComplexity || 0;
+        const maxComplexity = codeStats.maxComplexity || 0;
+        const totalComponents = codeStats.totalComponents || 0;
+        
+        return {
+            score: Math.max(0, Math.min(100, 100 - (avgComplexity * 10) - (maxComplexity > 8 ? 20 : 0))),
+            level: avgComplexity < 3 ? 'healthy' : avgComplexity < 5 ? 'moderate' : 'needs_attention',
+            issues: [
+                ...(avgComplexity > 5 ? ['High average complexity'] : []),
+                ...(maxComplexity > 8 ? ['Very complex components exist'] : []),
+                ...(totalComponents === 0 ? ['No code analyzed yet'] : [])
+            ]
+        };
+    }
+
+    private identifyKnowledgeGaps(contextStats: any): string[] {
+        const gaps = [];
+        
+        if (!contextStats.error || contextStats.error.count < 2) {
+            gaps.push('Limited error context - consider documenting more troubleshooting scenarios');
+        }
+        
+        if (!contextStats.decision || contextStats.decision.count < 3) {
+            gaps.push('Few decisions documented - record more architectural choices');
+        }
+        
+        if (!contextStats.planning || contextStats.planning.count < 2) {
+            gaps.push('Limited planning context - document more project planning decisions');
+        }
+        
+        return gaps;
+    }
+
+    private identifyDecisionGaps(decisionStats: any): string[] {
+        const gaps = [];
+        
+        if (decisionStats.total < 5) {
+            gaps.push('Low decision count - consider documenting more technical choices');
+        }
+        
+        if (!decisionStats.byType.architecture) {
+            gaps.push('No architecture decisions recorded - document system design choices');
+        }
+        
+        if (!decisionStats.byType.technology) {
+            gaps.push('No technology decisions recorded - document library and framework choices');
+        }
+        
+        return gaps;
+    }
+
+    private assessTeamEfficiency(taskStats: any): any {
+        if (taskStats.total === 0) {
+            return {
+                score: 0,
+                level: 'no_data',
+                issues: ['No tasks created yet']
+            };
+        }
+
+        const completed = taskStats.byStatus.completed || {};
+        const inProgress = taskStats.byStatus.in_progress || {};
+        const todo = taskStats.byStatus.todo || {};
+        
+        const completedCount = Object.values(completed).reduce((a: any, b: any) => a + b, 0);
+        const totalCount = taskStats.total;
+        const completionRate = completedCount / totalCount;
+        
+        return {
+            score: Math.round(completionRate * 100),
+            level: completionRate > 0.7 ? 'efficient' : completionRate > 0.4 ? 'moderate' : 'needs_improvement',
+            completionRate,
+            totalTasks: totalCount,
+            completedTasks: completedCount
+        };
+    }
+}
+
+// Export singleton instance
+export const smartSearchHandler = new SmartSearchHandler();
