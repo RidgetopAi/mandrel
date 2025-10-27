@@ -99,7 +99,7 @@ const Login: React.FC = () => {
             autoComplete="off"
             size="large"
             style={{ width: '100%' }}
-            initialValues={{ username: 'admin' }} // Pre-fill for demo
+            initialValues={{}}
           >
             <Form.Item
               name="username"

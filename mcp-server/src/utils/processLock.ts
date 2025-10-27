@@ -54,15 +54,17 @@ export class ProcessLock {
       process.on('exit', () => this.release());
 
       if (!disableExitHandlers) {
+        // SECURITY FIX: Only release lock, don't call process.exit()
+        // Let main.ts handle graceful shutdown to avoid race conditions
         process.on('SIGINT', () => {
-          console.log('\n🔄 Received SIGINT, shutting down gracefully...');
+          console.log('\n🔄 ProcessLock: Releasing lock on SIGINT...');
           this.release();
-          process.exit(0);
+          // DO NOT call process.exit() - let main.ts handle shutdown
         });
         process.on('SIGTERM', () => {
-          console.log('\n🔄 Received SIGTERM, shutting down gracefully...');
+          console.log('\n🔄 ProcessLock: Releasing lock on SIGTERM...');
           this.release();
-          process.exit(0);
+          // DO NOT call process.exit() - let main.ts handle shutdown
         });
         process.on('uncaughtException', (error) => {
           console.error('❌ Uncaught Exception:', error);

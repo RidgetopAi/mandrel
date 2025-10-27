@@ -10,6 +10,7 @@ import { useSettings } from '../hooks/useSettings';
 const UNASSIGNED_PROJECT_ID = '00000000-0000-0000-0000-000000000000';
 const DEFAULT_BOOTSTRAP_PROJECT_NAME = 'aidis-bootstrap';
 const ACTIVE_STATUS: Project['status'] = 'active';
+const DEBUG = process.env.NODE_ENV !== 'production';
 
 interface ProjectContextType {
   currentProject: Project | null;
@@ -38,13 +39,13 @@ export const ProjectProvider: React.FC<ProjectProviderProps> = ({ children }) =>
 
   // Debug logging for default project changes
   useEffect(() => {
-    console.log('🔧 ProjectContext: defaultProject from useSettings changed:', defaultProject);
+    DEBUG && console.log('🔧 ProjectContext: defaultProject from useSettings changed:', defaultProject);
   }, [defaultProject]);
 
   // Settings load tracking - wait for settings to be fully initialized
   useEffect(() => {
     // Settings load detection - wait for React state propagation when settings exist
-    console.log('🔧 ProjectContext: Settings load check:', {
+    DEBUG && console.log('🔧 ProjectContext: Settings load check:', {
       defaultProject,
       hasStoredSettings: !!localStorage.getItem('aidis_user_settings')
     });
@@ -54,22 +55,22 @@ export const ProjectProvider: React.FC<ProjectProviderProps> = ({ children }) =>
     if (hasStoredSettings) {
       // We have stored settings - wait for them to be loaded into React state
       if (defaultProject !== undefined) {
-        console.log('🎯 Settings loaded with value:', defaultProject);
+        DEBUG && console.log('🎯 Settings loaded with value:', defaultProject);
         setSettingsLoaded(true);
       } else {
-        console.log('⏳ Waiting for stored settings to load into React state...');
+        DEBUG && console.log('⏳ Waiting for stored settings to load into React state...');
         // Settings exist but not loaded into React state yet - keep waiting
       }
     } else {
       // No stored settings exist - consider loaded immediately
-      console.log('📝 No stored settings found, marking as loaded');
+      DEBUG && console.log('📝 No stored settings found, marking as loaded');
       setSettingsLoaded(true);
     }
 
     // Fallback timeout remains for safety
     const fallbackTimer = setTimeout(() => {
       if (!settingsLoaded) {
-        console.log('⚠️ Settings load timeout reached, proceeding anyway');
+        DEBUG && console.log('⚠️ Settings load timeout reached, proceeding anyway');
         setSettingsLoaded(true);
       }
     }, 2000);
@@ -79,7 +80,7 @@ export const ProjectProvider: React.FC<ProjectProviderProps> = ({ children }) =>
 
   // Debug logging to track the fix
   useEffect(() => {
-    console.log('🔧 ProjectContext: Settings load status:', {
+    DEBUG && console.log('🔧 ProjectContext: Settings load status:', {
       settingsLoaded,
       defaultProject,
       hasStoredSettings: !!localStorage.getItem('aidis_user_settings'),
@@ -163,11 +164,11 @@ export const ProjectProvider: React.FC<ProjectProviderProps> = ({ children }) =>
     // Fallback project selection hierarchy (when no user preference or session):
     // 1. URL parameter (?project=name) - TODO: implement in future
     // 1.5. User preference from localStorage (handled in loadCurrentProjectFromSession now)
-    console.log('🔧 ProjectContext: selectBootstrapProject - FALLBACK defaultProject:', defaultProject, 'available projects:', projectList.map(p => p.name));
+    DEBUG && console.log('🔧 ProjectContext: selectBootstrapProject - FALLBACK defaultProject:', defaultProject, 'available projects:', projectList.map(p => p.name));
     if (defaultProject) {
       const userPreferredProject = projectList.find((project: Project) => project.name === defaultProject);
       if (userPreferredProject) {
-        console.log('🎯 Using user-preferred project (fallback):', defaultProject);
+        DEBUG && console.log('🎯 Using user-preferred project (fallback):', defaultProject);
         return userPreferredProject;
       } else {
         console.warn('⚠️ User-preferred project not found:', defaultProject, 'in projects:', projectList.map(p => p.name));
@@ -188,7 +189,7 @@ export const ProjectProvider: React.FC<ProjectProviderProps> = ({ children }) =>
   const loadCurrentProjectFromSession = useCallback(async (projectsFromRefresh?: Project[]) => {
     try {
       // FIRST: Check if user has a default project preference (FIXES refresh bug)
-      console.log('🔧 loadCurrentProjectFromSession: Checking user preference first:', {
+      DEBUG && console.log('🔧 loadCurrentProjectFromSession: Checking user preference first:', {
         defaultProject,
         hasProjects: (projectsFromRefresh || allProjects).length > 0
       });
@@ -204,12 +205,12 @@ export const ProjectProvider: React.FC<ProjectProviderProps> = ({ children }) =>
 
         if (userPreferredProject) {
           setCurrentProject(userPreferredProject);
-          console.log('🎯 Using user-preferred project (priority override):', defaultProject);
+          DEBUG && console.log('🎯 Using user-preferred project (priority override):', defaultProject);
 
           // Sync AIDIS session to match user preference
           try {
             await aidisApi.switchProject(defaultProject);
-            console.log('🔄 Synced AIDIS session to user preference:', defaultProject);
+            DEBUG && console.log('🔄 Synced AIDIS session to user preference:', defaultProject);
           } catch (syncError) {
             console.warn('⚠️ Failed to sync AIDIS session to user preference:', syncError);
             // Don't fail the whole operation if sync fails
@@ -222,7 +223,7 @@ export const ProjectProvider: React.FC<ProjectProviderProps> = ({ children }) =>
       }
 
       // SECOND: Try to get current project from AIDIS V2 API (only if no user preference)
-      console.log('🔧 No user preference or preference not available, checking AIDIS session...');
+      DEBUG && console.log('🔧 No user preference or preference not available, checking AIDIS session...');
       try {
         const aidisResponse = await aidisApi.getCurrentProject();
         if (aidisResponse?.content?.[0]?.text) {
@@ -242,7 +243,7 @@ export const ProjectProvider: React.FC<ProjectProviderProps> = ({ children }) =>
                 description: `Project from AIDIS V2 API: ${projectName}`
               };
               setCurrentProject(aidisProject);
-              console.log('✅ Loaded project from AIDIS V2 API (fallback):', aidisProject.name);
+              DEBUG && console.log('✅ Loaded project from AIDIS V2 API (fallback):', aidisProject.name);
               return;
             }
           }
@@ -264,7 +265,7 @@ export const ProjectProvider: React.FC<ProjectProviderProps> = ({ children }) =>
           description: `Project from MCP session: ${currentSession.title || currentSession.project_name}`
         };
         setCurrentProject(sessionProject);
-        console.log('✅ Loaded project from backend session:', sessionProject.name);
+        DEBUG && console.log('✅ Loaded project from backend session:', sessionProject.name);
         return;
       }
 
@@ -272,7 +273,7 @@ export const ProjectProvider: React.FC<ProjectProviderProps> = ({ children }) =>
         const bootstrapProject = await selectBootstrapProject(projectsFromRefresh);
         if (bootstrapProject) {
           setCurrentProject(bootstrapProject);
-          console.log('🔄 Session unassigned - defaulting to bootstrap project:', bootstrapProject.name);
+          DEBUG && console.log('🔄 Session unassigned - defaulting to bootstrap project:', bootstrapProject.name);
           return;
         }
       }
@@ -290,7 +291,7 @@ export const ProjectProvider: React.FC<ProjectProviderProps> = ({ children }) =>
             ...project,
             status: (project.status ?? ACTIVE_STATUS) as Project['status']
           });
-          console.log('📱 Loaded project from localStorage:', project.name);
+          DEBUG && console.log('📱 Loaded project from localStorage:', project.name);
           return;
         }
       }
@@ -298,7 +299,7 @@ export const ProjectProvider: React.FC<ProjectProviderProps> = ({ children }) =>
       const bootstrapProject = await selectBootstrapProject(projectsFromRefresh);
       if (bootstrapProject) {
         setCurrentProject(bootstrapProject);
-        console.log('🧭 Defaulting to bootstrap project:', bootstrapProject.name);
+        DEBUG && console.log('🧭 Defaulting to bootstrap project:', bootstrapProject.name);
       }
     } catch (error) {
       console.error('Failed to load project from session:', error);
@@ -367,7 +368,7 @@ export const ProjectProvider: React.FC<ProjectProviderProps> = ({ children }) =>
           description: `Project switched via AIDIS V2: ${projectName}`
         };
         setCurrentProject(switchedProject);
-        console.log('✅ Successfully switched to project via AIDIS V2:', projectName);
+        DEBUG && console.log('✅ Successfully switched to project via AIDIS V2:', projectName);
         return true;
       }
       throw new Error('Project switch response was empty or invalid');
@@ -381,7 +382,7 @@ export const ProjectProvider: React.FC<ProjectProviderProps> = ({ children }) =>
   useEffect(() => {
     if (!isAuthenticated || authLoading || !settingsLoaded) {
       hasInitializedRef.current = false;
-      console.log('🔧 ProjectContext: Waiting for initialization conditions:', {
+      DEBUG && console.log('🔧 ProjectContext: Waiting for initialization conditions:', {
         isAuthenticated,
         authLoading,
         settingsLoaded

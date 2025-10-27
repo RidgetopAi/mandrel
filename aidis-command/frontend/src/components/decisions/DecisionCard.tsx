@@ -174,9 +174,7 @@ const DecisionCard: React.FC<DecisionCardProps> = ({
                 style={{ margin: '4px 0 0 0' }}
                 ellipsis={{ rows: 2, expandable: false }}
               >
-                <span 
-                  dangerouslySetInnerHTML={{ __html: highlightedProblem }}
-                />
+                {highlightedProblem}
               </Paragraph>
             </div>
 

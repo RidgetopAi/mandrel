@@ -7,19 +7,21 @@ import * as Sentry from '@sentry/react';
 
 // Sentry configuration
 export const initSentry = () => {
-  // Only initialize Sentry in production or when explicitly enabled
+  // Only initialize Sentry when explicitly enabled with a valid DSN
+  // Prevents accidental telemetry to demo DSN
   const shouldInitSentry =
-    process.env.NODE_ENV === 'production' ||
-    process.env.REACT_APP_SENTRY_ENABLED === 'true';
+    process.env.NODE_ENV === 'production' &&
+    process.env.REACT_APP_SENTRY_ENABLED === 'true' &&
+    !!process.env.REACT_APP_SENTRY_DSN;
 
   if (!shouldInitSentry) {
-    console.log('Sentry disabled in development mode');
+    console.log('Sentry disabled (not enabled or missing DSN)');
     return;
   }
 
   Sentry.init({
-    // Use environment variable for DSN in production
-    dsn: process.env.REACT_APP_SENTRY_DSN || 'https://demo-dsn-for-development@o1.ingest.sentry.io/1',
+    // Use environment variable for DSN - REQUIRED
+    dsn: process.env.REACT_APP_SENTRY_DSN,
 
     environment: process.env.NODE_ENV || 'development',
 

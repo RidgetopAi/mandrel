@@ -48,8 +48,7 @@ const Tasks: React.FC = () => {
 
   // WebSocket for real-time updates  
   const token = localStorage.getItem('aidis_token');
-  const backendPort = process.env.REACT_APP_BACKEND_PORT || '5001';
-  const wsUrl = token ? `ws://localhost:${backendPort}/ws?token=${encodeURIComponent(token)}` : null;
+  const wsUrl = token ? `${process.env.REACT_APP_WS_URL || 'ws://localhost:5000/ws'}?token=${encodeURIComponent(token)}` : null;
   
   const projectId = currentProject?.id;
 

@@ -45,8 +45,14 @@ export class HealthServer {
    */
   private setupMiddleware(): void {
     // CORS headers for cross-origin requests from frontend
+    // Default to localhost:3000 for security, allow override via env
+    const allowedOrigins = process.env.CORS_ORIGIN?.split(',') || ['http://localhost:3000'];
+    
     this.app.use((req, res, next) => {
-      res.setHeader('Access-Control-Allow-Origin', '*');
+      const origin = req.headers.origin;
+      if (origin && allowedOrigins.includes(origin)) {
+        res.setHeader('Access-Control-Allow-Origin', origin);
+      }
       res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
       res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-API-Version, X-Request-ID, X-Correlation-ID');
 

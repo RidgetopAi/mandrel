@@ -352,10 +352,13 @@ export class RealTimeDataService {
 // Singleton instance
 export const realTimeDataService = new RealTimeDataService();
 
+// Get MCP base URL from environment
+const MCP_BASE_URL = process.env.REACT_APP_MCP_URL || 'http://localhost:8080';
+
 // Default configurations for different data types
 export const defaultConfigs = {
   fileAnalysis: {
-    endpoint: 'http://localhost:8080/mcp/tools/complexity_analyze',
+    endpoint: `${MCP_BASE_URL}/mcp/tools/complexity_analyze`,
     interval: 30000, // 30 seconds
     maxRetries: 3,
     timeout: 10000, // 10 seconds
@@ -363,7 +366,7 @@ export const defaultConfigs = {
     cacheTTL: 5 * 60 * 1000 // 5 minutes
   },
   projectInsights: {
-    endpoint: 'http://localhost:8080/mcp/tools/complexity_insights',
+    endpoint: `${MCP_BASE_URL}/mcp/tools/complexity_insights`,
     interval: 60000, // 1 minute
     maxRetries: 3,
     timeout: 15000, // 15 seconds
@@ -371,7 +374,7 @@ export const defaultConfigs = {
     cacheTTL: 10 * 60 * 1000 // 10 minutes
   },
   hotspots: {
-    endpoint: 'http://localhost:8080/mcp/tools/complexity_insights',
+    endpoint: `${MCP_BASE_URL}/mcp/tools/complexity_insights`,
     interval: 45000, // 45 seconds
     maxRetries: 3,
     timeout: 12000, // 12 seconds
@@ -379,7 +382,7 @@ export const defaultConfigs = {
     cacheTTL: 7 * 60 * 1000 // 7 minutes
   },
   trends: {
-    endpoint: 'http://localhost:8080/mcp/tools/complexity_insights',
+    endpoint: `${MCP_BASE_URL}/mcp/tools/complexity_insights`,
     interval: 120000, // 2 minutes
     maxRetries: 2,
     timeout: 20000, // 20 seconds

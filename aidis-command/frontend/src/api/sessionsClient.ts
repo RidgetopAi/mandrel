@@ -6,7 +6,7 @@ import type { SessionDetailResponse } from './generated/models/SessionDetailResp
 import type { UpdateSession } from './generated/models/UpdateSession';
 
 // Base URL for REST API endpoints (not in generated client)
-// Configurable via VITE_MCP_BASE_URL environment variable
+// Configurable via REACT_APP_MCP_URL environment variable
 // Defaults to localhost:8080 for development
 // Note: We append /api/v2 to the base URL since aidisApiClient uses the root
 const MCP_BASE_URL = (import.meta.env?.VITE_MCP_BASE_URL as string | undefined) || 'http://localhost:8080';

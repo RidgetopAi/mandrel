@@ -2,8 +2,8 @@
 
 **Persistent AI memory and development intelligence platform for complex software projects**
 
-![Status](https://img.shields.io/badge/Status-Production%20Ready-brightgreen)
-![Version](https://img.shields.io/badge/Version-1.0.0-blue)
+![Status](https://img.shields.io/badge/Status-Beta-yellow)
+![Version](https://img.shields.io/badge/Version-0.1.0-blue)
 ![License](https://img.shields.io/badge/License-MIT-green)
 
 ---
@@ -108,6 +108,20 @@ cd frontend && npm start
 - **AIDIS Command UI**: http://localhost:3000
 - **Default Login**: admin / admin123!
 - **MCP Server**: localhost:5001 (STDIO) / localhost:8080 (HTTP Bridge)
+
+---
+
+## ⚠️ Security Notice
+
+**HTTP Bridge is Localhost-Only by Default**
+
+The MCP HTTP bridge (port 8080) is **unauthenticated** and binds to `127.0.0.1` for security. 
+
+- ✅ **Safe**: Default localhost-only binding prevents network exposure
+- ⚠️ **Do NOT expose** the HTTP bridge to the internet without adding authentication
+- 🔧 **Override**: Set `AIDIS_BIND_ADDR=0.0.0.0` to bind all interfaces (NOT RECOMMENDED for production)
+
+**First Run Note**: The first context storage downloads the Transformers.js embedding model (~50MB). This may take 1-2 minutes. Subsequent operations are fast.
 
 ---
 
