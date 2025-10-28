@@ -13,6 +13,7 @@ import { dbPool, poolHealthCheck } from '../services/databasePool.js';
 import { AIDIS_TOOL_DEFINITIONS } from '../config/toolDefinitions.js';
 import { ProjectController } from '../api/controllers/projectController.js';
 import createSessionRouter from '../api/v2/sessionRoutes.js';
+import createVisualizationRouter from '../api/v2/visualizationRoutes.js';
 
 /**
  * HTTP Health Check Server
@@ -78,6 +79,11 @@ export class HealthServer {
     const sessionRouter = createSessionRouter();
     this.app.use('/api/v2/sessions', sessionRouter);
     logger.info('📊 Session Analytics API mounted: /api/v2/sessions/* (9 endpoints)');
+
+    // Mount visualization REST API routes
+    const visualizationRouter = createVisualizationRouter();
+    this.app.use('/api/v2', visualizationRouter);
+    logger.info('🎨 Visualization API mounted: /api/v2/analyze/* and /api/v2/visualizations/* (6 endpoints)');
 
     // Health check endpoints (existing)
     this.app.get('/healthz', this.handleHealthCheckExpress.bind(this));

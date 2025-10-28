@@ -26,6 +26,7 @@ const ProjectDetail = lazy(() => import('./pages/ProjectDetail'));
 const Sessions = lazy(() => import('./pages/Sessions'));
 const SessionDetail = lazy(() => import('./pages/SessionDetail'));
 const Analytics = lazy(() => import('./pages/Analytics'));
+const Visualizations = lazy(() => import('./pages/Visualizations'));
 const Settings = lazy(() => import('./pages/Settings'));
 
 // React Query client configuration
@@ -95,6 +96,7 @@ const AppContent: React.FC = () => {
                       <Route path="sessions" element={<SectionErrorBoundary section="Sessions"><Sessions /></SectionErrorBoundary>} />
                       <Route path="sessions/:id" element={<SectionErrorBoundary section="Session Detail"><SessionDetail /></SectionErrorBoundary>} />
                       <Route path="analytics" element={<SectionErrorBoundary section="Analytics"><Analytics /></SectionErrorBoundary>} />
+                      <Route path="visualizations" element={<SectionErrorBoundary section="Visualizations"><Visualizations /></SectionErrorBoundary>} />
                       <Route path="settings" element={<SectionErrorBoundary section="Settings"><Settings /></SectionErrorBoundary>} />
 
                       {/* Catch all - redirect to dashboard */}
