@@ -11,35 +11,10 @@
  */
 
 import { db } from '../config/database.js';
-
-export interface ProjectInfo {
-  id: string;
-  name: string;
-  description: string | null;
-  status: string;
-  createdAt: Date;
-  updatedAt: Date;
-  gitRepoUrl: string | null;
-  rootDirectory: string | null;
-  metadata: Record<string, any>;
-  contextCount?: number;
-  isActive?: boolean;
-}
-
-export interface CreateProjectRequest {
-  name: string;
-  description?: string;
-  gitRepoUrl?: string;
-  rootDirectory?: string;
-  metadata?: Record<string, any>;
-}
-
-export interface SessionState {
-  currentProjectId: string | null;
-  sessionId?: string;
-  agentType?: string;
-  manualOverride?: boolean;  // Track if user manually switched (vs auto-initialized)
-}
+// Re-export types from shared types file (to avoid circular dependency with projectSwitchValidator)
+export type { ProjectInfo, CreateProjectRequest, SessionState } from '../types/project.js';
+// Import for internal use
+import type { SessionState } from '../types/project.js';
 
 export class ProjectHandler {
   // In-memory session state (in production, this could be Redis/database)
@@ -293,77 +268,8 @@ export class ProjectHandler {
     return { ...project, isActive: true };
   }
 
-  /**
-   * Enhanced switch with comprehensive TS012 validation
-   */
-  async switchProjectWithValidation(identifier: string, sessionId: string = this.defaultSessionId): Promise<ProjectInfo> {
-    const { ProjectSwitchValidator } = await import('../services/projectSwitchValidator.js');
-    
-    console.log(`🔄 [TS012] Enhanced switching to project: "${identifier}" (session: ${sessionId.substring(0, 8)}...)`);
-
-    try {
-      // Step 1: Pre-switch validation
-      const preValidation = await ProjectSwitchValidator.validatePreSwitch(sessionId, identifier);
-      if (!preValidation.isValid) {
-        const errorMessages = preValidation.errors.map(e => e.message).join('; ');
-        throw new Error(`Pre-switch validation failed: ${errorMessages}`);
-      }
-
-      if (preValidation.warnings.length > 0) {
-        console.log(`⚠️  [TS012] Pre-switch warnings: ${preValidation.warnings.join('; ')}`);
-      }
-
-      // Step 2: Get target project info for atomic switch
-      const targetProject = await this.getProject(identifier);
-      if (!targetProject) {
-        throw new Error(`Project "${identifier}" not found`);
-      }
-
-      // Step 3: Perform atomic switch with rollback capability
-      const switchResult = await ProjectSwitchValidator.performAtomicSwitch(
-        sessionId, 
-        targetProject.id, 
-        preValidation
-      );
-
-      if (!switchResult.success) {
-        if (switchResult.error) {
-          throw new Error(switchResult.error.message);
-        }
-        throw new Error('Atomic switch failed for unknown reason');
-      }
-
-      // Step 4: Post-switch validation
-      const postValidation = await ProjectSwitchValidator.validatePostSwitch(
-        sessionId,
-        targetProject.id,
-        {
-          sessionId,
-          sourceProjectId: await this.getCurrentProjectId(sessionId),
-          targetProjectId: targetProject.id,
-          timestamp: new Date(),
-          transactionId: 'post-validation' 
-        }
-      );
-
-      if (!postValidation.isValid) {
-        console.error(`❌ [TS012] Post-switch validation failed:`, postValidation.errors);
-        // Don't throw here - log the issues but return the project since switch completed
-      }
-
-      if (postValidation.warnings.length > 0) {
-        console.log(`⚠️  [TS012] Post-switch warnings: ${postValidation.warnings.join('; ')}`);
-      }
-
-      const resultProject = switchResult.project || { ...targetProject, isActive: true };
-      console.log(`✅ [TS012] Enhanced switch completed: ${resultProject.name}`);
-      return resultProject;
-
-    } catch (error) {
-      console.error('❌ [TS012] Enhanced switch failed:', error);
-      throw new Error(`Enhanced project switch failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
-  }
+  // Note: switchProjectWithValidation moved to projectSwitchValidator.ts to avoid circular dependency
+  // Use ProjectSwitchValidator.switchProjectWithValidation() instead
 
   /**
    * Get session state information

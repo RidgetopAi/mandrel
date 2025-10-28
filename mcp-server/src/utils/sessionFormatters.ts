@@ -3,7 +3,7 @@
  * Production-ready formatters for session reporting tools
  */
 
-import type { SessionActivity } from '../services/sessionTracker.js';
+import type { SessionActivity } from '../types/session.js';
 
 export interface SessionSummaryData {
   id: string;

@@ -48,60 +48,8 @@ export interface SessionData {
   activity_count?: number;                          // Total activity events count
 }
 
-export interface SessionStats {
-  totalSessions: number;
-  avgDuration: number;
-  productivityScore: number;
-  retentionRate: number;
-  sessionsByDay: Array<{date: string, count: number}>;
-}
-
-/**
- * SessionActivity - Represents discrete activity events within a session
- * Maps to: session_activities table
- */
-export interface SessionActivity {
-  id: number;
-  session_id: string;
-  activity_type: string;                          // e.g., 'file_edit', 'context_create', 'decision_record'
-  activity_data: Record<string, any>;             // JSONB - flexible metadata
-  occurred_at: Date;                              // When the activity occurred
-  created_at: Date;                               // When the record was created
-}
-
-/**
- * SessionFile - Tracks file modifications within a session
- * Maps to: session_files table
- */
-export interface SessionFile {
-  id: number;
-  session_id: string;
-  file_path: string;                              // Absolute or relative file path
-  lines_added: number;                            // Lines added to this file
-  lines_deleted: number;                          // Lines deleted from this file
-  source: 'tool' | 'git' | 'manual';              // How modification was detected
-  first_modified: Date;                           // First time file was touched
-  last_modified: Date;                            // Most recent modification
-}
-
-/**
- * ProductivityConfig - Configurable productivity scoring formulas
- * Maps to: productivity_config table
- */
-export interface ProductivityConfig {
-  id: number;
-  config_name: string;                            // Unique config identifier
-  formula_weights: {
-    tasks?: number;                               // Weight for tasks completed
-    context?: number;                             // Weight for contexts created
-    decisions?: number;                           // Weight for decisions made
-    loc?: number;                                 // Weight for lines of code
-    time?: number;                                // Weight for time efficiency
-    [key: string]: number | undefined;            // Allow additional weights
-  };
-  created_at: Date;
-  updated_at: Date;
-}
+// Re-export types from shared types file (to avoid circular dependency with sessionFormatters)
+export type { SessionStats, SessionActivity, SessionFile, ProductivityConfig } from '../types/session.js';
 
 /**
  * Main SessionTracker Service Class
@@ -181,11 +129,13 @@ export class SessionTracker {
       // Create actual session record in sessions table
       const sessionSql = `
         INSERT INTO sessions (
-          id, project_id, agent_type, started_at, title, description,
+          id, project_id, agent_type, started_at, last_activity_at, title, description,
           session_goal, tags, ai_model, active_branch, working_commit_sha, metadata
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+        ) VALUES ($1, $2, $3, $4, $4, $5, $6, $7, $8, $9, $10, $11, $12)
         RETURNING id, started_at
       `;
+
+      console.log('🐛 DEBUG: Session SQL includes last_activity_at:', sessionSql.includes('last_activity_at'));
 
       // Auto-detect agent type based on environment
       const agentInfo = detectAgentType();
