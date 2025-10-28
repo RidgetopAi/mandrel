@@ -1,4 +1,5 @@
 import { projectHandler } from '../handlers/project.js';
+import { switchProjectWithValidation } from '../services/projectSwitchValidator.js';
 import { formatMcpError } from '../utils/mcpFormatter.js';
 import type { McpResponse } from '../utils/mcpFormatter.js';
 
@@ -102,8 +103,8 @@ export class ProjectRoutes {
       // Get current session ID (in future this could come from session tracking)
       const sessionId = this.getCurrentSessionId();
 
-      // Use enhanced validation switching
-      const project = await projectHandler.switchProjectWithValidation(args.project, sessionId || 'default-session');
+      // Use enhanced validation switching (now from projectSwitchValidator to avoid circular dependency)
+      const project = await switchProjectWithValidation(args.project, sessionId || 'default-session');
 
       // Log successful switch for metrics and monitoring
       const switchMetrics = {
