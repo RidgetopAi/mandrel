@@ -12,8 +12,18 @@
  */
 
 import { db } from '../config/database.js';
-import { projectHandler, ProjectInfo } from '../handlers/project.js';
+import type { ProjectInfo } from '../types/project.js';  // ← Import type from shared file
 import { randomUUID } from 'crypto';
+
+// Import projectHandler lazily to avoid circular dependency
+let projectHandler: any;
+async function getProjectHandler() {
+  if (!projectHandler) {
+    const module = await import('../handlers/project.js');
+    projectHandler = module.projectHandler;
+  }
+  return projectHandler;
+}
 
 export interface ValidationError {
   code: string;
@@ -169,9 +179,10 @@ export class ProjectSwitchValidator {
     _preValidationResult: SwitchValidationResult
   ): Promise<{ success: boolean; project?: ProjectInfo; error?: ValidationError; rollbackData?: any }> {
     const transactionId = randomUUID();
+    const handler = await getProjectHandler();
     const switchContext: SwitchContext = {
       sessionId,
-      sourceProjectId: await projectHandler.getCurrentProjectId(sessionId),
+      sourceProjectId: await handler.getCurrentProjectId(sessionId),
       targetProjectId,
       timestamp: new Date(),
       transactionId
@@ -330,7 +341,8 @@ export class ProjectSwitchValidator {
       
       if (!isUUID) {
         // For non-UUID session IDs, check if it exists in ProjectHandler's in-memory store
-        const sessionInfo = projectHandler.getSessionInfo(sessionId);
+        const handler = await getProjectHandler();
+        const sessionInfo = handler.getSessionInfo(sessionId);
         if (sessionInfo && (sessionInfo.currentProjectId || sessionInfo.sessionId)) {
           // Session exists in memory, this is valid
           result.warnings.push(`Session ${sessionId} is in-memory session (not stored in database)`);
@@ -355,7 +367,8 @@ export class ProjectSwitchValidator {
 
       if (sessionResult.rows.length === 0) {
         // If session doesn't exist in database, check if it exists in ProjectHandler's in-memory store
-        const sessionInfo = projectHandler.getSessionInfo(sessionId);
+        const handler = await getProjectHandler();
+        const sessionInfo = handler.getSessionInfo(sessionId);
         if (sessionInfo && sessionInfo.currentProjectId) {
           // Session exists in memory, this is valid (probably a temporary/in-memory session)
           result.warnings.push(`Session ${sessionId} exists in memory but not in database (temporary session)`);
@@ -404,7 +417,8 @@ export class ProjectSwitchValidator {
     const result: SwitchValidationResult = { isValid: true, errors: [], warnings: [], metadata: {} };
 
     try {
-      const project = await projectHandler.getProject(targetIdentifier);
+      const handler = await getProjectHandler();
+      const project = await handler.getProject(targetIdentifier);
       if (!project) {
         result.isValid = false;
         result.errors.push({
@@ -441,8 +455,9 @@ export class ProjectSwitchValidator {
       // This would integrate with the session recovery system from TS008-TS010
 
       // For now, we'll do a basic check for consistency
-      const currentProjectId = await projectHandler.getCurrentProjectId(sessionId);
-      const targetProject = await projectHandler.getProject(targetIdentifier);
+      const handler = await getProjectHandler();
+      const currentProjectId = await handler.getCurrentProjectId(sessionId);
+      const targetProject = await handler.getProject(targetIdentifier);
 
       if (currentProjectId && targetProject && currentProjectId === targetProject.id) {
         result.warnings.push('Target project is the same as current project');
@@ -537,7 +552,8 @@ export class ProjectSwitchValidator {
     const result: SwitchValidationResult = { isValid: true, errors: [], warnings: [], metadata: {} };
 
     try {
-      const currentProjectId = await projectHandler.getCurrentProjectId(sessionId);
+      const handler = await getProjectHandler();
+      const currentProjectId = await handler.getCurrentProjectId(sessionId);
       if (currentProjectId !== targetProjectId) {
         result.isValid = false;
         result.errors.push({
@@ -566,8 +582,9 @@ export class ProjectSwitchValidator {
 
     try {
       // Validate that the session state is consistent across all systems
-      // const _sessionInfo = projectHandler.getSessionInfo(sessionId);
-      const currentProject = await projectHandler.getCurrentProject(sessionId);
+      const handler = await getProjectHandler();
+      // const _sessionInfo = handler.getSessionInfo(sessionId);
+      const currentProject = await handler.getCurrentProject(sessionId);
 
       if (!currentProject || currentProject.id !== targetProjectId) {
         result.isValid = false;
@@ -648,9 +665,10 @@ export class ProjectSwitchValidator {
   // ===========================================
 
   private static async prepareRollbackData(sessionId: string): Promise<any> {
+    const handler = await getProjectHandler();
     return {
-      previousProjectId: await projectHandler.getCurrentProjectId(sessionId),
-      sessionState: projectHandler.getSessionInfo(sessionId),
+      previousProjectId: await handler.getCurrentProjectId(sessionId),
+      sessionState: handler.getSessionInfo(sessionId),
       timestamp: new Date()
     };
   }
@@ -662,7 +680,8 @@ export class ProjectSwitchValidator {
   ): Promise<{ success: boolean; project?: ProjectInfo; error?: ValidationError }> {
     try {
       // Use the existing switchProject method from projectHandler
-      const project = await projectHandler.switchProject(targetProjectId, sessionId);
+      const handler = await getProjectHandler();
+      const project = await handler.switchProject(targetProjectId, sessionId);
       return { success: true, project };
     } catch (error) {
       return {
@@ -679,9 +698,10 @@ export class ProjectSwitchValidator {
   private static async performRollback(switchContext: SwitchContext): Promise<void> {
     try {
       console.log(`🔄 [TS012] Performing rollback for transaction ${switchContext.transactionId.substring(0, 8)}...`);
-      
+
       if (switchContext.rollbackData?.previousProjectId) {
-        projectHandler.setCurrentProject(switchContext.rollbackData.previousProjectId, switchContext.sessionId);
+        const handler = await getProjectHandler();
+        handler.setCurrentProject(switchContext.rollbackData.previousProjectId, switchContext.sessionId);
         console.log(`✅ [TS012] Rollback completed: restored project ${switchContext.rollbackData.previousProjectId}`);
       } else {
         console.log(`⚠️  [TS012] No previous project to rollback to`);
@@ -711,5 +731,81 @@ export class ProjectSwitchValidator {
         this.activeSwitches.delete(sessionId);
       }
     }
+  }
+}
+
+/**
+ * Enhanced switch with comprehensive TS012 validation
+ * Moved here from ProjectHandler to avoid circular dependency
+ */
+export async function switchProjectWithValidation(
+  identifier: string,
+  sessionId: string = 'default-session'
+): Promise<ProjectInfo> {
+  const handler = await getProjectHandler();
+
+  console.log(`🔄 [TS012] Enhanced switching to project: "${identifier}" (session: ${sessionId.substring(0, 8)}...)`);
+
+  try {
+    // Step 1: Pre-switch validation
+    const preValidation = await ProjectSwitchValidator.validatePreSwitch(sessionId, identifier);
+    if (!preValidation.isValid) {
+      const errorMessages = preValidation.errors.map(e => e.message).join('; ');
+      throw new Error(`Pre-switch validation failed: ${errorMessages}`);
+    }
+
+    if (preValidation.warnings.length > 0) {
+      console.log(`⚠️  [TS012] Pre-switch warnings: ${preValidation.warnings.join('; ')}`);
+    }
+
+    // Step 2: Get target project info for atomic switch
+    const targetProject = await handler.getProject(identifier);
+    if (!targetProject) {
+      throw new Error(`Project "${identifier}" not found`);
+    }
+
+    // Step 3: Perform atomic switch with rollback capability
+    const switchResult = await ProjectSwitchValidator.performAtomicSwitch(
+      sessionId,
+      targetProject.id,
+      preValidation
+    );
+
+    if (!switchResult.success) {
+      if (switchResult.error) {
+        throw new Error(switchResult.error.message);
+      }
+      throw new Error('Atomic switch failed for unknown reason');
+    }
+
+    // Step 4: Post-switch validation
+    const postValidation = await ProjectSwitchValidator.validatePostSwitch(
+      sessionId,
+      targetProject.id,
+      {
+        sessionId,
+        sourceProjectId: await handler.getCurrentProjectId(sessionId),
+        targetProjectId: targetProject.id,
+        timestamp: new Date(),
+        transactionId: 'post-validation'
+      }
+    );
+
+    if (!postValidation.isValid) {
+      console.error(`❌ [TS012] Post-switch validation failed:`, postValidation.errors);
+      // Don't throw here - log the issues but return the project since switch completed
+    }
+
+    if (postValidation.warnings.length > 0) {
+      console.log(`⚠️  [TS012] Post-switch warnings: ${postValidation.warnings.join('; ')}`);
+    }
+
+    const resultProject = switchResult.project || { ...targetProject, isActive: true };
+    console.log(`✅ [TS012] Enhanced switch completed: ${resultProject.name}`);
+    return resultProject;
+
+  } catch (error) {
+    console.error('❌ [TS012] Enhanced switch failed:', error);
+    throw new Error(`Enhanced project switch failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
