@@ -100,7 +100,7 @@ export class ContextRoutes {
       const resultsList = results.map((result, index) => {
         const timeAgo = this.getTimeAgo(result.createdAt);
         const similarity = result.similarity !== undefined ? result.similarity : 0;
-        return `${index + 1}. **${result.contextType}** (similarity: ${(similarity * 100).toFixed(1)}%, ${timeAgo})\n` +
+        return `${index + 1}. **${result.contextType}** (similarity: ${similarity.toFixed(1)}%, ${timeAgo})\n` +
                `   Content: ${result.content}\n` +
                `   Tags: [${result.tags.join(', ')}]\n` +
                `   ID: ${result.id}`;
