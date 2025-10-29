@@ -106,6 +106,9 @@ server-*.pid
 *_VISUAL.txt
 *_INDEX.md
 *_EXECUTIVE_SUMMARY.md
+*_STRATEGY.md
+*_CHECKLIST.md
+*_VALIDATION_*.md
 PHASE*.md
 ORACLE*.md
 SESSION*.md
@@ -113,11 +116,29 @@ TS006*.md
 TS007*.md
 TT009*.md
 TR001*.md
+T011_*.json
+P2_*.md
+MCP_*.md
+BRIDGE_*.md
+CONTEXT*.md
+DECISION_*.md
+MANUAL_*.md
+REFRACTOR_*.md
+REFRESH_*.md
+SECURITY_*.md
+TASK_*.md
+TASK-*.md
+TOKEN_*.txt
+TOOL_*.md
+Workflow_*.md
+*-specs.md
 baseline-*.md
 baseline-*.ts
 aidis-rebuild-*.ts
 agent*.txt
 *.svg
+playwright-*.json
+sample.py
 
 # AIDIS specific - development scripts
 aidis-stdio-mock*.js
