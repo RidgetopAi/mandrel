@@ -13,7 +13,23 @@ export class SearchRoutes {
    */
   async handleSmartSearch(args: any): Promise<McpResponse> {
     try {
-      const projectId = args.projectId || await projectHandler.getCurrentProjectId('default-session');
+      // Resolve project identifier (name or UUID) to UUID
+      let projectId = args.projectId;
+      if (projectId) {
+        const project = await projectHandler.getProject(projectId);
+        if (!project) {
+          return {
+            content: [{
+              type: 'text',
+              text: `❌ Project "${projectId}" not found\n\n💡 Use project_list to see available projects`
+            }]
+          };
+        }
+        projectId = project.id;
+      } else {
+        projectId = await projectHandler.getCurrentProjectId('default-session');
+      }
+
       const results = await smartSearchHandler.smartSearch(
         projectId,
         args.query,
@@ -68,7 +84,23 @@ export class SearchRoutes {
    */
   async handleRecommendations(args: any): Promise<McpResponse> {
     try {
-      const projectId = args.projectId || await projectHandler.getCurrentProjectId('default-session');
+      // Resolve project identifier (name or UUID) to UUID
+      let projectId = args.projectId;
+      if (projectId) {
+        const project = await projectHandler.getProject(projectId);
+        if (!project) {
+          return {
+            content: [{
+              type: 'text',
+              text: `❌ Project "${projectId}" not found\n\n💡 Use project_list to see available projects`
+            }]
+          };
+        }
+        projectId = project.id;
+      } else {
+        projectId = await projectHandler.getCurrentProjectId('default-session');
+      }
+
       const recommendations = await smartSearchHandler.getRecommendations(
         projectId,
         args.context,
@@ -121,7 +153,23 @@ export class SearchRoutes {
    */
   async handleProjectInsights(args: any): Promise<McpResponse> {
     try {
-      const projectId = args.projectId || await projectHandler.getCurrentProjectId('default-session');
+      // Resolve project identifier (name or UUID) to UUID
+      let projectId = args.projectId;
+      if (projectId) {
+        const project = await projectHandler.getProject(projectId);
+        if (!project) {
+          return {
+            content: [{
+              type: 'text',
+              text: `❌ Project "${projectId}" not found\n\n💡 Use project_list to see available projects`
+            }]
+          };
+        }
+        projectId = project.id;
+      } else {
+        projectId = await projectHandler.getCurrentProjectId('default-session');
+      }
+
       const insights = await smartSearchHandler.getProjectInsights(projectId);
 
       const healthLevelMap = {

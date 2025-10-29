@@ -87,8 +87,10 @@ export const projectSchemas = {
   }),
   
   current: z.object({}),
-  
-  insights: z.object({})
+
+  insights: z.object({
+    projectId: z.string().optional()
+  })
 };
 
 // Naming Registry Schemas
@@ -316,12 +318,15 @@ export const codeSchemas = {
 export const smartSearchSchemas = {
   search: z.object({
     query: baseQuery,
+    projectId: z.string().optional(),
+    includeTypes: z.array(z.string()).optional(),
     scope: z.enum(['contexts', 'decisions', 'naming', 'agents', 'tasks', 'code', 'all']).optional(),
     limit: baseLimit
   }),
-  
+
   recommendations: z.object({
     context: z.string().max(2000),
+    projectId: z.string().optional(),
     type: z.enum(['naming', 'implementation', 'architecture', 'testing']).optional()
   })
 };

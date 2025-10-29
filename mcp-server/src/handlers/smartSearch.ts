@@ -45,13 +45,13 @@ export class SmartSearchHandler {
                 console.log(`🔍 Searching contexts...`);
                 const contextLimit = Math.ceil(limit / 2);
                 console.log(`📊 Context search limit: ${contextLimit}`);
-                
+
                 const contextResults = await contextHandler.searchContext({
                     projectId,
-                    query, 
+                    query,
                     limit: contextLimit
                 });
-                
+
                 console.log(`📝 Context search returned ${contextResults.length} results`);
                 
                 for (const context of contextResults) {
