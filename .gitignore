@@ -36,6 +36,12 @@ archive/
 *.backup
 *.tar.gz
 
+# Archive directories (keep local, exclude from repo)
+mcp-server-archive/
+docs/
+tests/
+ridge-parser-tui/
+
 # OS generated files
 .DS_Store
 .DS_Store?
