@@ -96,7 +96,7 @@ export class SmartSearchHandler {
                             type: context.contextType,
                             createdAt: context.createdAt
                         },
-                        source: relevanceScore > 0.8 ? 'semantic_search' : 'text_matching'
+                        source: (context.similarity !== undefined && context.similarity > 0) ? 'semantic_search' : 'text_matching'
                     });
                 }
                 console.log(`✅ Added ${contextResults.length} context results to smart search`);
