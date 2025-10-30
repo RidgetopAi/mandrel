@@ -212,6 +212,8 @@ export class ContextHandler {
 
   /**
    * Check if hierarchical memory is enabled for a project
+   * Instance #48: Changed to default-on (opt-out instead of opt-in)
+   * After 10 instances of validation, hierarchical memory is production-ready
    */
   private async isHierarchicalEnabled(projectId?: string): Promise<boolean> {
     if (!projectId) return false;
@@ -221,7 +223,11 @@ export class ContextHandler {
         `SELECT metadata->>'hierarchical_memory_enabled' as enabled FROM projects WHERE id = $1`,
         [projectId]
       );
-      return result.rows[0]?.enabled === 'true';
+      const flagValue = result.rows[0]?.enabled;
+      
+      // Default to enabled unless explicitly set to 'false'
+      // This enables hierarchical memory for all projects by default
+      return flagValue !== 'false';
     } catch (error) {
       console.error('Error checking hierarchical memory flag:', error);
       return false;
