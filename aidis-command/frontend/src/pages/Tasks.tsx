@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Card, Row, Col, Tabs, Button, notification } from 'antd';
 import { PlusOutlined, BarChartOutlined, ProjectOutlined, ReloadOutlined } from '@ant-design/icons';
-import useWebSocketSingleton from '../hooks/useWebSocketSingleton';
 import { apiService } from '../services/api';
 import { useProjectContext } from '../contexts/ProjectContext';
 import TaskKanbanBoard from '../components/tasks/TaskKanbanBoard';
@@ -45,99 +44,8 @@ const Tasks: React.FC = () => {
   const { currentProject, allProjects } = useProjectContext();
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [activeTab, setActiveTab] = useState('list');
-
-  // WebSocket disabled - SSE will be implemented in Phase 3
-  // const token = localStorage.getItem('aidis_token');
-  // const wsUrl = token ? `${process.env.REACT_APP_WS_URL || 'ws://localhost:5000/ws'}?token=${encodeURIComponent(token)}` : null;
   
   const projectId = currentProject?.id;
-
-  // Disabled WebSocket - SSE implementation coming in Phase 3
-  const isConnected = false;
-  /*
-  const { isConnected } = useWebSocketSingleton(wsUrl, {
-    onMessage: (message) => {
-      console.log('Received WebSocket message:', message.type);
-
-      const taskPayload: Task | undefined = message.data?.task;
-      const isProjectMatch = (task: Task | undefined) => Boolean(projectId && task && task.project_id === projectId);
-
-      switch (message.type) {
-        case 'connection_established':
-          console.log('✅ WebSocket connection established');
-          break;
-          
-        case 'task_created':
-          if (taskPayload && isProjectMatch(taskPayload)) {
-            // Deduplication: Prevent duplicate task additions from race conditions
-            if (processedTaskIdsRef.current.has(taskPayload.id)) {
-              return; // Already processed this task
-            }
-            processedTaskIdsRef.current.add(taskPayload.id);
-
-            setTasks(prev => {
-              if (prev.some(task => task.id === taskPayload.id)) {
-                return prev.map(task => (task.id === taskPayload.id ? taskPayload : task));
-              }
-              return [taskPayload, ...prev];
-            });
-            notification.success({
-              message: 'Task Created',
-              description: `New task "${taskPayload.title}" has been created.`
-            });
-          }
-          break;
-       
-        case 'task_updated':
-        case 'task_status_changed':
-        case 'task_assigned':
-          if (taskPayload && isProjectMatch(taskPayload)) {
-            setTasks(prev => prev.map(task => 
-              task.id === taskPayload.id ? taskPayload : task
-            ));
-          }
-          break;
-        
-        case 'task_deleted':
-          if (projectId) {
-            setTasks(prev => {
-              const taskId = message.data?.taskId as string | undefined;
-              if (!taskId || !prev.some(task => task.id === taskId)) {
-                return prev;
-              }
-              notification.info({
-                message: 'Task Deleted',
-                description: 'A task has been deleted.'
-              });
-              return prev.filter(task => task.id !== taskId);
-            });
-          }
-          break;
-        
-        case 'tasks_bulk_updated':
-          if (projectId && Array.isArray(message.data?.tasks)) {
-            setTasks(prev => prev.map(task => {
-              if (task.project_id !== projectId) {
-                return task;
-              }
-              const updated = message.data.tasks.find((t: Task) => t.id === task.id && t.project_id === projectId);
-              return updated || task;
-            }));
-          }
-          break;
-      }
-    },
-    onOpen: () => {
-      console.log('✅ WebSocket connection opened for Tasks page');
-    },
-    onClose: (event) => {
-      console.log('🔌 WebSocket connection closed for Tasks page:', event.code, event.reason);
-    },
-    onError: (event) => {
-      console.error('❌ WebSocket error for Tasks page:', event);
-    }
-  });
-  */
 
   // Load initial data
   const loadTasks = useCallback(async () => {
@@ -193,15 +101,6 @@ const Tasks: React.FC = () => {
     }
     loadTasks();
   }, [projectId, loadTasks]);
-
-  // Listen for SSE task updates
-  useEffect(() => {
-    const handleTaskUpdate = () => {
-      loadTasks();
-    };
-    window.addEventListener('aidis:task-update', handleTaskUpdate);
-    return () => window.removeEventListener('aidis:task-update', handleTaskUpdate);
-  }, [loadTasks]);
 
   // Cleanup effect for component unmounting
   useEffect(() => {
@@ -310,7 +209,7 @@ const Tasks: React.FC = () => {
                   Task Management - {selectedProjectName}
                 </h2>
                 <p style={{ margin: '4px 0 0 0', color: '#666' }}>
-                  WebSocket: {isConnected ? '🟢 Connected' : '🔴 Disconnected'} | {tasks.length} tasks loaded
+                  {tasks.length} tasks loaded
                 </p>
               </div>
               <div style={{ display: 'flex', gap: '8px' }}>

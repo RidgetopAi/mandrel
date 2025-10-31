@@ -5,7 +5,6 @@
  */
 
 import { db } from '../database/connection';
-import { webSocketService } from './websocket';
 import os from 'os';
 import axios from 'axios';
 
@@ -601,12 +600,6 @@ class MonitoringService {
     // Store in history
     this.alertHistory.push({ rule, timestamp: new Date(), value });
 
-    // Broadcast via WebSocket
-    webSocketService.broadcast({
-      type: 'monitoring_alert',
-      data: alert
-    });
-
     // Keep alert history manageable
     if (this.alertHistory.length > 1000) {
       this.alertHistory = this.alertHistory.slice(-500);
@@ -704,16 +697,6 @@ class MonitoringService {
       this.evaluateAlerts(services);
 
       const stats = this.getServiceMonitoringStats();
-
-      // Broadcast monitoring update
-      webSocketService.broadcast({
-        type: 'service_monitoring_update',
-        data: {
-          services,
-          stats,
-          timestamp: new Date()
-        }
-      });
 
     } catch (error) {
       console.error('Service monitoring cycle error:', error);

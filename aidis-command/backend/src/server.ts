@@ -12,7 +12,6 @@ import { correlationMiddleware } from './middleware/correlationId';
 import { requestLoggingMiddleware } from './middleware/requestLogger';
 import { projectContextMiddleware } from './middleware/project';
 import { requestMonitoringMiddleware } from './middleware/requestMonitoring';
-import { webSocketService } from './services/websocket';
 import { dbEvents } from './services/dbEvents';
 import { sseService } from './services/sse';
 import apiRoutes from './routes';
@@ -147,18 +146,6 @@ async function startServer(): Promise<void> {
       console.log(`🌍 Environment: ${config.nodeEnv}`);
       console.log(`📊 Logging: ${config.logging.level} (DB: ${config.logging.dbLogLevel})`);
     });
-
-    // Conditionally initialize WebSocket server based on feature flag
-    const websocketsEnabled = featureFlags.getFlag('realtime.websockets.enabled', false);
-    if (websocketsEnabled) {
-      webSocketService.initialize(server);
-      logger.info('WebSocket server initialized (feature flag enabled)', { endpoint: '/ws' });
-    } else {
-      logger.info('WebSocket server disabled (feature flag off)', { 
-        flag: 'realtime.websockets.enabled',
-        sseEnabled: featureFlags.getFlag('realtime.sse.enabled', false)
-      });
-    }
 
     // Graceful shutdown handling
     const shutdown = async (signal: string) => {
