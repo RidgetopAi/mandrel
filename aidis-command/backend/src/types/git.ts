@@ -607,6 +607,3 @@ export interface EnhancedFileMetadata {
     is_merge_commit: boolean;
   };
 }
-
-// Export all types for easy importing
-export * from './git';
