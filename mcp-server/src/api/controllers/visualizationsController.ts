@@ -221,7 +221,7 @@ export class VisualizationsController {
    * List available visualizations
    * GET /api/v2/visualizations
    */
-  async listVisualizations(req: Request, res: Response): Promise<void> {
+  async listVisualizations(_req: Request, res: Response): Promise<void> {
     try {
       const visualizationsDir = path.join(
         process.cwd(),

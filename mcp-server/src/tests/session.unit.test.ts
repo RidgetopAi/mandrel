@@ -675,7 +675,7 @@ describe('Utility Functions Unit Tests', () => {
         
         vi.spyOn(SessionAnalyticsHandler, 'startSession').mockResolvedValueOnce({
           success: true,
-          data: {} as SessionStats,
+          data: {} as any, // Mock data for test
           timestamp: new Date().toISOString()
         });
         vi.spyOn(SessionTracker, 'getActiveSession').mockResolvedValueOnce(sessionId);

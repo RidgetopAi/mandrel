@@ -78,6 +78,7 @@ debug-tests/
 *.jpeg
 test-*.js
 test-*.ts
+docs/tests/test-sse-integration.js
 
 # AIDIS specific - runtime
 aidis.service

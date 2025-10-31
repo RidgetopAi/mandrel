@@ -18,6 +18,7 @@ import { randomUUID } from 'crypto';
 import { projectHandler } from '../handlers/project.js';
 import { detectAgentType } from '../utils/agentDetection.js';
 import { logger } from '../utils/logger.js';
+import type { SessionActivity, SessionFile, SessionStats } from '../types/session.js';
 
 export interface SessionData {
   session_id: string;

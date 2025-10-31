@@ -16,8 +16,8 @@
   "aidis-command-dev": {
     "serviceName": "aidis-command-dev",
     "port": 5000,
-    "pid": 3037,
-    "startedAt": "2025-10-30T00:29:40.427Z",
+    "pid": 58778,
+    "startedAt": "2025-10-31T04:45:52.558Z",
     "healthEndpoint": "/api/health"
   }
 }
