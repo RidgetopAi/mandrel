@@ -46,12 +46,15 @@ const Tasks: React.FC = () => {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [activeTab, setActiveTab] = useState('list');
 
-  // WebSocket for real-time updates  
-  const token = localStorage.getItem('aidis_token');
-  const wsUrl = token ? `${process.env.REACT_APP_WS_URL || 'ws://localhost:5000/ws'}?token=${encodeURIComponent(token)}` : null;
+  // WebSocket disabled - SSE will be implemented in Phase 3
+  // const token = localStorage.getItem('aidis_token');
+  // const wsUrl = token ? `${process.env.REACT_APP_WS_URL || 'ws://localhost:5000/ws'}?token=${encodeURIComponent(token)}` : null;
   
   const projectId = currentProject?.id;
 
+  // Disabled WebSocket - SSE implementation coming in Phase 3
+  const isConnected = false;
+  /*
   const { isConnected } = useWebSocketSingleton(wsUrl, {
     onMessage: (message) => {
       console.log('Received WebSocket message:', message.type);
@@ -134,6 +137,7 @@ const Tasks: React.FC = () => {
       console.error('❌ WebSocket error for Tasks page:', event);
     }
   });
+  */
 
   // Load initial data
   const loadTasks = useCallback(async () => {
@@ -189,6 +193,15 @@ const Tasks: React.FC = () => {
     }
     loadTasks();
   }, [projectId, loadTasks]);
+
+  // Listen for SSE task updates
+  useEffect(() => {
+    const handleTaskUpdate = () => {
+      loadTasks();
+    };
+    window.addEventListener('aidis:task-update', handleTaskUpdate);
+    return () => window.removeEventListener('aidis:task-update', handleTaskUpdate);
+  }, [loadTasks]);
 
   // Cleanup effect for component unmounting
   useEffect(() => {

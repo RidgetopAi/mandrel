@@ -33,10 +33,6 @@ async function testDatabaseSetup() {
     const contextsResult = await client.query('SELECT COUNT(*) as count FROM contexts');
     console.log('✅ Contexts table accessible, count:', contextsResult.rows[0].count);
     
-    // Check if agents table exists and get count
-    const agentsResult = await client.query('SELECT COUNT(*) as count FROM agents');
-    console.log('✅ Agents table accessible, count:', agentsResult.rows[0].count);
-    
     client.release();
     console.log('');
     

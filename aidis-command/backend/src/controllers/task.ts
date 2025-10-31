@@ -1,7 +1,8 @@
 import { Response } from 'express';
 import { AuthenticatedRequest } from '../types/auth';
 import { TaskService, CreateTaskRequest, UpdateTaskRequest, TaskFilter } from '../services/task';
-import { webSocketService } from '../services/websocket';
+import { sseService } from '../services/sse';
+import { AidisDbEvent } from '../types/events';
 
 /**
  * Task Controller
@@ -112,11 +113,15 @@ export class TaskController {
 
       const task = await TaskService.createTask(taskData);
 
-      // Broadcast task creation via WebSocket
-      webSocketService.broadcast({
-        type: 'task_created',
-        data: { task }
-      });
+      // Broadcast task creation via SSE
+      const taskCreatedEvent: AidisDbEvent = {
+        entity: 'tasks',
+        action: 'insert',
+        id: task.id,
+        projectId: task.project_id,
+        at: new Date().toISOString()
+      };
+      sseService.broadcastDbEvent(taskCreatedEvent);
 
       res.status(201).json({
         success: true,
@@ -149,11 +154,15 @@ export class TaskController {
         return;
       }
 
-      // Broadcast task update via WebSocket
-      webSocketService.broadcast({
-        type: 'task_updated',
-        data: { task }
-      });
+      // Broadcast task update via SSE
+      const taskUpdatedEvent: AidisDbEvent = {
+        entity: 'tasks',
+        action: 'update',
+        id: task.id,
+        projectId: task.project_id,
+        at: new Date().toISOString()
+      };
+      sseService.broadcastDbEvent(taskUpdatedEvent);
 
       res.json({
         success: true,
@@ -184,11 +193,15 @@ export class TaskController {
         return;
       }
 
-      // Broadcast task deletion via WebSocket
-      webSocketService.broadcast({
-        type: 'task_deleted',
-        data: { taskId: id }
-      });
+      // Broadcast task deletion via SSE
+      const taskDeletedEvent: AidisDbEvent = {
+        entity: 'tasks',
+        action: 'delete',
+        id: id,
+        // Note: We don't have project_id for deleted tasks, so no projectId filter
+        at: new Date().toISOString()
+      };
+      sseService.broadcastDbEvent(taskDeletedEvent);
 
       res.json({
         success: true,
@@ -296,11 +309,17 @@ export class TaskController {
 
       const updatedTasks = await TaskService.bulkUpdateStatus(updates);
 
-      // Broadcast bulk update via WebSocket
-      webSocketService.broadcast({
-        type: 'tasks_bulk_updated',
-        data: { tasks: updatedTasks }
-      });
+      // Broadcast individual task updates via SSE
+      for (const task of updatedTasks) {
+        const taskUpdatedEvent: AidisDbEvent = {
+          entity: 'tasks',
+          action: 'update',
+          id: task.id,
+          projectId: task.project_id,
+          at: new Date().toISOString()
+        };
+        sseService.broadcastDbEvent(taskUpdatedEvent);
+      }
 
       res.json({
         success: true,
@@ -344,11 +363,15 @@ export class TaskController {
         return;
       }
 
-      // Broadcast task assignment via WebSocket
-      webSocketService.broadcast({
-        type: 'task_assigned',
-        data: { task, assigned_to }
-      });
+      // Broadcast task assignment via SSE
+      const taskUpdatedEvent: AidisDbEvent = {
+        entity: 'tasks',
+        action: 'update',
+        id: task.id,
+        projectId: task.project_id,
+        at: new Date().toISOString()
+      };
+      sseService.broadcastDbEvent(taskUpdatedEvent);
 
       res.json({
         success: true,
@@ -415,11 +438,15 @@ export class TaskController {
         return;
       }
 
-      // Broadcast status change via WebSocket
-      webSocketService.broadcast({
-        type: 'task_status_changed',
-        data: { task, previous_status: status, note }
-      });
+      // Broadcast status change via SSE
+      const taskUpdatedEvent: AidisDbEvent = {
+        entity: 'tasks',
+        action: 'update',
+        id: task.id,
+        projectId: task.project_id,
+        at: new Date().toISOString()
+      };
+      sseService.broadcastDbEvent(taskUpdatedEvent);
 
       res.json({
         success: true,

@@ -99,6 +99,7 @@ export const config = {
   cors: {
     origin: (getEnvVar('AIDIS_CORS_ORIGIN', 'CORS_ORIGIN') || 'http://localhost:3000,http://localhost:3001').split(','),
     credentials: true,
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Correlation-ID', 'X-Project-ID'],
   },
   
   // Logging configuration

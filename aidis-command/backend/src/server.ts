@@ -13,6 +13,8 @@ import { requestLoggingMiddleware } from './middleware/requestLogger';
 import { projectContextMiddleware } from './middleware/project';
 import { requestMonitoringMiddleware } from './middleware/requestMonitoring';
 import { webSocketService } from './services/websocket';
+import { dbEvents } from './services/dbEvents';
+import { sseService } from './services/sse';
 import apiRoutes from './routes';
 import { ensureFeatureFlags } from './utils/featureFlags';
 import { portManager } from './utils/portManager';
@@ -105,6 +107,10 @@ async function startServer(): Promise<void> {
     // await backendPool.initialize(); // Temporarily commented out
     logger.info('Database initialized successfully');
 
+    // Start DB Events Listener for SSE
+    await dbEvents.start();
+    logger.info('DB Events Listener started for SSE');
+
     const featureFlags = await featureFlagsPromise;
     app.locals.featureFlags = featureFlags;
 
@@ -142,9 +148,17 @@ async function startServer(): Promise<void> {
       console.log(`📊 Logging: ${config.logging.level} (DB: ${config.logging.dbLogLevel})`);
     });
 
-    // Initialize WebSocket server
-    webSocketService.initialize(server);
-    logger.info('WebSocket server initialized', { endpoint: '/ws' });
+    // Conditionally initialize WebSocket server based on feature flag
+    const websocketsEnabled = featureFlags.getFlag('realtime.websockets.enabled', false);
+    if (websocketsEnabled) {
+      webSocketService.initialize(server);
+      logger.info('WebSocket server initialized (feature flag enabled)', { endpoint: '/ws' });
+    } else {
+      logger.info('WebSocket server disabled (feature flag off)', { 
+        flag: 'realtime.websockets.enabled',
+        sseEnabled: featureFlags.getFlag('realtime.sse.enabled', false)
+      });
+    }
 
     // Graceful shutdown handling
     const shutdown = async (signal: string) => {
@@ -152,6 +166,14 @@ async function startServer(): Promise<void> {
         signal,
         timestamp: new Date().toISOString()
       });
+
+      // Stop SSE service and disconnect all clients
+      sseService.disconnectAll();
+      logger.info('SSE service stopped');
+
+      // Stop DB Events Listener
+      await dbEvents.stop();
+      logger.info('DB Events Listener stopped');
 
       // Unregister from port registry
       await portManager.unregisterService(serviceName);

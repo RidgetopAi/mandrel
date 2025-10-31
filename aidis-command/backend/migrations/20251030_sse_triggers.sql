@@ -6,7 +6,7 @@
 -- 
 -- This migration creates:
 -- 1. Generic trigger function: notify_aidis_change()
--- 2. Triggers on 5 entity tables: contexts, tasks, technical_decisions, 
+-- 2. Triggers on 5 entity tables: contexts, agent_tasks, technical_decisions, 
 --    projects, sessions
 -- 3. NOTIFY channel: aidis_changes
 --
@@ -22,7 +22,7 @@
 
 -- Drop existing function and triggers if they exist (for re-running migration)
 DROP TRIGGER IF EXISTS trg_contexts_notify ON contexts;
-DROP TRIGGER IF EXISTS trg_tasks_notify ON tasks;
+DROP TRIGGER IF EXISTS trg_agent_tasks_notify ON agent_tasks;
 DROP TRIGGER IF EXISTS trg_technical_decisions_notify ON technical_decisions;
 DROP TRIGGER IF EXISTS trg_projects_notify ON projects;
 DROP TRIGGER IF EXISTS trg_sessions_notify ON sessions;
@@ -53,9 +53,10 @@ BEGIN
     v_project_id := NULL;
   END;
   
-  -- Map table name to entity name (handle technical_decisions -> decisions)
+  -- Map table name to entity name (handle technical_decisions -> decisions, agent_tasks -> tasks)
   v_entity := CASE TG_TABLE_NAME
     WHEN 'technical_decisions' THEN 'decisions'
+    WHEN 'agent_tasks' THEN 'tasks'
     ELSE TG_TABLE_NAME
   END;
   
@@ -98,13 +99,13 @@ CREATE TRIGGER trg_contexts_notify
 COMMENT ON TRIGGER trg_contexts_notify ON contexts IS 
   'SSE real-time update trigger - emits NOTIFY on aidis_changes channel';
 
--- Tasks table
-CREATE TRIGGER trg_tasks_notify
-  AFTER INSERT OR UPDATE OR DELETE ON tasks
+-- Agent Tasks table (exposed as 'tasks' entity)
+CREATE TRIGGER trg_agent_tasks_notify
+  AFTER INSERT OR UPDATE OR DELETE ON agent_tasks
   FOR EACH ROW 
   EXECUTE FUNCTION notify_aidis_change();
 
-COMMENT ON TRIGGER trg_tasks_notify ON tasks IS 
+COMMENT ON TRIGGER trg_agent_tasks_notify ON agent_tasks IS 
   'SSE real-time update trigger - emits NOTIFY on aidis_changes channel';
 
 -- Technical Decisions table (maps to 'decisions' entity)
@@ -156,7 +157,7 @@ DO $$
 BEGIN
   RAISE NOTICE 'SSE Triggers Migration Complete!';
   RAISE NOTICE 'Created trigger function: notify_aidis_change()';
-  RAISE NOTICE 'Created triggers on 5 tables: contexts, tasks, technical_decisions, projects, sessions';
+  RAISE NOTICE 'Created triggers on 5 tables: contexts, agent_tasks, technical_decisions, projects, sessions';
   RAISE NOTICE 'NOTIFY channel: aidis_changes';
   RAISE NOTICE '';
   RAISE NOTICE 'Test with: LISTEN aidis_changes;';

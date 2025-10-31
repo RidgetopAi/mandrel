@@ -7,6 +7,7 @@ import { AuthProvider } from './contexts/AuthContext';
 import { ProjectProvider } from './contexts/ProjectContext';
 import { FeatureFlagProvider } from './contexts/FeatureFlagContext';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
+import { SseProvider } from './contexts/SseContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import AppLayout from './components/AppLayout';
 import GlobalErrorBoundary from './components/error/GlobalErrorBoundary';
@@ -30,7 +31,7 @@ const Visualizations = lazy(() => import('./pages/Visualizations'));
 const Settings = lazy(() => import('./pages/Settings'));
 
 // React Query client configuration
-const queryClient = new QueryClient({
+export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       staleTime: 1000 * 60 * 5, // 5 minutes
@@ -80,7 +81,9 @@ const AppContent: React.FC = () => {
                       path="/*"
                       element={
                         <ProtectedRoute>
-                          <AppLayout />
+                          <SseProvider>
+                            <AppLayout />
+                          </SseProvider>
                         </ProtectedRoute>
                       }
                     >

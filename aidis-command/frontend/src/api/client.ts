@@ -25,7 +25,6 @@ OpenAPI.TOKEN = async () => {
 OpenAPI.HEADERS = async () => {
   const headers: Record<string, string> = {
     'X-Correlation-ID': crypto.randomUUID(),
-    'Content-Type': 'application/json',
   };
 
   try {

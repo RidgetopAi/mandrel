@@ -7,6 +7,7 @@ import { User } from '../api/generated/models/User';
 
 interface AuthContextType {
   user: User | null;
+  token: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
@@ -88,13 +89,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Memoize context value to prevent unnecessary re-renders
   const contextValue: AuthContextType = React.useMemo(() => ({
     user: user as User | null,
+    token: authStore.token,
     isAuthenticated,
     isLoading,
     error: authStore.error,
     login,
     logout,
     clearError,
-  }), [user, isAuthenticated, isLoading, authStore.error, login, logout, clearError]);
+  }), [user, authStore.token, isAuthenticated, isLoading, authStore.error, login, logout, clearError]);
 
   return (
     <AuthContext.Provider value={contextValue}>

@@ -14,7 +14,7 @@ import { db } from '../config/database.js';
 // Re-export types from shared types file (to avoid circular dependency with projectSwitchValidator)
 export type { ProjectInfo, CreateProjectRequest, SessionState } from '../types/project.js';
 // Import for internal use
-import type { SessionState } from '../types/project.js';
+import type { ProjectInfo, CreateProjectRequest, SessionState } from '../types/project.js';
 
 export class ProjectHandler {
   // In-memory session state (in production, this could be Redis/database)
