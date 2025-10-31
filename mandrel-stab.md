@@ -899,6 +899,74 @@ aidis_changes → mandrel_changes
 
 ---
 
+## XXI. 🔄 RECOVERY PLAN - Return to This Snapshot
+
+### Critical Recovery Information
+
+**This document represents a stable snapshot BEFORE Mandrel rename execution.**
+
+If the rename goes wrong, you can restore to this exact state:
+
+**Snapshot Details:**
+- **Git Commit**: `6e930b134940f4b79cc93a6eddbb372281bdb972`
+- **Short Hash**: `6e930b1`
+- **Branch**: `aidis-stab`
+- **Date**: October 31, 2025 19:39 EDT
+- **Database**: `aidis_production` (PostgreSQL 16.9)
+- **Working Tree**: Clean (all changes committed)
+
+### Quick Recovery Commands
+
+```bash
+# Stop everything
+cd /home/ridgetop/aidis
+./stop-aidis.sh
+
+# Return to snapshot
+git stash  # Save any work
+git reset --hard 6e930b1
+git checkout aidis-stab
+
+# Verify you're back
+git log -1 --oneline  # Should show: 6e930b1 feat: AIDIS → Mandrel rebrand investigation complete
+
+# Clean and rebuild
+find . -name "dist" -type d -exec rm -rf {} \; 2>/dev/null || true
+cd mcp-server && npm run build
+cd ../aidis-command/backend && npm run build
+
+# Restart
+cd /home/ridgetop/aidis
+./start-aidis.sh
+```
+
+### Full Recovery Documentation
+
+**Complete step-by-step recovery procedure**: See `/home/ridgetop/aidis/docs/plans/RECOVERY-PLAN-pre-mandrel-rename.md`
+
+This includes:
+- 12-step detailed recovery process
+- Verification checklist
+- Troubleshooting guide
+- Automated recovery script
+- Database state verification
+- Service restart procedures
+
+### Emergency Recovery Script
+
+```bash
+# One-command recovery (use with caution!)
+/home/ridgetop/aidis/scripts/recover-to-aidis.sh
+```
+
+**⚠️ IMPORTANT**: Before starting the Mandrel rename:
+1. Create a new feature branch: `git checkout -b mandrel-rename-attempt-$(date +%Y%m%d)`
+2. Work on that branch, not on `aidis-stab`
+3. Keep `aidis-stab` as your safety net
+4. You can always `git checkout aidis-stab` to return here
+
+---
+
 **Document Version**: 1.0  
 **Last Updated**: October 31, 2025  
 **Prepared by**: Oracle + Search Agents  
