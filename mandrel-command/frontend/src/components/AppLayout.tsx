@@ -183,7 +183,7 @@ const AppLayout: React.FC = () => {
             <DatabaseOutlined style={{ color: '#1890ff', fontSize: '24px' }} />
             {!collapsed && (
               <Title level={4} style={{ color: 'white', margin: 0 }}>
-                AIDIS
+                Mandrel
               </Title>
             )}
           </Space>
