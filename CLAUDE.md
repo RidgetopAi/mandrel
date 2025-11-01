@@ -6,7 +6,7 @@
 
 ### System Status
 
-**AIDIS: 27 MCP Tools - 100% Operational** _(Optimized for token efficiency)_
+**Mandrel: 27 MCP Tools - 100% Operational** _(Optimized for token efficiency)_
 
 - System Health: 2 tools
 - Navigation: 3 tools (help, explain, examples)
@@ -28,7 +28,7 @@
 
 ### Navigation Tools - START HERE
 
-Essential tools for discovering AIDIS capabilities:
+Essential tools for discovering Mandrel capabilities:
 
 - **`mandrel_help`** - Show all 27 tools organized by category
 - **`mandrel_explain <toolname>`** - Get detailed help for any specific tool
@@ -36,7 +36,7 @@ Essential tools for discovering AIDIS capabilities:
 
 ### HTTP Bridge Connection
 
-**AIDIS tools are accessible via HTTP bridge at port 8080**
+**Mandrel tools are accessible via HTTP bridge at port 8080**
 
 - **Endpoint Pattern**: `http://localhost:8080/mcp/tools/{toolName}`
 - **Method**: POST with JSON body containing tool arguments
@@ -45,13 +45,13 @@ Essential tools for discovering AIDIS capabilities:
 **Quick Test**:
 
 ```bash
-# Test AIDIS connection (always do this first!)
+# Test Mandrel connection (always do this first!)
 curl -X POST http://localhost:8080/mcp/tools/mandrel_ping \
   -H "Content-Type: application/json" \
   -d '{}'
 
 # Expected response:
-# {"success":true,"result":{"content":[{"type":"text","text":"🏓 AIDIS Pong! ..."}]}}
+# {"success":true,"result":{"content":[{"type":"text","text":"🏓 Mandrel Pong! ..."}]}}
 ```
 
 ### Session Startup Workflow
@@ -133,7 +133,7 @@ curl -X POST http://localhost:8080/mcp/tools/mandrel_ping \
 - **Tone**: Professional, systematic, no rushing whatsoever
 - **Rigid Focus**: One issue at a time, complete resolution before moving on
 - **No Cutting Corners**: Full investigation → evidence → review → targeted fix
-- **AIDIS Task Tracking**: Create tasks, update status, track systematically
+- **Mandrel Task Tracking**: Create tasks, update status, track systematically
 - **Context Storage**: Store learning contexts and handoffs for continuity
 
 ### **Investigation Standards (NEVER COMPROMISE)**
@@ -167,21 +167,21 @@ curl -X POST http://localhost:8080/mcp/tools/mandrel_ping \
 ```bash
 # Essential Commands
 npm install                    # Install dependencies
-npx tsx src/server.ts          # Start AIDIS MCP server
+npx tsx src/server.ts          # Start Mandrel MCP server
 npm run lint                   # ESLint check
 npm run type-check            # TypeScript check
 
 # Testing
-npx tsx test-complete-aidis.ts # Test all systems
+npx tsx test-complete-mandrel.ts # Test all systems
 ```
 
 ### Process Management Scripts
 
 ```bash
-./start-aidis.sh              # Start server
-./stop-aidis.sh               # Stop server
-./restart-aidis.sh            # Restart server
-./status-aidis.sh             # Check status
+./start-mandrel.sh              # Start server
+./stop-mandrel.sh               # Stop server
+./restart-mandrel.sh            # Restart server
+./status-mandrel.sh             # Check status
 ```
 
 ### Key Tool Parameters
@@ -211,17 +211,17 @@ project_list(includeStats?: boolean)
 
 ### Reference Guides
 
-- **Comprehensive MCP Guide**: `AIDIS_MCP_SERVER_REFERENCE_GUIDE.md`
+- **Comprehensive MCP Guide**: `MANDREL_MCP_SERVER_REFERENCE_GUIDE.md`
 - **Tool Parameters**: Use `mandrel_explain <toolname>` for current info
 - **Examples**: Use `mandrel_examples <toolname>` for usage patterns
 
-### Common AIDIS Parameter Patterns
+### Common Mandrel Parameter Patterns
 
 - **Arrays**: Pass as actual arrays, not strings: `["tag1", "tag2"]`
 - **Always check examples first**: Use `mandrel_examples <tool>` before implementation
 - **Required vs optional**: Use `mandrel_explain <tool>` to see what's actually required
 
-### AIDIS Tool Troubleshooting
+### Mandrel Tool Troubleshooting
 
 - **Validation errors**: Usually mean wrong parameter type or format
 - **When in doubt**: Check examples first, explain second, implement third
