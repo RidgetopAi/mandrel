@@ -62,7 +62,7 @@ export const useSettings = (): UseSettingsReturn => {
         const project = projectsData.data?.projects?.find((p: any) => p.name === projectName);
 
         if (project?.id) {
-          // Call AIDIS Command backend to set project as primary (which proxies to MCP server)
+          // Call Mandrel Command backend to set project as primary (which proxies to MCP server)
           const response = await fetch(`${apiBaseUrl}/projects/${project.id}/set-primary`, {
             method: 'POST',
             headers: {
