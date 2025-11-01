@@ -36,7 +36,7 @@
 - ✅ Better tree-shaking, faster builds
 - ✅ Reduced cognitive load for developers
 
-**Timeline:** 3-4 days (per AIDIS_REFACTOR_MASTER_PLAN.md)
+**Timeline:** 3-4 days (per MANDREL_REFACTOR_MASTER_PLAN.md)
 
 ---
 
@@ -604,7 +604,7 @@ export class SystemRoutes {
         { emoji: '🏓' }
       );
     } catch (error) {
-      return formatMcpError(error as Error, 'aidis_ping');
+      return formatMcpError(error as Error, 'mandrel_ping');
     }
   }
 
@@ -624,7 +624,7 @@ Active Tools: ${data.activeTools}
         }
       );
     } catch (error) {
-      return formatMcpError(error as Error, 'aidis_status');
+      return formatMcpError(error as Error, 'mandrel_status');
     }
   }
 
@@ -633,7 +633,7 @@ Active Tools: ${data.activeTools}
       const result = await navigationHandler.getHelp();
       return formatMcpResponse(result, 'AIDIS MCP Tools', { emoji: '📚' });
     } catch (error) {
-      return formatMcpError(error as Error, 'aidis_help');
+      return formatMcpError(error as Error, 'mandrel_help');
     }
   }
 
@@ -646,7 +646,7 @@ Active Tools: ${data.activeTools}
         { emoji: '📖' }
       );
     } catch (error) {
-      return formatMcpError(error as Error, 'aidis_explain');
+      return formatMcpError(error as Error, 'mandrel_explain');
     }
   }
 
@@ -659,7 +659,7 @@ Active Tools: ${data.activeTools}
         { emoji: '💡' }
       );
     } catch (error) {
-      return formatMcpError(error as Error, 'aidis_examples');
+      return formatMcpError(error as Error, 'mandrel_examples');
     }
   }
 }
@@ -755,11 +755,11 @@ export function registerAllRoutes(server: Server): void {
       // Dispatch to appropriate route handler
       switch (name) {
         // System & Navigation (5 tools)
-        case 'aidis_ping': return await systemRoutes.handlePing(args);
-        case 'aidis_status': return await systemRoutes.handleStatus(args);
-        case 'aidis_help': return await systemRoutes.handleHelp(args);
-        case 'aidis_explain': return await systemRoutes.handleExplain(args);
-        case 'aidis_examples': return await systemRoutes.handleExamples(args);
+        case 'mandrel_ping': return await systemRoutes.handlePing(args);
+        case 'mandrel_status': return await systemRoutes.handleStatus(args);
+        case 'mandrel_help': return await systemRoutes.handleHelp(args);
+        case 'mandrel_explain': return await systemRoutes.handleExplain(args);
+        case 'mandrel_examples': return await systemRoutes.handleExamples(args);
 
         // Context Management (4 tools)
         case 'context_store': return await contextRoutes.handleStore(args);
@@ -815,7 +815,7 @@ export function registerAllRoutes(server: Server): void {
           return {
             content: [{
               type: 'text',
-              text: `❌ Unknown tool: ${name}\n\nUse 'aidis_help' to see available tools.`
+              text: `❌ Unknown tool: ${name}\n\nUse 'mandrel_help' to see available tools.`
             }],
             isError: true
           };
@@ -920,7 +920,7 @@ grep -n "handlePing" src/server.ts  # Should find NOTHING
 ```typescript
 private async executeToolOperation(toolName: string, args: any): Promise<any> {
   switch (toolName) {
-    case 'aidis_ping': return this.handlePing(args);
+    case 'mandrel_ping': return this.handlePing(args);
     case 'context_store': return this.handleContextStore(args);
     // ... 36 more cases
     // ... 11 commented/disabled cases
@@ -1302,7 +1302,7 @@ curl http://localhost:8080/mcp/tools
 
 ```bash
 # Test via HTTP bridge
-curl -X POST http://localhost:8080/mcp/tools/aidis_ping \
+curl -X POST http://localhost:8080/mcp/tools/mandrel_ping \
   -H "Content-Type: application/json" \
   -d '{}'
 # Expected: {"success":true,"result":{"content":[{"type":"text","text":"🏓 AIDIS Pong!..."}]}}
@@ -1326,9 +1326,9 @@ curl -X POST http://localhost:8080/mcp/tools/project_current \
 # test-all-mcp-tools.sh
 
 TOOLS=(
-  "aidis_ping"
-  "aidis_status"
-  "aidis_help"
+  "mandrel_ping"
+  "mandrel_status"
+  "mandrel_help"
   "context_stats"
   "project_list"
   "naming_stats"
@@ -1497,9 +1497,9 @@ MCP Client → STDIO Transport → routes/index.ts → domain.routes.ts → hand
 ✅ Better code organization
 ```
 
-#### Step 6.6.3: Update AIDIS_REFACTOR_MASTER_PLAN.md
+#### Step 6.6.3: Update MANDREL_REFACTOR_MASTER_PLAN.md
 
-**File:** `AIDIS_REFACTOR_MASTER_PLAN.md` - Check off Phase 6
+**File:** `MANDREL_REFACTOR_MASTER_PLAN.md` - Check off Phase 6
 ```markdown
 ### **PHASE 6: BREAK UP server.ts** ✅ COMPLETE
 **Timeline:** 3-4 days
@@ -1561,7 +1561,7 @@ Before marking Phase 6 complete, verify ALL criteria:
 ### Documentation
 - [ ] README.md updated
 - [ ] ARCHITECTURE.md created
-- [ ] AIDIS_REFACTOR_MASTER_PLAN.md updated
+- [ ] MANDREL_REFACTOR_MASTER_PLAN.md updated
 - [ ] Inline code comments clear and concise
 
 ### Cleanup
@@ -1647,7 +1647,7 @@ git add src/main.ts \
         package.json \
         README.md \
         ARCHITECTURE.md \
-        AIDIS_REFACTOR_MASTER_PLAN.md
+        MANDREL_REFACTOR_MASTER_PLAN.md
 
 git commit -m "refactor(server): create minimal main.ts entry point
 
@@ -1656,7 +1656,7 @@ Phase 6.4: main.ts Creation
 - Updated package.json scripts (server.ts → main.ts)
 - Updated README.md with new architecture
 - Created ARCHITECTURE.md documentation
-- Updated AIDIS_REFACTOR_MASTER_PLAN.md (Phase 6 ✅)
+- Updated MANDREL_REFACTOR_MASTER_PLAN.md (Phase 6 ✅)
 
 Final structure:
 - main.ts: 120 lines, 8 deps (was server.ts: 3,227 lines, 31 deps)

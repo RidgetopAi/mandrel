@@ -34,8 +34,8 @@ export interface ToolDefinition {
  */
 export const AIDIS_TOOL_DEFINITIONS: ToolDefinition[] = [
           {
-            name: 'aidis_ping',
-            description: 'Test connectivity to AIDIS server',
+            name: 'mandrel_ping',
+            description: 'Test connectivity to Mandrel server',
             inputSchema: {
               type: 'object',
               properties: {
@@ -48,8 +48,8 @@ export const AIDIS_TOOL_DEFINITIONS: ToolDefinition[] = [
             },
           },
           {
-            name: 'aidis_status',
-            description: 'Get AIDIS server status and health information',
+            name: 'mandrel_status',
+            description: 'Get Mandrel server status and health information',
             inputSchema: {
               type: 'object',
               properties: {},
@@ -57,8 +57,8 @@ export const AIDIS_TOOL_DEFINITIONS: ToolDefinition[] = [
             },
           },
           {
-            name: 'aidis_help',
-            description: 'Display categorized list of all AIDIS tools',
+            name: 'mandrel_help',
+            description: 'Display categorized list of all Mandrel tools',
             inputSchema: {
               type: 'object',
               properties: {},
@@ -66,8 +66,8 @@ export const AIDIS_TOOL_DEFINITIONS: ToolDefinition[] = [
             },
           },
           {
-            name: 'aidis_explain',
-            description: 'Get detailed help for a specific AIDIS tool',
+            name: 'mandrel_explain',
+            description: 'Get detailed help for a specific Mandrel tool',
             inputSchema: {
               type: 'object',
               properties: {
@@ -77,8 +77,8 @@ export const AIDIS_TOOL_DEFINITIONS: ToolDefinition[] = [
             },
           },
           {
-            name: 'aidis_examples',
-            description: 'Get usage examples and patterns for a specific AIDIS tool',
+            name: 'mandrel_examples',
+            description: 'Get usage examples and patterns for a specific Mandrel tool',
             inputSchema: {
               type: 'object',
               properties: {

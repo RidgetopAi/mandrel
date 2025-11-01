@@ -1,0 +1,75 @@
+{
+  "name": "mandrel-command-frontend",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "@ant-design/plots": "^2.6.5",
+    "@openapitools/openapi-generator-cli": "^2.23.4",
+    "@sentry/react": "^10.14.0",
+    "@sentry/tracing": "^7.120.4",
+    "@tanstack/react-query": "^5.90.2",
+    "@tanstack/react-query-devtools": "^5.90.2",
+    "@types/dagre": "^0.7.53",
+    "@types/node": "^20.19.17",
+    "@types/plotly.js": "^3.0.8",
+    "@types/react": "^18.2.0",
+    "@types/react-beautiful-dnd": "^13.1.8",
+    "@types/react-dom": "^18.2.0",
+    "antd": "^5.27.4",
+    "axios": "^1.6.0",
+    "dagre": "^0.8.5",
+    "dayjs": "^1.11.18",
+    "openapi-typescript-codegen": "^0.29.0",
+    "plotly.js": "^3.1.2",
+    "react": "^18.2.0",
+    "react-beautiful-dnd": "^13.1.1",
+    "react-dom": "^18.2.0",
+    "react-plotly.js": "^2.6.0",
+    "react-router-dom": "^6.20.0",
+    "react-scripts": "5.0.1",
+    "reactflow": "^11.11.4",
+    "recharts": "^2.15.4",
+    "typescript": "^5.3.0",
+    "zod": "^4.1.11",
+    "zustand": "^5.0.8"
+  },
+  "devDependencies": {
+    "@types/react-plotly.js": "^2.6.3",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "eslint": "^8.0.0",
+    "eslint-plugin-react": "^7.33.0",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "lighthouse": "^12.8.2",
+    "prettier": "^3.1.0"
+  },
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject",
+    "generate:openapi": "npm --prefix ../backend run openapi:export && npx openapi-typescript-codegen --input ./.openapi/openapi.json --output src/api/generated --client fetch --useOptions --useUnionTypes",
+    "lint": "eslint src --ext .ts,.tsx",
+    "lint:fix": "eslint src --ext .ts,.tsx --fix",
+    "format": "prettier --write src/**/*.{ts,tsx}"
+  },
+  "eslintConfig": {
+    "extends": [
+      "react-app",
+      "react-app/jest"
+    ]
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  },
+  "proxy": "http://localhost:5000"
+}

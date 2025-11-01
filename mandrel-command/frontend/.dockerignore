@@ -1,0 +1,136 @@
+# Node modules and dependencies
+node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Production build (will be created during Docker build)
+# build - commented out since we need it for nginx
+
+# Development server files
+public/hot
+public/storage
+
+# Environment files
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+*.local
+
+# Testing
+src/**/*.test.ts
+src/**/*.test.tsx
+src/**/*.test.js
+src/**/*.test.jsx
+src/**/*.spec.ts
+src/**/*.spec.tsx
+src/**/*.spec.js
+src/**/*.spec.jsx
+coverage/
+.nyc_output
+__tests__/
+
+# Development tools and configs
+.eslintrc*
+.prettierrc*
+tsconfig.json
+tsconfig.*.json
+jest.config.*
+.editorconfig
+lighthouse/
+
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Documentation
+README.md
+CHANGELOG.md
+docs/
+*.md
+!src/**/*.md
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# Runtime data
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# Optional REPL history
+.node_repl_history
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn Integrity file
+.yarn-integrity
+
+# IDE and editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Temporary folders
+tmp/
+temp/
+
+# React development files
+.storybook/
+storybook-static/
+
+# Development configuration
+docker-compose.yml
+docker-compose.*.yml
+Dockerfile*
+.dockerignore
+
+# Source maps in production (optional - comment out if needed for debugging)
+# **/*.map
+
+# Analytics and monitoring
+.vercel/
+.netlify/
+
+# Package lock files (npm ci will use package-lock.json)
+# package-lock.json - keep for reproducible builds
+
+# Public assets that are large and not needed
+# public/videos/
+# public/images/screenshots/
+
+# OpenAPI generated development files
+.openapi/
+
+# Misc development files
+.sass-cache/
+.connect.lock
+.husky/

@@ -1,0 +1,228 @@
+{
+  "generatedRoot": "aidis-command/frontend/src/api/generated",
+  "fileCount": 55,
+  "hashAlgorithm": "SHA-256",
+  "generatedAt": "2025-09-22T01:03:14.405Z",
+  "entries": [
+    {
+      "path": "core/ApiError.ts",
+      "sha256": "ac1abaa5a3ad075d93628d6c832ec50267580258b3a1b433a14594cbda31e425"
+    },
+    {
+      "path": "core/ApiRequestOptions.ts",
+      "sha256": "023524537825d077a570bf14b8e894992274df4d0c6c27f7e7ac2fd3f74f541f"
+    },
+    {
+      "path": "core/ApiResult.ts",
+      "sha256": "ebcb6e0238fe3da2c4db6de78d4ffcd40e4f76d5c53f14b4fef734fb4556d8ba"
+    },
+    {
+      "path": "core/CancelablePromise.ts",
+      "sha256": "3a248db3894a4c911cb65eb1fa6aa6729cf11be0e2c5e6ffe4cffabc6ca592e8"
+    },
+    {
+      "path": "core/OpenAPI.ts",
+      "sha256": "043891a94ff0f754633508b51bedd869331ec5b14be6beb9913acc6cef7198a3"
+    },
+    {
+      "path": "core/request.ts",
+      "sha256": "1ccdeca0b9dae2b2cb17b2d6dd6957127a78c5b8d9b5e35c711f1958318bba0e"
+    },
+    {
+      "path": "index.ts",
+      "sha256": "59f5b124ab2936ed24fb3baa576686042415f15e047039b5c4c49ea7f12d5ab2"
+    },
+    {
+      "path": "models/ApiErrorResponse.ts",
+      "sha256": "c06e1c5844d73f69c180b94d8d50e8aea1e947c72937e160631afb66d7e7e32a"
+    },
+    {
+      "path": "models/ApiSuccessResponse.ts",
+      "sha256": "602f1356047706b66f61c463e9f9eabef35d9e5e70bff18fd7997769f532ff1d"
+    },
+    {
+      "path": "models/BaseEntity.ts",
+      "sha256": "99f54508fdd7a38a2a4d372a81c73fab0be0b25985f2bd834463feeb187d49f7"
+    },
+    {
+      "path": "models/ContextEntity.ts",
+      "sha256": "1ee13821b98924e21c3a2a50f5640f35224045249ac09aa326ffbd0ccdd336b8"
+    },
+    {
+      "path": "models/ContextSearchResponse.ts",
+      "sha256": "d9b11b75b7860a8ff8b6b6e96455f379dc77c8cf80c65a71ba7304e41f0b929a"
+    },
+    {
+      "path": "models/ContextStats.ts",
+      "sha256": "afabe2ca4d15d17409246a75fc0223068ee3bbc4143d12002fe2a81f0384d22f"
+    },
+    {
+      "path": "models/CreateDecisionRequest.ts",
+      "sha256": "f6bcf1e9fb4523154b300afa454a2b39c755375db72405dac142ac66f304fa76"
+    },
+    {
+      "path": "models/CreateProject.ts",
+      "sha256": "bd1080a1dd17697c5ba78c52602ebb525d0163bd68b71c389f1f7cec17ec40ad"
+    },
+    {
+      "path": "models/CreateProjectRequest.ts",
+      "sha256": "0207a40e9a8d809f579962d747e6684c0555343787abbbadf050adafa67ffce7"
+    },
+    {
+      "path": "models/CreateTaskRequest.ts",
+      "sha256": "4fbf85ce5d478f5ef42b316427f1f0468f028f958964f5a2facfe0610ae3c291"
+    },
+    {
+      "path": "models/DecisionEntity.ts",
+      "sha256": "07e17b23de1c7dd8cc7e21d05abe5dd93bf0ccdeb1efbd0c695f98c450eb5a5c"
+    },
+    {
+      "path": "models/EmbeddingDataset.ts",
+      "sha256": "0373174c7cf438df27846594e003f1c32bcb740bb5d66db7af6848047818b771"
+    },
+    {
+      "path": "models/McpToolCall.ts",
+      "sha256": "665e7b2108a0fa34138055cf478e718826a0ce6408200ad136506b5a7c31d299"
+    },
+    {
+      "path": "models/McpToolResponse.ts",
+      "sha256": "5fadc1355d2077962dd88698cb9e1491bdd3ec6d690de5a484492452bc24746c"
+    },
+    {
+      "path": "models/MonitoringHealth.ts",
+      "sha256": "9d950831d84d441b6a573ff5903d43487d905e9ff5665cf8191275e45b2ff81f"
+    },
+    {
+      "path": "models/MonitoringMetrics.ts",
+      "sha256": "95c9a7a548fd58af436b46643b6cbdcf3bd906880e577de5e6818bfd24f57a21"
+    },
+    {
+      "path": "models/NamingEntry.ts",
+      "sha256": "1fa17e107821f533a79f6975f824e6d359a0c4d97f40264952d6ba58e9c6a995"
+    },
+    {
+      "path": "models/NamingStats.ts",
+      "sha256": "74e4952e3fed21261c013db46209af0640bd4b02034f01831053fe20048ca1ef"
+    },
+    {
+      "path": "models/PaginatedResponse.ts",
+      "sha256": "846384c599c2fc38851a13fd4f6b2d486334ff8cb5a89b3709b2ab7d58e39e1b"
+    },
+    {
+      "path": "models/PaginationQuery.ts",
+      "sha256": "b39dfd5dceb5624bcc12bf57def1d28ffc57dd687f615f450dd92c2cfe366597"
+    },
+    {
+      "path": "models/Project.ts",
+      "sha256": "2d2c50715b9ae5cc6b43ac640878297204ea44c6972363d4eac117ee702a8039"
+    },
+    {
+      "path": "models/ProjectDetailResponse.ts",
+      "sha256": "a2be7247c0776af63ca2b6e2d264fd174b5700ccf770e32c9b063135658fe373"
+    },
+    {
+      "path": "models/ProjectEntity.ts",
+      "sha256": "c4fc36dac9a784dc23d6bd91d291e8c00acc6581b6bae797b1a4af5406d62414"
+    },
+    {
+      "path": "models/ProjectListResponse.ts",
+      "sha256": "76416462f0a1933fb5e42030360e6ed8ace526e7cb275e395ba5fec389ad2eb8"
+    },
+    {
+      "path": "models/ProjectSessionsResponse.ts",
+      "sha256": "a982af6729ed4fbdd9e255365087da2903df7b812c779191ebd85d3e27235fd4"
+    },
+    {
+      "path": "models/ProjectStats.ts",
+      "sha256": "84f25c1579d7a22c18320334d92f7d1bcd0501a2c75bbf01d4b851c747de8216"
+    },
+    {
+      "path": "models/RegisterNamingRequest.ts",
+      "sha256": "fcce6f48959948023ce3192a64c68af37c0b6c20a067f430796a8e33335ac1d0"
+    },
+    {
+      "path": "models/SessionAssignmentResponse.ts",
+      "sha256": "0d0041c4733c2b4a07ca7455ddbf6cca65cb0e725888726eb63aeefcb7d11d07"
+    },
+    {
+      "path": "models/SessionCurrentResponse.ts",
+      "sha256": "18cfe523d9b3e190e3c3692e5a97339ec29ab69b3438877d8149fb4ba16f9610"
+    },
+    {
+      "path": "models/SessionDetail.ts",
+      "sha256": "14978129857906d970dc4fe535851790e822e1ade8a2ffca2dcc19ffad1f478e"
+    },
+    {
+      "path": "models/SessionDetailResponse.ts",
+      "sha256": "e483a9641a2bd5122a1761056f2e152857ba338e4ffe726043ca786d1c470173"
+    },
+    {
+      "path": "models/SessionEntity.ts",
+      "sha256": "f3b37ab93af0665c48ada7face7c9dd51e69ec458ed75a58c241cdedd338fe9d"
+    },
+    {
+      "path": "models/SessionListResponse.ts",
+      "sha256": "1d6e18223e88f35fabab7ee50b0edc5875a5718035567645793e15da9f60df83"
+    },
+    {
+      "path": "models/SessionStats.ts",
+      "sha256": "ab20d7cc99a4c75283aee9a586cc5dc6ff1036a4946b8471c22eb60f2707293b"
+    },
+    {
+      "path": "models/TaskEntity.ts",
+      "sha256": "65f474813ac6b1306543d9f774e995f647e512b01d1007cd4caa1d43fd77672b"
+    },
+    {
+      "path": "models/UpdateDecisionRequest.ts",
+      "sha256": "36edb549d39faa973ae610c8606fae3c1cdc33a3d418a2e4a93b6c58679fac4c"
+    },
+    {
+      "path": "models/UpdateProject.ts",
+      "sha256": "f362b611a017f6cd99c5994472f662021ba62fd3bc6f17b5386fb5cdee008635"
+    },
+    {
+      "path": "models/UpdateProjectRequest.ts",
+      "sha256": "e0e4bdaa2a641d013bcec474561ddf956bbfe5d5bf50b5a5f18de78b85a89007"
+    },
+    {
+      "path": "models/UpdateSession.ts",
+      "sha256": "7792a9d019e7bd682aee29273176a6782c51ab08f21136186a40d5c0440572c5"
+    },
+    {
+      "path": "models/UpdateTaskRequest.ts",
+      "sha256": "e4f8647d52d8ca8005d1ff7608ebc910d2ff11840b45da4aaf7aefe9f29758a3"
+    },
+    {
+      "path": "services/ContextsService.ts",
+      "sha256": "72273c0c0b755ed93e31a5d870ba4c73ded88a59f01cb4f6750a796b3d4453c5"
+    },
+    {
+      "path": "services/DecisionsService.ts",
+      "sha256": "d01745cd0421b67266087a0a84785c35100b9530bb8644aa18cafeac264777d5"
+    },
+    {
+      "path": "services/DocumentationService.ts",
+      "sha256": "3462f92da1b7e8a14954a094fc08d4310de1fef2044eee89811f85f3a1998b66"
+    },
+    {
+      "path": "services/EmbeddingsService.ts",
+      "sha256": "2ccd9cc9ef9213581dd627cd65d99038b551ae215ad13d57d5ec3e117ce1c890"
+    },
+    {
+      "path": "services/MonitoringService.ts",
+      "sha256": "c53e68bac2a26a7ec4411890089a297ffa2d8dc147540f38f6c8ab2386ee468f"
+    },
+    {
+      "path": "services/NamingService.ts",
+      "sha256": "37ca75109b6b4bba98ad17278fa1602d117c5d4e694323789183eb87920f8b4a"
+    },
+    {
+      "path": "services/ProjectsService.ts",
+      "sha256": "0436954366d5112e81fd91f937a77d8bdb2295dc50fdb07f6715791420ec2750"
+    },
+    {
+      "path": "services/SessionsService.ts",
+      "sha256": "7e9ed7cbe5641cf970685c307e5576bd544c6a7a5a3d6bdc2ead1969bd373042"
+    }
+  ]
+}

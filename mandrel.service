@@ -1,0 +1,73 @@
+[Unit]
+Description=Mandrel - AI Development Intelligence System
+Documentation=https://github.com/your-org/mandrel
+After=network.target postgresql.service
+Wants=postgresql.service
+Requires=postgresql.service
+
+[Service]
+Type=simple
+User=ridgetop
+Group=ridgetop
+WorkingDirectory=/home/ridgetop/aidis/mcp-server
+Environment=NODE_ENV=production
+Environment=NODE_OPTIONS="--max-old-space-size=2048"
+EnvironmentFile=-/home/ridgetop/aidis/mcp-server/.env
+
+# Process management - Production hardened
+ExecStartPre=/bin/bash -c 'until pg_isready -h localhost -p 5432; do sleep 1; done'
+ExecStart=/home/ridgetop/.nvm/versions/node/v22.18.0/bin/node /home/ridgetop/aidis/mcp-server/node_modules/.bin/tsx src/server.ts
+
+# Health check via ExecStartPost (runs after service starts)
+ExecStartPost=/bin/bash -c 'for i in {1..30}; do curl -f http://localhost:8080/health && exit 0 || sleep 1; done; exit 1'
+
+ExecReload=/bin/kill -HUP $MAINPID
+ExecStop=/bin/kill -TERM $MAINPID
+
+# Graceful shutdown
+KillMode=mixed
+KillSignal=SIGTERM
+SendSIGKILL=yes
+TimeoutStartSec=30
+TimeoutStopSec=30
+
+# Restart policy - Always restart for production
+Restart=always
+RestartSec=10
+StartLimitBurst=5
+StartLimitInterval=600
+
+# Security hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/home/ridgetop/aidis
+PrivateTmp=true
+ProtectHome=read-only
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictNamespaces=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+LockPersonality=true
+
+# Resource limits
+LimitNOFILE=65536
+LimitNPROC=4096
+MemoryMax=2G
+MemorySwapMax=512M
+CPUQuota=200%
+TasksMax=100
+
+# I/O and scheduling
+IOWeight=100
+Nice=0
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=mandrel
+LogLevelMax=info
+
+[Install]
+WantedBy=multi-user.target

@@ -1,7 +1,7 @@
 {
-  "name": "aidis-mcp-server",
+  "name": "mandrel-mcp-server",
   "version": "0.1.0",
-  "description": "AI Development Intelligence System - MCP Server for persistent context management",
+  "description": "Mandrel Development Intelligence System - MCP Server for persistent context management",
   "main": "dist/main.js",
   "type": "module",
   "directories": {
@@ -36,7 +36,7 @@
     "postgresql",
     "vector-search"
   ],
-  "author": "Brian (AIDIS Project)",
+  "author": "Brian (Mandrel Project)",
   "license": "MIT",
   "devDependencies": {
     "@types/cors": "^2.8.19",

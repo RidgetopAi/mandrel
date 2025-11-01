@@ -12,7 +12,7 @@
 import { db } from '../config/database.js';
 import { embeddingService } from '../services/embedding.js';
 import { projectHandler } from './project.js';
-import { logContextEvent, logEvent } from '../middleware/eventLogger.js';
+import { logContextEvent, logHierarchicalMemorySearch } from '../middleware/eventLogger.js';
 
 export interface StoreContextRequest {
   projectId?: string;
@@ -49,6 +49,11 @@ export interface SearchContextRequest {
 export interface SearchResult extends ContextEntry {
   similarity?: number;
   searchReason?: string;
+  // Score components for observability (Instance #49)
+  recency_score?: number;
+  importance_score?: number;
+  type_weight?: number;
+  combined_score?: number;
 }
 
 export class ContextHandler {
@@ -250,11 +255,29 @@ export class ContextHandler {
   }
 
   /**
+   * Extract which recency keywords matched in the query
+   * Instance #49: For observability logging
+   */
+  private extractRecencyKeywords(query: string): string[] {
+    const recencyKeywords = [
+      'recent', 'latest', 'current', 'now',
+      'today', 'yesterday', 'this week', 'this month',
+      'new', 'newest', 'just', 'last'
+    ];
+
+    const queryLower = query.toLowerCase();
+    return recencyKeywords.filter(keyword => queryLower.includes(keyword));
+  }
+
+  /**
    * Search contexts using vector similarity and filters
    * Supports hierarchical memory scoring when enabled for project
    */
   async searchContext(request: SearchContextRequest): Promise<SearchResult[]> {
     console.log(`🔍 Searching contexts: "${request.query}"`);
+
+    // Instance #49: Start performance timing for observability
+    const startTime = performance.now();
 
     try {
       // Generate embedding for search query
@@ -446,7 +469,12 @@ export class ContextHandler {
           tags: row.tags || [],
           metadata: typeof row.metadata === 'string' ? JSON.parse(row.metadata) : row.metadata,
           similarity: Math.round(similarity * 10) / 10, // Round to 1 decimal place
-          searchReason: finalSearchReason
+          searchReason: finalSearchReason,
+          // Include score components for observability (Instance #49)
+          recency_score: row.recency_score ? parseFloat(row.recency_score) : undefined,
+          importance_score: row.importance_score ? parseFloat(row.importance_score) : undefined,
+          type_weight: row.type_weight ? parseFloat(row.type_weight) : undefined,
+          combined_score: row.combined_score ? parseFloat(row.combined_score) : undefined
         };
       });
 
@@ -460,23 +488,23 @@ export class ContextHandler {
         console.log(`🎯 Top match: ${filtered[0].similarity}% similarity - "${filtered[0].content.substring(0, 60)}..."`);
       }
 
-      // Log the search event
-      await logEvent({
-        actor: 'ai',
-        event_type: 'context_search',
-        payload: {
-          query: request.query,
-          filters: {
-            projectId: request.projectId,
-            type: request.type,
-            tags: request.tags,
-            minSimilarity: request.minSimilarity
-          },
-          results_count: filtered.length,
-          top_similarity: filtered.length > 0 ? filtered[0].similarity : 0
-        },
-        status: 'closed',
-        tags: ['context', 'search']
+      // Instance #49: Calculate query latency and log hierarchical memory search with observability data
+      const queryLatency = Math.round(performance.now() - startTime);
+
+      // Determine mode and extract matched keywords
+      const mode = hierarchicalEnabled ? (isRecencyFocused ? 'recency' : 'balanced') : 'baseline';
+      const intentKeywordsMatched = isRecencyFocused ? this.extractRecencyKeywords(request.query) : [];
+
+      // Log with detailed observability data (Oracle Priority 1)
+      await logHierarchicalMemorySearch({
+        query: request.query,
+        mode: mode,
+        intentKeywordsMatched: intentKeywordsMatched,
+        results: filtered,
+        queryLatencyMs: queryLatency,
+        filters: request,
+        projectId: request.projectId,
+        hierarchicalEnabled: hierarchicalEnabled
       });
 
       return filtered;

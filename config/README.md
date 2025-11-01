@@ -37,26 +37,26 @@ The following sensitive values MUST be set as environment variables and are NOT 
 
 ```bash
 # Database password (REQUIRED in production)
-export AIDIS_DATABASE_PASSWORD="your-secure-password"
+export MANDREL_DATABASE_PASSWORD="your-secure-password"
 
 # JWT secret for authentication (REQUIRED in production)
-export AIDIS_JWT_SECRET="your-randomly-generated-jwt-secret"
+export MANDREL_JWT_SECRET="your-randomly-generated-jwt-secret"
 
 # Optional: Database URL (overrides individual components)
-export AIDIS_DATABASE_URL="postgresql://user:pass@host:port/db"
+export MANDREL_DATABASE_URL="postgresql://user:pass@host:port/db"
 ```
 
 ## Environment Variable Naming Convention
 
-All AIDIS-specific variables use the `AIDIS_` prefix:
+All AIDIS-specific variables use the `MANDREL_` prefix:
 
-- `AIDIS_DATABASE_*` - Database configuration
-- `AIDIS_HTTP_PORT` - Main HTTP service port
-- `AIDIS_MCP_*` - MCP protocol configuration
-- `AIDIS_LOG_*` - Logging configuration
-- `AIDIS_FEATURE_FLAG_*` - Feature flag overrides
+- `MANDREL_DATABASE_*` - Database configuration
+- `MANDREL_HTTP_PORT` - Main HTTP service port
+- `MANDREL_MCP_*` - MCP protocol configuration
+- `MANDREL_LOG_*` - Logging configuration
+- `MANDREL_FEATURE_FLAG_*` - Feature flag overrides
 
-Legacy variables (without AIDIS_ prefix) are supported as fallbacks for backward compatibility.
+Legacy variables (without MANDREL_ prefix) are supported as fallbacks for backward compatibility.
 
 ## Migration from Local .env Files
 
@@ -89,12 +89,12 @@ The configuration system maintains backward compatibility:
 ### AIDIS Command Backend
 - Uses `/config/environments/.env.{NODE_ENV}`
 - Implements full hierarchical loading
-- Supports both AIDIS_ and legacy variable names
+- Supports both MANDREL_ and legacy variable names
 
 ### MCP Server
 - Uses centralized configuration for database connection
 - Maintains environment variable fallbacks
-- Supports AIDIS_ naming convention
+- Supports MANDREL_ naming convention
 
 ## Security Best Practices
 
@@ -117,7 +117,7 @@ Services will validate required environment variables on startup and exit if cri
 4. Review startup logs for validation errors
 
 ### Port Conflicts
-1. Set `AIDIS_*_PORT=0` for dynamic assignment
+1. Set `MANDREL_*_PORT=0` for dynamic assignment
 2. Check the port registry at `/run/port-registry.json`
 3. Ensure no other services are using fixed ports
 
