@@ -221,9 +221,9 @@ describe('SSE Error Scenarios and Recovery (Frontend)', () => {
       // Send good event
       const validEvent: AidisDbEvent = {
         entity: 'tasks',
-        operation: 'insert',
+        action: 'insert',
         id: 'task-123',
-        timestamp: new Date().toISOString(),
+        at: new Date().toISOString(),
       };
 
       const invalidateSpy = jest.spyOn(queryClient, 'invalidateQueries');
@@ -250,9 +250,9 @@ describe('SSE Error Scenarios and Recovery (Frontend)', () => {
       const es = MockEventSource.getLastInstance()!;
       const event: AidisDbEvent = {
         entity: 'tasks',
-        operation: 'update',
+        action: 'update',
         id: 'task-123',
-        timestamp: new Date().toISOString(),
+        at: new Date().toISOString(),
       };
 
       es.simulateEvent('tasks', event);
@@ -274,9 +274,9 @@ describe('SSE Error Scenarios and Recovery (Frontend)', () => {
       const es = MockEventSource.getLastInstance()!;
       const event: AidisDbEvent = {
         entity: 'contexts',
-        operation: 'insert',
+        action: 'insert',
         id: 'ctx-123',
-        timestamp: new Date().toISOString(),
+        at: new Date().toISOString(),
       };
 
       es.simulateEvent('contexts', event);
@@ -299,9 +299,9 @@ describe('SSE Error Scenarios and Recovery (Frontend)', () => {
       const es = MockEventSource.getLastInstance()!;
       const event: AidisDbEvent = {
         entity: 'tasks',
-        operation: 'update',
+        action: 'update',
         id: 'task-123',
-        timestamp: new Date().toISOString(),
+        at: new Date().toISOString(),
       };
 
       es.simulateEvent('tasks', event);
@@ -325,9 +325,9 @@ describe('SSE Error Scenarios and Recovery (Frontend)', () => {
       const es = MockEventSource.getLastInstance()!;
       const event: AidisDbEvent = {
         entity: 'unknown' as any,
-        operation: 'insert',
+        action: 'insert',
         id: 'unk-123',
-        timestamp: new Date().toISOString(),
+        at: new Date().toISOString(),
       };
 
       expect(() => es.simulateEvent('unknown', event)).not.toThrow();
@@ -483,11 +483,11 @@ describe('SSE Error Scenarios and Recovery (Frontend)', () => {
       const es = MockEventSource.getLastInstance()!;
 
       const events: AidisDbEvent[] = [
-        { entity: 'tasks', operation: 'insert', id: 't1', timestamp: new Date().toISOString() },
-        { entity: 'contexts', operation: 'update', id: 'c1', timestamp: new Date().toISOString() },
-        { entity: 'decisions', operation: 'delete', id: 'd1', timestamp: new Date().toISOString() },
-        { entity: 'projects', operation: 'insert', id: 'p1', timestamp: new Date().toISOString() },
-        { entity: 'sessions', operation: 'update', id: 's1', timestamp: new Date().toISOString() },
+        { entity: 'tasks', action: 'insert', id: 't1', at: new Date().toISOString() },
+        { entity: 'contexts', action: 'update', id: 'c1', at: new Date().toISOString() },
+        { entity: 'decisions', action: 'delete', id: 'd1', at: new Date().toISOString() },
+        { entity: 'projects', action: 'insert', id: 'p1', at: new Date().toISOString() },
+        { entity: 'sessions', action: 'update', id: 's1', at: new Date().toISOString() },
       ];
 
       events.forEach(evt => es.simulateEvent(evt.entity, evt));
@@ -547,9 +547,9 @@ describe('SSE Error Scenarios and Recovery (Frontend)', () => {
       const es = MockEventSource.getLastInstance()!;
       const event: AidisDbEvent = {
         entity: 'tasks',
-        operation: 'insert',
+        action: 'insert',
         id: 'task-123',
-        timestamp: new Date().toISOString(),
+        at: new Date().toISOString(),
       };
 
       es.simulateEvent('tasks', event);
