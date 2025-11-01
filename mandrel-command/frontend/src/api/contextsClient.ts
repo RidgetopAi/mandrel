@@ -32,7 +32,7 @@ const serializeSearchParams = (params: ContextSearchParams) => {
 
   return {
     query,
-    project_id,
+    projectId: project_id,
     sessionId: session_id,
     type: type as any,
     tags: tags?.length ? tags.join(',') : undefined,
