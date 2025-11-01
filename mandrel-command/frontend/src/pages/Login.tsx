@@ -159,7 +159,7 @@ const Login: React.FC = () => {
 
           {/* Footer */}
           <Text type="secondary" style={{ fontSize: '12px' }}>
-            AIDIS Command ©2025 - AI Development Intelligence System
+            Mandrel Command ©2025 - Development Intelligence System
           </Text>
         </Space>
       </Card>
