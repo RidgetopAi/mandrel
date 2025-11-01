@@ -1,0 +1,10 @@
+[Unit]
+Description=Mandrel Health Check
+After=mandrel.service
+Requires=mandrel.service
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash -c 'curl -f http://localhost:8080/health || (systemctl restart mandrel.service && logger -t mandrel-health "Service unhealthy, restarted")'
+StandardOutput=journal
+StandardError=journal

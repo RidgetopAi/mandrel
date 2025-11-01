@@ -39,8 +39,8 @@ Add to your Claude Code MCP configuration:
       "command": "npx",
       "args": ["tsx", "/path/to/aidis/adapters/mcp-http-adapter.ts"],
       "env": {
-        "AIDIS_URL": "http://localhost:8080",
-        "AIDIS_DEBUG": "false"
+        "MANDREL_URL": "http://localhost:8080",
+        "MANDREL_DEBUG": "false"
       }
     }
   }
@@ -64,23 +64,23 @@ Configure the adapter using environment variables:
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `AIDIS_URL` | `http://localhost:8080` | AIDIS Core Service URL |
-| `AIDIS_TIMEOUT` | `30000` | Request timeout in milliseconds |
-| `AIDIS_RETRIES` | `3` | Maximum retry attempts |
-| `AIDIS_DEBUG` | `false` | Enable debug logging |
+| `MANDREL_URL` | `http://localhost:8080` | AIDIS Core Service URL |
+| `MANDREL_TIMEOUT` | `30000` | Request timeout in milliseconds |
+| `MANDREL_RETRIES` | `3` | Maximum retry attempts |
+| `MANDREL_DEBUG` | `false` | Enable debug logging |
 
 ## Available Tools
 
 The adapter dynamically discovers all tools from the AIDIS Core Service. Currently supports 41 tools across 8 categories:
 
 ### System Health (3 tools)
-- `aidis_ping` - Test connectivity 
-- `aidis_status` - Get system status
-- `aidis_help` - List all tools
+- `mandrel_ping` - Test connectivity 
+- `mandrel_status` - Get system status
+- `mandrel_help` - List all tools
 
 ### Navigation (2 tools)  
-- `aidis_explain` - Get detailed tool help
-- `aidis_examples` - Get usage examples
+- `mandrel_explain` - Get detailed tool help
+- `mandrel_examples` - Get usage examples
 
 ### Context Management (4 tools)
 - `context_store` - Store development context
@@ -205,7 +205,7 @@ curl http://localhost:8080/mcp/tools
 
 Enable detailed logging:
 ```bash
-export AIDIS_DEBUG=true
+export MANDREL_DEBUG=true
 npx tsx mcp-http-adapter.ts
 ```
 
@@ -216,7 +216,7 @@ npx tsx mcp-http-adapter.ts
    - Check firewall settings and network connectivity
 
 2. **"Tool execution timeout"**  
-   - Increase `AIDIS_TIMEOUT` environment variable
+   - Increase `MANDREL_TIMEOUT` environment variable
    - Check AIDIS Core Service performance
 
 3. **"Circuit breaker is OPEN"**

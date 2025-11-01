@@ -1303,7 +1303,7 @@ class AIDISCoreServer {
       console.log(`   🐛 Debug: ${process.env.AIDIS_DEBUG || 'DISABLED'}`);
       
       console.log('🎯 Available tools: 27 total');
-      console.log('   📊 System: aidis_ping, aidis_status, aidis_help, aidis_explain, aidis_examples');
+      console.log('   📊 System: mandrel_ping, mandrel_status, mandrel_help, mandrel_explain, mandrel_examples');
       console.log('   📝 Context: context_store, context_search, context_get_recent, context_stats');
       console.log('   📋 Projects: project_list, project_create, project_switch, project_current, project_info');
       console.log('   📋 Decisions: decision_record, decision_search, decision_update, decision_stats');

@@ -30,9 +30,9 @@
 
 Essential tools for discovering AIDIS capabilities:
 
-- **`aidis_help`** - Show all 27 tools organized by category
-- **`aidis_explain <toolname>`** - Get detailed help for any specific tool
-- **`aidis_examples <toolname>`** - See usage examples and patterns
+- **`mandrel_help`** - Show all 27 tools organized by category
+- **`mandrel_explain <toolname>`** - Get detailed help for any specific tool
+- **`mandrel_examples <toolname>`** - See usage examples and patterns
 
 ### HTTP Bridge Connection
 
@@ -40,13 +40,13 @@ Essential tools for discovering AIDIS capabilities:
 
 - **Endpoint Pattern**: `http://localhost:8080/mcp/tools/{toolName}`
 - **Method**: POST with JSON body containing tool arguments
-- **Test Connection**: Always start with `aidis_ping` to verify the bridge is working
+- **Test Connection**: Always start with `mandrel_ping` to verify the bridge is working
 
 **Quick Test**:
 
 ```bash
 # Test AIDIS connection (always do this first!)
-curl -X POST http://localhost:8080/mcp/tools/aidis_ping \
+curl -X POST http://localhost:8080/mcp/tools/mandrel_ping \
   -H "Content-Type: application/json" \
   -d '{}'
 
@@ -56,10 +56,10 @@ curl -X POST http://localhost:8080/mcp/tools/aidis_ping \
 
 ### Session Startup Workflow
 
-1. `aidis_ping` - Test HTTP bridge connection (via curl or direct tool call)
-2. `aidis_help` - See all available tools
+1. `mandrel_ping` - Test HTTP bridge connection (via curl or direct tool call)
+2. `mandrel_help` - See all available tools
 3. `project_current` - Check current project
-4. `aidis_explain <tool>` - Get help for tools you want to use
+4. `mandrel_explain <tool>` - Get help for tools you want to use
 
 ### Current Architecture
 
@@ -83,7 +83,7 @@ curl -X POST http://localhost:8080/mcp/tools/aidis_ping \
 
 **Session MCP tools deleted (Phase 6) - sessions auto-manage via SessionTracker service**
 
-**REST API (8 endpoints - for AIDIS Command UI):**
+**REST API (8 endpoints - for Mandrel Command UI):**
 
 - `POST /api/v2/sessions/:id/activities` - Record session activity
 - `GET /api/v2/sessions/:id/activities` - Get activity timeline
@@ -108,7 +108,7 @@ curl -X POST http://localhost:8080/mcp/tools/aidis_ping \
 
 ### Core Tool Categories
 
-- **System**: aidis_ping, aidis_status
+- **System**: mandrel_ping, mandrel_status
 - **Context**: context_store, context_search, context_get_recent, context_stats
 - **Projects**: project_list, project_create, project_switch, project_current, project_info, project_insights
 - **Naming**: naming_register, naming_check, naming_suggest, naming_stats
@@ -188,13 +188,13 @@ npx tsx test-complete-aidis.ts # Test all systems
 
 ```typescript
 // Navigation (NEW!)
-aidis_help()
-aidis_explain(toolName: string)
-aidis_examples(toolName: string)
+mandrel_help()
+mandrel_explain(toolName: string)
+mandrel_examples(toolName: string)
 
 // System Health
-aidis_ping(message?: string)
-aidis_status()
+mandrel_ping(message?: string)
+mandrel_status()
 
 // Context Management
 context_store(content: string, type: string, tags?: string[])
@@ -206,20 +206,20 @@ project_current()
 project_switch(project: string)
 project_list(includeStats?: boolean)
 
-// Essential Parameters Only - Use aidis_explain for complete reference
+// Essential Parameters Only - Use mandrel_explain for complete reference
 ```
 
 ### Reference Guides
 
 - **Comprehensive MCP Guide**: `AIDIS_MCP_SERVER_REFERENCE_GUIDE.md`
-- **Tool Parameters**: Use `aidis_explain <toolname>` for current info
-- **Examples**: Use `aidis_examples <toolname>` for usage patterns
+- **Tool Parameters**: Use `mandrel_explain <toolname>` for current info
+- **Examples**: Use `mandrel_examples <toolname>` for usage patterns
 
 ### Common AIDIS Parameter Patterns
 
 - **Arrays**: Pass as actual arrays, not strings: `["tag1", "tag2"]`
-- **Always check examples first**: Use `aidis_examples <tool>` before implementation
-- **Required vs optional**: Use `aidis_explain <tool>` to see what's actually required
+- **Always check examples first**: Use `mandrel_examples <tool>` before implementation
+- **Required vs optional**: Use `mandrel_explain <tool>` to see what's actually required
 
 ### AIDIS Tool Troubleshooting
 
@@ -231,6 +231,6 @@ project_list(includeStats?: boolean)
 
 **Last Updated**: 2025-10-24
 **Tools**: 27 active MCP tools
-**REST API**: 8 session analytics endpoints at /api/v2/sessions/\* (for AIDIS Command UI)
+**REST API**: 8 session analytics endpoints at /api/v2/sessions/\* (for Mandrel Command UI)
 **Token Usage**: ~8,100 tokens (70% reduction from original 27,500)
 **Status**: Production ready - cleaned and streamlined for podcast demo

@@ -1,4 +1,4 @@
-# AIDIS - AI Development Intelligence System
+# Mandrel - AI Development Intelligence System
 
 **Persistent AI memory and development intelligence platform for complex software projects**
 
@@ -10,7 +10,7 @@
 
 ## Overview
 
-AIDIS provides persistent memory and intelligence tools for AI development workflows. It solves the fundamental problem of context loss in AI-assisted development by maintaining a searchable knowledge base of project context, technical decisions, and task coordination across development sessions.
+Mandrel provides persistent memory and intelligence tools for AI development workflows. It solves the fundamental problem of context loss in AI-assisted development by maintaining a searchable knowledge base of project context, technical decisions, and task coordination across development sessions.
 
 **Key Capabilities:**
 - Persistent context storage with semantic search
@@ -23,7 +23,7 @@ AIDIS provides persistent memory and intelligence tools for AI development workf
 
 ## Architecture
 
-AIDIS consists of two primary components:
+Mandrel consists of two primary components:
 
 ### MCP Server
 Production-grade backend implementing the Model Context Protocol with 27 specialized tools for development intelligence.
@@ -34,7 +34,7 @@ Production-grade backend implementing the Model Context Protocol with 27 special
 - Local embeddings via Transformers.js (zero API costs)
 - MCP STDIO + HTTP bridge protocols
 
-### AIDIS Command Dashboard
+### Mandrel Command Dashboard
 Web-based administration interface for managing projects, contexts, and tasks.
 
 **Technology Stack:**
@@ -51,7 +51,7 @@ System Architecture
 │   ├── Local embeddings (384D vectors)
 │   └── HTTP Bridge (Port 8080)
 │
-└── AIDIS Command (Ports 3000/5000)
+└── Mandrel Command (Ports 3000/5000)
     ├── React Frontend
     ├── Express Backend
     └── WebSocket Server
@@ -75,7 +75,7 @@ git clone https://github.com/RidgetopAi/aidis.git
 cd aidis
 
 # Start PostgreSQL (using Docker)
-docker run -d --name aidis-postgres \
+docker run -d --name mandrel-postgres \
   -e POSTGRES_USER=ridgetop \
   -e POSTGRES_PASSWORD=your_password \
   -e POSTGRES_DB=aidis_production \
@@ -90,10 +90,10 @@ npm install
 npx tsx scripts/migrate.ts
 
 # Start MCP server
-./start-aidis.sh
+./start-mandrel.sh
 
-# Install AIDIS Command (new terminal)
-cd ../aidis-command
+# Install Mandrel Command (new terminal)
+cd ../mandrel-command
 npm run install:all
 
 # Start backend
@@ -105,7 +105,7 @@ cd frontend && npm start
 
 ### Access
 
-- **AIDIS Command UI**: http://localhost:3000
+- **Mandrel Command UI**: http://localhost:3000
 - **Default Login**: admin / admin123!
 - **MCP Server**: localhost:5001 (STDIO) / localhost:8080 (HTTP Bridge)
 
@@ -119,7 +119,7 @@ The MCP HTTP bridge (port 8080) is **unauthenticated** and binds to `127.0.0.1` 
 
 - ✅ **Safe**: Default localhost-only binding prevents network exposure
 - ⚠️ **Do NOT expose** the HTTP bridge to the internet without adding authentication
-- 🔧 **Override**: Set `AIDIS_BIND_ADDR=0.0.0.0` to bind all interfaces (NOT RECOMMENDED for production)
+- 🔧 **Override**: Set `MANDREL_BIND_ADDR=0.0.0.0` to bind all interfaces (NOT RECOMMENDED for production)
 
 **First Run Note**: The first context storage downloads the Transformers.js embedding model (~50MB). This may take 1-2 minutes. Subsequent operations are fast.
 
@@ -176,7 +176,7 @@ Track development sessions with productivity metrics and activity timelines.
 
 ## MCP Tools
 
-AIDIS provides 27 specialized tools via the Model Context Protocol:
+Mandrel provides 27 specialized tools via the Model Context Protocol:
 
 **Navigation & Help** (5 tools)
 - System health monitoring
@@ -209,7 +209,7 @@ AIDIS provides 27 specialized tools via the Model Context Protocol:
 - Cross-project intelligent search
 - AI-powered recommendations
 
-For detailed tool documentation, use the `aidis_help` and `aidis_explain` tools.
+For detailed tool documentation, use the `mandrel_help` and `mandrel_explain` tools.
 
 ---
 
@@ -227,16 +227,16 @@ npx tsx src/server.ts
 npx tsx scripts/migrate.ts
 
 # Production scripts
-./start-aidis.sh    # Start server
-./stop-aidis.sh     # Stop server
-./restart-aidis.sh  # Restart server
-./status-aidis.sh   # Check status
+./start-mandrel.sh    # Start server
+./stop-mandrel.sh     # Stop server
+./restart-mandrel.sh  # Restart server
+./status-mandrel.sh   # Check status
 ```
 
-### AIDIS Command Commands
+### Mandrel Command Commands
 
 ```bash
-cd aidis-command
+cd mandrel-command
 
 # Backend development
 cd backend && npm run dev
@@ -263,7 +263,7 @@ npx tsx scripts/migrate.ts
 
 ### Environment Variables
 
-Create `.env` files in `mcp-server/` and `aidis-command/backend/`:
+Create `.env` files in `mcp-server/` and `mandrel-command/backend/`:
 
 **MCP Server (.env)**
 ```env
@@ -276,7 +276,7 @@ MCP_PORT=5001
 HTTP_BRIDGE_PORT=8080
 ```
 
-**AIDIS Command Backend (.env)**
+**Mandrel Command Backend (.env)**
 ```env
 DATABASE_URL=postgresql://ridgetop:your_password@localhost:5432/aidis_production
 JWT_SECRET=your_jwt_secret
@@ -286,7 +286,7 @@ FRONTEND_URL=http://localhost:3000
 
 ### Default Project
 
-Configure default project selection in AIDIS Command Settings page for automatic project loading on login.
+Configure default project selection in Mandrel Command Settings page for automatic project loading on login.
 
 ---
 
@@ -304,20 +304,20 @@ Configure default project selection in AIDIS Command Settings page for automatic
 ```bash
 cd mcp-server
 npm install --production
-./start-aidis.sh
+./start-mandrel.sh
 ```
 
-### AIDIS Command
+### Mandrel Command
 
 ```bash
-cd aidis-command
+cd mandrel-command
 npm run build:all
 npm run start:prod
 ```
 
 ### Systemd Service (Optional)
 
-Template service file available at `aidis.service` for systemd integration.
+Template service file available at `mandrel.service` for systemd integration.
 
 ---
 
@@ -334,7 +334,7 @@ aidis/
 │   ├── migrations/          # Database schema
 │   └── scripts/             # Utility scripts
 │
-├── aidis-command/           # Web dashboard
+├── mandrel-command/         # Web dashboard
 │   ├── frontend/            # React application
 │   │   ├── src/
 │   │   │   ├── components/  # React components
@@ -386,8 +386,8 @@ Build searchable knowledge bases of project-specific information and decisions.
 - **Setup Guide**: `docs/DEV_SETUP_GUIDE.md`
 - **Database Migrations**: `docs/DB_MIGRATION_WALKTHROUGH.md`
 - **MCP Protocol Reference**: `docs/reference/MCP_STDIO_PROTOCOL_REFERENCE.md`
-- **API Documentation**: Available in `aidis-command/backend/src/routes/`
-- **Tool Catalog**: Use `aidis_help` MCP tool for current tool listing
+- **API Documentation**: Available in `mandrel-command/backend/src/routes/`
+- **Tool Catalog**: Use `mandrel_help` MCP tool for current tool listing
 
 ---
 
@@ -404,7 +404,7 @@ Contributions are welcome! Please follow these guidelines:
 ### Development Branch Structure
 
 - `main` - Production-ready code
-- `aidis-alpha` - Active development
+- `mandrel-alpha` - Active development
 - `dev-docs` - Historical documentation
 
 ---
@@ -417,6 +417,6 @@ MIT License - See LICENSE file for details.
 
 ## Acknowledgments
 
-Built by RidgetopAI for sustainable AI-assisted development. AIDIS demonstrates that persistent memory and structured knowledge management are essential for complex software projects involving AI agents.
+Built by RidgetopAI for sustainable AI-assisted development. Mandrel demonstrates that persistent memory and structured knowledge management are essential for complex software projects involving AI agents.
 
 For questions or support, please open an issue on GitHub.
