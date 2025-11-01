@@ -3,6 +3,7 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { Form, Input, Button, Card, Typography, Space, Alert } from 'antd';
 import { UserOutlined, LockOutlined, DatabaseOutlined } from '@ant-design/icons';
 import { useAuthContext } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { LoginRequest } from '../api/generated/models/LoginRequest';
 
 const { Title, Text } = Typography;
@@ -15,6 +16,7 @@ interface LocationState {
 
 const Login: React.FC = () => {
   const { isAuthenticated, isLoading, error, login, clearError } = useAuthContext();
+  const { themeMode } = useTheme();
   const location = useLocation();
   const [form] = Form.useForm();
 
@@ -62,7 +64,7 @@ const Login: React.FC = () => {
           size="large"
           style={{ width: '100%', textAlign: 'center' }}
         >
-          {/* AIDIS Logo and Title */}
+          {/* Mandrel Logo and Title */}
           <Space direction="vertical" size="small">
             <DatabaseOutlined
               style={{
@@ -72,7 +74,7 @@ const Login: React.FC = () => {
               }}
             />
             <Title level={2} style={{ margin: 0, color: '#1890ff' }}>
-              AIDIS Command
+              Mandrel Command
             </Title>
             <Text type="secondary">
               Database Management & Admin Tool
@@ -144,7 +146,7 @@ const Login: React.FC = () => {
           {/* Demo Credentials */}
           <div
             style={{
-              backgroundColor: '#f6f6f6',
+              backgroundColor: themeMode === 'dark' ? '#1f1f1f' : '#f6f6f6',
               padding: '12px',
               borderRadius: '6px',
               fontSize: '12px',
