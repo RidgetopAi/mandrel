@@ -297,8 +297,7 @@ export class SessionAnalyticsService {
       let params: any[] = [];
       let paramIndex = 1;
 
-      // IMPORTANT: Filter out web-ui and web sessions by default (they're auth artifacts, not work sessions)
-      whereConditions.push(`(s.agent_type NOT IN ('web-ui', 'web') OR s.agent_type IS NULL)`);
+      // No filtering needed - we only have 'mcp-server' and 'AI Model' session types now
 
       if (projectId) {
         whereConditions.push(`s.project_id = $${paramIndex}`);
