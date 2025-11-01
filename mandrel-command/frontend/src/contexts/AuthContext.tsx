@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { message } from 'antd';
 import { useLogin, useLogout, useAuthCheck } from '../hooks/useAuth';
 import { useAuth } from '../stores/authStore';
@@ -31,6 +32,7 @@ interface AuthProviderProps {
 }
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
+  const navigate = useNavigate();
   const authStore = useAuth();
   const loginMutation = useLogin();
   const logoutMutation = useLogout();
@@ -72,12 +74,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       await logoutMutation.mutateAsync();
       message.info('Logged out successfully');
+      // Explicitly navigate to login page after logout
+      navigate('/login', { replace: true });
     } catch (error) {
       console.error('Logout error:', error);
-      // Even if logout fails, clear local state
+      // Even if logout fails, clear local state and redirect
       message.info('Logged out successfully');
+      navigate('/login', { replace: true });
     }
-  }, [logoutMutation]);
+  }, [logoutMutation, navigate]);
 
   const clearError = React.useCallback(() => {
     authStore.clearError();
