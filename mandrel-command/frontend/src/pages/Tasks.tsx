@@ -102,6 +102,20 @@ const Tasks: React.FC = () => {
     loadTasks();
   }, [projectId, loadTasks]);
 
+  // Listen for SSE task updates
+  useEffect(() => {
+    const handleTaskUpdate = () => {
+      console.log('SSE task update event received, reloading tasks...');
+      loadTasks();
+    };
+
+    window.addEventListener('aidis:task-update', handleTaskUpdate);
+    
+    return () => {
+      window.removeEventListener('aidis:task-update', handleTaskUpdate);
+    };
+  }, [loadTasks]);
+
   // Cleanup effect for component unmounting
   useEffect(() => {
     return () => {

@@ -2,8 +2,8 @@ export type AidisEntity = 'contexts' | 'tasks' | 'decisions' | 'projects' | 'ses
 
 export interface AidisDbEvent {
   entity: AidisEntity;
-  operation: 'insert' | 'update' | 'delete';
-  id?: string;
+  action: 'insert' | 'update' | 'delete';
+  id: string;
   projectId?: string;
-  timestamp: string;
+  at: string;
 }
