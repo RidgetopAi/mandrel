@@ -1,61 +1,13 @@
 #!/bin/bash
 
-# AIDIS Simple Process Starter
-# Replaces SystemD service with basic process management
+# DEPRECATED: This script has been renamed to start-mandrel.sh
+# This wrapper is provided for backward compatibility
 
 cd "$(dirname "$0")"
 
-echo "🚀 Starting AIDIS MCP Server..."
+echo "⚠️  DEPRECATION WARNING: start-aidis.sh is deprecated"
+echo "📝 Please use start-mandrel.sh instead"
+echo "🔄 Forwarding to start-mandrel.sh..."
+echo ""
 
-# Ensure logs directory exists
-mkdir -p logs
-
-# Check if already running
-if [ -f logs/aidis.pid ]; then
-    PID=$(cat logs/aidis.pid)
-    if ps -p $PID > /dev/null 2>&1; then
-        echo "⚠️  AIDIS already running (PID: $PID)"
-        echo "💡 Use ./stop-aidis.sh first or ./restart-aidis.sh"
-        exit 1
-    else
-        echo "🧹 Cleaning stale PID file"
-        rm logs/aidis.pid
-    fi
-fi
-
-# Start AIDIS MCP server with direct STDIO for MCP protocol
-cd mcp-server
-npx tsx src/main.ts > ../logs/aidis.log 2>&1 &
-AIDIS_PID=$!
-
-# Save PID for management
-echo $AIDIS_PID > ../logs/aidis.pid
-
-# Wait a moment and verify startup
-sleep 3
-
-if ps -p $AIDIS_PID > /dev/null 2>&1; then
-    echo "✅ AIDIS MCP Server started successfully (PID: $AIDIS_PID)"
-    echo "📋 Logs: tail -f logs/aidis.log"
-
-    # Check port registry for actual assigned port
-    sleep 2
-    if [ -f run/port-registry.json ]; then
-        ACTUAL_PORT=$(cat run/port-registry.json | grep -o '"port":[0-9]*' | head -1 | cut -d':' -f2)
-        if [ -n "$ACTUAL_PORT" ]; then
-            echo "🏥 Health: curl http://localhost:${ACTUAL_PORT}/healthz"
-        else
-            echo "🏥 Health: curl http://localhost:8080/healthz (fallback)"
-        fi
-    else
-        echo "🏥 Health: curl http://localhost:8080/healthz (fallback)"
-    fi
-
-    echo "🛑 Stop: ./stop-aidis.sh"
-    echo "📡 Port Assignment: Check run/port-registry.json for actual ports"
-else
-    echo "❌ Failed to start AIDIS"
-    echo "📋 Check logs: tail logs/aidis.log"
-    rm -f ../logs/aidis.pid
-    exit 1
-fi
+exec ./start-mandrel.sh "$@"

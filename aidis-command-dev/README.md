@@ -1,4 +1,4 @@
-# AIDIS Command
+# Mandrel Command
 
 Database viewer and admin tool for AIDIS (AI Development Intelligence System). This application provides a web interface for managing contexts, agents, tasks, decisions, and naming registry with data cleanup capabilities.
 

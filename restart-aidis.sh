@@ -1,14 +1,13 @@
 #!/bin/bash
 
-# AIDIS Simple Process Restarter
-# Quick restart for development workflow
+# DEPRECATED: This script has been renamed to restart-mandrel.sh
+# This wrapper is provided for backward compatibility
 
 cd "$(dirname "$0")"
 
-echo "🔄 Restarting AIDIS MCP Server..."
+echo "⚠️  DEPRECATION WARNING: restart-aidis.sh is deprecated"
+echo "📝 Please use restart-mandrel.sh instead"
+echo "🔄 Forwarding to restart-mandrel.sh..."
+echo ""
 
-./stop-aidis.sh
-sleep 1
-./start-aidis.sh
-
-echo "🎯 AIDIS restart complete!"
+exec ./restart-mandrel.sh "$@"

@@ -20,17 +20,29 @@ import { searchRoutes } from './search.routes.js';
  */
 export async function routeExecutor(toolName: string, args: any): Promise<McpResponse> {
   try {
+    // Log deprecation warning for old tool names
+    const deprecatedTools = ['aidis_ping', 'aidis_status', 'aidis_help', 'aidis_explain', 'aidis_examples'];
+    if (deprecatedTools.includes(toolName)) {
+      const newName = toolName.replace('aidis_', 'mandrel_');
+      console.warn(`⚠️  Tool '${toolName}' is deprecated. Use '${newName}' instead.`);
+    }
+
     switch (toolName) {
       // System & Navigation (5 tools)
-      case 'aidis_ping':
+      case 'mandrel_ping':
+      case 'aidis_ping': // DEPRECATED - use mandrel_ping
         return await systemRoutes.handlePing(args);
-      case 'aidis_status':
+      case 'mandrel_status':
+      case 'aidis_status': // DEPRECATED - use mandrel_status
         return await systemRoutes.handleStatus();
-      case 'aidis_help':
+      case 'mandrel_help':
+      case 'aidis_help': // DEPRECATED - use mandrel_help
         return await systemRoutes.handleHelp();
-      case 'aidis_explain':
+      case 'mandrel_explain':
+      case 'aidis_explain': // DEPRECATED - use mandrel_explain
         return await systemRoutes.handleExplain(args);
-      case 'aidis_examples':
+      case 'mandrel_examples':
+      case 'aidis_examples': // DEPRECATED - use mandrel_examples
         return await systemRoutes.handleExamples(args);
 
       // Context Management (4 tools)
@@ -95,7 +107,7 @@ export async function routeExecutor(toolName: string, args: any): Promise<McpRes
       default:
         console.warn(`Unknown MCP tool requested: ${toolName}`);
         return formatMcpError(
-          `Unknown tool: ${toolName}. Use 'aidis_help' to see available tools.`,
+          `Unknown tool: ${toolName}. Use 'mandrel_help' to see available tools.`,
           'route_executor'
         );
     }

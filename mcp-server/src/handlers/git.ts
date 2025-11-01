@@ -12,8 +12,8 @@
  * - Confidence-based correlation scoring
  */
 
-import GitServiceModule from '../../../aidis-command/backend/dist/services/gitService.js';
-import { SessionDetailService } from '../../../aidis-command/backend/dist/services/sessionDetail.js';
+import GitServiceModule from '../../../mandrel-command/backend/dist/services/gitService.js';
+import { SessionDetailService } from '../../../mandrel-command/backend/dist/services/sessionDetail.js';
 import { db } from '../config/database.js';
 import { logEvent } from '../middleware/eventLogger.js';
 import { getCurrentSession } from '../services/sessionTracker.js';
