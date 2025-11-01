@@ -134,6 +134,7 @@ export type UpdateContextData = z.infer<typeof UpdateContextSchema>;
 
 export const ContextSearchQuerySchema = z.object({
   query: optionalString(2000),
+  project_id: z.string().uuid().optional(),
   session_id: z.string().uuid().optional(),
   type: ContextTypeSchema.optional(),
   tags: optionalString(500),
