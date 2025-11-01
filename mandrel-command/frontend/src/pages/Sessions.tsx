@@ -306,13 +306,15 @@ const Sessions: React.FC = () => {
     {
       title: 'Session',
       key: 'session',
+      width: '30%',
+      ellipsis: true,
       render: (record: SessionItem) => {
         const isActive = isSessionActive(record);
         return (
           <Space direction="vertical" size="small">
             <Space>
               <span>{getTypeIcon(record.session_type)}</span>
-              <Text strong>{record.title || `Session ${record.id.slice(0, 8)}`}</Text>
+              <Text strong ellipsis>{record.title || `Session ${record.id.slice(0, 8)}`}</Text>
               <Tag color={getTypeColor(record.session_type)}>{record.session_type}</Tag>
               {isActive && (
                 <Badge status="processing" text="Active" />
@@ -331,31 +333,34 @@ const Sessions: React.FC = () => {
       title: 'Project',
       dataIndex: 'project_name',
       key: 'project',
+      width: 150,
+      ellipsis: true,
       render: (project_name: string) => (
         <Space>
           <ProjectOutlined />
-          <Text>{project_name || 'No Project'}</Text>
+          <Text ellipsis>{project_name || 'No Project'}</Text>
         </Space>
       ),
     },
     {
       title: 'Created',
       key: 'created',
+      width: 120,
       render: (record: SessionItem) => (
-        <Space direction="vertical" size="small">
-          <Space>
-            <ClockCircleOutlined />
-            <Text>{new Date(record.created_at).toLocaleDateString()}</Text>
+        <Tooltip title={new Date(record.created_at).toLocaleString()}>
+          <Space direction="vertical" size="small">
+            <Text style={{ fontSize: 12 }}>{new Date(record.created_at).toLocaleDateString()}</Text>
+            <Text type="secondary" style={{ fontSize: 11 }}>
+              {new Date(record.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </Text>
           </Space>
-          <Text type="secondary" style={{ fontSize: 12 }}>
-            {new Date(record.created_at).toLocaleTimeString()}
-          </Text>
-        </Space>
+        </Tooltip>
       ),
     },
     {
       title: 'Activity',
       key: 'activity',
+      width: 120,
       render: (record: SessionItem) => {
         const tasksTotal = (record.tasks_created || 0);
         const contextsTotal = (record.contexts_created || record.context_count || 0);
@@ -373,17 +378,17 @@ const Sessions: React.FC = () => {
             <Space size="small">
               {tasksTotal > 0 && (
                 <>
-                  <Badge count={tasksTotal} color="purple" />
-                  <Text type="secondary">tasks</Text>
+                  <Badge count={tasksTotal} color="purple" showZero />
+                  <Text type="secondary" style={{ fontSize: 11 }}>T</Text>
                 </>
               )}
               {contextsTotal > 0 && (
                 <>
-                  <Badge count={contextsTotal} color="blue" />
-                  <Text type="secondary">contexts</Text>
+                  <Badge count={contextsTotal} color="blue" showZero />
+                  <Text type="secondary" style={{ fontSize: 11 }}>C</Text>
                 </>
               )}
-              {totalActivity === 0 && <Text type="secondary">No activity</Text>}
+              {totalActivity === 0 && <Text type="secondary" style={{ fontSize: 11 }}>None</Text>}
             </Space>
           </Tooltip>
         );
@@ -397,9 +402,11 @@ const Sessions: React.FC = () => {
     {
       title: 'Tokens',
       key: 'tokens',
+      width: 80,
+      align: 'right' as const,
       render: (record: SessionItem) => (
         <Tooltip title={`Input: ${Number(record.input_tokens || 0).toLocaleString()} | Output: ${Number(record.output_tokens || 0).toLocaleString()}`}>
-          <Text>{Number(record.total_tokens || 0).toLocaleString()}</Text>
+          <Text style={{ fontSize: 12 }}>{(Number(record.total_tokens || 0) / 1000).toFixed(1)}k</Text>
         </Tooltip>
       ),
       sorter: (a: SessionItem, b: SessionItem) => Number(a.total_tokens || 0) - Number(b.total_tokens || 0),
@@ -408,10 +415,11 @@ const Sessions: React.FC = () => {
       title: 'Last Activity',
       dataIndex: 'last_context_at',
       key: 'lastActivity',
+      width: 100,
       render: (last_context_at: string) => (
         <Tooltip title={new Date(last_context_at).toLocaleString()}>
-          <Text type="secondary">
-            {new Date(last_context_at).toLocaleTimeString()}
+          <Text type="secondary" style={{ fontSize: 12 }}>
+            {new Date(last_context_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
           </Text>
         </Tooltip>
       ),
@@ -419,6 +427,8 @@ const Sessions: React.FC = () => {
     {
       title: 'Actions',
       key: 'actions',
+      width: 100,
+      fixed: 'right' as const,
       render: (record: SessionItem) => (
         <Space>
           <Tooltip title="View Details">
