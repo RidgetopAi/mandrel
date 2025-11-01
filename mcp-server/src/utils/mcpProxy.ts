@@ -174,8 +174,8 @@ export class AIDISMCPProxy {
         tools: [
           // System Health
           {
-            name: 'aidis_ping',
-            description: 'Test connectivity to AIDIS server (via proxy)',
+            name: 'mandrel_ping',
+            description: 'Test connectivity to Mandrel server (via proxy)',
             inputSchema: {
               type: 'object',
               properties: {
@@ -187,8 +187,8 @@ export class AIDISMCPProxy {
             },
           },
           {
-            name: 'aidis_status',
-            description: 'Get AIDIS server status (via proxy)',
+            name: 'mandrel_status',
+            description: 'Get Mandrel server status (via proxy)',
             inputSchema: {
               type: 'object',
               properties: {}
@@ -633,10 +633,10 @@ export class AIDISMCPProxy {
     const transport = new StdioServerTransport();
     await this.server.connect(transport);
     
-    console.log('🎯 AIDIS MCP Proxy is running!');
+    console.log('🎯 Mandrel MCP Proxy is running!');
     console.log('🔗 Forwarding MCP requests to SystemD service');
     console.log('📋 Available tools: ALL 37 MCP tools fully forwarded via HTTP');
-    console.log('   🔧 System: aidis_ping, aidis_status');
+    console.log('   🔧 System: mandrel_ping, mandrel_status');
     console.log('   📝 Context: context_store, context_search, context_stats');
     console.log('   📁 Projects: project_list, project_create, project_switch, project_current, project_info');
     console.log('   🏷️  Naming: naming_register, naming_check, naming_suggest, naming_stats');

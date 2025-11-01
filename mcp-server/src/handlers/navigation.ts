@@ -1,27 +1,27 @@
 /**
- * AIDIS Navigation Handler - Phase 1 Navigation Enhancement
+ * Mandrel Navigation Handler - Phase 1 Navigation Enhancement
  * 
- * Solves the AIDIS discoverability problem by providing:
- * 1. aidis_help - Categorized tool listing
- * 2. aidis_explain - Detailed tool documentation
- * 3. aidis_examples - Usage examples and patterns
+ * Solves the Mandrel discoverability problem by providing:
+ * 1. mandrel_help - Categorized tool listing
+ * 2. mandrel_explain - Detailed tool documentation
+ * 3. mandrel_examples - Usage examples and patterns
  * 
- * This transforms AIDIS from "38 mysterious tools" into a discoverable, learnable system.
+ * This transforms Mandrel from "27 mysterious tools" into a discoverable, learnable system.
  */
 
 export class NavigationHandler {
   /**
-   * All 96 AIDIS tools organized by category with descriptions 
+   * All 27 Mandrel tools organized by category with descriptions 
    */
   private readonly toolCatalog = {
     'System Health': [
-      { name: 'aidis_ping', description: 'Test connectivity to AIDIS server' },
-      { name: 'aidis_status', description: 'Get server status and health information' }
+      { name: 'mandrel_ping', description: 'Test connectivity to Mandrel server' },
+      { name: 'mandrel_status', description: 'Get server status and health information' }
     ],
     'Navigation': [
-      { name: 'aidis_help', description: 'Display categorized list of all AIDIS tools' },
-      { name: 'aidis_explain', description: 'Get detailed help for a specific AIDIS tool' },
-      { name: 'aidis_examples', description: 'Get usage examples and patterns for a specific AIDIS tool' }
+      { name: 'mandrel_help', description: 'Display categorized list of all Mandrel tools' },
+      { name: 'mandrel_explain', description: 'Get detailed help for a specific Mandrel tool' },
+      { name: 'mandrel_examples', description: 'Get usage examples and patterns for a specific Mandrel tool' }
     ],
     'Context Management': [
       { name: 'context_store', description: 'Store development context with automatic embedding' },
@@ -62,14 +62,14 @@ export class NavigationHandler {
    */
   private readonly toolParameters = {
     // System Health
-    'aidis_ping': {
-      description: 'Test connectivity and responsiveness of the AIDIS server',
+    'mandrel_ping': {
+      description: 'Test connectivity and responsiveness of the Mandrel server',
       parameters: [
-        { name: 'message', type: 'string', required: false, description: 'Optional test message (default: "Hello AIDIS!")' }
+        { name: 'message', type: 'string', required: false, description: 'Optional test message (default: "Hello Mandrel!")' }
       ],
       returns: 'Pong response with timestamp and status'
     },
-    'aidis_status': {
+    'mandrel_status': {
       description: 'Get comprehensive server status including database connection, memory usage, and uptime',
       parameters: [],
       returns: 'Server health report with version, uptime, database status, memory usage'

@@ -1,10 +1,10 @@
 {
-  "name": "@aidis/mcp-adapter-http",
+  "name": "@mandrel/mcp-adapter-http",
   "version": "1.0.0",
-  "description": "HTTP protocol adapter for AIDIS Core Service - bridges Claude Code MCP to AIDIS HTTP API",
+  "description": "HTTP protocol adapter for Mandrel Core Service - bridges Claude Code MCP to Mandrel HTTP API",
   "main": "mcp-http-adapter.js",
   "bin": {
-    "aidis-mcp-http-adapter": "./mcp-http-adapter.js"
+    "mandrel-mcp-http-adapter": "./mcp-http-adapter.js"
   },
   "type": "module",
   "engines": {
@@ -19,7 +19,7 @@
     "type-check": "tsc --noEmit mcp-http-adapter.ts"
   },
   "keywords": [
-    "aidis",
+    "mandrel",
     "mcp",
     "adapter",
     "http",
@@ -27,7 +27,7 @@
     "claude-code",
     "protocol"
   ],
-  "author": "AIDIS Development Team",
+  "author": "Mandrel Development Team",
   "license": "MIT",
   "repository": {
     "type": "git",

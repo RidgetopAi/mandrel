@@ -203,6 +203,91 @@ export async function logOperationTiming(
 }
 
 /**
+ * Log hierarchical memory search queries with detailed observability data
+ * Instance #49: Oracle Priority 1 - Observability before expansion
+ */
+export async function logHierarchicalMemorySearch(data: {
+  query: string;
+  mode: 'recency' | 'balanced' | 'baseline';
+  intentKeywordsMatched: string[];
+  results: any[];
+  queryLatencyMs: number;
+  filters: any;
+  projectId?: string;
+  hierarchicalEnabled: boolean;
+}): Promise<string> {
+
+  // Calculate ages in days
+  const calculateAgeDays = (createdAt: Date): number => {
+    return Math.round((Date.now() - new Date(createdAt).getTime()) / (1000 * 60 * 60 * 24));
+  };
+
+  const top1AgeDays = data.results[0] ? calculateAgeDays(data.results[0].createdAt) : null;
+  const top5AgesDays = data.results.slice(0, 5).map(r => calculateAgeDays(r.createdAt));
+
+  // Check if "too old" for recency query (>30 days for recency-focused mode)
+  const isTooOld = data.mode === 'recency' && top1AgeDays !== null && top1AgeDays > 30;
+
+  // Extract score components from top result
+  const topResultScores = data.results[0] ? {
+    similarity: data.results[0].similarity,
+    recency_score: data.results[0].recency_score,
+    importance_score: data.results[0].importance_score,
+    type_weight: data.results[0].type_weight,
+    combined_score: data.results[0].combined_score
+  } : null;
+
+  // Determine weights used based on mode
+  const weightsUsed = data.mode === 'recency' ? {
+    recency_weight: 0.90,
+    similarity_weight: 0.05,
+    importance_weight: 0.025,
+    type_weight: 0.025
+  } : data.mode === 'balanced' ? {
+    recency_weight: 0.25,
+    similarity_weight: 0.25,
+    importance_weight: 0.25,
+    type_weight: 0.25
+  } : {
+    recency_weight: 0.0,
+    similarity_weight: 1.0,
+    importance_weight: 0.0,
+    type_weight: 0.0
+  };
+
+  return logEvent({
+    actor: 'ai',
+    project_id: data.projectId,
+    event_type: 'hierarchical_memory_search',
+    payload: {
+      query: data.query,
+      mode: data.mode,
+      intent_keywords_matched: data.intentKeywordsMatched,
+      is_recency_query: data.mode === 'recency',
+      results_count: data.results.length,
+      top_1_age_days: top1AgeDays,
+      top_5_ages_days: top5AgesDays,
+      query_latency_ms: data.queryLatencyMs,
+      top_result_scores: topResultScores,
+      is_too_old: isTooOld,
+      filters: {
+        projectId: data.filters.projectId,
+        type: data.filters.type,
+        tags: data.filters.tags,
+        minSimilarity: data.filters.minSimilarity
+      }
+    },
+    metadata: {
+      hierarchical_enabled: data.hierarchicalEnabled,
+      weights_used: weightsUsed
+    },
+    duration_ms: data.queryLatencyMs,
+    status: 'closed',
+    tags: ['hierarchical_memory', 'search', data.mode, 'observability']
+  });
+}
+
+/**
  * Export session manager for external access
  */
 export { SessionManager };

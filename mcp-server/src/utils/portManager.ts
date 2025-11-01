@@ -48,10 +48,16 @@ export class PortManager {
    * Returns PORT=0 for dynamic assignment if configured, otherwise returns default port
    */
   public async assignPort(serviceName: string, preferredPort?: number): Promise<number> {
-    const envVarName = `AIDIS_${serviceName.toUpperCase().replace(/-/g, '_')}_PORT`;
-    const envPort = process.env[envVarName];
+    const mandrelVarName = `MANDREL_${serviceName.toUpperCase().replace(/-/g, '_')}_PORT`;
+    const aidisVarName = `AIDIS_${serviceName.toUpperCase().replace(/-/g, '_')}_PORT`;
+    const envPort = process.env[mandrelVarName] || process.env[aidisVarName];
 
-    // Check specific AIDIS environment variable first
+    // Log deprecation warning if old var is used
+    if (process.env[aidisVarName] && !process.env[mandrelVarName]) {
+      console.warn(`⚠️  ${aidisVarName} is deprecated. Use ${mandrelVarName} instead.`);
+    }
+
+    // Check specific environment variable first
     if (envPort === '0') {
       logger.info(`Dynamic port assignment requested for ${serviceName}`);
       return 0; // Let the server choose
@@ -251,10 +257,10 @@ export class PortManager {
   }
 
   /**
-   * Get environment variable name for a service port
+   * Get environment variable name for a service port (returns new MANDREL_ name)
    */
   public static getPortEnvVar(serviceName: string): string {
-    return `AIDIS_${serviceName.toUpperCase().replace(/-/g, '_')}_PORT`;
+    return `MANDREL_${serviceName.toUpperCase().replace(/-/g, '_')}_PORT`;
   }
 
   /**

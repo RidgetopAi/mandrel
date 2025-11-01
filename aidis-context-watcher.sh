@@ -1,6 +1,16 @@
 #!/bin/bash
-# aidis-context-watcher.sh - Comprehensive AIDIS debugging context
-set -euo pipefail
+
+# DEPRECATED: This script has been renamed to mandrel-context-watcher.sh
+# This wrapper is provided for backward compatibility
+
+cd "$(dirname "$0")"
+
+echo "⚠️  DEPRECATION WARNING: aidis-context-watcher.sh is deprecated" >&2
+echo "📝 Please use mandrel-context-watcher.sh instead" >&2
+echo "🔄 Forwarding to mandrel-context-watcher.sh..." >&2
+echo "" >&2
+
+exec ./mandrel-context-watcher.sh "$@"
 
 CONTEXT_DIR="./ai-context"
 CURRENT_LOGS="$CONTEXT_DIR/debug-context.txt"
