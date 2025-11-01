@@ -62,8 +62,8 @@ To connect Claude Code to AIDIS, configure:
 ### Tool Categories Available (38 Total)
 
 #### System Health (2 tools) ✅
-- `aidis_ping` - Test connectivity
-- `aidis_status` - Server health info
+- `mandrel_ping` - Test connectivity
+- `mandrel_status` - Server health info
 
 #### Context Management (3 tools) ✅  
 - `context_store` - Store development context
@@ -123,7 +123,7 @@ To connect Claude Code to AIDIS, configure:
 node test-http-bridge.js
 
 # Test individual tool
-curl -X POST http://localhost:8080/mcp/tools/aidis_ping \
+curl -X POST http://localhost:8080/mcp/tools/mandrel_ping \
   -H "Content-Type: application/json" \
   -d '{"arguments":{"message":"Claude Code test"}}'
 ```
@@ -226,7 +226,7 @@ status-aidis.sh
 curl http://localhost:8080/healthz
 
 # Test tool availability
-curl -X POST http://localhost:8080/mcp/tools/aidis_ping \
+curl -X POST http://localhost:8080/mcp/tools/mandrel_ping \
   -H "Content-Type: application/json" \
   -d '{"arguments":{"message":"debug"}}'
 ```

@@ -20,7 +20,7 @@ process.env.AIDIS_SKIP_STDIO = process.env.AIDIS_SKIP_STDIO || 'true';
 process.env.AIDIS_AIDIS_MCP_PORT = process.env.AIDIS_AIDIS_MCP_PORT || '0';
 process.env.AIDIS_DISABLE_PROCESS_EXIT_HANDLERS = process.env.AIDIS_DISABLE_PROCESS_EXIT_HANDLERS || 'true';
 
-let ServerCtor: typeof import('@/server/AidisMcpServer').default;
+let ServerCtor: typeof import('@/server/MandrelMcpServer').default;
 let processLock: typeof import('@/utils/processLock').processLock;
 
 const ajv = new Ajv({ allErrors: true, strict: false });
@@ -102,7 +102,7 @@ describe('HTTP ↔ MCP contract', () => {
 
   beforeAll(async () => {
     if (!ServerCtor) {
-      const serverModule = await import('@/server/AidisMcpServer');
+      const serverModule = await import('@/server/MandrelMcpServer');
       ServerCtor = serverModule.default;
     }
     if (!processLock) {

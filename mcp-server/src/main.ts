@@ -4,10 +4,10 @@
  * AIDIS MCP Server - Main Entry Point
  *
  * This is the entry point for the AIDIS MCP server.
- * The server implementation is in ./server/AidisMcpServer.ts
+ * The server implementation is in ./server/MandrelMcpServer.ts
  */
 
-import AidisMcpServer from './server/AidisMcpServer.js';
+import MandrelMcpServer from './server/MandrelMcpServer.js';
 import { logger } from './utils/logger.js';
 import { processLock } from './utils/processLock.js';
 import { ensureFeatureFlags } from './utils/featureFlags.js';
@@ -15,7 +15,7 @@ import { ensureFeatureFlags } from './utils/featureFlags.js';
 /**
  * Global shutdown handling
  */
-let serverInstance: AidisMcpServer | null = null;
+let serverInstance: MandrelMcpServer | null = null;
 
 async function shutdown(signal: string): Promise<void> {
   if (serverInstance) {
@@ -52,7 +52,7 @@ async function main() {
     await ensureFeatureFlags();
 
     // Create and start server
-    serverInstance = new AidisMcpServer();
+    serverInstance = new MandrelMcpServer();
     await serverInstance.start();
 
     logger.info('AIDIS MCP Server - Running');

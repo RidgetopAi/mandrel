@@ -40,8 +40,8 @@ Add this to your Claude Code MCP settings:
 ### Available MCP Tools (37 total)
 
 #### System Health (2 tools)
-- `aidis_ping` - Test connectivity
-- `aidis_status` - Get system status
+- `mandrel_ping` - Test connectivity
+- `mandrel_status` - Get system status
 
 #### Context Management (3 tools)
 - `context_store(content, type, tags?)` - Store development context

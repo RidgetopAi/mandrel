@@ -124,7 +124,12 @@ export async function initializeDatabase(): Promise<void> {
     // In production, assume DB is properly configured and skip CREATE EXTENSION/test tables
     const shouldRunSelfTests = 
       process.env.NODE_ENV !== 'production' || 
+      process.env.MANDREL_DB_SELFTEST === 'true' ||
       process.env.AIDIS_DB_SELFTEST === 'true';
+    
+    if (process.env.AIDIS_DB_SELFTEST && !process.env.MANDREL_DB_SELFTEST) {
+      console.warn('⚠️  AIDIS_DB_SELFTEST is deprecated. Use MANDREL_DB_SELFTEST instead.');
+    }
     
     if (shouldRunSelfTests) {
       // Check if pgvector extension is installed

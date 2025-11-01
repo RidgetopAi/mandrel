@@ -57,12 +57,36 @@ class DatabasePoolManager {
       return;
     }
 
+    // Support both MANDREL_* (preferred) and AIDIS_* (deprecated) with fallback
+    const dbUser = process.env.MANDREL_DATABASE_USER || process.env.AIDIS_DATABASE_USER || 'ridgetop';
+    const dbHost = process.env.MANDREL_DATABASE_HOST || process.env.AIDIS_DATABASE_HOST || 'localhost';
+    const dbName = process.env.MANDREL_DATABASE_NAME || process.env.AIDIS_DATABASE_NAME || 'aidis_production';
+    const dbPassword = process.env.MANDREL_DATABASE_PASSWORD || process.env.AIDIS_DATABASE_PASSWORD || '';
+    const dbPort = parseInt(process.env.MANDREL_DATABASE_PORT || process.env.AIDIS_DATABASE_PORT || '5432');
+
+    // Log deprecation warnings if old vars are used
+    if (process.env.AIDIS_DATABASE_USER && !process.env.MANDREL_DATABASE_USER) {
+      console.warn('⚠️  AIDIS_DATABASE_USER is deprecated. Use MANDREL_DATABASE_USER instead.');
+    }
+    if (process.env.AIDIS_DATABASE_HOST && !process.env.MANDREL_DATABASE_HOST) {
+      console.warn('⚠️  AIDIS_DATABASE_HOST is deprecated. Use MANDREL_DATABASE_HOST instead.');
+    }
+    if (process.env.AIDIS_DATABASE_NAME && !process.env.MANDREL_DATABASE_NAME) {
+      console.warn('⚠️  AIDIS_DATABASE_NAME is deprecated. Use MANDREL_DATABASE_NAME instead.');
+    }
+    if (process.env.AIDIS_DATABASE_PASSWORD && !process.env.MANDREL_DATABASE_PASSWORD) {
+      console.warn('⚠️  AIDIS_DATABASE_PASSWORD is deprecated. Use MANDREL_DATABASE_PASSWORD instead.');
+    }
+    if (process.env.AIDIS_DATABASE_PORT && !process.env.MANDREL_DATABASE_PORT) {
+      console.warn('⚠️  AIDIS_DATABASE_PORT is deprecated. Use MANDREL_DATABASE_PORT instead.');
+    }
+
     const poolConfig: PoolConfig = {
-      user: process.env.AIDIS_DATABASE_USER || process.env.DATABASE_USER || 'ridgetop',
-      host: process.env.AIDIS_DATABASE_HOST || process.env.DATABASE_HOST || 'localhost',
-      database: process.env.AIDIS_DATABASE_NAME || process.env.DATABASE_NAME || 'aidis_production',
-      password: process.env.AIDIS_DATABASE_PASSWORD || process.env.DATABASE_PASSWORD || '',
-      port: parseInt(process.env.AIDIS_DATABASE_PORT || process.env.DATABASE_PORT || '5432'),
+      user: dbUser,
+      host: dbHost,
+      database: dbName,
+      password: dbPassword,
+      port: dbPort,
 
       // Optimized pool settings for Phase 4
       max: 30, // Increased from 20 for service mesh architecture

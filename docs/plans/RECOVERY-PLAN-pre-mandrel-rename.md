@@ -34,7 +34,7 @@
 - ✅ `mandrel-stab.md` - Complete investigation document (1040 lines)
 - ✅ All source code uses "AIDIS" branding
 - ✅ All package names: `aidis-*`
-- ✅ All env vars: `AIDIS_*`
+- ✅ All env vars: `MANDREL_*`
 - ✅ Database: `aidis_production`
 
 ---
@@ -61,8 +61,8 @@ cd /home/ridgetop/aidis
 ./stop-aidis.sh
 
 # Stop AIDIS Command (if running)
-cd /home/ridgetop/aidis/aidis-command/backend
-pkill -f "node.*aidis-command"
+cd /home/ridgetop/aidis/mandrel-command/backend
+pkill -f "node.*mandrel-command"
 
 # Verify all stopped
 ps aux | grep -i aidis
@@ -144,8 +144,8 @@ cd mcp-server
 rm -rf dist/ node_modules/.cache
 npm install
 
-# Clean aidis-command
-cd ../aidis-command/backend
+# Clean mandrel-command
+cd ../mandrel-command/backend
 rm -rf dist/ node_modules/.cache
 npm install
 
@@ -192,8 +192,8 @@ WHERE table_schema = 'public'
 cd /home/ridgetop/aidis
 
 # Check package names
-grep -r '"name"' mcp-server/package.json aidis-command/package.json \
-  aidis-command/backend/package.json aidis-command/frontend/package.json
+grep -r '"name"' mcp-server/package.json mandrel-command/package.json \
+  mandrel-command/backend/package.json mandrel-command/frontend/package.json
 
 # Should all show "aidis-*" names
 ```
@@ -201,9 +201,9 @@ grep -r '"name"' mcp-server/package.json aidis-command/package.json \
 **Expected Output** (sample):
 ```json
 "name": "aidis-mcp-server"
-"name": "aidis-command"
-"name": "aidis-command-backend"
-"name": "aidis-command-frontend"
+"name": "mandrel-command"
+"name": "mandrel-command-backend"
+"name": "mandrel-command-frontend"
 ```
 
 ---
@@ -216,13 +216,13 @@ env | grep -i mandrel
 
 # Should return nothing
 
-# Verify AIDIS_* vars if you have them set
+# Verify MANDREL_* vars if you have them set
 env | grep -i aidis_
 ```
 
 **Expected**: 
 - NO `MANDREL_*` variables
-- Original `AIDIS_*` variables (if any were set)
+- Original `MANDREL_*` variables (if any were set)
 
 ---
 
@@ -244,7 +244,7 @@ npm run build
 - Output in `dist/` directory
 
 ```bash
-cd /home/ridgetop/aidis/aidis-command/backend
+cd /home/ridgetop/aidis/mandrel-command/backend
 
 # Type check
 npm run type-check
@@ -277,7 +277,7 @@ ps aux | grep -i "aidis"
 
 ```bash
 # Test MCP server
-curl -X POST http://localhost:8080/mcp/tools/aidis_ping \
+curl -X POST http://localhost:8080/mcp/tools/mandrel_ping \
   -H "Content-Type: application/json" \
   -d '{"message": "recovery test"}'
 ```
@@ -299,7 +299,7 @@ ls -lh docs/plans/RECOVERY-PLAN-pre-mandrel-rename.md
 
 # Verify key source files have AIDIS naming
 ls -lh mcp-server/src/server/AidisMcpServer.ts
-ls -lh aidis-command/frontend/src/api/aidisApiClient.ts
+ls -lh mandrel-command/frontend/src/api/aidisApiClient.ts
 ```
 
 **Expected**: All files exist with AIDIS naming
@@ -337,7 +337,7 @@ After completing all steps, verify:
 - [ ] No `MANDREL_*` environment variables exist
 - [ ] `mandrel-stab.md` exists with investigation
 - [ ] AIDIS MCP server starts successfully
-- [ ] MCP tools respond (test with `aidis_ping`)
+- [ ] MCP tools respond (test with `mandrel_ping`)
 - [ ] TypeScript compilation passes
 - [ ] No files or directories with "mandrel" naming
 - [ ] All class names use `Aidis*` (e.g., `AidisMcpServer`)
@@ -362,11 +362,11 @@ psql -h localhost -p 5432 -U ridgetop -d aidis_production -c "SELECT current_dat
 
 echo ""
 echo "=== Package Names ==="
-grep '"name"' mcp-server/package.json aidis-command/package.json
+grep '"name"' mcp-server/package.json mandrel-command/package.json
 
 echo ""
 echo "=== MCP Server Test ==="
-curl -s -X POST http://localhost:8080/mcp/tools/aidis_ping \
+curl -s -X POST http://localhost:8080/mcp/tools/mandrel_ping \
   -H "Content-Type: application/json" \
   -d '{"message": "test"}' | grep -o "AIDIS Pong"
 
@@ -378,7 +378,7 @@ echo ""
 echo "=== Key Files ==="
 ls -1 mandrel-stab.md \
   mcp-server/src/server/AidisMcpServer.ts \
-  aidis-command/frontend/src/api/aidisApiClient.ts
+  mandrel-command/frontend/src/api/aidisApiClient.ts
 ```
 
 ---
@@ -434,7 +434,7 @@ find . -name "build" -type d -prune -exec rm -rf {} \;
 
 # Reinstall from scratch
 cd mcp-server && npm install && npm run build
-cd ../aidis-command/backend && npm install && npm run build
+cd ../mandrel-command/backend && npm install && npm run build
 cd ../frontend && npm install && npm run build
 ```
 
@@ -463,11 +463,11 @@ git stash pop
 ### Code State
 - ✅ All AIDIS branding intact
 - ✅ 27 MCP tools with `aidis_*` naming
-- ✅ Package names: `aidis-mcp-server`, `aidis-command`, etc.
-- ✅ Environment variables: `AIDIS_*` pattern
+- ✅ Package names: `aidis-mcp-server`, `mandrel-command`, etc.
+- ✅ Environment variables: `MANDREL_*` pattern
 - ✅ Database: `aidis_production`
 - ✅ Class names: `AidisMcpServer`, etc.
-- ✅ Service names: `aidis-mcp`, `aidis-command-*`
+- ✅ Service names: `aidis-mcp`, `mandrel-command-*`
 
 ### What This Snapshot DOES NOT Include
 - ❌ NO Mandrel branding
@@ -552,7 +552,7 @@ cd /home/ridgetop/aidis
 
 echo "Step 1: Stopping services..."
 ./stop-aidis.sh 2>/dev/null || true
-pkill -f "aidis-command" 2>/dev/null || true
+pkill -f "mandrel-command" 2>/dev/null || true
 
 echo "Step 2: Stashing changes..."
 git stash save "recovery-stash-$(date +%Y%m%d-%H%M%S)"
@@ -568,7 +568,7 @@ find . -name "dist" -type d -exec rm -rf {} \; 2>/dev/null || true
 
 echo "Step 6: Rebuilding..."
 cd mcp-server && npm run build
-cd ../aidis-command/backend && npm run build
+cd ../mandrel-command/backend && npm run build
 
 echo "Step 7: Starting services..."
 cd /home/ridgetop/aidis
@@ -580,7 +580,7 @@ echo "Git commit: $(git log -1 --oneline)"
 echo "Branch: $(git branch --show-current)"
 echo ""
 echo "Run verification:"
-echo "  curl -X POST http://localhost:8080/mcp/tools/aidis_ping -H 'Content-Type: application/json' -d '{\"message\": \"test\"}'"
+echo "  curl -X POST http://localhost:8080/mcp/tools/mandrel_ping -H 'Content-Type: application/json' -d '{\"message\": \"test\"}'"
 ```
 
 Make executable:

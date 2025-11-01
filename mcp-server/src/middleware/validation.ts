@@ -16,7 +16,7 @@ const baseLimit = z.number().int().min(1).max(100).default(10);
 const baseRelevanceScore = z.number().min(0).max(10).optional();
 
 // System Health Schemas
-export const aidisSystemSchemas = {
+export const mandrelSystemSchemas = {
   ping: z.object({
     message: z.string().max(500).optional()
   }),
@@ -27,8 +27,15 @@ export const aidisSystemSchemas = {
   
   explain: z.object({
     toolName: z.string().min(1).max(100)
+  }),
+  
+  examples: z.object({
+    toolName: z.string().min(1).max(100)
   })
 };
+
+// Legacy alias for backward compatibility
+export const aidisSystemSchemas = mandrelSystemSchemas;
 
 // Context Management Schemas
 export const contextSchemas = {
@@ -337,12 +344,18 @@ export const smartSearchSchemas = {
 
 // Main validation schema registry
 export const validationSchemas = {
-  // System Health
+  // System Health (with backward compatibility aliases)
+  mandrel_ping: aidisSystemSchemas.ping,
+  mandrel_status: aidisSystemSchemas.status,
+  mandrel_help: aidisSystemSchemas.help,
+  mandrel_explain: aidisSystemSchemas.explain,
+  mandrel_examples: aidisSystemSchemas.explain, // Same schema as explain - takes toolName parameter
+  // Backward compatibility aliases
   aidis_ping: aidisSystemSchemas.ping,
   aidis_status: aidisSystemSchemas.status,
   aidis_help: aidisSystemSchemas.help,
   aidis_explain: aidisSystemSchemas.explain,
-  aidis_examples: aidisSystemSchemas.explain, // Same schema as explain - takes toolName parameter
+  aidis_examples: aidisSystemSchemas.explain,
   
   // Context Management
   context_store: contextSchemas.store,
