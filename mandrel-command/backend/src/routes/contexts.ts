@@ -30,6 +30,12 @@ router.use(contractEnforcementMiddleware);
  *           type: string
  *         description: Free-text search query
  *       - in: query
+ *         name: project_id
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Filter by project ID (falls back to X-Project-ID header)
+ *       - in: query
  *         name: session_id
  *         schema:
  *           type: string
