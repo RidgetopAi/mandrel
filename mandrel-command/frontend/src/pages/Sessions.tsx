@@ -147,36 +147,37 @@ const Sessions: React.FC = () => {
     }
   }, [error]);
 
-  // Fetch all active sessions on mount and after changes
-  useEffect(() => {
-    const fetchActiveSessions = async () => {
-      try {
-        const active = await sessionsClient.getAllActiveSessions();
-        console.log(`[Sessions] Fetched ${active.length} active sessions:`, active.map(s => ({
-          id: s.id?.substring(0, 8),
-          title: s.title,
-          started_at: s.started_at,
-          ended_at: s.ended_at
-        })));
-        setActiveSessions(active);
+  // Fetch active sessions callback (not in useEffect to avoid infinite loop)
+  const fetchActiveSessions = useCallback(async () => {
+    try {
+      const active = await sessionsClient.getAllActiveSessions();
+      console.log(`[Sessions] Fetched ${active.length} active sessions:`, active.map(s => ({
+        id: s.id?.substring(0, 8),
+        title: s.title,
+        started_at: s.started_at,
+        ended_at: s.ended_at
+      })));
+      setActiveSessions(active);
 
-        // Auto-select the first active session if only one exists
-        if (active.length === 1) {
-          setSelectedActiveSessionId(active[0].id);
-          console.log(`[Sessions] Auto-selected session: ${active[0].title}`);
-        } else if (active.length === 0) {
-          setSelectedActiveSessionId(null);
-          console.log('[Sessions] No active sessions');
-        } else {
-          console.log(`[Sessions] Multiple active sessions (${active.length}), user must select`);
-        }
-      } catch (error) {
-        console.error('Failed to fetch active sessions:', error);
+      // Auto-select the first active session if only one exists
+      if (active.length === 1) {
+        setSelectedActiveSessionId(active[0].id);
+        console.log(`[Sessions] Auto-selected session: ${active[0].title}`);
+      } else if (active.length === 0) {
+        setSelectedActiveSessionId(null);
+        console.log('[Sessions] No active sessions');
+      } else {
+        console.log(`[Sessions] Multiple active sessions (${active.length}), user must select`);
       }
-    };
+    } catch (error) {
+      console.error('Failed to fetch active sessions:', error);
+    }
+  }, []);
 
+  // Fetch active sessions on mount only
+  useEffect(() => {
     fetchActiveSessions();
-  }, [sessions]); // Refresh when sessions list changes
+  }, []); // Only on mount - manual refresh after operations
 
   // Handle start session
   const handleStartSession = () => {
@@ -216,7 +217,8 @@ const Sessions: React.FC = () => {
         try {
           const endedSession = await sessionsClient.endSession(selectedActiveSessionId);
           message.success('Session ended successfully!');
-          refetch(); // Refresh the sessions list (will trigger active sessions refresh)
+          await refetch(); // Refresh the sessions list
+          await fetchActiveSessions(); // Manually refresh active sessions
           console.log('Session ended:', endedSession);
         } catch (error) {
           console.error('Failed to end session:', error);
@@ -229,41 +231,24 @@ const Sessions: React.FC = () => {
   // Handle start session success
   const handleStartSuccess = async () => {
     setStartModalVisible(false);
-    refetch(); // Refresh the sessions list (will trigger active sessions refresh)
+    await refetch(); // Refresh the sessions list
+    await fetchActiveSessions(); // Manually refresh active sessions
   };
 
   // Session type icons and colors
   const getTypeIcon = (type?: string) => {
     switch (type) {
-      case 'claude-code-agent':
-      case 'claude-code': return '🤖';
-      case 'cline': return '🔧';
-      case 'roo-code': return '🦘';
-      case 'windsurf': return '🌊';
-      case 'cursor': return '✏️';
-      case 'web':
-      case 'web-ui': return '🌐';
-      case 'claude': return '🧠';
-      case 'mcp':
-      case 'mcp-client': return '🔌';
-      default: return '❓';
+      case 'AI Model': return '🤖';
+      case 'mcp-server': return '🔌';
+      default: return '🤖'; // Default to AI Model icon
     }
   };
 
   const getTypeColor = (type?: string) => {
     switch (type) {
-      case 'claude-code-agent':
-      case 'claude-code': return 'blue';
-      case 'cline': return 'green';
-      case 'roo-code': return 'orange';
-      case 'windsurf': return 'cyan';
-      case 'cursor': return 'purple';
-      case 'web':
-      case 'web-ui': return 'geekblue';
-      case 'claude': return 'purple';
-      case 'mcp':
-      case 'mcp-client': return 'gray';
-      default: return 'default';
+      case 'AI Model': return 'blue';
+      case 'mcp-server': return 'gray';
+      default: return 'blue'; // Default to blue
     }
   };
 
@@ -315,7 +300,9 @@ const Sessions: React.FC = () => {
             <Space>
               <span>{getTypeIcon(record.session_type)}</span>
               <Text strong ellipsis>{record.title || `Session ${record.id.slice(0, 8)}`}</Text>
-              <Tag color={getTypeColor(record.session_type)}>{record.session_type}</Tag>
+              <Tag color={getTypeColor(record.session_type)}>
+                {record.ai_model || record.session_type || 'AI Model'}
+              </Tag>
               {isActive && (
                 <Badge status="processing" text="Active" />
               )}

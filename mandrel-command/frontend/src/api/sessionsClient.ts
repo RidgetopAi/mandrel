@@ -164,6 +164,7 @@ export const sessionsClient = {
     sessionGoal?: string;
     tags?: string[];
     aiModel?: string;
+    sessionType?: 'mcp-server' | 'AI Model';
   }): Promise<SessionDetail> {
     const response = await fetch(`${REST_API_BASE}/sessions/start`, {
       method: 'POST',

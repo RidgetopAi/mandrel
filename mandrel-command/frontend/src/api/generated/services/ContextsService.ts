@@ -19,6 +19,7 @@ export class ContextsService {
      */
     public static getContexts({
         query,
+        projectId,
         sessionId,
         type,
         tags,
@@ -29,6 +30,10 @@ export class ContextsService {
          * Free-text search query
          */
         query?: string,
+        /**
+         * Filter by project ID (falls back to X-Project-ID header)
+         */
+        projectId?: string,
         sessionId?: string,
         type?: 'code' | 'decision' | 'research' | 'issue' | 'note' | 'error' | 'test',
         /**
@@ -45,6 +50,7 @@ export class ContextsService {
             url: '/contexts',
             query: {
                 'query': query,
+                'project_id': projectId,
                 'session_id': sessionId,
                 'type': type,
                 'tags': tags,
