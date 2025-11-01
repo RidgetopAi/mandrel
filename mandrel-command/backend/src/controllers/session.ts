@@ -208,9 +208,7 @@ export class SessionController {
           (SELECT COUNT(*) FROM contexts WHERE session_id = s.id) as context_count
         FROM sessions s
         LEFT JOIN projects p ON s.project_id = p.id
-        WHERE s.agent_type != 'web-ui' OR s.agent_type IS NULL
         ORDER BY
-          CASE WHEN s.agent_type = 'mcp-client' THEN 0 ELSE 1 END,
           s.last_activity_at DESC NULLS LAST,
           s.started_at DESC
         LIMIT 1

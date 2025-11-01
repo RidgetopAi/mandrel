@@ -238,35 +238,17 @@ const Sessions: React.FC = () => {
   // Session type icons and colors
   const getTypeIcon = (type?: string) => {
     switch (type) {
-      case 'claude-code-agent':
-      case 'claude-code': return '🤖';
-      case 'cline': return '🔧';
-      case 'roo-code': return '🦘';
-      case 'windsurf': return '🌊';
-      case 'cursor': return '✏️';
-      case 'web':
-      case 'web-ui': return '🌐';
-      case 'claude': return '🧠';
-      case 'mcp':
-      case 'mcp-client': return '🔌';
-      default: return '❓';
+      case 'AI Model': return '🤖';
+      case 'mcp-server': return '🔌';
+      default: return '🤖'; // Default to AI Model icon
     }
   };
 
   const getTypeColor = (type?: string) => {
     switch (type) {
-      case 'claude-code-agent':
-      case 'claude-code': return 'blue';
-      case 'cline': return 'green';
-      case 'roo-code': return 'orange';
-      case 'windsurf': return 'cyan';
-      case 'cursor': return 'purple';
-      case 'web':
-      case 'web-ui': return 'geekblue';
-      case 'claude': return 'purple';
-      case 'mcp':
-      case 'mcp-client': return 'gray';
-      default: return 'default';
+      case 'AI Model': return 'blue';
+      case 'mcp-server': return 'gray';
+      default: return 'blue'; // Default to blue
     }
   };
 
@@ -318,7 +300,9 @@ const Sessions: React.FC = () => {
             <Space>
               <span>{getTypeIcon(record.session_type)}</span>
               <Text strong ellipsis>{record.title || `Session ${record.id.slice(0, 8)}`}</Text>
-              <Tag color={getTypeColor(record.session_type)}>{record.session_type}</Tag>
+              <Tag color={getTypeColor(record.session_type)}>
+                {record.ai_model || record.session_type || 'AI Model'}
+              </Tag>
               {isActive && (
                 <Badge status="processing" text="Active" />
               )}

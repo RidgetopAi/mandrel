@@ -625,7 +625,7 @@ export class SessionAnalyticsController {
    */
   async startSession(req: Request, res: Response): Promise<void> {
     try {
-      const { projectId, title, description, sessionGoal, tags, aiModel } = req.body;
+      const { projectId, title, description, sessionGoal, tags, aiModel, sessionType } = req.body;
 
       logger.info(`Starting new session for project: ${projectId || 'auto-detect'}`);
 
@@ -636,7 +636,8 @@ export class SessionAnalyticsController {
         description,
         sessionGoal,
         tags,
-        aiModel
+        aiModel,
+        sessionType
       );
 
       if (!result.success) {

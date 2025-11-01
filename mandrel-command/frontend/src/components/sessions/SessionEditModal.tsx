@@ -11,7 +11,8 @@ import {
   Select,
   Tag,
   Alert,
-  Spin
+  Spin,
+  Radio
 } from 'antd';
 import { EditOutlined, SaveOutlined, CloseOutlined, SyncOutlined, FolderOutlined } from '@ant-design/icons';
 import type { Session, UpdateSessionRequest } from '../../types/session';
@@ -35,6 +36,7 @@ interface SessionEditForm {
   tags: string[];
   ai_model: string;
   project_id: string;
+  session_type: 'mcp-server' | 'AI Model';
 }
 
 const SessionEditModal: React.FC<SessionEditModalProps> = ({
@@ -58,7 +60,10 @@ const SessionEditModal: React.FC<SessionEditModalProps> = ({
         session_goal: session.session_goal || '',
         tags: session.tags || [],
         ai_model: session.ai_model || '',
-        project_id: session.project_id || ''
+        project_id: session.project_id || '',
+        session_type: (session.session_type === 'mcp-server' || session.session_type === 'AI Model')
+          ? session.session_type
+          : 'AI Model'
       });
     } else {
       form.resetFields();
@@ -94,6 +99,10 @@ const SessionEditModal: React.FC<SessionEditModalProps> = ({
 
     if (values.project_id && values.project_id !== (session.project_id || '')) {
       updates.project_id = values.project_id;
+    }
+
+    if (values.session_type && values.session_type !== (session.session_type || 'AI Model')) {
+      updates.session_type = values.session_type;
     }
 
     // If no changes, just close
@@ -210,6 +219,17 @@ const SessionEditModal: React.FC<SessionEditModalProps> = ({
             autoComplete="off"
           >
             <Form.Item
+              label="Session Type"
+              name="session_type"
+              help="Whether this session uses AI assistance or is solo work"
+            >
+              <Radio.Group>
+                <Radio.Button value="AI Model">AI-Assisted Work</Radio.Button>
+                <Radio.Button value="mcp-server">Solo Work</Radio.Button>
+              </Radio.Group>
+            </Form.Item>
+
+            <Form.Item
               label="Session Title"
               name="title"
               rules={[
@@ -253,11 +273,20 @@ const SessionEditModal: React.FC<SessionEditModalProps> = ({
             <Form.Item
               label="AI Model"
               name="ai_model"
-              help="The AI model being used (e.g., claude-3.5-sonnet, gpt-4)"
+              help="The AI model being used (leave blank if Solo Work)"
             >
-              <Input
-                placeholder="e.g., claude-3.5-sonnet"
-                maxLength={100}
+              <Select
+                placeholder="Select AI model"
+                allowClear
+                options={[
+                  { label: 'Claude Sonnet 4.5', value: 'claude-sonnet-4-5' },
+                  { label: 'Claude Sonnet 4', value: 'claude-sonnet-4' },
+                  { label: 'Claude Opus 4', value: 'claude-opus-4' },
+                  { label: 'Claude Code', value: 'claude-code' },
+                  { label: 'Amp Free', value: 'amp-free' },
+                  { label: 'Amp Smart', value: 'amp-smart' },
+                  { label: 'Other', value: 'other' }
+                ]}
               />
             </Form.Item>
 

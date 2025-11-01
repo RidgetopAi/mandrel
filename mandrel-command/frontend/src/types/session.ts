@@ -30,6 +30,7 @@ export interface UpdateSessionRequest {
   tags?: string[];
   ai_model?: string;
   project_id?: string;
+  session_type?: 'mcp-server' | 'AI Model';
 }
 
 export interface SessionFile {

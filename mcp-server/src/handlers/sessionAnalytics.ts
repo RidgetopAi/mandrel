@@ -208,12 +208,14 @@ export class SessionAnalyticsHandler {
     description?: string,
     sessionGoal?: string,
     tags?: string[],
-    aiModel?: string
+    aiModel?: string,
+    sessionType?: 'mcp-server' | 'AI Model'
   ): Promise<SessionDetailsResult> {
     try {
       console.log(`🚀 Starting new session for project: ${projectId || 'auto-detect'}`);
       if (title) console.log(`   Title: ${title}`);
       if (sessionGoal) console.log(`   Goal: ${sessionGoal}`);
+      if (sessionType) console.log(`   Type: ${sessionType}`);
 
       const startTime = Date.now();
 
@@ -224,7 +226,8 @@ export class SessionAnalyticsHandler {
         description,
         sessionGoal,
         tags,
-        aiModel
+        aiModel,
+        sessionType
       );
 
       const duration = Date.now() - startTime;

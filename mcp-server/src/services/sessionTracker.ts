@@ -16,7 +16,6 @@
 import { db } from '../config/database.js';
 import { randomUUID } from 'crypto';
 import { projectHandler } from '../handlers/project.js';
-import { detectAgentType } from '../utils/agentDetection.js';
 import { logger } from '../utils/logger.js';
 import type { SessionActivity, SessionFile, SessionStats } from '../types/session.js';
 
@@ -70,6 +69,7 @@ export class SessionTracker {
   /**
    * Start a new session with smart project inheritance
    * Phase 2: Added sessionGoal, tags, and aiModel parameters
+   * Phase 3: Simplified session types - "mcp-server" (solo) or "AI Model" (AI-assisted)
    */
   static async startSession(
     projectId?: string,
@@ -77,7 +77,8 @@ export class SessionTracker {
     description?: string,
     sessionGoal?: string,
     tags?: string[],
-    aiModel?: string
+    aiModel?: string,
+    sessionType?: 'mcp-server' | 'AI Model'
   ): Promise<string> {
     try {
       const sessionId = randomUUID();
@@ -138,13 +139,14 @@ export class SessionTracker {
 
       console.log('🐛 DEBUG: Session SQL includes last_activity_at:', sessionSql.includes('last_activity_at'));
 
-      // Auto-detect agent type based on environment
-      const agentInfo = detectAgentType();
+      // Use simple session type: default to "AI Model" for auto-started sessions
+      const finalSessionType = sessionType || 'AI Model';
+      console.log(`📋 Session type: ${finalSessionType}${aiModel ? ` (${aiModel})` : ''}`);
 
       const sessionParams = [
         sessionId,
         resolvedProjectId,
-        agentInfo.type, // Auto-detected agent type (claude-code, cline, etc.)
+        finalSessionType, // Simple type: "mcp-server" or "AI Model"
         startTime,
         title || null,
         description || null,
@@ -155,11 +157,9 @@ export class SessionTracker {
         workingCommitSha,                              // Git: Starting commit SHA
         JSON.stringify({
           start_time: startTime.toISOString(),
-          created_by: 'aidis-session-tracker',
-          auto_created: true,
-          agent_display_name: agentInfo.displayName,
-          agent_detection_confidence: agentInfo.confidence,
-          agent_version: agentInfo.version,
+          created_by: 'mandrel-session-tracker',
+          auto_created: !sessionType,  // Auto-created if no explicit type provided
+          session_type: finalSessionType,
           ai_model: aiModel || null,
           git_branch: activeBranch,
           git_start_commit: workingCommitSha,
