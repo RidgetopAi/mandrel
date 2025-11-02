@@ -460,4 +460,55 @@ export class TaskController {
       });
     }
   }
+
+  /**
+   * POST /tasks/bulk/move - Bulk move tasks to different project
+   */
+  static async bulkMoveToProject(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      const { ids, project_id } = req.body;
+
+      if (!Array.isArray(ids) || ids.length === 0) {
+        res.status(400).json({
+          success: false,
+          error: 'Invalid or empty task IDs array'
+        });
+        return;
+      }
+
+      if (!project_id) {
+        res.status(400).json({
+          success: false,
+          error: 'Target project_id is required'
+        });
+        return;
+      }
+
+      const result = await TaskService.bulkMoveToProject(ids, project_id);
+
+      // Broadcast task update events via SSE for each moved task
+      for (const id of ids) {
+        const taskUpdatedEvent: AidisDbEvent = {
+          entity: 'tasks',
+          action: 'update',
+          id,
+          projectId: project_id,
+          at: new Date().toISOString()
+        };
+        sseService.broadcastDbEvent(taskUpdatedEvent);
+      }
+
+      res.json({
+        success: true,
+        data: result,
+        message: `${result.updated} tasks moved successfully`
+      });
+    } catch (error) {
+      console.error('Bulk move tasks error:', error);
+      res.status(500).json({
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to bulk move tasks'
+      });
+    }
+  }
 }

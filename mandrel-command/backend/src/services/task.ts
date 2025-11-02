@@ -614,4 +614,37 @@ export class TaskService {
       client.release();
     }
   }
+
+  /**
+   * Bulk move tasks to a different project
+   */
+  static async bulkMoveToProject(ids: string[], project_id: string): Promise<{ updated: number }> {
+    if (ids.length === 0) {
+      return { updated: 0 };
+    }
+
+    try {
+      // Verify target project exists
+      const projectCheck = await pool.query(
+        'SELECT id FROM projects WHERE id = $1',
+        [project_id]
+      );
+
+      if (projectCheck.rows.length === 0) {
+        throw new Error('Target project not found');
+      }
+
+      // Update all tasks to new project
+      const result = await pool.query(`
+        UPDATE tasks
+        SET project_id = $1, updated_at = CURRENT_TIMESTAMP
+        WHERE id = ANY($2::uuid[])
+      `, [project_id, ids]);
+
+      return { updated: result.rowCount || 0 };
+    } catch (error) {
+      console.error('Bulk move tasks error:', error);
+      throw new Error('Failed to bulk move tasks');
+    }
+  }
 }
