@@ -1,6 +1,6 @@
 {
   "mcpServers": {
-    "aidis": {
+    "mandrel": {
       "type": "stdio",
       "command": "/home/ridgetop/.nvm/versions/node/v22.18.0/bin/node",
       "args": [
@@ -9,7 +9,7 @@
       "cwd": "/home/ridgetop/aidis",
       "env": {
         "PATH": "/home/ridgetop/.nvm/versions/node/v22.18.0/bin:/usr/local/bin:/usr/bin:/bin",
-        "AIDIS_HTTP_URL": "http://localhost:8080"
+        "MANDREL_HTTP_URL": "http://localhost:8080"
       }
     }
   }

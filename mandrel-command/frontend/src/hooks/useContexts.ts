@@ -115,6 +115,27 @@ export const useBulkDeleteContexts = () => {
   });
 };
 
+export const useBulkUpdateContexts = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ ids, updates }: {
+      ids: string[];
+      updates: {
+        project_id?: string;
+        tags?: string[];
+        relevance_score?: number;
+      }
+    }) => contextsClient.bulkUpdateContexts(ids, updates),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        predicate: (query) => Array.isArray(query.queryKey) && query.queryKey[0] === 'contexts' && query.queryKey[1] === 'list',
+      });
+      queryClient.invalidateQueries({ queryKey: contextQueryKeys.stats() });
+    },
+  });
+};
+
 export const useSemanticContextSearch = () => {
   return useMutation({
     mutationFn: (params: ContextSearchParams) => contextsClient.semanticSearch(params),
