@@ -156,9 +156,9 @@ describe('SSE Client', () => {
 
       const taskEvent = {
         entity: 'tasks' as const,
-        operation: 'update' as const,
+        action: 'update' as const,
         id: 'task-123',
-        timestamp: new Date().toISOString(),
+        at: new Date().toISOString(),
       } as AidisDbEvent;
 
       mockEventSource.triggerMessage('tasks', taskEvent);
@@ -175,9 +175,9 @@ describe('SSE Client', () => {
 
       const taskEvent: AidisDbEvent = {
         entity: 'tasks',
-        operation: 'insert',
+        action: 'insert',
         id: 'task-123',
-        timestamp: new Date().toISOString(),
+        at: new Date().toISOString(),
       };
 
       mockEventSource.triggerMessage('tasks', taskEvent);
@@ -200,9 +200,9 @@ describe('SSE Client', () => {
 
       const contextEvent: AidisDbEvent = {
         entity: 'contexts',
-        operation: 'insert',
+        action: 'insert',
         id: 'ctx-123',
-        timestamp: new Date().toISOString(),
+        at: new Date().toISOString(),
       };
 
       mockEventSource.triggerMessage('contexts', contextEvent);
@@ -222,9 +222,9 @@ describe('SSE Client', () => {
 
       const decisionEvent: AidisDbEvent = {
         entity: 'decisions',
-        operation: 'update',
+        action: 'update',
         id: 'dec-123',
-        timestamp: new Date().toISOString(),
+        at: new Date().toISOString(),
       };
 
       mockEventSource.triggerMessage('decisions', decisionEvent);
@@ -243,9 +243,9 @@ describe('SSE Client', () => {
 
       const projectEvent: AidisDbEvent = {
         entity: 'projects',
-        operation: 'update',
+        action: 'update',
         id: 'proj-123',
-        timestamp: new Date().toISOString(),
+        at: new Date().toISOString(),
       };
 
       mockEventSource.triggerMessage('projects', projectEvent);
@@ -264,9 +264,9 @@ describe('SSE Client', () => {
 
       const sessionEvent: AidisDbEvent = {
         entity: 'sessions',
-        operation: 'update',
+        action: 'update',
         id: 'sess-123',
-        timestamp: new Date().toISOString(),
+        at: new Date().toISOString(),
       };
 
       mockEventSource.triggerMessage('sessions', sessionEvent);
