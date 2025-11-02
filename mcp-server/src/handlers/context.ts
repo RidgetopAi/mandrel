@@ -517,13 +517,24 @@ export class ContextHandler {
 
   /**
    * Ensure we have a valid project ID (get current project or specified project)
+   * Accepts both UUID and project name
    */
   private async ensureProjectId(projectId?: string): Promise<string> {
     if (projectId) {
-      // Verify the project exists
-      const result = await db.query('SELECT id FROM projects WHERE id = $1', [projectId]);
+      // Check if projectId is a valid UUID format
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      const isUuid = uuidRegex.test(projectId);
+
+      // Query by UUID or name
+      const result = await db.query(
+        isUuid
+          ? 'SELECT id FROM projects WHERE id = $1'
+          : 'SELECT id FROM projects WHERE name = $1',
+        [projectId]
+      );
+
       if (result.rows.length > 0) {
-        return projectId;
+        return result.rows[0].id;
       }
       throw new Error(`Project ${projectId} not found`);
     }
@@ -531,7 +542,7 @@ export class ContextHandler {
     // Use current active project from project handler
     await projectHandler.initializeSession(); // Ensure session is initialized
     const currentProject = await projectHandler.getCurrentProject();
-    
+
     if (currentProject) {
       console.log(`📋 Using current project: ${currentProject.name}`);
       return currentProject.id;

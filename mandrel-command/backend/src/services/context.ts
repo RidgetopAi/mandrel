@@ -322,11 +322,69 @@ export class ContextService {
         'DELETE FROM contexts WHERE id = ANY($1::uuid[])',
         [ids]
       );
-      
+
       return { deleted: result.rowCount || 0 };
     } catch (error) {
       console.error('Bulk delete contexts error:', error);
       throw new Error('Failed to bulk delete contexts');
+    }
+  }
+
+  /**
+   * Bulk update contexts
+   */
+  static async bulkUpdateContexts(
+    ids: string[],
+    updates: {
+      project_id?: string;
+      tags?: string[];
+      relevance_score?: number;
+    }
+  ): Promise<{ updated: number }> {
+    if (ids.length === 0) {
+      return { updated: 0 };
+    }
+
+    try {
+      // Build SET clause dynamically based on which fields are provided
+      const setClauses: string[] = [];
+      const values: any[] = [ids]; // $1 will be the ids array
+      let paramIndex = 2;
+
+      if (updates.project_id !== undefined) {
+        setClauses.push(`project_id = $${paramIndex}`);
+        values.push(updates.project_id);
+        paramIndex++;
+      }
+
+      if (updates.tags !== undefined) {
+        setClauses.push(`tags = $${paramIndex}`);
+        values.push(updates.tags);
+        paramIndex++;
+      }
+
+      if (updates.relevance_score !== undefined) {
+        setClauses.push(`relevance_score = $${paramIndex}`);
+        values.push(updates.relevance_score);
+        paramIndex++;
+      }
+
+      if (setClauses.length === 0) {
+        return { updated: 0 };
+      }
+
+      const query = `
+        UPDATE contexts
+        SET ${setClauses.join(', ')}
+        WHERE id = ANY($1::uuid[])
+      `;
+
+      const result = await pool.query(query, values);
+
+      return { updated: result.rowCount || 0 };
+    } catch (error) {
+      console.error('Bulk update contexts error:', error);
+      throw new Error('Failed to bulk update contexts');
     }
   }
 

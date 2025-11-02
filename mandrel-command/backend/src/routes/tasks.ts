@@ -27,6 +27,7 @@ router.get('/stats', TaskController.getTaskStats);     // GET /tasks/stats - Get
 router.get('/lead-time', TaskController.getLeadTimeDistribution); // GET /tasks/lead-time - Lead time analytics
 router.post('/', validateBody('CreateTask'), TaskController.createTask);           // POST /tasks - Create task
 router.post('/bulk-update', TaskController.bulkUpdateTasks); // POST /tasks/bulk-update - Bulk updates
+router.post('/bulk/move', validateBody('TaskBulkMove'), TaskController.bulkMoveToProject); // POST /tasks/bulk/move - Bulk move to project
 
 // Individual task operations
 router.get('/:id', validateUUIDParam(), TaskController.getTask);                    // GET /tasks/:id - Get task by ID

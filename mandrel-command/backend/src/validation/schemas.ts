@@ -79,7 +79,7 @@ export const TaskTypeSchema = z.enum([
 export const TaskPrioritySchema = z.enum(['low', 'medium', 'high', 'urgent']);
 
 export const TaskStatusSchema = z.enum([
-  'pending', 'in_progress', 'completed', 'blocked', 'cancelled'
+  'todo', 'in_progress', 'completed', 'blocked', 'cancelled'
 ]);
 
 export const CreateTaskSchema = z.object({
@@ -100,6 +100,11 @@ export const UpdateTaskSchema = z.object({
   priority: TaskPrioritySchema.optional(),
   assigned_to: optionalString(100),
   tags: tags,
+});
+
+export const TaskBulkMoveSchema = z.object({
+  ids: z.array(z.string().uuid('Invalid task ID format')).min(1, 'At least one task ID is required'),
+  project_id: z.string().uuid('Invalid project ID'),
 });
 
 export type CreateTaskData = z.infer<typeof CreateTaskSchema>;
@@ -155,6 +160,17 @@ export const ContextSearchQuerySchema = z.object({
 
 export const ContextBulkDeleteSchema = z.object({
   ids: z.array(z.string().uuid('Invalid context ID format')).min(1, 'At least one context ID is required'),
+});
+
+export const ContextBulkUpdateSchema = z.object({
+  ids: z.array(z.string().uuid('Invalid context ID format')).min(1, 'At least one context ID is required'),
+  updates: z.object({
+    project_id: z.string().uuid('Invalid project ID').optional(),
+    tags: tags,
+    relevance_score: z.number().min(0).max(10).optional(),
+  }).refine(data => Object.keys(data).length > 0, {
+    message: 'At least one field must be provided in updates',
+  }),
 });
 
 // ================================
@@ -245,6 +261,7 @@ export const SchemaRegistry = {
   // Tasks
   CreateTask: CreateTaskSchema,
   UpdateTask: UpdateTaskSchema,
+  TaskBulkMove: TaskBulkMoveSchema,
 
   // Contexts
   CreateContext: CreateContextSchema,
@@ -261,6 +278,7 @@ export const SchemaRegistry = {
 
   // Context bulk operations
   ContextBulkDelete: ContextBulkDeleteSchema,
+  ContextBulkUpdate: ContextBulkUpdateSchema,
 } as const;
 
 export type SchemaName = keyof typeof SchemaRegistry;
