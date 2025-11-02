@@ -9,6 +9,7 @@ import { createWriteStream, existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
 import { StreamProcessor } from './streamProcessor.js';
 import { ProxyConfig, SpindleLogEntry } from './types.js';
+import { getSessionWithFallback } from './services/mandrelSession.js';
 
 const config: ProxyConfig = {
   port: 8082,
@@ -75,8 +76,8 @@ app.all('*', async (req: Request, res: Response) => {
   // Log the incoming request
   console.log(`[PROXY] ${req.method} ${targetPath}`);
 
-  // Extract session ID from headers or generate one
-  const sessionId = (req.headers['x-session-id'] as string) || undefined;
+  // Get session ID from Mandrel API (with fallback to legacy session)
+  const sessionId = await getSessionWithFallback();
 
   // Create stream processor for this request
   const processor = new StreamProcessor(sessionId);

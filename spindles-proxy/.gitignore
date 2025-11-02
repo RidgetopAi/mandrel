@@ -16,3 +16,6 @@ logs/
 # OS
 .DS_Store
 Thumbs.db
+
+# ML Models (downloaded at runtime)
+.transformers-cache/
