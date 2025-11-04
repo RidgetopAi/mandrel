@@ -112,9 +112,14 @@ class EmbeddingMigration {
 
       console.log(`📝 Processing context ${context.id} (${context.context_type}): "${context.content.substring(0, 60)}..."`);
 
+      // Truncate content if needed
+      const textToEmbed = context.content.length > 8000 
+        ? context.content.substring(0, 8000)
+        : context.content;
+
       // Generate embedding
       const result = await embeddingService.generateEmbedding({
-        text: context.content,
+        text: textToEmbed,
       });
 
       if (!result || !result.embedding || result.embedding.length === 0) {
