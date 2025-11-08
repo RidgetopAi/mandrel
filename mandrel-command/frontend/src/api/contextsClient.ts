@@ -124,6 +124,33 @@ export const contextsClient = {
     return result.data ?? { deleted: 0 };
   },
 
+  async bulkUpdateContexts(ids: string[], updates: {
+    project_id?: string;
+    tags?: string[];
+    relevance_score?: number;
+  }): Promise<{ updated: number }> {
+    // Use fetch directly since OpenAPI client doesn't have this endpoint yet
+    const baseUrl = OpenAPI.BASE ?? '';
+    const endpoint = baseUrl.replace(/\/$/, '') + '/contexts/bulk/update';
+    const token = typeof window !== 'undefined' ? localStorage.getItem('aidis_token') : undefined;
+
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({ ids, updates }),
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to bulk update contexts');
+    }
+
+    const result = await response.json();
+    return result.data ?? { updated: 0 };
+  },
+
   async getContextStats(): Promise<ContextStats> {
     const response = await ContextsService.getContextsStats();
     const result = ensureSuccess(response, 'Failed to fetch context statistics');

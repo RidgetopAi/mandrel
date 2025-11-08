@@ -72,8 +72,8 @@ const ProjectRelationshipMap: React.FC = () => {
         data: {
           label: (
             <Space direction="vertical" size={0} style={{ width: '100%' }}>
-              <Text strong>{project.projectName}</Text>
-              <Text type="secondary">
+              <Text strong style={{ color: '#000', fontSize: '14px' }}>{project.projectName}</Text>
+              <Text style={{ color: '#666', fontSize: '12px' }}>
                 {project.sharedTagCount ?? 0} shared tags · {project.contextCount} contexts
               </Text>
             </Space>
@@ -81,7 +81,8 @@ const ProjectRelationshipMap: React.FC = () => {
         },
         position: { x, y },
         style: {
-          background: '#f5f5f5',
+          background: '#fff',
+          border: '2px solid #d9d9d9',
           borderRadius: 12,
           padding: '12px 16px',
           minWidth: 200,
@@ -184,7 +185,7 @@ const ProjectRelationshipMap: React.FC = () => {
             Refresh
           </Button>
         }
-        bodyStyle={{ height: 400 }}
+        bodyStyle={{ height: '70vh', minHeight: 500 }}
       >
         <ReactFlow
           nodes={nodes}
@@ -213,9 +214,9 @@ const ProjectRelationshipMap: React.FC = () => {
               <List.Item>
                 <Space direction="vertical" style={{ width: '100%' }}>
                   <Space size="large">
-                    <Text strong>{project.projectName}</Text>
-                    <Text type="secondary">{project.contextCount} contexts</Text>
-                    <Text type="secondary">Shared strength: {edge?.sharedTagStrength.toFixed(0)}</Text>
+                    <Text strong style={{ color: '#000', fontSize: '15px' }}>{project.projectName}</Text>
+                    <Text style={{ color: '#666', fontSize: '14px' }}>{project.contextCount} contexts</Text>
+                    <Text style={{ color: '#666', fontSize: '14px' }}>Shared strength: {edge?.sharedTagStrength.toFixed(0)}</Text>
                   </Space>
                   {tags.length > 0 ? (
                     <Space wrap>
