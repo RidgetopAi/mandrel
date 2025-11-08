@@ -5,10 +5,10 @@ import {
 } from 'antd';
 import {
   DeleteOutlined, ExportOutlined, MoreOutlined,
-  DownloadOutlined, PlusOutlined
+  DownloadOutlined, PlusOutlined, FolderOutlined
 } from '@ant-design/icons';
 import { useContextSelection } from '../../stores/contextStore';
-import { useBulkDeleteContexts } from '../../hooks/useContexts';
+import { useBulkDeleteContexts, useBulkUpdateContexts } from '../../hooks/useContexts';
 import contextsClient from '../../api/contextsClient';
 import { useProjectContext } from '../../contexts/ProjectContext';
 import { useTheme } from '../../contexts/ThemeContext';
@@ -41,9 +41,12 @@ const BulkActions: React.FC<BulkActionsProps> = ({
   } = useContextSelection();
 
   const bulkDeleteMutation = useBulkDeleteContexts();
-  const { currentProject } = useProjectContext();
+  const bulkUpdateMutation = useBulkUpdateContexts();
+  const { currentProject, allProjects } = useProjectContext();
   const { themeMode } = useTheme();
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+  const [moveModalVisible, setMoveModalVisible] = useState(false);
+  const [targetProjectId, setTargetProjectId] = useState<string | undefined>();
   const [exportModalVisible, setExportModalVisible] = useState(false);
   const [exportFormat, setExportFormat] = useState<'json' | 'csv' | 'md'>('json');
   const [exporting, setExporting] = useState(false);
@@ -73,6 +76,24 @@ const BulkActions: React.FC<BulkActionsProps> = ({
     } catch (error) {
       console.error('Bulk delete failed:', error);
       message.error('Failed to delete contexts');
+    }
+  };
+
+  // Handle bulk move
+  const handleBulkMove = async () => {
+    if (selectedCount === 0 || !targetProjectId) return;
+
+    try {
+      const result = await bulkUpdateMutation.mutateAsync({
+        ids: selectedContexts,
+        updates: { project_id: targetProjectId }
+      });
+      message.success(`Successfully moved ${result.updated} contexts to new project`);
+      setMoveModalVisible(false);
+      setTargetProjectId(undefined);
+    } catch (error) {
+      console.error('Bulk move failed:', error);
+      message.error('Failed to move contexts');
     }
   };
 
@@ -149,6 +170,14 @@ const BulkActions: React.FC<BulkActionsProps> = ({
         Add Context
       </Menu.Item>
       <Menu.Divider />
+      <Menu.Item
+        key="move"
+        icon={<FolderOutlined />}
+        onClick={() => setMoveModalVisible(true)}
+        disabled={!hasSelection}
+      >
+        Move to Project ({selectedCount})
+      </Menu.Item>
       <Menu.Item
         key="delete"
         icon={<DeleteOutlined />}
@@ -253,6 +282,62 @@ const BulkActions: React.FC<BulkActionsProps> = ({
           style={{ marginBottom: 16 }}
         />
         <Text>Are you sure you want to proceed?</Text>
+      </Modal>
+
+      {/* Move to Project Modal */}
+      <Modal
+        title="Move Contexts to Project"
+        open={moveModalVisible}
+        onCancel={() => {
+          setMoveModalVisible(false);
+          setTargetProjectId(undefined);
+        }}
+        footer={[
+          <Button key="cancel" onClick={() => {
+            setMoveModalVisible(false);
+            setTargetProjectId(undefined);
+          }}>
+            Cancel
+          </Button>,
+          <Button
+            key="move"
+            type="primary"
+            loading={bulkUpdateMutation.isPending}
+            onClick={handleBulkMove}
+            disabled={!targetProjectId}
+            icon={<FolderOutlined />}
+          >
+            Move {selectedCount} Contexts
+          </Button>
+        ]}
+      >
+        <Space direction="vertical" style={{ width: '100%' }}>
+          <Text>Select the project to move {selectedCount} context{selectedCount !== 1 ? 's' : ''} to:</Text>
+          <Select
+            style={{ width: '100%' }}
+            placeholder="Select target project"
+            value={targetProjectId}
+            onChange={setTargetProjectId}
+            showSearch
+            filterOption={(input, option) =>
+              (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+            }
+            options={allProjects
+              .filter(p => p.id !== currentProject?.id)
+              .map(p => ({
+                label: p.name,
+                value: p.id
+              }))}
+          />
+          {currentProject && (
+            <Alert
+              message={`Moving from: ${currentProject.name}`}
+              type="info"
+              showIcon
+              style={{ marginTop: 8 }}
+            />
+          )}
+        </Space>
       </Modal>
 
       {/* Export Modal */}

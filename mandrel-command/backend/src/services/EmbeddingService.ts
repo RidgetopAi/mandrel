@@ -743,9 +743,14 @@ export class EmbeddingService {
           r.shared_tag_strength,
           r.shared_tag_count,
           (
-            SELECT ARRAY_AGG(tag ORDER BY overlap_score DESC LIMIT 5)
-            FROM top_tags tt
-            WHERE tt.target_project_id = r.target_project_id AND tt.rank <= 5
+            SELECT ARRAY_AGG(tag)
+            FROM (
+              SELECT tag
+              FROM top_tags tt
+              WHERE tt.target_project_id = r.target_project_id AND tt.rank <= 5
+              ORDER BY overlap_score DESC
+              LIMIT 5
+            ) sub
           ) AS top_shared_tags
         FROM relationships r
         LEFT JOIN projects p ON p.id = r.target_project_id

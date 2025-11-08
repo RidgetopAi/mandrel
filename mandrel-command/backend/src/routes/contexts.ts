@@ -232,6 +232,24 @@ router.delete('/bulk/delete', validateBody('ContextBulkDelete'), ContextControll
 
 /**
  * @swagger
+ * /contexts/bulk/update:
+ *   post:
+ *     summary: Bulk update contexts by ID
+ *     tags: [Contexts]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/ContextBulkUpdate'
+ *     responses:
+ *       200:
+ *         description: Contexts updated successfully
+ */
+router.post('/bulk/update', validateBody('ContextBulkUpdate'), ContextController.bulkUpdateContexts);
+
+/**
+ * @swagger
  * /contexts/{id}/related:
  *   get:
  *     summary: Get contexts related to the supplied context

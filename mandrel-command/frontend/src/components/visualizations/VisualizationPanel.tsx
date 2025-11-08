@@ -166,27 +166,27 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = ({
     return (
       <Space direction="vertical" size="large" style={{ width: '100%' }}>
         {/* Summary Statistics */}
-        <Card size="small" title="Analysis Summary">
-          <Descriptions column={2} size="small">
-            <Descriptions.Item label="Files Analyzed">
-              <Text strong>{summary.filesAnalyzed}</Text>
+        <Card size="default" title={<span style={{ fontSize: '16px', color: '#000' }}>Analysis Summary</span>}>
+          <Descriptions column={2} size="middle">
+            <Descriptions.Item label={<span style={{ color: '#000' }}>Files Analyzed</span>}>
+              <Text strong style={{ color: '#000', fontSize: '15px' }}>{summary.filesAnalyzed}</Text>
             </Descriptions.Item>
-            <Descriptions.Item label="Total Dependencies">
-              <Text strong>{summary.totalDependencies}</Text>
+            <Descriptions.Item label={<span style={{ color: '#000' }}>Total Dependencies</span>}>
+              <Text strong style={{ color: '#000', fontSize: '15px' }}>{summary.totalDependencies}</Text>
             </Descriptions.Item>
-            <Descriptions.Item label="Circular Dependencies">
-              <Text strong type={summary.circularDependencies > 0 ? 'warning' : 'success'}>
+            <Descriptions.Item label={<span style={{ color: '#000' }}>Circular Dependencies</span>}>
+              <Text strong type={summary.circularDependencies > 0 ? 'warning' : 'success'} style={{ fontSize: '15px' }}>
                 {summary.circularDependencies}
               </Text>
             </Descriptions.Item>
-            <Descriptions.Item label="Orphan Files">
-              <Text strong>{summary.orphanFiles}</Text>
+            <Descriptions.Item label={<span style={{ color: '#000' }}>Orphan Files</span>}>
+              <Text strong style={{ color: '#000', fontSize: '15px' }}>{summary.orphanFiles}</Text>
             </Descriptions.Item>
-            <Descriptions.Item label="Leaf Modules">
-              <Text strong>{summary.leafModules}</Text>
+            <Descriptions.Item label={<span style={{ color: '#000' }}>Leaf Modules</span>}>
+              <Text strong style={{ color: '#000', fontSize: '15px' }}>{summary.leafModules}</Text>
             </Descriptions.Item>
-            <Descriptions.Item label="Execution Time">
-              <Text>{(summary.executionTime / 1000).toFixed(2)}s</Text>
+            <Descriptions.Item label={<span style={{ color: '#000' }}>Execution Time</span>}>
+              <Text style={{ color: '#000', fontSize: '14px' }}>{(summary.executionTime / 1000).toFixed(2)}s</Text>
             </Descriptions.Item>
           </Descriptions>
         </Card>
@@ -194,25 +194,25 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = ({
         {/* Circular Dependencies */}
         {circular && circular.length > 0 && (
           <Card
-            size="small"
+            size="default"
             title={
               <Space>
-                <WarningOutlined style={{ color: '#faad14' }} />
-                <Text>Circular Dependencies ({circular.length})</Text>
+                <WarningOutlined style={{ color: '#faad14', fontSize: '18px' }} />
+                <Text style={{ fontSize: '16px', color: '#000', fontWeight: 500 }}>Circular Dependencies ({circular.length})</Text>
               </Space>
             }
           >
             <List
-              size="small"
+              size="default"
               dataSource={circular}
               renderItem={(item, index) => (
                 <List.Item>
                   <Space direction="vertical" style={{ width: '100%' }}>
-                    <Text strong>Chain {index + 1} (Length: {item.length})</Text>
+                    <Text strong style={{ color: '#000', fontSize: '14px' }}>Chain {index + 1} (Length: {item.length})</Text>
                     {item.chain.map((file, i) => (
                       <div key={i} style={{ paddingLeft: i * 20 }}>
-                        <Text code>{file}</Text>
-                        {i < item.chain.length - 1 && <Text type="secondary"> → </Text>}
+                        <Text code style={{ fontSize: '13px', color: '#000' }}>{file}</Text>
+                        {i < item.chain.length - 1 && <Text type="secondary" style={{ color: '#666' }}> → </Text>}
                       </div>
                     ))}
                   </Space>
@@ -224,7 +224,7 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = ({
 
         {/* Orphan Files */}
         {orphans && orphans.length > 0 && (
-          <Card size="small" title={`Orphan Files (${orphans.length})`}>
+          <Card size="default" title={<span style={{ fontSize: '16px', color: '#000', fontWeight: 500 }}>Orphan Files ({orphans.length})</span>}>
             <Space wrap>
               {orphans.map((file, i) => (
                 <Tag key={i} color="orange">
@@ -238,11 +238,11 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = ({
         {/* Dependency Graph */}
         {graphPath && (
           <Card
-            size="small"
+            size="default"
             title={
               <Space>
-                <FileImageOutlined />
-                <Text>Dependency Graph</Text>
+                <FileImageOutlined style={{ fontSize: '18px', color: '#000' }} />
+                <Text style={{ fontSize: '16px', fontWeight: 500, color: '#000' }}>Dependency Graph</Text>
               </Space>
             }
             extra={
@@ -265,22 +265,31 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = ({
               closable
               style={{ marginBottom: 16 }}
             />
-            <div style={{ textAlign: 'center', maxHeight: '600px', overflow: 'auto', border: '1px solid #d9d9d9', borderRadius: 4, padding: 8 }}>
+            <div style={{ 
+              textAlign: 'center', 
+              minHeight: '70vh',
+              maxHeight: 'calc(100vh - 200px)', 
+              overflow: 'auto', 
+              border: '1px solid #d9d9d9', 
+              borderRadius: 4, 
+              padding: 16,
+              backgroundColor: '#fafafa'
+            }}>
               <Image
                 src={visualizationApi.getVisualizationUrl(graphPath.split('/').pop() || '')}
                 alt="Dependency Graph"
-                style={{ maxWidth: '100%', cursor: 'pointer' }}
+                style={{ maxWidth: '100%', cursor: 'pointer', minHeight: '500px' }}
                 preview={{
                   mask: (
                     <Space direction="vertical" align="center">
-                      <EyeOutlined style={{ fontSize: 24 }} />
-                      <Text style={{ color: 'white' }}>Click to view full screen</Text>
+                      <EyeOutlined style={{ fontSize: 32 }} />
+                      <Text style={{ color: 'white', fontSize: '16px', fontWeight: 500 }}>Click to view full screen</Text>
                     </Space>
                   ),
                 }}
                 placeholder={
-                  <div style={{ padding: '40px' }}>
-                    <Spin tip="Loading graph..." />
+                  <div style={{ padding: '60px' }}>
+                    <Spin size="large" tip="Loading graph..." />
                   </div>
                 }
               />
@@ -318,15 +327,15 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = ({
               <Space direction="vertical" style={{ width: '100%' }}>
                 <Space>
                   <WarningOutlined style={{ color: '#faad14' }} />
-                  <Text strong>Circular Chain {index + 1}</Text>
+                  <Text strong style={{ color: '#000', fontSize: '14px' }}>Circular Chain {index + 1}</Text>
                   <Tag color="orange">Length: {item.length}</Tag>
                 </Space>
                 <div style={{ paddingLeft: 20 }}>
                   {item.chain.map((file, i) => (
                     <div key={i}>
-                      <Text code>{file}</Text>
+                      <Text code style={{ fontSize: '13px', color: '#000' }}>{file}</Text>
                       {i < item.chain.length - 1 && (
-                        <Text type="secondary" style={{ margin: '0 8px' }}>
+                        <Text type="secondary" style={{ margin: '0 8px', color: '#666' }}>
                           ↓
                         </Text>
                       )}
@@ -355,7 +364,7 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = ({
                 <Tag color={index < 3 ? 'red' : index < 7 ? 'orange' : 'default'}>
                   #{index + 1}
                 </Tag>
-                <Text code style={{ maxWidth: 400, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                <Text code style={{ maxWidth: 400, overflow: 'hidden', textOverflow: 'ellipsis', fontSize: '13px', color: '#000' }}>
                   {item.file}
                 </Text>
               </Space>
@@ -454,16 +463,17 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = ({
 
       {/* Results Modal */}
       <Modal
-        title={modalTitle}
+        title={<span style={{ fontSize: '18px', fontWeight: 500 }}>{modalTitle}</span>}
         open={modalVisible}
         onCancel={() => setModalVisible(false)}
         footer={[
-          <Button key="close" onClick={() => setModalVisible(false)}>
+          <Button key="close" size="large" onClick={() => setModalVisible(false)}>
             Close
           </Button>,
           !error && (
             <Button
               key="refresh"
+              size="large"
               icon={<ReloadOutlined />}
               onClick={() => {
                 setModalVisible(false);
@@ -476,9 +486,14 @@ const VisualizationPanel: React.FC<VisualizationPanelProps> = ({
             </Button>
           ),
         ]}
-        width="90%"
-        style={{ top: 20, maxWidth: 1400 }}
-        bodyStyle={{ maxHeight: '75vh', overflow: 'auto' }}
+        width="95%"
+        style={{ top: 10, maxWidth: 1800 }}
+        bodyStyle={{ 
+          maxHeight: 'calc(100vh - 120px)', 
+          overflow: 'auto',
+          fontSize: '14px',
+          padding: '24px'
+        }}
       >
         {renderModalContent()}
       </Modal>

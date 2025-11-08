@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Table, Tag, Button, Space, Modal, Popconfirm, Select, Input } from 'antd';
-import { EditOutlined, DeleteOutlined, EyeOutlined, UserOutlined } from '@ant-design/icons';
+import { Table, Tag, Button, Space, Modal, Popconfirm, Select, Input, Alert, message } from 'antd';
+import { EditOutlined, DeleteOutlined, EyeOutlined, UserOutlined, FolderOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import TaskForm from './TaskForm';
 
@@ -31,12 +31,12 @@ interface TaskListProps {
   projects: Array<{ id: string; name: string; }>;
 }
 
-const TaskList: React.FC<TaskListProps> = ({ 
-  tasks, 
-  loading, 
-  onUpdateTask, 
+const TaskList: React.FC<TaskListProps> = ({
+  tasks,
+  loading,
+  onUpdateTask,
   onDeleteTask,
-  projects 
+  projects
 }) => {
   const [filteredTasks, setFilteredTasks] = useState<Task[]>(tasks);
   const [searchTerm, setSearchTerm] = useState('');
@@ -45,6 +45,12 @@ const TaskList: React.FC<TaskListProps> = ({
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [showEditForm, setShowEditForm] = useState(false);
   const [viewingTask, setViewingTask] = useState<Task | null>(null);
+
+  // Bulk move state
+  const [selectedTaskIds, setSelectedTaskIds] = useState<React.Key[]>([]);
+  const [moveModalVisible, setMoveModalVisible] = useState(false);
+  const [targetProjectId, setTargetProjectId] = useState<string | undefined>();
+  const [movingTasks, setMovingTasks] = useState(false);
 
   // Update filtered tasks when tasks prop changes
   React.useEffect(() => {
@@ -116,6 +122,56 @@ const TaskList: React.FC<TaskListProps> = ({
 
   const handleView = (task: Task) => {
     setViewingTask(task);
+  };
+
+  const handleBulkMove = async () => {
+    if (selectedTaskIds.length === 0 || !targetProjectId) {
+      return;
+    }
+
+    setMovingTasks(true);
+    try {
+      const token = localStorage.getItem('aidis_token');
+      const response = await fetch('http://localhost:5000/api/tasks/bulk/move', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          ids: selectedTaskIds,
+          project_id: targetProjectId
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to bulk move tasks');
+      }
+
+      const result = await response.json();
+      message.success(`Successfully moved ${result.data.updated} tasks to new project`);
+
+      setMoveModalVisible(false);
+      setTargetProjectId(undefined);
+      setSelectedTaskIds([]);
+
+      // Trigger a refresh by calling onUpdateTask for the first task (will trigger SSE update)
+      if (selectedTaskIds.length > 0) {
+        window.location.reload(); // Simple reload to refresh the list
+      }
+    } catch (error) {
+      console.error('Bulk move failed:', error);
+      message.error('Failed to move tasks');
+    } finally {
+      setMovingTasks(false);
+    }
+  };
+
+  const rowSelection = {
+    selectedRowKeys: selectedTaskIds,
+    onChange: (selectedRowKeys: React.Key[]) => {
+      setSelectedTaskIds(selectedRowKeys);
+    },
   };
 
   const columns: ColumnsType<Task> = [
@@ -268,12 +324,40 @@ const TaskList: React.FC<TaskListProps> = ({
         </Select>
       </div>
 
+      {/* Bulk Actions Toolbar */}
+      {selectedTaskIds.length > 0 && (
+        <Alert
+          message={
+            <Space>
+              <span>{selectedTaskIds.length} task{selectedTaskIds.length !== 1 ? 's' : ''} selected</span>
+              <Button
+                type="primary"
+                size="small"
+                icon={<FolderOutlined />}
+                onClick={() => setMoveModalVisible(true)}
+              >
+                Move to Project
+              </Button>
+              <Button
+                size="small"
+                onClick={() => setSelectedTaskIds([])}
+              >
+                Clear Selection
+              </Button>
+            </Space>
+          }
+          type="info"
+          style={{ marginBottom: 16 }}
+        />
+      )}
+
       {/* Task Table */}
       <Table
         columns={columns}
         dataSource={filteredTasks}
         loading={loading}
         rowKey="id"
+        rowSelection={rowSelection}
         pagination={{
           pageSize: 20,
           showSizeChanger: true,
@@ -323,6 +407,60 @@ const TaskList: React.FC<TaskListProps> = ({
             )}
           </div>
         )}
+      </Modal>
+
+      {/* Move to Project Modal */}
+      <Modal
+        title="Move Tasks to Project"
+        open={moveModalVisible}
+        onCancel={() => {
+          setMoveModalVisible(false);
+          setTargetProjectId(undefined);
+        }}
+        footer={[
+          <Button key="cancel" onClick={() => {
+            setMoveModalVisible(false);
+            setTargetProjectId(undefined);
+          }}>
+            Cancel
+          </Button>,
+          <Button
+            key="move"
+            type="primary"
+            loading={movingTasks}
+            onClick={handleBulkMove}
+            disabled={!targetProjectId}
+            icon={<FolderOutlined />}
+          >
+            Move {selectedTaskIds.length} Task{selectedTaskIds.length !== 1 ? 's' : ''}
+          </Button>
+        ]}
+      >
+        <Space direction="vertical" style={{ width: '100%' }}>
+          <span>Select the project to move {selectedTaskIds.length} task{selectedTaskIds.length !== 1 ? 's' : ''} to:</span>
+          <Select
+            style={{ width: '100%' }}
+            placeholder="Select target project"
+            value={targetProjectId}
+            onChange={setTargetProjectId}
+            showSearch
+            filterOption={(input, option) =>
+              (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+            }
+            options={projects.map(p => ({
+              label: p.name,
+              value: p.id
+            }))}
+          />
+          {selectedTaskIds.length > 0 && (
+            <Alert
+              message={`${selectedTaskIds.length} task${selectedTaskIds.length !== 1 ? 's' : ''} will be moved`}
+              type="info"
+              showIcon
+              style={{ marginTop: 8 }}
+            />
+          )}
+        </Space>
       </Modal>
     </div>
   );

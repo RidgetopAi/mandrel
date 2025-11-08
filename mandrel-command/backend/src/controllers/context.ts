@@ -243,6 +243,46 @@ export class ContextController {
   }
 
   /**
+   * POST /api/contexts/bulk/update - Bulk update contexts
+   */
+  static async bulkUpdateContexts(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      const { ids, updates } = req.body;
+
+      if (!Array.isArray(ids) || ids.length === 0) {
+        res.status(400).json({
+          success: false,
+          message: 'Invalid or empty context IDs array'
+        });
+        return;
+      }
+
+      if (!updates || typeof updates !== 'object') {
+        res.status(400).json({
+          success: false,
+          message: 'Updates object is required'
+        });
+        return;
+      }
+
+      const result = await ContextService.bulkUpdateContexts(ids, updates);
+
+      res.json({
+        success: true,
+        data: result,
+        message: `${result.updated} contexts updated successfully`
+      });
+    } catch (error) {
+      console.error('Bulk update contexts error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to bulk update contexts',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  }
+
+  /**
    * GET /api/contexts/stats - Get context statistics
    * Oracle Phase 1: Use req.projectId from middleware
    */

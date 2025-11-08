@@ -74,7 +74,7 @@ export const TaskTypeSchema = z.enum([
 export const TaskPrioritySchema = z.enum(['low', 'medium', 'high', 'urgent']);
 
 export const TaskStatusSchema = z.enum([
-  'pending', 'in_progress', 'completed', 'blocked', 'cancelled'
+  'todo', 'in_progress', 'completed', 'blocked', 'cancelled'
 ]);
 
 export const CreateTaskSchema = z.object({
