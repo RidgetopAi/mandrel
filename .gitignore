@@ -173,3 +173,6 @@ logo/
 
 # Zone identifier files
 *:Zone.Identifier
+
+# Sensitive files
+Assets/

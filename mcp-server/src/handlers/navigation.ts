@@ -1,13 +1,15 @@
 /**
  * Mandrel Navigation Handler - Phase 1 Navigation Enhancement
- * 
+ *
  * Solves the Mandrel discoverability problem by providing:
  * 1. mandrel_help - Categorized tool listing
  * 2. mandrel_explain - Detailed tool documentation
  * 3. mandrel_examples - Usage examples and patterns
- * 
+ *
  * This transforms Mandrel from "27 mysterious tools" into a discoverable, learnable system.
  */
+
+import { AIDIS_TOOL_DEFINITIONS } from '../config/toolDefinitions.js';
 
 export class NavigationHandler {
   /**
@@ -57,117 +59,6 @@ export class NavigationHandler {
     ]
   };
 
-  /**
-   * Detailed parameter documentation for each tool
-   */
-  private readonly toolParameters = {
-    // System Health
-    'mandrel_ping': {
-      description: 'Test connectivity and responsiveness of the Mandrel server',
-      parameters: [
-        { name: 'message', type: 'string', required: false, description: 'Optional test message (default: "Hello Mandrel!")' }
-      ],
-      returns: 'Pong response with timestamp and status'
-    },
-    'mandrel_status': {
-      description: 'Get comprehensive server status including database connection, memory usage, and uptime',
-      parameters: [],
-      returns: 'Server health report with version, uptime, database status, memory usage'
-    },
-
-    // Context Management
-    'context_store': {
-      description: 'Store development context with automatic vector embedding generation for semantic search',
-      parameters: [
-        { name: 'content', type: 'string', required: true, description: 'The context content (code, decisions, discussions, etc.)' },
-        { name: 'type', type: 'enum', required: true, description: 'Type: code, decision, error, discussion, planning, completion, milestone, reflections, handoff' },
-        { name: 'tags', type: 'string[]', required: false, description: 'Optional tags for categorization' },
-        { name: 'relevanceScore', type: 'number', required: false, description: 'Relevance score 0-10 (default: 5)' },
-        { name: 'sessionId', type: 'string', required: false, description: 'Session ID for grouping related contexts' },
-        { name: 'projectId', type: 'string', required: false, description: 'Project ID (uses current if not specified)' }
-      ],
-      returns: 'Stored context with generated ID, timestamp, and searchable embedding'
-    },
-    'context_search': {
-      description: 'Search stored contexts using semantic similarity matching',
-      parameters: [
-        { name: 'query', type: 'string', required: true, description: 'Search query (uses semantic similarity)' },
-        { name: 'type', type: 'enum', required: false, description: 'Filter by context type' },
-        { name: 'tags', type: 'string[]', required: false, description: 'Filter by tags' },
-        { name: 'limit', type: 'number', required: false, description: 'Max results (default: 10, max: 50)' },
-        { name: 'minSimilarity', type: 'number', required: false, description: 'Minimum similarity percentage 0-100' },
-        { name: 'projectId', type: 'string', required: false, description: 'Project ID filter' }
-      ],
-      returns: 'Array of matching contexts with similarity scores and search reasons'
-    },
-    'context_get_recent': {
-      description: 'Get recent contexts in chronological order (newest first)',
-      parameters: [
-        { name: 'limit', type: 'number', required: false, description: 'Maximum results (default: 5, max: 20)' },
-        { name: 'projectId', type: 'string', required: false, description: 'Project ID (uses current if not specified)' }
-      ],
-      returns: 'Array of recent contexts ordered by creation time'
-    },
-    'context_stats': {
-      description: 'Get context statistics for a project',
-      parameters: [
-        { name: 'projectId', type: 'string', required: false, description: 'Project ID (uses current if not specified)' }
-      ],
-      returns: 'Statistics including total contexts, types distribution, recent activity'
-    },
-
-    // Project Management  
-    'project_list': {
-      description: 'List all available projects with optional statistics',
-      parameters: [
-        { name: 'includeStats', type: 'boolean', required: false, description: 'Include context statistics (default: true)' }
-      ],
-      returns: 'Array of projects with metadata and optional statistics'
-    },
-    'project_create': {
-      description: 'Create a new project for organizing development context',
-      parameters: [
-        { name: 'name', type: 'string', required: true, description: 'Unique project name' },
-        { name: 'description', type: 'string', required: false, description: 'Project description' },
-        { name: 'gitRepoUrl', type: 'string', required: false, description: 'Git repository URL' },
-        { name: 'rootDirectory', type: 'string', required: false, description: 'Root directory path' },
-        { name: 'metadata', type: 'object', required: false, description: 'Additional metadata as key-value pairs' }
-      ],
-      returns: 'Created project with ID and metadata'
-    },
-    'project_switch': {
-      description: 'Switch to a different project (sets it as current active project)',
-      parameters: [
-        { name: 'project', type: 'string', required: true, description: 'Project ID or name to switch to' }
-      ],
-      returns: 'Confirmation of project switch with new current project details'
-    },
-    'project_current': {
-      description: 'Get the currently active project information',
-      parameters: [],
-      returns: 'Current project details or null if no project is set'
-    },
-    'project_info': {
-      description: 'Get detailed information about a specific project',
-      parameters: [
-        { name: 'project', type: 'string', required: true, description: 'Project ID or name' }
-      ],
-      returns: 'Detailed project information including metadata and statistics'
-    },
-    'project_insights': {
-      description: 'Get comprehensive project health and insights',
-      parameters: [
-        { name: 'projectId', type: 'string', required: false, description: 'Project ID (uses current if not specified)' }
-      ],
-      returns: 'Project health metrics, activity patterns, and recommendations'
-    },
-
-    // Session Management - DELETED (2025-10-24)
-    // 5 session tools removed - sessions auto-manage via SessionTracker service
-
-    // Add more tool parameters as needed...
-    // (Truncating for brevity in this implementation)
-  };
 
   /**
    * Usage examples and common patterns for tools
@@ -419,6 +310,46 @@ export class NavigationHandler {
   };
 
   /**
+   * Parse and format schema properties for display
+   */
+  private formatSchemaParameters(inputSchema: any, requiredFields: string[] = []): string {
+    if (!inputSchema?.properties || Object.keys(inputSchema.properties).length === 0) {
+      return '**Parameters:** None\n\n';
+    }
+
+    let output = '**Parameters:**\n';
+
+    for (const [propName, propSchema] of Object.entries<any>(inputSchema.properties)) {
+      const isRequired = requiredFields.includes(propName);
+      const requiredLabel = isRequired ? ' *(required)*' : ' *(optional)*';
+
+      // Format type nicely
+      let typeDisplay = propSchema.type || 'any';
+
+      // Handle arrays
+      if (typeDisplay === 'array') {
+        typeDisplay = 'array';
+        if (propSchema.items?.type) {
+          typeDisplay = `${propSchema.items.type}[]`;
+        }
+      }
+
+      // Handle enums - show valid values
+      if (propSchema.enum) {
+        typeDisplay = propSchema.enum.map((v: any) => `"${v}"`).join(' | ');
+      }
+
+      // Handle description
+      const description = propSchema.description || 'No description available';
+
+      output += `• \`${propName}\` (${typeDisplay})${requiredLabel} - ${description}\n`;
+    }
+
+    output += '\n';
+    return output;
+  }
+
+  /**
    * Generate categorized help listing of all AIDIS tools
    */
   async getHelp(): Promise<any> {
@@ -464,12 +395,12 @@ export class NavigationHandler {
    */
   async explainTool(args: { toolName: string }): Promise<any> {
     const toolName = args.toolName.toLowerCase();
-    
+
     // Find the tool in our catalog
     let toolFound = false;
     let category = '';
     let description = '';
-    
+
     for (const [cat, tools] of Object.entries(this.toolCatalog)) {
       const tool = tools.find(t => t.name === toolName);
       if (tool) {
@@ -479,7 +410,7 @@ export class NavigationHandler {
         break;
       }
     }
-    
+
     if (!toolFound) {
       return {
         content: [
@@ -495,23 +426,18 @@ export class NavigationHandler {
     explanation += `**Category:** ${category}\n`;
     explanation += `**Purpose:** ${description}\n\n`;
 
-    // Add detailed parameter info if available
-    const paramInfo = this.toolParameters[toolName as keyof typeof this.toolParameters];
-    if (paramInfo) {
-      explanation += `**Description:** ${paramInfo.description}\n\n`;
-      
-      if (paramInfo.parameters.length > 0) {
-        explanation += '**Parameters:**\n';
-        for (const param of paramInfo.parameters) {
-          const required = param.required ? ' *(required)*' : ' *(optional)*';
-          explanation += `• \`${param.name}\` (${param.type})${required} - ${param.description}\n`;
-        }
-        explanation += '\n';
-      } else {
-        explanation += '**Parameters:** None\n\n';
+    // Look up the tool definition from AIDIS_TOOL_DEFINITIONS (single source of truth)
+    const toolDef = AIDIS_TOOL_DEFINITIONS.find(t => t.name === toolName);
+
+    if (toolDef && toolDef.inputSchema) {
+      // Add extended description if available in inputSchema
+      if (toolDef.description && toolDef.description !== description) {
+        explanation += `**Description:** ${toolDef.description}\n\n`;
       }
-      
-      explanation += `**Returns:** ${paramInfo.returns}\n\n`;
+
+      // Parse and display parameters from schema
+      const requiredFields = toolDef.inputSchema.required || [];
+      explanation += this.formatSchemaParameters(toolDef.inputSchema, requiredFields);
     }
 
     explanation += `💡 **Quick Tip:** Use \`aidis_examples ${toolName}\` to see usage examples.`;

@@ -74,10 +74,23 @@ interface ThemeProviderProps {
 }
 
 export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
-  const [themeMode, setThemeModeState] = useState<ThemeMode>('light');
+  // Initialize theme from localStorage for immediate persistence (eliminates race condition)
+  const [themeMode, setThemeModeState] = useState<ThemeMode>(() => {
+    try {
+      const stored = localStorage.getItem('app_theme');
+      if (stored === 'light' || stored === 'dark') {
+        // Apply theme immediately to prevent flash
+        document.documentElement.setAttribute('data-theme', stored);
+        return stored;
+      }
+    } catch (error) {
+      console.error('Failed to read theme from localStorage:', error);
+    }
+    return 'light';
+  });
   const [isInitialized, setIsInitialized] = useState(false);
 
-  // Load theme preference from backend on mount
+  // Sync with user profile data from backend on mount
   useEffect(() => {
     const loadThemePreference = async () => {
       try {
@@ -97,10 +110,13 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
         if (response.ok) {
           const data = await response.json();
           const savedTheme = data.data?.user?.theme || 'light';
-          setThemeModeState(savedTheme);
 
-          // Apply theme to document root
-          document.documentElement.setAttribute('data-theme', savedTheme);
+          // Sync localStorage with backend if different
+          if (savedTheme !== themeMode) {
+            setThemeModeState(savedTheme);
+            localStorage.setItem('app_theme', savedTheme);
+            document.documentElement.setAttribute('data-theme', savedTheme);
+          }
         }
       } catch (error) {
         console.error('Failed to load theme preference:', error);
@@ -110,11 +126,21 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
     };
 
     loadThemePreference();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run on mount to avoid infinite loop. themeMode is intentionally excluded.
 
-  // Update theme mode and apply to document root
+  // Update theme mode, persist to localStorage, and apply to document root
   const setThemeMode = (mode: ThemeMode) => {
     setThemeModeState(mode);
+
+    // Persist to localStorage for immediate persistence
+    try {
+      localStorage.setItem('app_theme', mode);
+    } catch (error) {
+      console.error('Failed to save theme to localStorage:', error);
+    }
+
+    // Apply theme to document root
     document.documentElement.setAttribute('data-theme', mode);
   };
 

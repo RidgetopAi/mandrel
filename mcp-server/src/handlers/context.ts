@@ -11,6 +11,7 @@
 
 import { db } from '../config/database.js';
 import { embeddingService } from '../services/embedding.js';
+import { dimensionalityReductionService } from '../services/dimensionality-reduction.js';
 import { projectHandler } from './project.js';
 import { logContextEvent, logHierarchicalMemorySearch } from '../middleware/eventLogger.js';
 
@@ -142,12 +143,47 @@ export class ContextHandler {
       console.log(`🔍 DEBUG: context_type length = ${contextData.context_type.length}`);
       console.log(`🔍 DEBUG: context_type char codes = [${Array.from(contextData.context_type).map(c => c.charCodeAt(0)).join(',')}]`);
 
+      // Generate 3D coordinates for the vector
+      let vectorCoords = { x: 0, y: 0, z: 0 };
+      try {
+        // Get existing vectors for context-aware mapping
+        const existingVectorsResult = await db.query(
+          `SELECT embedding, vector_x, vector_y, vector_z 
+           FROM contexts 
+           WHERE project_id = $1 AND vector_x IS NOT NULL 
+           ORDER BY created_at DESC 
+           LIMIT 100`,
+          [projectId]
+        );
+
+        if (existingVectorsResult.rows.length > 0) {
+          const referenceVectors = existingVectorsResult.rows.map(r => 
+            typeof r.embedding === 'string' ? JSON.parse(r.embedding) : r.embedding
+          );
+          const referenceCoords = existingVectorsResult.rows.map(r => [r.vector_x, r.vector_y, r.vector_z]);
+          
+          const result = await dimensionalityReductionService.mapSingleVector(
+            embeddingResult.embedding,
+            referenceVectors,
+            referenceCoords
+          );
+          vectorCoords = { x: result.x, y: result.y, z: result.z || 0 };
+        } else {
+          // First vector in project - use fallback
+          const fallback = await dimensionalityReductionService.reduceVectors([embeddingResult.embedding], { dimensions: 3 });
+          vectorCoords = { x: fallback[0][0], y: fallback[0][1], z: fallback[0][2] };
+        }
+      } catch (coordError) {
+        console.warn('⚠️  Failed to generate coordinates, using default:', coordError);
+      }
+
       // Insert into database
       const sqlQuery = `
         INSERT INTO contexts (
           project_id, session_id, context_type, content, 
-          embedding, relevance_score, tags, metadata
-        ) VALUES ($1, $2, $3, $4, $5::vector, $6, $7, $8)
+          embedding, relevance_score, tags, metadata,
+          vector_x, vector_y, vector_z, mapping_method, mapped_at
+        ) VALUES ($1, $2, $3, $4, $5::vector, $6, $7, $8, $9, $10, $11, $12, CURRENT_TIMESTAMP)
         RETURNING id, created_at
       `;
       
@@ -159,7 +195,11 @@ export class ContextHandler {
         `[${embeddingResult.embedding.join(',')}]`, // Convert to PostgreSQL vector format
         contextData.relevance_score,
         contextData.tags,
-        contextData.metadata
+        contextData.metadata,
+        vectorCoords.x,
+        vectorCoords.y,
+        vectorCoords.z,
+        'umap'
       ];
 
       if (process.env.AIDIS_DETAILED_LOGGING === 'true') {

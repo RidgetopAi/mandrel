@@ -341,10 +341,10 @@ BEGIN
     IF NEW.outcome_status = 'successful' AND NEW.outcome_score >= 8 THEN
         -- Check if we have similar successful decisions to form a pattern
         SELECT COUNT(*) INTO similar_decisions
-        FROM decision_outcomes do
-        JOIN technical_decisions td ON do.decision_id = td.id
-        WHERE do.outcome_status = 'successful' 
-        AND do.outcome_score >= 8
+        FROM decision_outcomes dout
+        JOIN technical_decisions td ON dout.decision_id = td.id
+        WHERE dout.outcome_status = 'successful'
+        AND dout.outcome_score >= 8
         AND td.decision_type = (SELECT decision_type FROM technical_decisions WHERE id = NEW.decision_id)
         AND td.impact_level = (SELECT impact_level FROM technical_decisions WHERE id = NEW.decision_id);
         
@@ -402,14 +402,14 @@ SELECT
     td.impact_level,
     td.status,
     td.decision_date,
-    COUNT(do.id) as outcome_measurements,
-    AVG(do.outcome_score) as avg_outcome_score,
-    MAX(do.measured_at) as last_measured,
-    string_agg(DISTINCT do.outcome_status, ', ') as outcome_statuses,
-    AVG(do.variance_percentage) as avg_variance,
+    COUNT(dout.id) as outcome_measurements,
+    AVG(dout.outcome_score) as avg_outcome_score,
+    MAX(dout.measured_at) as last_measured,
+    string_agg(DISTINCT dout.outcome_status, ', ') as outcome_statuses,
+    AVG(dout.variance_percentage) as avg_variance,
     COUNT(dia.id) as impact_connections
 FROM technical_decisions td
-LEFT JOIN decision_outcomes do ON td.id = do.decision_id
+LEFT JOIN decision_outcomes dout ON td.id = dout.decision_id
 LEFT JOIN decision_impact_analysis dia ON td.id = dia.source_decision_id OR td.id = dia.impacted_decision_id
 GROUP BY td.id, td.title, td.decision_type, td.impact_level, td.status, td.decision_date;
 
@@ -437,13 +437,13 @@ SELECT
     COUNT(CASE WHEN td.status = 'active' THEN 1 END) as active_decisions,
     COUNT(CASE WHEN td.outcome_status = 'successful' THEN 1 END) as successful_decisions,
     COUNT(CASE WHEN td.outcome_status = 'failed' THEN 1 END) as failed_decisions,
-    ROUND(AVG(do.outcome_score), 2) as avg_outcome_score,
+    ROUND(AVG(dout.outcome_score), 2) as avg_outcome_score,
     COUNT(dli.id) as learning_insights_generated,
     COUNT(dr.id) as retrospectives_conducted,
     MAX(td.decision_date) as last_decision_date
 FROM projects p
 LEFT JOIN technical_decisions td ON p.id = td.project_id
-LEFT JOIN decision_outcomes do ON td.id = do.decision_id
+LEFT JOIN decision_outcomes dout ON td.id = dout.decision_id
 LEFT JOIN decision_learning_insights dli ON p.id = dli.project_id
 LEFT JOIN decision_retrospectives dr ON td.id = dr.decision_id
 GROUP BY p.id, p.name;
