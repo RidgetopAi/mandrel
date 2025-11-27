@@ -4,10 +4,9 @@ const { Pool } = require('pg');
 async function createAdminUser() {
   // Try different common PostgreSQL configurations
   const configs = [
-    { user: 'ridgetop', password: 'password', database: 'aidis_development' },
-    { user: 'ridgetop', password: '', database: 'aidis_development' },
-    { user: 'postgres', password: 'postgres', database: 'aidis' },
-    { user: process.env.DB_USER || 'ridgetop', password: process.env.DB_PASSWORD || 'password', database: process.env.DB_NAME || 'aidis_development' }
+    { user: process.env.DB_USER || 'postgres', password: process.env.DB_PASSWORD || '', database: process.env.DB_NAME || 'aidis_production' },
+    { user: 'postgres', password: '', database: 'aidis_production' },
+    { user: 'postgres', password: 'postgres', database: 'aidis_production' },
   ];
 
   for (const config of configs) {
@@ -41,7 +40,7 @@ async function createAdminUser() {
       await pool.query(`
         INSERT INTO admin_users (id, username, email, password_hash, role, created_at, updated_at)
         VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
-      `, [userId, 'admin', 'admin@aidis.local', hashedPassword, 'admin']);
+      `, [userId, 'admin', 'admin@mandrel.local', hashedPassword, 'admin']);
 
       console.log('✅ Admin user created successfully!');
       console.log('Login credentials:');
