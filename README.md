@@ -71,12 +71,12 @@ System Architecture
 
 ```bash
 # Clone repository
-git clone https://github.com/RidgetopAi/aidis.git
-cd aidis
+git clone https://github.com/RidgetopAi/mandrel.git
+cd mandrel
 
 # Start PostgreSQL (using Docker)
 docker run -d --name mandrel-postgres \
-  -e POSTGRES_USER=ridgetop \
+  -e POSTGRES_USER=your_username \
   -e POSTGRES_PASSWORD=your_password \
   -e POSTGRES_DB=aidis_production \
   -p 5432:5432 \
@@ -106,7 +106,7 @@ cd frontend && npm start
 ### Access
 
 - **Mandrel Command UI**: http://localhost:3000
-- **Default Login**: admin / admin123!
+- **Default Login**: admin / admin123! *(change immediately for production use)*
 - **MCP Server**: localhost:5001 (STDIO) / localhost:8080 (HTTP Bridge)
 
 ---
@@ -269,7 +269,7 @@ Create `.env` files in `mcp-server/` and `mandrel-command/backend/`:
 ```env
 DATABASE_HOST=localhost
 DATABASE_PORT=5432
-DATABASE_USER=ridgetop
+DATABASE_USER=your_username
 DATABASE_PASSWORD=your_password
 DATABASE_NAME=aidis_production
 MCP_PORT=5001
@@ -278,7 +278,7 @@ HTTP_BRIDGE_PORT=8080
 
 **Mandrel Command Backend (.env)**
 ```env
-DATABASE_URL=postgresql://ridgetop:your_password@localhost:5432/aidis_production
+DATABASE_URL=postgresql://your_username:your_password@localhost:5432/aidis_production
 JWT_SECRET=your_jwt_secret
 PORT=5000
 FRONTEND_URL=http://localhost:3000
@@ -324,7 +324,7 @@ Template service file available at `mandrel.service` for systemd integration.
 ## Project Structure
 
 ```
-aidis/
+mandrel/
 ├── mcp-server/              # MCP protocol server
 │   ├── src/
 │   │   ├── handlers/        # MCP tool implementations
