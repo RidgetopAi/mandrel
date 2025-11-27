@@ -162,6 +162,7 @@ logging-config.env
 
 # Personal projects - not part of AIDIS
 projects/
+forge-web/
 logo/
 
 # Configuration backups
