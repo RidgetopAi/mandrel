@@ -48,6 +48,7 @@ System Architecture
 ├── MCP Server (Port 5001)
 │   ├── 27 MCP Tools (context, projects, decisions, tasks)
 │   ├── PostgreSQL Database (aidis_production)
+│   ├── Redis (background job queues)
 │   ├── Local embeddings (384D vectors)
 │   └── HTTP Bridge (Port 8080)
 │
@@ -65,7 +66,8 @@ System Architecture
 
 - Node.js 18+
 - PostgreSQL 16 with pgvector extension
-- Docker (optional, for database)
+- Redis 6+
+- Docker (recommended for PostgreSQL and Redis)
 
 ### Installation
 
@@ -81,6 +83,11 @@ docker run -d --name mandrel-postgres \
   -e POSTGRES_DB=aidis_production \
   -p 5432:5432 \
   ankane/pgvector
+
+# Start Redis (using Docker)
+docker run -d --name mandrel-redis \
+  -p 6379:6379 \
+  redis:alpine
 
 # Install MCP server dependencies
 cd mcp-server
@@ -272,6 +279,7 @@ DATABASE_PORT=5432
 DATABASE_USER=your_username
 DATABASE_PASSWORD=your_password
 DATABASE_NAME=aidis_production
+REDIS_URL=redis://localhost:6379
 MCP_PORT=5001
 HTTP_BRIDGE_PORT=8080
 ```
