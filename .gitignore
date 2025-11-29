@@ -177,3 +177,6 @@ logo/
 
 # Sensitive files
 Assets/
+
+# Spindles proxy (contains sensitive data)
+spindles-proxy/
