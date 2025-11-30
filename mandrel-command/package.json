@@ -17,8 +17,7 @@
     "lint:fix": "concurrently \"cd frontend && npm run lint:fix\" \"cd backend && npm run lint:fix\" \"cd shared && npm run lint:fix\"",
     "format": "concurrently \"cd frontend && npm run format\" \"cd backend && npm run format\" \"cd shared && npm run format\"",
     "test": "echo \"Tests will be implemented in Phase 2\"",
-    "start": "cd backend && npm start",
-    "postinstall": "npm run install:all"
+    "start": "cd backend && npm start"
   },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^6.21.0",
