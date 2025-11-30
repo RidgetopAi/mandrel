@@ -1,4 +1,18 @@
 {
+  "name": "mandrel",
+  "version": "0.1.0",
+  "description": "AI Development Intelligence System - Persistent context management",
+  "private": true,
+  "scripts": {
+    "setup": "npm run install:mcp && npm run install:command",
+    "install:mcp": "cd mcp-server && npm install",
+    "install:command": "cd mandrel-command && npm run install:all",
+    "migrate": "cd mcp-server && npx tsx scripts/migrate.ts",
+    "dev:mcp": "cd mcp-server && npm run dev",
+    "dev:command": "cd mandrel-command && npm run dev:full",
+    "build:mcp": "cd mcp-server && npm run build",
+    "build:command": "cd mandrel-command && npm run build"
+  },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.18.1",
     "axios": "^1.11.0",

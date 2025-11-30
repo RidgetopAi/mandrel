@@ -64,51 +64,73 @@ System Architecture
 
 ### Prerequisites
 
-- Node.js 18+
-- PostgreSQL 16 with pgvector extension
-- Redis 6+
-- Docker (recommended for PostgreSQL and Redis)
+- Node.js 18+ ([download](https://nodejs.org/))
+- Docker Desktop ([download](https://www.docker.com/products/docker-desktop/))
 
-### Installation
+### Installation (4 Steps)
 
+**Linux/Mac:**
 ```bash
-# Clone repository
+# 1. Clone and install dependencies
 git clone https://github.com/RidgetopAi/mandrel.git
 cd mandrel
+npm run setup
 
-# Start PostgreSQL (using Docker)
-docker run -d --name mandrel-postgres \
-  -e POSTGRES_USER=your_username \
-  -e POSTGRES_PASSWORD=your_password \
-  -e POSTGRES_DB=aidis_production \
-  -p 5432:5432 \
-  ankane/pgvector
+# 2. Configure environment (copy example files)
+cp mcp-server/.env.example mcp-server/.env
+cp mandrel-command/backend/.env.example mandrel-command/backend/.env
 
-# Start Redis (using Docker)
-docker run -d --name mandrel-redis \
-  -p 6379:6379 \
-  redis:alpine
+# 3. Start PostgreSQL + Redis (Docker)
+docker-compose up -d
 
-# Install MCP server dependencies
-cd mcp-server
-npm install
-
-# Run database migrations
-npx tsx scripts/migrate.ts
-
-# Start MCP server
-./start-mandrel.sh
-
-# Install Mandrel Command (new terminal)
-cd ../mandrel-command
-npm run install:all
-
-# Start backend
-cd backend && npm run dev
-
-# Start frontend (new terminal)
-cd frontend && npm start
+# 4. Run database migrations
+npm run migrate
 ```
+
+**Windows (PowerShell):**
+```powershell
+# 1. Clone and install dependencies
+git clone https://github.com/RidgetopAi/mandrel.git
+cd mandrel
+npm run setup
+
+# 2. Configure environment (copy example files)
+Copy-Item mcp-server\.env.example mcp-server\.env
+Copy-Item mandrel-command\backend\.env.example mandrel-command\backend\.env
+
+# 3. Start PostgreSQL + Redis (Docker Desktop must be running)
+docker-compose up -d
+
+# 4. Run database migrations
+npm run migrate
+```
+
+That's it! Now start the services (2 terminals):
+
+```bash
+# Terminal 1: Start MCP Server
+npm run dev:mcp
+
+# Terminal 2: Start Mandrel Command UI
+npm run dev:command
+```
+
+### Alternative: Manual Database Setup
+
+If you prefer not to use Docker, install PostgreSQL 16+ with pgvector extension and Redis 6+ manually:
+
+```bash
+# PostgreSQL with pgvector (Ubuntu/Debian)
+sudo apt install postgresql-16 postgresql-16-pgvector
+
+# Create database
+createdb aidis_production
+
+# Redis
+sudo apt install redis-server
+```
+
+Then configure `.env` files in `mcp-server/` and `mandrel-command/backend/` with your database credentials.
 
 ### Access
 
