@@ -66,31 +66,39 @@ try {
 }
 
 /**
- * Database Configuration for AIDIS
+ * Database Configuration for Mandrel
  *
  * This sets up our PostgreSQL connection pool with proper error handling
  * and reconnection logic. The pool manages multiple database connections
  * efficiently, which is crucial for a high-performance MCP server.
  */
 
-// Helper function to get environment variable with AIDIS_ prefix and fallback
-function getEnvVar(aidisKey: string, legacyKey: string, defaultValue: string = ''): string {
-  return process.env[aidisKey] || process.env[legacyKey] || defaultValue;
+// Helper function to get environment variable with MANDREL_ preferred, AIDIS_ fallback
+function getEnvVar(mandrelKey: string, aidisKey: string, legacyKey: string, defaultValue: string = ''): string {
+  // Priority: MANDREL_ > AIDIS_ (deprecated) > legacy key > default
+  if (process.env[mandrelKey]) {
+    return process.env[mandrelKey]!;
+  }
+  if (process.env[aidisKey]) {
+    console.warn(`\u26a0\ufe0f  ${aidisKey} is deprecated. Use ${mandrelKey} instead.`);
+    return process.env[aidisKey]!;
+  }
+  return process.env[legacyKey] || defaultValue;
 }
 
-function getEnvVarInt(aidisKey: string, legacyKey: string, defaultValue: string = '0'): number {
-  const value = getEnvVar(aidisKey, legacyKey, defaultValue);
+function getEnvVarInt(mandrelKey: string, aidisKey: string, legacyKey: string, defaultValue: string = '0'): number {
+  const value = getEnvVar(mandrelKey, aidisKey, legacyKey, defaultValue);
   return parseInt(value);
 }
 
 const dbConfig: PoolConfig = {
-  user: getEnvVar('AIDIS_DATABASE_USER', 'DATABASE_USER', 'ridgetop'),
-  host: getEnvVar('AIDIS_DATABASE_HOST', 'DATABASE_HOST', 'localhost'),
-  database: getEnvVar('AIDIS_DATABASE_NAME', 'DATABASE_NAME') || (() => {
-    throw new Error('AIDIS_DATABASE_NAME or DATABASE_NAME environment variable is required! No fallback allowed.');
+  user: getEnvVar('MANDREL_DATABASE_USER', 'AIDIS_DATABASE_USER', 'DATABASE_USER', 'mandrel'),
+  host: getEnvVar('MANDREL_DATABASE_HOST', 'AIDIS_DATABASE_HOST', 'DATABASE_HOST', 'localhost'),
+  database: getEnvVar('MANDREL_DATABASE_NAME', 'AIDIS_DATABASE_NAME', 'DATABASE_NAME', '') || (() => {
+    throw new Error('MANDREL_DATABASE_NAME or DATABASE_NAME environment variable is required! No fallback allowed.');
   })(),
-  password: getEnvVar('AIDIS_DATABASE_PASSWORD', 'DATABASE_PASSWORD', ''),
-  port: getEnvVarInt('AIDIS_DATABASE_PORT', 'DATABASE_PORT', '5432'),
+  password: getEnvVar('MANDREL_DATABASE_PASSWORD', 'AIDIS_DATABASE_PASSWORD', 'DATABASE_PASSWORD', ''),
+  port: getEnvVarInt('MANDREL_DATABASE_PORT', 'AIDIS_DATABASE_PORT', 'DATABASE_PORT', '5432'),
   
   // Connection pool settings
   max: 20, // Maximum number of connections

@@ -1,27 +1,30 @@
 #!/usr/bin/env node
 
 /**
- * AIDIS MCP HTTP Adapter - Production Ready
- * 
- * HTTP protocol adapter that bridges Claude Code to AIDIS Core Service.
- * 
+ * Mandrel MCP HTTP Adapter - Production Ready
+ *
+ * HTTP protocol adapter that bridges Claude Code to Mandrel Core Service.
+ *
  * ARCHITECTURE:
- * Claude Code (MCP) → mcp-http-adapter (STDIO↔HTTP) → AIDIS Core Service (HTTP API)
- * 
+ * Claude Code (MCP) → mcp-http-adapter (STDIO↔HTTP) → Mandrel Core Service (HTTP API)
+ *
  * FEATURES:
  * ✅ Dynamic tool discovery from core service
- * ✅ Environment-based configuration (AIDIS_URL)
+ * ✅ Environment-based configuration (MANDREL_URL)
  * ✅ Robust error handling and retry logic
  * ✅ Connection management with health checks
  * ✅ TypeScript with proper validation
  * ✅ No hardcoded tools - fully dynamic
  * ✅ Compatible with existing Claude Code MCP configuration
- * 
+ *
  * ENVIRONMENT VARIABLES:
- * - AIDIS_URL: Core service URL (default: http://localhost:8080)
- * - AIDIS_TIMEOUT: Request timeout in ms (default: 30000)
- * - AIDIS_RETRIES: Max retry attempts (default: 3)
- * - AIDIS_DEBUG: Enable debug logging (default: false)
+ * - MANDREL_URL: Core service URL (default: http://localhost:8080)
+ * - MANDREL_TIMEOUT: Request timeout in ms (default: 30000)
+ * - MANDREL_RETRIES: Max retry attempts (default: 3)
+ * - MANDREL_DEBUG: Enable debug logging (default: false)
+ *
+ * DEPRECATED (still supported with warnings):
+ * - AIDIS_URL, AIDIS_TIMEOUT, AIDIS_RETRIES, AIDIS_DEBUG
  */
 
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
@@ -40,7 +43,7 @@ import { URL } from 'url';
 
 // Configuration with environment support
 interface AdapterConfig {
-  aidisUrl: string;
+  mandrelUrl: string;
   timeout: number;
   maxRetries: number;
   retryDelay: number;
@@ -48,26 +51,38 @@ interface AdapterConfig {
   healthCheckInterval: number;
 }
 
+// Helper to get env var with MANDREL_ preferred, AIDIS_ fallback
+function getEnvWithFallback(mandrelKey: string, aidisKey: string, defaultValue: string): string {
+  if (process.env[mandrelKey]) {
+    return process.env[mandrelKey]!;
+  }
+  if (process.env[aidisKey]) {
+    console.error(`⚠️  ${aidisKey} is deprecated. Use ${mandrelKey} instead.`);
+    return process.env[aidisKey]!;
+  }
+  return defaultValue;
+}
+
 const CONFIG: AdapterConfig = {
-  aidisUrl: process.env.AIDIS_URL || 'http://localhost:8080',
-  timeout: parseInt(process.env.AIDIS_TIMEOUT || '30000'),
-  maxRetries: parseInt(process.env.AIDIS_RETRIES || '3'),
+  mandrelUrl: getEnvWithFallback('MANDREL_URL', 'AIDIS_URL', 'http://localhost:8080'),
+  timeout: parseInt(getEnvWithFallback('MANDREL_TIMEOUT', 'AIDIS_TIMEOUT', '30000')),
+  maxRetries: parseInt(getEnvWithFallback('MANDREL_RETRIES', 'AIDIS_RETRIES', '3')),
   retryDelay: 1000,
-  debug: process.env.AIDIS_DEBUG === 'true',
+  debug: getEnvWithFallback('MANDREL_DEBUG', 'AIDIS_DEBUG', 'false') === 'true',
   healthCheckInterval: 60000 // 1 minute
 };
 
 // Tool definition from core service
-interface AIDISTool {
+interface MandrelTool {
   name: string;
   description: string;
   endpoint: string;
-  inputSchema?: any; // pass-through from AIDIS tool definitions
+  inputSchema?: any; // pass-through from Mandrel tool definitions
 }
 
 // HTTP response interfaces
 interface ToolListResponse {
-  tools: AIDISTool[];
+  tools: MandrelTool[];
 }
 
 interface ToolCallResponse {
@@ -105,7 +120,7 @@ class HttpClient {
       method: options.method || 'GET',
       headers: {
         'Content-Type': 'application/json',
-        'User-Agent': 'aidis-mcp-http-adapter/1.0.0',
+        'User-Agent': 'mandrel-mcp-http-adapter/1.0.0',
         ...options.headers
       },
       timeout: this.config.timeout
@@ -116,27 +131,27 @@ class HttpClient {
     }
 
     let lastError: Error;
-    
+
     for (let attempt = 0; attempt <= this.config.maxRetries; attempt++) {
       try {
         return await this.makeRequest(httpModule, requestOptions, options.body);
       } catch (error) {
         lastError = error as Error;
-        
+
         if (this.config.debug) {
           console.error(`🔄 Attempt ${attempt + 1}/${this.config.maxRetries + 1} failed:`, lastError.message);
         }
-        
+
         if (attempt === this.config.maxRetries) {
           break;
         }
-        
+
         // Exponential backoff
         const delay = this.config.retryDelay * Math.pow(2, attempt);
         await this.delay(delay);
       }
     }
-    
+
     throw new Error(`HTTP request failed after ${this.config.maxRetries + 1} attempts: ${lastError!.message}`);
   }
 
@@ -151,11 +166,11 @@ class HttpClient {
     return new Promise((resolve, reject) => {
       const req = httpModule.request(options, (res) => {
         let data = '';
-        
+
         res.on('data', (chunk) => {
           data += chunk;
         });
-        
+
         res.on('end', () => {
           if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) {
             resolve(data);
@@ -164,17 +179,17 @@ class HttpClient {
           }
         });
       });
-      
+
       req.on('error', reject);
       req.on('timeout', () => {
         req.destroy();
         reject(new Error(`Request timeout after ${this.config.timeout}ms`));
       });
-      
+
       if (body) {
         req.write(body);
       }
-      
+
       req.end();
     });
   }
@@ -207,18 +222,18 @@ class ConnectionManager {
    */
   async initialize(): Promise<void> {
     if (this.config.debug) {
-      console.error('🔌 Initializing connection to AIDIS Core Service...');
+      console.error('🔌 Initializing connection to Mandrel Core Service...');
     }
 
     await this.checkHealth();
-    
+
     if (!this.isHealthy) {
-      throw new Error('AIDIS Core Service is not healthy');
+      throw new Error('Mandrel Core Service is not healthy');
     }
 
     // Start periodic health checks
     this.startHealthMonitoring();
-    
+
     if (this.config.debug) {
       console.error('✅ Connection initialized successfully');
     }
@@ -230,17 +245,17 @@ class ConnectionManager {
   async checkHealth(): Promise<boolean> {
     try {
       const response = await this.httpClient.request(
-        `${this.config.aidisUrl}/healthz`,
+        `${this.config.mandrelUrl}/healthz`,
         { method: 'GET' }
       );
-      
+
       const health = JSON.parse(response);
       this.isHealthy = health.status === 'healthy';
-      
+
       if (this.config.debug) {
         console.error(`💓 Health check: ${this.isHealthy ? 'HEALTHY' : 'UNHEALTHY'}`);
       }
-      
+
       return this.isHealthy;
     } catch (error) {
       this.isHealthy = false;
@@ -266,14 +281,14 @@ class ConnectionManager {
 
     try {
       const response = await this.httpClient.request(
-        `${this.config.aidisUrl}/mcp/tools`,
+        `${this.config.mandrelUrl}/mcp/tools`,
         { method: 'GET' }
       );
-      
+
       const toolsResponse: ToolListResponse = JSON.parse(response);
-      
-      // Convert AIDIS tools to MCP tool format, preserving inputSchema from server
-      this.cachedTools = toolsResponse.tools.map((tool: AIDISTool) => ({
+
+      // Convert Mandrel tools to MCP tool format, preserving inputSchema from server
+      this.cachedTools = toolsResponse.tools.map((tool: MandrelTool) => ({
         name: tool.name,
         description: tool.description,
         inputSchema: tool.inputSchema || {
@@ -282,13 +297,13 @@ class ConnectionManager {
           additionalProperties: true
         }
       }));
-      
+
       this.lastToolsUpdate = now;
-      
+
       if (this.config.debug) {
         console.error(`📋 Discovered ${this.cachedTools.length} tools from core service`);
       }
-      
+
       return this.cachedTools;
     } catch (error) {
       if (this.cachedTools) {
@@ -306,7 +321,7 @@ class ConnectionManager {
     if (!this.isHealthy) {
       await this.checkHealth();
       if (!this.isHealthy) {
-        throw new McpError(ErrorCode.InternalError, 'AIDIS Core Service is unavailable');
+        throw new McpError(ErrorCode.InternalError, 'Mandrel Core Service is unavailable');
       }
     }
 
@@ -314,17 +329,17 @@ class ConnectionManager {
       const body = JSON.stringify({
         arguments: args || {}
       });
-      
+
       const response = await this.httpClient.request(
-        `${this.config.aidisUrl}/mcp/tools/${toolName}`,
+        `${this.config.mandrelUrl}/mcp/tools/${toolName}`,
         {
           method: 'POST',
           body
         }
       );
-      
+
       const result: ToolCallResponse = JSON.parse(response);
-      
+
       if (result.success && result.result) {
         return result.result;
       } else {
@@ -337,7 +352,7 @@ class ConnectionManager {
       if (error instanceof McpError) {
         throw error;
       }
-      
+
       // Convert HTTP errors to MCP errors
       const message = (error as Error).message;
       if (message.includes('timeout')) {
@@ -357,7 +372,7 @@ class ConnectionManager {
     if (this.healthCheckTimer) {
       clearInterval(this.healthCheckTimer);
     }
-    
+
     this.healthCheckTimer = setInterval(async () => {
       await this.checkHealth();
     }, this.config.healthCheckInterval);
@@ -375,21 +390,21 @@ class ConnectionManager {
 }
 
 /**
- * AIDIS MCP HTTP Adapter - Main class
+ * Mandrel MCP HTTP Adapter - Main class
  */
-class AIDISMcpHttpAdapter {
+class MandrelMcpHttpAdapter {
   private server: Server;
   private connectionManager: ConnectionManager;
 
   constructor(config: AdapterConfig) {
     this.connectionManager = new ConnectionManager(config);
-    
+
     // Create MCP server
     this.server = new Server(
       {
-        name: 'aidis-mcp-http-adapter',
+        name: 'mandrel-mcp-http-adapter',
         version: '1.0.0',
-        description: 'HTTP adapter for AIDIS Core Service'
+        description: 'HTTP adapter for Mandrel Core Service'
       },
       {
         capabilities: {
@@ -424,22 +439,22 @@ class AIDISMcpHttpAdapter {
     // Handle tool call requests
     this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
       const { name, arguments: args } = request.params;
-      
+
       if (CONFIG.debug) {
         console.error(`🔧 Tool call: ${name}`);
       }
-      
+
       try {
         return await this.connectionManager.callTool(name, args);
       } catch (error) {
         if (CONFIG.debug) {
           console.error(`❌ Tool call failed: ${name} - ${(error as Error).message}`);
         }
-        
+
         if (error instanceof McpError) {
           throw error;
         }
-        
+
         // Return error response in MCP format
         return {
           content: [
@@ -460,18 +475,18 @@ class AIDISMcpHttpAdapter {
     try {
       // Initialize connection to core service
       await this.connectionManager.initialize();
-      
+
       // Connect MCP server to STDIO transport
       const transport = new StdioServerTransport();
       await this.server.connect(transport);
-      
+
       if (CONFIG.debug) {
-        console.error('🚀 AIDIS MCP HTTP Adapter started successfully');
-        console.error(`🌐 Core Service URL: ${CONFIG.aidisUrl}`);
+        console.error('🚀 Mandrel MCP HTTP Adapter started successfully');
+        console.error(`🌐 Core Service URL: ${CONFIG.mandrelUrl}`);
         console.error(`⏱️  Timeout: ${CONFIG.timeout}ms`);
         console.error(`🔄 Max Retries: ${CONFIG.maxRetries}`);
       }
-      
+
     } catch (error) {
       console.error('❌ Failed to start adapter:', (error as Error).message);
       process.exit(1);
@@ -483,11 +498,11 @@ class AIDISMcpHttpAdapter {
    */
   async shutdown(): Promise<void> {
     if (CONFIG.debug) {
-      console.error('📴 Shutting down AIDIS MCP HTTP Adapter...');
+      console.error('📴 Shutting down Mandrel MCP HTTP Adapter...');
     }
-    
+
     this.connectionManager.destroy();
-    
+
     if (CONFIG.debug) {
       console.error('✅ Shutdown complete');
     }
@@ -498,19 +513,19 @@ class AIDISMcpHttpAdapter {
  * Main execution
  */
 async function main(): Promise<void> {
-  const adapter = new AIDISMcpHttpAdapter(CONFIG);
-  
+  const adapter = new MandrelMcpHttpAdapter(CONFIG);
+
   // Handle shutdown signals
   process.on('SIGINT', async () => {
     await adapter.shutdown();
     process.exit(0);
   });
-  
+
   process.on('SIGTERM', async () => {
     await adapter.shutdown();
     process.exit(0);
   });
-  
+
   // Start the adapter
   await adapter.start();
 }
@@ -523,4 +538,4 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   });
 }
 
-export { AIDISMcpHttpAdapter, CONFIG };
+export { MandrelMcpHttpAdapter, CONFIG };

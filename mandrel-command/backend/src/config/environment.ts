@@ -121,9 +121,9 @@ export const config = {
 
   // Application info
   app: {
-    name: 'AIDIS Command Backend',
+    name: 'Mandrel Command Backend',
     version: process.env.npm_package_version || '1.0.0',
-    description: 'REST API server for AIDIS database administration',
+    description: 'REST API server for Mandrel database administration',
   }
 };
 

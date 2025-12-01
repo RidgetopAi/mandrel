@@ -21,270 +21,217 @@ Mandrel provides persistent memory and intelligence tools for AI development wor
 
 ---
 
+## Quick Start
+
+Choose **ONE** installation method below.
+
+### Prerequisites (All Methods)
+
+- **Node.js 18+** - [download](https://nodejs.org/) or use nvm
+- **Git** - for cloning the repository
+
+---
+
+## Option A: Docker (Recommended - Easiest)
+
+Docker handles PostgreSQL and Redis for you. Best for getting started quickly.
+
+```bash
+# 1. Clone the repository
+git clone https://github.com/RidgetopAi/mandrel.git
+cd mandrel
+
+# 2. Copy environment files
+cp .env.example .env
+cp mcp-server/.env.example mcp-server/.env
+cp mandrel-command/backend/.env.example mandrel-command/backend/.env
+
+# 3. Install Node.js dependencies
+npm run setup
+
+# 4. Start PostgreSQL and Redis (Docker)
+docker-compose up -d
+
+# 5. Wait for containers to be healthy (~10 seconds)
+docker-compose ps  # should show "healthy" status
+
+# 6. Run database migrations
+npm run migrate
+
+# 7. Start Mandrel (2 terminals)
+npm run dev:mcp      # Terminal 1: MCP Server
+npm run dev:command  # Terminal 2: Web Dashboard
+```
+
+**Access:**
+- Dashboard: http://localhost:3000 (login: admin / admin123!)
+- MCP Server: localhost:5001 (STDIO) / localhost:8080 (HTTP Bridge)
+
+---
+
+## Option B: Native (No Docker)
+
+For those who prefer running PostgreSQL and Redis natively. Faster startup, more control.
+
+### macOS (Homebrew)
+
+```bash
+# 1. Install system dependencies
+brew install postgresql@16 redis node
+
+# 2. Start services
+brew services start postgresql@16
+brew services start redis
+
+# 3. Create database and enable pgvector
+createdb aidis_production
+psql -d aidis_production -c "CREATE EXTENSION IF NOT EXISTS vector;"
+
+# 4. Clone and setup
+git clone https://github.com/RidgetopAi/mandrel.git
+cd mandrel
+
+# 5. Copy and edit environment files
+cp .env.example .env
+cp mcp-server/.env.example mcp-server/.env
+cp mandrel-command/backend/.env.example mandrel-command/backend/.env
+
+# Edit .env files to match your PostgreSQL user:
+# DATABASE_USER=your_username
+# DATABASE_PASSWORD=your_password (if any)
+
+# 6. Install dependencies
+npm run setup
+
+# 7. Run migrations
+npm run migrate
+
+# 8. Start Mandrel (2 terminals)
+npm run dev:mcp      # Terminal 1
+npm run dev:command  # Terminal 2
+```
+
+### Ubuntu/Debian
+
+```bash
+# 1. Install PostgreSQL 16 with pgvector
+sudo apt update
+sudo apt install -y postgresql-16 postgresql-16-pgvector redis-server
+
+# 2. Start services
+sudo systemctl start postgresql redis-server
+sudo systemctl enable postgresql redis-server
+
+# 3. Create database user and database
+sudo -u postgres createuser --createdb $USER
+createdb aidis_production
+psql -d aidis_production -c "CREATE EXTENSION IF NOT EXISTS vector;"
+
+# 4. Clone and setup
+git clone https://github.com/RidgetopAi/mandrel.git
+cd mandrel
+
+# 5. Copy environment files
+cp .env.example .env
+cp mcp-server/.env.example mcp-server/.env
+cp mandrel-command/backend/.env.example mandrel-command/backend/.env
+
+# Edit DATABASE_USER in .env files to match your username
+
+# 6. Install and run
+npm run setup
+npm run migrate
+npm run dev:mcp      # Terminal 1
+npm run dev:command  # Terminal 2
+```
+
+---
+
+## Troubleshooting
+
+### "Database does not exist"
+
+```bash
+# Create it manually
+createdb aidis_production
+
+# Then enable pgvector
+psql -d aidis_production -c "CREATE EXTENSION IF NOT EXISTS vector;"
+```
+
+### "Connection refused" to PostgreSQL
+
+Check that PostgreSQL is running:
+```bash
+# macOS
+brew services list | grep postgresql
+
+# Linux
+sudo systemctl status postgresql
+```
+
+### "pgvector extension not available"
+
+Install the pgvector extension for your system:
+```bash
+# macOS (Homebrew PostgreSQL already includes it)
+# Just run: CREATE EXTENSION vector;
+
+# Ubuntu/Debian
+sudo apt install postgresql-16-pgvector
+
+# Then in psql:
+psql -d aidis_production -c "CREATE EXTENSION vector;"
+```
+
+### Port already in use
+
+Mandrel uses these ports by default:
+- 5432: PostgreSQL
+- 6379: Redis
+- 5001: MCP Server (STDIO)
+- 8080: MCP HTTP Bridge
+- 5000: Mandrel Command Backend
+- 3000: Mandrel Command Frontend
+
+Check for conflicts:
+```bash
+lsof -i :5432  # Check PostgreSQL port
+lsof -i :8080  # Check HTTP Bridge port
+```
+
+---
+
 ## Architecture
 
-Mandrel consists of two primary components:
+```
+Mandrel System
+├── MCP Server (Port 5001/8080)
+│   ├── 27 MCP Tools (context, projects, decisions, tasks)
+│   ├── PostgreSQL Database (aidis_production)
+│   ├── Redis (background job queues)
+│   ├── Local embeddings (384D vectors via Transformers.js)
+│   └── HTTP Bridge (Port 8080)
+│
+└── Mandrel Command Dashboard (Ports 3000/5000)
+    ├── React Frontend (Port 3000)
+    ├── Express Backend (Port 5000)
+    └── WebSocket Server
+```
 
-### MCP Server
-Production-grade backend implementing the Model Context Protocol with 27 specialized tools for development intelligence.
+### Technology Stack
 
-**Technology Stack:**
+**MCP Server:**
 - Node.js/TypeScript
 - PostgreSQL with pgvector extension
 - Local embeddings via Transformers.js (zero API costs)
 - MCP STDIO + HTTP bridge protocols
 
-### Mandrel Command Dashboard
-Web-based administration interface for managing projects, contexts, and tasks.
-
-**Technology Stack:**
+**Mandrel Command Dashboard:**
 - React frontend with Ant Design
 - Express.js REST API backend
 - WebSocket real-time updates
 - JWT authentication
-
-```
-System Architecture
-├── MCP Server (Port 5001)
-│   ├── 27 MCP Tools (context, projects, decisions, tasks)
-│   ├── PostgreSQL Database (aidis_production)
-│   ├── Redis (background job queues)
-│   ├── Local embeddings (384D vectors)
-│   └── HTTP Bridge (Port 8080)
-│
-└── Mandrel Command (Ports 3000/5000)
-    ├── React Frontend
-    ├── Express Backend
-    └── WebSocket Server
-```
-
----
-
-## Quick Start
-
-### Prerequisites
-
-- Node.js 18+ ([download](https://nodejs.org/))
-- Docker Desktop ([download](https://www.docker.com/products/docker-desktop/))
-
-### Installation (4 Steps)
-
-**Linux/Mac:**
-```bash
-# 1. Clone and install dependencies
-git clone https://github.com/RidgetopAi/mandrel.git
-cd mandrel
-npm run setup
-
-# 2. Configure environment (copy example files)
-cp mcp-server/.env.example mcp-server/.env
-cp mandrel-command/backend/.env.example mandrel-command/backend/.env
-
-# 3. Start PostgreSQL + Redis (Docker)
-docker-compose up -d
-
-# 4. Run database migrations
-npm run migrate
-```
-
-**Windows (PowerShell):**
-```powershell
-# 1. Clone and install dependencies
-git clone https://github.com/RidgetopAi/mandrel.git
-cd mandrel
-npm run setup
-
-# 2. Configure environment (copy example files)
-Copy-Item mcp-server\.env.example mcp-server\.env
-Copy-Item mandrel-command\backend\.env.example mandrel-command\backend\.env
-
-# 3. Start PostgreSQL + Redis (Docker Desktop must be running)
-docker-compose up -d
-
-# 4. Run database migrations
-npm run migrate
-```
-
-That's it! Now start the services (2 terminals):
-
-```bash
-# Terminal 1: Start MCP Server
-npm run dev:mcp
-
-# Terminal 2: Start Mandrel Command UI
-npm run dev:command
-```
-
-### Alternative: Manual Database Setup
-
-If you prefer not to use Docker, install PostgreSQL 16+ with pgvector extension and Redis 6+ manually:
-
-```bash
-# PostgreSQL with pgvector (Ubuntu/Debian)
-sudo apt install postgresql-16 postgresql-16-pgvector
-
-# Create database
-createdb aidis_production
-
-# Redis
-sudo apt install redis-server
-```
-
-Then configure `.env` files in `mcp-server/` and `mandrel-command/backend/` with your database credentials.
-
-### Access
-
-- **Mandrel Command UI**: http://localhost:3000
-- **Default Login**: admin / admin123! *(change immediately for production use)*
-- **MCP Server**: localhost:5001 (STDIO) / localhost:8080 (HTTP Bridge)
-
----
-
-## ⚠️ Security Notice
-
-**HTTP Bridge is Localhost-Only by Default**
-
-The MCP HTTP bridge (port 8080) is **unauthenticated** and binds to `127.0.0.1` for security. 
-
-- ✅ **Safe**: Default localhost-only binding prevents network exposure
-- ⚠️ **Do NOT expose** the HTTP bridge to the internet without adding authentication
-- 🔧 **Override**: Set `MANDREL_BIND_ADDR=0.0.0.0` to bind all interfaces (NOT RECOMMENDED for production)
-
-**First Run Note**: The first context storage downloads the Transformers.js embedding model (~50MB). This may take 1-2 minutes. Subsequent operations are fast.
-
----
-
-## Features
-
-### Context Management
-Store and retrieve development context with semantic similarity search. Maintain project knowledge across sessions.
-
-- Automatic embedding generation
-- Semantic search with relevance scoring
-- Type categorization (code, decision, error, discussion, etc.)
-- Tag-based filtering
-- Project-scoped isolation
-
-### Technical Decision Tracking
-Record architectural and implementation decisions with full context, alternatives considered, and outcomes.
-
-- Decision type classification
-- Impact level tracking
-- Alternative comparison
-- Outcome recording
-- Component mapping
-
-### Project Management
-Multi-project workflows with seamless switching and project-specific contexts.
-
-- Project creation and switching
-- Default project configuration
-- Project-scoped data isolation
-- Statistics and insights
-- Git repository integration
-
-### Task Coordination
-Professional task management with real-time updates and analytics.
-
-- Status tracking (todo, in progress, blocked, completed)
-- Priority levels and assignments
-- Dependency management
-- Progress analytics
-- WebSocket live updates
-
-### Session Analytics
-Track development sessions with productivity metrics and activity timelines.
-
-- Session duration and activity tracking
-- File modification history
-- Productivity scoring
-- Session comparison
-- Activity timeline
-
----
-
-## MCP Tools
-
-Mandrel provides 27 specialized tools via the Model Context Protocol:
-
-**Navigation & Help** (5 tools)
-- System health monitoring
-- Tool discovery and documentation
-- Usage examples
-
-**Context Operations** (4 tools)
-- Store, search, and retrieve context
-- Recent context access
-- Statistics and analytics
-
-**Project Management** (6 tools)
-- Create, list, and switch projects
-- Project information and insights
-- Current project tracking
-
-**Decision Tracking** (4 tools)
-- Record decisions with alternatives
-- Search and filter decisions
-- Update outcomes
-- Decision statistics
-
-**Task Management** (6 tools)
-- Create and update tasks
-- Bulk operations
-- Progress tracking
-- Task details and filtering
-
-**Smart Search** (2 tools)
-- Cross-project intelligent search
-- AI-powered recommendations
-
-For detailed tool documentation, use the `mandrel_help` and `mandrel_explain` tools.
-
----
-
-## Development
-
-### MCP Server Commands
-
-```bash
-cd mcp-server
-
-# Start server
-npx tsx src/server.ts
-
-# Run migrations
-npx tsx scripts/migrate.ts
-
-# Production scripts
-./start-mandrel.sh    # Start server
-./stop-mandrel.sh     # Stop server
-./restart-mandrel.sh  # Restart server
-./status-mandrel.sh   # Check status
-```
-
-### Mandrel Command Commands
-
-```bash
-cd mandrel-command
-
-# Backend development
-cd backend && npm run dev
-
-# Frontend development
-cd frontend && npm start
-
-# Production build
-npm run build:all
-```
-
-### Database Migrations
-
-Migrations are located in `mcp-server/migrations/` and run automatically on server start. Manual execution:
-
-```bash
-cd mcp-server
-npx tsx scripts/migrate.ts
-```
 
 ---
 
@@ -292,62 +239,88 @@ npx tsx scripts/migrate.ts
 
 ### Environment Variables
 
-Create `.env` files in `mcp-server/` and `mandrel-command/backend/`:
+All environment variables support a priority chain:
+1. `MANDREL_*` (preferred)
+2. `AIDIS_*` (deprecated, shows warning)
+3. Legacy names (e.g., `DATABASE_*`)
 
-**MCP Server (.env)**
-```env
-DATABASE_HOST=localhost
-DATABASE_PORT=5432
-DATABASE_USER=your_username
-DATABASE_PASSWORD=your_password
-DATABASE_NAME=aidis_production
-REDIS_URL=redis://localhost:6379
-MCP_PORT=5001
-HTTP_BRIDGE_PORT=8080
-```
+**Key Variables:**
 
-**Mandrel Command Backend (.env)**
-```env
-DATABASE_URL=postgresql://your_username:your_password@localhost:5432/aidis_production
-JWT_SECRET=your_jwt_secret
-PORT=5000
-FRONTEND_URL=http://localhost:3000
-```
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `DATABASE_NAME` | `aidis_production` | PostgreSQL database name |
+| `DATABASE_USER` | `mandrel` | PostgreSQL username |
+| `DATABASE_PASSWORD` | `mandrel_dev_password` | PostgreSQL password |
+| `DATABASE_HOST` | `localhost` | PostgreSQL host |
+| `DATABASE_PORT` | `5432` | PostgreSQL port |
+| `REDIS_URL` | `redis://localhost:6379` | Redis connection URL |
 
-### Default Project
+### Files
 
-Configure default project selection in Mandrel Command Settings page for automatic project loading on login.
+- `.env` - Root configuration (optional, for shared settings)
+- `mcp-server/.env` - MCP Server configuration
+- `mandrel-command/backend/.env` - Dashboard backend configuration
 
 ---
 
-## Production Deployment
+## Security Notice
 
-### Database Setup
+**HTTP Bridge is Localhost-Only by Default**
 
-1. Install PostgreSQL 16 with pgvector extension
-2. Create production database
-3. Configure connection string in `.env`
-4. Run migrations
+The MCP HTTP bridge (port 8080) is **unauthenticated** and binds to `127.0.0.1` for security.
 
-### MCP Server
+- **Safe**: Default localhost-only binding prevents network exposure
+- **Do NOT expose** the HTTP bridge to the internet without adding authentication
+- **Override**: Set `MANDREL_BIND_ADDR=0.0.0.0` to bind all interfaces (NOT RECOMMENDED for production)
+
+**First Run Note**: The first context storage downloads the Transformers.js embedding model (~50MB). This may take 1-2 minutes. Subsequent operations are fast.
+
+---
+
+## MCP Tools
+
+Mandrel provides 27 specialized tools via the Model Context Protocol:
+
+- **Navigation & Help** (5 tools): System health, tool discovery, documentation
+- **Context Operations** (4 tools): Store, search, retrieve context
+- **Project Management** (6 tools): Create, list, switch projects
+- **Decision Tracking** (4 tools): Record decisions with alternatives
+- **Task Management** (6 tools): Create, update, track tasks
+- **Smart Search** (2 tools): Cross-project search, AI recommendations
+
+For detailed tool documentation, use the `mandrel_help` and `mandrel_explain` tools.
+
+---
+
+## Development Commands
+
+```bash
+# Install all dependencies
+npm run setup
+
+# Run database migrations
+npm run migrate
+
+# Start MCP Server (development)
+npm run dev:mcp
+
+# Start Dashboard (development)
+npm run dev:command
+
+# Build for production
+npm run build:mcp
+npm run build:command
+```
+
+### MCP Server Scripts
 
 ```bash
 cd mcp-server
-npm install --production
-./start-mandrel.sh
+./start-mandrel.sh    # Start server
+./stop-mandrel.sh     # Stop server
+./restart-mandrel.sh  # Restart server
+./status-mandrel.sh   # Check status
 ```
-
-### Mandrel Command
-
-```bash
-cd mandrel-command
-npm run build:all
-npm run start:prod
-```
-
-### Systemd Service (Optional)
-
-Template service file available at `mandrel.service` for systemd integration.
 
 ---
 
@@ -359,65 +332,18 @@ mandrel/
 │   ├── src/
 │   │   ├── handlers/        # MCP tool implementations
 │   │   ├── services/        # Business logic
-│   │   ├── models/          # Database models
 │   │   └── server.ts        # Entry point
-│   ├── migrations/          # Database schema
-│   └── scripts/             # Utility scripts
+│   └── migrations/          # Database schema
 │
 ├── mandrel-command/         # Web dashboard
 │   ├── frontend/            # React application
-│   │   ├── src/
-│   │   │   ├── components/  # React components
-│   │   │   ├── pages/       # Page components
-│   │   │   ├── contexts/    # React contexts
-│   │   │   └── services/    # API clients
-│   │   └── public/          # Static assets
-│   │
 │   └── backend/             # Express API
-│       └── src/
-│           ├── routes/      # API endpoints
-│           └── middleware/  # Express middleware
 │
-├── scripts/                 # Production scripts
-└── docs/                    # Documentation
+├── adapters/                # MCP protocol adapters
+├── docker-compose.yml       # Docker services config
+├── .env.example             # Root environment template
+└── package.json             # Root npm scripts
 ```
-
----
-
-## Use Cases
-
-**AI Development Projects**
-Maintain context and decisions across multi-week AI-assisted development projects.
-
-**Code Architecture**
-Track architectural decisions and enforce patterns across large codebases.
-
-**Team Coordination**
-Enable multiple AI agents or developers to collaborate effectively with shared context.
-
-**Knowledge Management**
-Build searchable knowledge bases of project-specific information and decisions.
-
----
-
-## Technical Highlights
-
-- **Local Embeddings**: Zero API costs using Transformers.js for semantic search
-- **MCP Protocol**: Standards-compliant tool implementation
-- **Semantic Search**: PostgreSQL pgvector for similarity queries
-- **Real-time Updates**: WebSocket infrastructure for live collaboration
-- **Multi-project**: Clean data isolation and project switching
-- **Production Ready**: Comprehensive error handling and logging
-
----
-
-## Documentation
-
-- **Setup Guide**: `docs/DEV_SETUP_GUIDE.md`
-- **Database Migrations**: `docs/DB_MIGRATION_WALKTHROUGH.md`
-- **MCP Protocol Reference**: `docs/reference/MCP_STDIO_PROTOCOL_REFERENCE.md`
-- **API Documentation**: Available in `mandrel-command/backend/src/routes/`
-- **Tool Catalog**: Use `mandrel_help` MCP tool for current tool listing
 
 ---
 
@@ -430,12 +356,6 @@ Contributions are welcome! Please follow these guidelines:
 3. Commit your changes (`git commit -m 'Add feature'`)
 4. Push to the branch (`git push origin feature/your-feature`)
 5. Open a Pull Request
-
-### Development Branch Structure
-
-- `main` - Production-ready code
-- `mandrel-alpha` - Active development
-- `dev-docs` - Historical documentation
 
 ---
 

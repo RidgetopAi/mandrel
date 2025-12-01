@@ -160,7 +160,16 @@ curl -X POST http://localhost:8080/mcp/tools/mandrel_ping \
 
 - **Database**: aidis_production
 - **Port**: 5432
-- **Connection**: postgresql://ridgetop@localhost:5432/aidis_production- **Test**: `psql -h localhost -p 5432 -d aidis_production -c "SELECT current_database();"`
+- **Default User**: mandrel (configurable via `DATABASE_USER` or `MANDREL_DATABASE_USER`)
+- **Connection**: `postgresql://localhost:5432/aidis_production`
+- **Test**: `psql -d aidis_production -c "SELECT current_database();"`
+
+### Environment Variable Priority
+
+All config supports a fallback chain:
+1. `MANDREL_*` (preferred)
+2. `AIDIS_*` (deprecated, shows warning)
+3. Legacy names (e.g., `DATABASE_*`)
 
 ### Development Commands
 
@@ -229,8 +238,8 @@ project_list(includeStats?: boolean)
 
 ---
 
-**Last Updated**: 2025-10-24
+**Last Updated**: 2025-11-30
 **Tools**: 27 active MCP tools
-**REST API**: 8 session analytics endpoints at /api/v2/sessions/\* (for Mandrel Command UI)
+**REST API**: 8 session analytics endpoints at /api/v2/sessions/* (for Mandrel Command UI)
 **Token Usage**: ~8,100 tokens (70% reduction from original 27,500)
-**Status**: Production ready - cleaned and streamlined for podcast demo
+**Status**: Beta release - cross-platform install fixes complete

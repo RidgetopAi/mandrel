@@ -1,29 +1,32 @@
 #!/usr/bin/env node
 
 /**
- * AIDIS MCP STDIO Adapter - Production Ready
- * 
- * STDIO protocol adapter that bridges Amp to AIDIS Core Service.
+ * Mandrel MCP STDIO Adapter - Production Ready
+ *
+ * STDIO protocol adapter that bridges Amp to Mandrel Core Service.
  * This adapter fixes the broken MCP connection by providing reliable HTTP communication.
- * 
+ *
  * ARCHITECTURE:
- * Amp (MCP STDIO) → mcp-stdio-adapter (STDIO↔HTTP) → AIDIS Core Service (HTTP API)
- * 
+ * Amp (MCP STDIO) → mcp-stdio-adapter (STDIO↔HTTP) → Mandrel Core Service (HTTP API)
+ *
  * FEATURES:
  * ✅ Perfect MCP STDIO protocol implementation for Amp
  * ✅ Dynamic tool discovery from core service
- * ✅ Environment-based configuration (AIDIS_URL)
+ * ✅ Environment-based configuration (MANDREL_URL)
  * ✅ Robust error handling and retry logic
  * ✅ Connection management with health checks
  * ✅ TypeScript with proper validation
  * ✅ No hardcoded tools - fully dynamic
  * ✅ Fixes the broken Amp MCP connection
- * 
+ *
  * ENVIRONMENT VARIABLES:
- * - AIDIS_URL: Core service URL (default: http://localhost:8080)
- * - AIDIS_TIMEOUT: Request timeout in ms (default: 30000)
- * - AIDIS_RETRIES: Max retry attempts (default: 3)
- * - AIDIS_DEBUG: Enable debug logging (default: false)
+ * - MANDREL_URL: Core service URL (default: http://localhost:8080)
+ * - MANDREL_TIMEOUT: Request timeout in ms (default: 30000)
+ * - MANDREL_RETRIES: Max retry attempts (default: 3)
+ * - MANDREL_DEBUG: Enable debug logging (default: false)
+ *
+ * DEPRECATED (still supported with warnings):
+ * - AIDIS_URL, AIDIS_TIMEOUT, AIDIS_RETRIES, AIDIS_DEBUG
  */
 
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
@@ -42,7 +45,7 @@ import { URL } from 'url';
 
 // Configuration with environment support
 interface AdapterConfig {
-  aidisUrl: string;
+  mandrelUrl: string;
   timeout: number;
   maxRetries: number;
   retryDelay: number;
@@ -50,17 +53,29 @@ interface AdapterConfig {
   healthCheckInterval: number;
 }
 
+// Helper to get env var with MANDREL_ preferred, AIDIS_ fallback
+function getEnvWithFallback(mandrelKey: string, aidisKey: string, defaultValue: string): string {
+  if (process.env[mandrelKey]) {
+    return process.env[mandrelKey]!;
+  }
+  if (process.env[aidisKey]) {
+    console.error(`\u26a0\ufe0f  ${aidisKey} is deprecated. Use ${mandrelKey} instead.`);
+    return process.env[aidisKey]!;
+  }
+  return defaultValue;
+}
+
 const CONFIG: AdapterConfig = {
-  aidisUrl: process.env.AIDIS_URL || 'http://localhost:8080',
-  timeout: parseInt(process.env.AIDIS_TIMEOUT || '30000'),
-  maxRetries: parseInt(process.env.AIDIS_RETRIES || '3'),
+  mandrelUrl: getEnvWithFallback('MANDREL_URL', 'AIDIS_URL', 'http://localhost:8080'),
+  timeout: parseInt(getEnvWithFallback('MANDREL_TIMEOUT', 'AIDIS_TIMEOUT', '30000')),
+  maxRetries: parseInt(getEnvWithFallback('MANDREL_RETRIES', 'AIDIS_RETRIES', '3')),
   retryDelay: 1000,
-  debug: process.env.AIDIS_DEBUG === 'true',
+  debug: getEnvWithFallback('MANDREL_DEBUG', 'AIDIS_DEBUG', 'false') === 'true',
   healthCheckInterval: 60000 // 1 minute
 };
 
 // Tool definition from core service
-interface AIDISTool {
+interface MandrelTool {
   name: string;
   description: string;
   endpoint: string;
@@ -68,7 +83,7 @@ interface AIDISTool {
 
 // HTTP response interfaces
 interface ToolListResponse {
-  tools: AIDISTool[];
+  tools: MandrelTool[];
 }
 
 interface ToolCallResponse {
@@ -208,13 +223,13 @@ class ConnectionManager {
    */
   async initialize(): Promise<void> {
     if (this.config.debug) {
-      console.error('🔌 Initializing connection to AIDIS Core Service...');
+      console.error('🔌 Initializing connection to Mandrel Core Service...');
     }
 
     await this.checkHealth();
-    
+
     if (!this.isHealthy) {
-      throw new Error('AIDIS Core Service is not healthy');
+      throw new Error('Mandrel Core Service is not healthy');
     }
 
     // Start periodic health checks
@@ -231,7 +246,7 @@ class ConnectionManager {
   async checkHealth(): Promise<boolean> {
     try {
       const response = await this.httpClient.request(
-        `${this.config.aidisUrl}/healthz`,
+        `${this.config.mandrelUrl}/healthz`,
         { method: 'GET' }
       );
       
@@ -267,13 +282,13 @@ class ConnectionManager {
 
     try {
       const response = await this.httpClient.request(
-        `${this.config.aidisUrl}/mcp/tools`,
+        `${this.config.mandrelUrl}/mcp/tools`,
         { method: 'GET' }
       );
       
       const toolsResponse: ToolListResponse = JSON.parse(response);
       
-      // Convert AIDIS tools to MCP tool format
+      // Convert Mandrel tools to MCP tool format
       this.cachedTools = toolsResponse.tools.map(tool => ({
         name: tool.name,
         description: tool.description,
@@ -307,7 +322,7 @@ class ConnectionManager {
     if (!this.isHealthy) {
       await this.checkHealth();
       if (!this.isHealthy) {
-        throw new McpError(ErrorCode.InternalError, 'AIDIS Core Service is unavailable');
+        throw new McpError(ErrorCode.InternalError, 'Mandrel Core Service is unavailable');
       }
     }
 
@@ -317,7 +332,7 @@ class ConnectionManager {
       });
       
       const response = await this.httpClient.request(
-        `${this.config.aidisUrl}/mcp/tools/${toolName}`,
+        `${this.config.mandrelUrl}/mcp/tools/${toolName}`,
         {
           method: 'POST',
           body
@@ -376,23 +391,23 @@ class ConnectionManager {
 }
 
 /**
- * AIDIS MCP STDIO Adapter - Main class
- * 
+ * Mandrel MCP STDIO Adapter - Main class
+ *
  * This is the adapter that fixes Amp's broken MCP connection
  */
-class AIDISMcpStdioAdapter {
+class MandrelMcpStdioAdapter {
   private server: Server;
   private connectionManager: ConnectionManager;
 
   constructor(config: AdapterConfig) {
     this.connectionManager = new ConnectionManager(config);
-    
+
     // Create MCP server with proper capabilities
     this.server = new Server(
       {
-        name: 'aidis-mcp-stdio-adapter',
+        name: 'mandrel-mcp-stdio-adapter',
         version: '1.0.0',
-        description: 'STDIO adapter for AIDIS Core Service - Fixes Amp MCP connection'
+        description: 'STDIO adapter for Mandrel Core Service - Fixes Amp MCP connection'
       },
       {
         capabilities: {
@@ -469,9 +484,9 @@ class AIDISMcpStdioAdapter {
       await this.server.connect(transport);
       
       if (CONFIG.debug) {
-        console.error('🚀 AIDIS MCP STDIO Adapter started successfully');
+        console.error('🚀 Mandrel MCP STDIO Adapter started successfully');
         console.error('🔧 Amp MCP connection has been restored!');
-        console.error(`🌐 Core Service URL: ${CONFIG.aidisUrl}`);
+        console.error(`🌐 Core Service URL: ${CONFIG.mandrelUrl}`);
         console.error(`⏱️  Timeout: ${CONFIG.timeout}ms`);
         console.error(`🔄 Max Retries: ${CONFIG.maxRetries}`);
       }
@@ -487,7 +502,7 @@ class AIDISMcpStdioAdapter {
    */
   async shutdown(): Promise<void> {
     if (CONFIG.debug) {
-      console.error('📴 Shutting down AIDIS MCP STDIO Adapter...');
+      console.error('📴 Shutting down Mandrel MCP STDIO Adapter...');
     }
     
     this.connectionManager.destroy();
@@ -502,7 +517,7 @@ class AIDISMcpStdioAdapter {
  * Main execution
  */
 async function main(): Promise<void> {
-  const adapter = new AIDISMcpStdioAdapter(CONFIG);
+  const adapter = new MandrelMcpStdioAdapter(CONFIG);
   
   // Handle shutdown signals
   process.on('SIGINT', async () => {
@@ -527,4 +542,4 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   });
 }
 
-export { AIDISMcpStdioAdapter, CONFIG };
+export { MandrelMcpStdioAdapter, CONFIG };

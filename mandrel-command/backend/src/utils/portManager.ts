@@ -1,10 +1,11 @@
 /**
- * Port Management Utilities for AIDIS Command Backend
+ * Port Management Utilities for Mandrel Command Backend
  * Provides dynamic port assignment and discovery coordination
  */
 
 import * as fs from 'fs';
 import * as path from 'path';
+import * as os from 'os';
 import * as http from 'http';
 
 export interface ServicePortInfo {
@@ -21,18 +22,32 @@ export interface PortDiscoveryConfig {
   portRange: { min: number; max: number };
 }
 
+/**
+ * Get the default registry file path.
+ * Uses MANDREL_RUN_DIR env var, or falls back to ~/.mandrel/run/
+ * This ensures cross-platform compatibility (macOS, Linux, Windows).
+ */
+function getDefaultRegistryPath(): string {
+  // Allow override via environment variable
+  if (process.env.MANDREL_RUN_DIR) {
+    return path.join(process.env.MANDREL_RUN_DIR, 'port-registry.json');
+  }
+  // Cross-platform default: ~/.mandrel/run/
+  return path.join(os.homedir(), '.mandrel', 'run', 'port-registry.json');
+}
+
 export class PortManager {
   private config: PortDiscoveryConfig;
   private registryPath: string;
 
   constructor(config?: Partial<PortDiscoveryConfig>) {
     this.config = {
-      registryFile: '/home/ridgetop/aidis/run/port-registry.json',
+      registryFile: getDefaultRegistryPath(),
       defaultPorts: {
-        'aidis-mcp': 8080,
-        'aidis-command-dev': 5000,
-        'aidis-command-prod': 5001,
-        'aidis-mcp-bridge': 8081
+        'mandrel-mcp': 8080,
+        'mandrel-command-dev': 5000,
+        'mandrel-command-prod': 5001,
+        'mandrel-mcp-bridge': 8081
       },
       portRange: { min: 8000, max: 9000 },
       ...config
@@ -47,10 +62,18 @@ export class PortManager {
    * Returns PORT=0 for dynamic assignment if configured, otherwise returns default port
    */
   public async assignPort(serviceName: string, preferredPort?: number): Promise<number> {
-    const envVarName = `AIDIS_${serviceName.toUpperCase().replace(/-/g, '_')}_PORT`;
-    const envPort = process.env[envVarName];
+    // Support both MANDREL_ (preferred) and AIDIS_ (deprecated) env var prefixes
+    const mandrelEnvVar = `MANDREL_${serviceName.toUpperCase().replace(/-/g, '_')}_PORT`;
+    const aidisEnvVar = `AIDIS_${serviceName.toUpperCase().replace(/-/g, '_')}_PORT`;
 
-    // Check specific AIDIS environment variable first
+    // Check MANDREL_ first, then fall back to AIDIS_
+    let envPort = process.env[mandrelEnvVar];
+    if (!envPort && process.env[aidisEnvVar]) {
+      envPort = process.env[aidisEnvVar];
+      console.warn(`\u26a0\ufe0f  ${aidisEnvVar} is deprecated. Use ${mandrelEnvVar} instead.`);
+    }
+
+    // Check specific environment variable first
     if (envPort === '0') {
       console.log(`Dynamic port assignment requested for ${serviceName}`);
       return 0; // Let the server choose
@@ -253,7 +276,7 @@ export class PortManager {
    * Get environment variable name for a service port
    */
   public static getPortEnvVar(serviceName: string): string {
-    return `AIDIS_${serviceName.toUpperCase().replace(/-/g, '_')}_PORT`;
+    return `MANDREL_${serviceName.toUpperCase().replace(/-/g, '_')}_PORT`;
   }
 
   /**
