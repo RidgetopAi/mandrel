@@ -1,13 +1,14 @@
 {
   "mcpServers": {
-    "aidis-http-adapter": {
+    "mandrel-http-adapter": {
       "command": "npx",
-      "args": ["tsx", "/home/ridgetop/aidis/adapters/mcp-http-adapter.ts"],
+      "args": ["tsx", "adapters/mcp-http-adapter.ts"],
+      "cwd": "${workspaceFolder}",
       "env": {
-        "AIDIS_URL": "http://localhost:8080",
-        "AIDIS_TIMEOUT": "30000",
-        "AIDIS_RETRIES": "3",
-        "AIDIS_DEBUG": "false"
+        "MANDREL_URL": "http://localhost:8080",
+        "MANDREL_TIMEOUT": "30000",
+        "MANDREL_RETRIES": "3",
+        "MANDREL_DEBUG": "false"
       }
     }
   }
