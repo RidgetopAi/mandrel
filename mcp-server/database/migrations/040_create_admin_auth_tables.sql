@@ -50,9 +50,9 @@ CREATE TRIGGER trigger_admin_users_updated_at
     FOR EACH ROW
     EXECUTE FUNCTION update_admin_users_updated_at();
 
--- Create default admin user (password: admin123 - CHANGE IN PRODUCTION!)
+-- Create default admin user (password: admin123! - CHANGE IN PRODUCTION!)
 INSERT INTO admin_users (username, email, password_hash, role)
-VALUES ('admin', 'admin@localhost', '$2b$12$UC/sR8TaUjXNa3VB7imzjuqfJDVcgXr3XyrZwd7UlIGzbfHj1FDFO', 'admin')
+VALUES ('admin', 'admin@localhost', '$2b$12$VULlu8AveYUO7g3iy5nO.e2KeCoqv4ZcZDjrVEA3OLCP5aA6sVhdG', 'admin')
 ON CONFLICT (username) DO NOTHING;
 
 COMMENT ON TABLE admin_users IS 'Admin users for mandrel-command web UI authentication';
