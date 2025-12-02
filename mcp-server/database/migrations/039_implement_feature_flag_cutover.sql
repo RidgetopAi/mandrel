@@ -1202,13 +1202,18 @@ EMERGENCY PROCEDURES:
 - Full system rollback: SELECT rollback_cutover_system(TRUE);
 */
 
--- Add migration tracking record
-INSERT INTO schema_migrations (version, applied_at, description)
-VALUES (
-    '025',
-    CURRENT_TIMESTAMP,
-    'P2.3: Implement feature flag cutover system for gradual zero-downtime migration'
-) ON CONFLICT (version) DO NOTHING;
+-- Add migration tracking record (conditional - table may not exist on fresh installs)
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'schema_migrations') THEN
+        INSERT INTO schema_migrations (version, applied_at, description)
+        VALUES (
+            '025',
+            CURRENT_TIMESTAMP,
+            'P2.3: Implement feature flag cutover system for gradual zero-downtime migration'
+        ) ON CONFLICT (version) DO NOTHING;
+    END IF;
+END $$;
 
 COMMENT ON TABLE traffic_routing_config IS 'P2.3 Traffic routing configuration for gradual cutover control';
 COMMENT ON TABLE cutover_performance_metrics IS 'P2.3 Performance metrics tracking for cutover operations';
