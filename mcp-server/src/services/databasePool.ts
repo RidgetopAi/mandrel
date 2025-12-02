@@ -57,29 +57,11 @@ class DatabasePoolManager {
       return;
     }
 
-    // Support both MANDREL_* (preferred) and AIDIS_* (deprecated) with fallback
-    const dbUser = process.env.MANDREL_DATABASE_USER || process.env.AIDIS_DATABASE_USER || 'ridgetop';
-    const dbHost = process.env.MANDREL_DATABASE_HOST || process.env.AIDIS_DATABASE_HOST || 'localhost';
-    const dbName = process.env.MANDREL_DATABASE_NAME || process.env.AIDIS_DATABASE_NAME || 'aidis_production';
-    const dbPassword = process.env.MANDREL_DATABASE_PASSWORD || process.env.AIDIS_DATABASE_PASSWORD || '';
-    const dbPort = parseInt(process.env.MANDREL_DATABASE_PORT || process.env.AIDIS_DATABASE_PORT || '5432');
-
-    // Log deprecation warnings if old vars are used
-    if (process.env.AIDIS_DATABASE_USER && !process.env.MANDREL_DATABASE_USER) {
-      console.warn('⚠️  AIDIS_DATABASE_USER is deprecated. Use MANDREL_DATABASE_USER instead.');
-    }
-    if (process.env.AIDIS_DATABASE_HOST && !process.env.MANDREL_DATABASE_HOST) {
-      console.warn('⚠️  AIDIS_DATABASE_HOST is deprecated. Use MANDREL_DATABASE_HOST instead.');
-    }
-    if (process.env.AIDIS_DATABASE_NAME && !process.env.MANDREL_DATABASE_NAME) {
-      console.warn('⚠️  AIDIS_DATABASE_NAME is deprecated. Use MANDREL_DATABASE_NAME instead.');
-    }
-    if (process.env.AIDIS_DATABASE_PASSWORD && !process.env.MANDREL_DATABASE_PASSWORD) {
-      console.warn('⚠️  AIDIS_DATABASE_PASSWORD is deprecated. Use MANDREL_DATABASE_PASSWORD instead.');
-    }
-    if (process.env.AIDIS_DATABASE_PORT && !process.env.MANDREL_DATABASE_PORT) {
-      console.warn('⚠️  AIDIS_DATABASE_PORT is deprecated. Use MANDREL_DATABASE_PORT instead.');
-    }
+    const dbUser = process.env.DATABASE_USER || 'mandrel';
+    const dbHost = process.env.DATABASE_HOST || 'localhost';
+    const dbName = process.env.DATABASE_NAME || 'aidis_production';
+    const dbPassword = process.env.DATABASE_PASSWORD || '';
+    const dbPort = parseInt(process.env.DATABASE_PORT || '5432');
 
     const poolConfig: PoolConfig = {
       user: dbUser,
