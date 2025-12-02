@@ -433,11 +433,12 @@ CREATE TRIGGER update_git_branches_comprehensive_trigger
 -- =============================================
 
 -- Verify all expected columns exist
+-- Note: using v_ prefix for variables to avoid ambiguity with information_schema columns
 DO $$
 DECLARE
     missing_columns TEXT[];
-    table_name TEXT;
-    column_name TEXT;
+    v_table_name TEXT;
+    v_column_name TEXT;
     expected_columns TEXT[][2] := ARRAY[
         ARRAY['git_commits', 'tree_sha'],
         ARRAY['git_commits', 'repository_url'],
@@ -468,21 +469,21 @@ BEGIN
     missing_columns := ARRAY[]::TEXT[];
 
     FOR i IN 1..array_length(expected_columns, 1) LOOP
-        table_name := expected_columns[i][1];
-        column_name := expected_columns[i][2];
+        v_table_name := expected_columns[i][1];
+        v_column_name := expected_columns[i][2];
 
         IF NOT EXISTS (
-            SELECT 1 FROM information_schema.columns
-            WHERE table_name = table_name AND column_name = column_name
+            SELECT 1 FROM information_schema.columns c
+            WHERE c.table_name = v_table_name AND c.column_name = v_column_name
         ) THEN
-            missing_columns := missing_columns || (table_name || '.' || column_name);
+            missing_columns := missing_columns || (v_table_name || '.' || v_column_name);
         END IF;
     END LOOP;
 
     IF array_length(missing_columns, 1) > 0 THEN
-        RAISE EXCEPTION 'Migration 022 failed - missing columns: %', array_to_string(missing_columns, ', ');
+        RAISE EXCEPTION 'Migration 037 failed - missing columns: %', array_to_string(missing_columns, ', ');
     ELSE
-        RAISE NOTICE 'Migration 022 validation passed - all expected columns present';
+        RAISE NOTICE 'Migration 037 validation passed - all expected columns present';
     END IF;
 END $$;
 
