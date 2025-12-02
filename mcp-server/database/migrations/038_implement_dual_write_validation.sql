@@ -1151,13 +1151,18 @@ ROLLBACK PROCEDURE (if needed):
 SELECT rollback_dual_write_system(p_confirm_rollback := TRUE);
 */
 
--- Add migration tracking record
-INSERT INTO schema_migrations (version, applied_at, description)
-VALUES (
-    '024',
-    CURRENT_TIMESTAMP,
-    'P2.3: Implement dual-write validation system for zero-downtime migration'
-) ON CONFLICT (version) DO NOTHING;
+-- Add migration tracking record (conditional - table may not exist on fresh installs)
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'schema_migrations') THEN
+        INSERT INTO schema_migrations (version, applied_at, description)
+        VALUES (
+            '024',
+            CURRENT_TIMESTAMP,
+            'P2.3: Implement dual-write validation system for zero-downtime migration'
+        ) ON CONFLICT (version) DO NOTHING;
+    END IF;
+END $$;
 
 COMMENT ON TABLE dual_write_config IS 'P2.3 Feature flag configuration for dual-write validation system';
 COMMENT ON TABLE dual_write_stats IS 'P2.3 Performance and monitoring statistics for dual-write operations';
