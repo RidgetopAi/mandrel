@@ -28,7 +28,10 @@ sessions/
 # Database
 *.db
 *.sqlite
-*.sql
+*_dump.sql
+*_backup.sql
+# Keep migrations tracked
+!mcp-server/database/migrations/*.sql
 
 # Backups
 backups/
