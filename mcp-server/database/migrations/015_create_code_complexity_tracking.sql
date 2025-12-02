@@ -215,8 +215,8 @@ CREATE TABLE IF NOT EXISTS halstead_complexity_metrics (
     
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     
-    -- Constraints
-    CONSTRAINT unique_halstead_scope_per_session UNIQUE (analysis_session_id, file_path, scope_type, COALESCE(function_name, ''), start_line)
+    -- Constraints (function_name can be NULL, which PostgreSQL handles correctly in UNIQUE)
+    CONSTRAINT unique_halstead_scope_per_session UNIQUE (analysis_session_id, file_path, scope_type, function_name, start_line)
 );
 
 -- Optimize for Halstead metrics analysis
