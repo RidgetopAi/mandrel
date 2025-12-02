@@ -506,7 +506,8 @@ CREATE INDEX IF NOT EXISTS idx_insights_expires ON pattern_insights(expires_at, 
 -- Note: Using ::regconfig cast makes to_tsvector immutable (required for index expressions)
 CREATE INDEX IF NOT EXISTS idx_insights_title_fts ON pattern_insights USING gin(to_tsvector('english'::regconfig, title));
 CREATE INDEX IF NOT EXISTS idx_insights_description_fts ON pattern_insights USING gin(to_tsvector('english'::regconfig, description));
-CREATE INDEX IF NOT EXISTS idx_insights_recommendations_fts ON pattern_insights USING gin(to_tsvector('english'::regconfig, array_to_string(recommendations, ' ')));
+-- Removed: idx_insights_recommendations_fts uses array_to_string which is STABLE, not IMMUTABLE
+-- Use GIN index on the array directly instead for searching recommendations
 
 -- Array indexes for efficient array operations (GIN indexes)
 CREATE INDEX IF NOT EXISTS idx_cooccurrence_commits ON file_cooccurrence_patterns USING gin(contributing_commits);
@@ -1246,7 +1247,7 @@ BEGIN
     RAISE NOTICE '  ✅ Sample Session Function: create_sample_pattern_session() available for testing';
     RAISE NOTICE '  ✅ 92,606 Patterns: Schema ready for TC011 algorithm result storage';
     RAISE NOTICE '  ✅ Performance Baseline: 190ms execution time support validated';
-    RAISE NOTICE '  ✅ Confidence Scoring: 70-97% confidence level support implemented';
+    RAISE NOTICE '  ✅ Confidence Scoring: 70-97%% confidence level support implemented';
     RAISE NOTICE '';
     RAISE NOTICE '🚀 NEXT STEPS:';
     RAISE NOTICE '  📋 TC013: Implement MCP API endpoints for pattern discovery and querying';
