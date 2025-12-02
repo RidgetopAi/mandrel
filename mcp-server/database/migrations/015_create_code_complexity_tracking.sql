@@ -407,7 +407,7 @@ CREATE TABLE IF NOT EXISTS complexity_trends (
 CREATE INDEX idx_complexity_trends_project_file_type ON complexity_trends(project_id, file_path, complexity_type, measurement_date DESC);
 CREATE INDEX idx_complexity_trends_anomalies ON complexity_trends(is_anomaly, anomaly_score DESC) WHERE is_anomaly = TRUE;
 CREATE INDEX idx_complexity_trends_change_points ON complexity_trends(change_point_detected, change_significance DESC) WHERE change_point_detected = TRUE;
-CREATE INDEX idx_complexity_trends_recent ON complexity_trends(measurement_date DESC, trend_direction) WHERE measurement_date >= CURRENT_DATE - INTERVAL '90 days';
+CREATE INDEX idx_complexity_trends_recent ON complexity_trends(measurement_date DESC, trend_direction);
 
 -- ============================================================================
 -- COMPLEXITY ALERTS AND THRESHOLDS
@@ -784,13 +784,13 @@ $$ LANGUAGE plpgsql;
 -- ============================================================================
 
 -- Additional composite indexes for common query patterns
-CREATE INDEX idx_complexity_analysis_recent_completed ON complexity_analysis_sessions(analysis_timestamp DESC, status) WHERE status = 'completed' AND analysis_timestamp >= CURRENT_TIMESTAMP - INTERVAL '30 days';
+CREATE INDEX idx_complexity_analysis_recent_completed ON complexity_analysis_sessions(analysis_timestamp DESC, status) WHERE status = 'completed';
 
 -- Index for trend analysis queries
-CREATE INDEX idx_complexity_trends_analysis ON complexity_trends(project_id, complexity_type, measurement_date DESC, trend_direction) WHERE measurement_date >= CURRENT_DATE - INTERVAL '90 days';
+CREATE INDEX idx_complexity_trends_analysis ON complexity_trends(project_id, complexity_type, measurement_date DESC, trend_direction);
 
 -- Index for alert dashboard queries
-CREATE INDEX idx_complexity_alerts_dashboard ON complexity_alerts(project_id, status, violation_severity, triggered_at DESC) WHERE status IN ('open', 'acknowledged') AND triggered_at >= CURRENT_TIMESTAMP - INTERVAL '7 days';
+CREATE INDEX idx_complexity_alerts_dashboard ON complexity_alerts(project_id, status, violation_severity, triggered_at DESC) WHERE status IN ('open', 'acknowledged');
 
 -- Partial indexes for hot paths
 CREATE INDEX idx_file_complexity_hotspots_dashboard ON file_complexity_summary(project_id, hotspot_score DESC, overall_complexity_score DESC) WHERE is_complexity_hotspot = TRUE;
