@@ -332,11 +332,26 @@ SET
 WHERE affects_exports IS NULL OR complexity_delta IS NULL;
 
 -- Set session link defaults
-UPDATE commit_session_links
-SET
-    relevant_context_ids = COALESCE(relevant_context_ids, context_ids, '{}'),
-    created_by = COALESCE(created_by, 'migration_022')
-WHERE relevant_context_ids IS NULL OR created_by IS NULL;
+-- Note: context_ids column only exists in upgraded installs, not fresh installs
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.columns
+               WHERE table_name = 'commit_session_links' AND column_name = 'context_ids') THEN
+        -- Upgraded install: copy from old context_ids to new relevant_context_ids
+        EXECUTE 'UPDATE commit_session_links
+        SET
+            relevant_context_ids = COALESCE(relevant_context_ids, context_ids, ''{}''),
+            created_by = COALESCE(created_by, ''migration_022'')
+        WHERE relevant_context_ids IS NULL OR created_by IS NULL';
+    ELSE
+        -- Fresh install: just set defaults
+        UPDATE commit_session_links
+        SET
+            relevant_context_ids = COALESCE(relevant_context_ids, '{}'),
+            created_by = COALESCE(created_by, 'migration_022')
+        WHERE relevant_context_ids IS NULL OR created_by IS NULL;
+    END IF;
+END $$;
 
 -- =============================================
 -- PHASE 7: BUSINESS LOGIC TRIGGERS
