@@ -12,23 +12,35 @@
 
 BEGIN;
 
--- Record what we're dropping for audit trail
+-- Record what we're dropping for audit trail (handle fresh installs where tables may not exist)
 DO $$
 DECLARE
-    v_cooccurrence_count INTEGER;
-    v_temporal_count INTEGER;
-    v_developer_count INTEGER;
-    v_magnitude_count INTEGER;
-    v_insights_count INTEGER;
-    v_sessions_count INTEGER;
+    v_cooccurrence_count INTEGER := 0;
+    v_temporal_count INTEGER := 0;
+    v_developer_count INTEGER := 0;
+    v_magnitude_count INTEGER := 0;
+    v_insights_count INTEGER := 0;
+    v_sessions_count INTEGER := 0;
 BEGIN
-    -- Count existing data before deletion
-    SELECT COUNT(*) INTO v_cooccurrence_count FROM file_cooccurrence_patterns;
-    SELECT COUNT(*) INTO v_temporal_count FROM temporal_patterns;
-    SELECT COUNT(*) INTO v_developer_count FROM developer_patterns;
-    SELECT COUNT(*) INTO v_magnitude_count FROM change_magnitude_patterns;
-    SELECT COUNT(*) INTO v_insights_count FROM pattern_insights;
-    SELECT COUNT(*) INTO v_sessions_count FROM pattern_discovery_sessions;
+    -- Count existing data before deletion (skip if tables don't exist)
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'file_cooccurrence_patterns') THEN
+        SELECT COUNT(*) INTO v_cooccurrence_count FROM file_cooccurrence_patterns;
+    END IF;
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'temporal_patterns') THEN
+        SELECT COUNT(*) INTO v_temporal_count FROM temporal_patterns;
+    END IF;
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'developer_patterns') THEN
+        SELECT COUNT(*) INTO v_developer_count FROM developer_patterns;
+    END IF;
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'change_magnitude_patterns') THEN
+        SELECT COUNT(*) INTO v_magnitude_count FROM change_magnitude_patterns;
+    END IF;
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'pattern_insights') THEN
+        SELECT COUNT(*) INTO v_insights_count FROM pattern_insights;
+    END IF;
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'pattern_discovery_sessions') THEN
+        SELECT COUNT(*) INTO v_sessions_count FROM pattern_discovery_sessions;
+    END IF;
 
     RAISE NOTICE 'Migration 033: Dropping pattern detection system';
     RAISE NOTICE '  - file_cooccurrence_patterns: % rows', v_cooccurrence_count;

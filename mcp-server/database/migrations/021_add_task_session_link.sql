@@ -6,12 +6,19 @@
 ALTER TABLE tasks
 ADD COLUMN IF NOT EXISTS session_id UUID;
 
--- Step 2: Add foreign key constraint to sessions table
-ALTER TABLE tasks
-ADD CONSTRAINT fk_tasks_session_id
-FOREIGN KEY (session_id)
-REFERENCES sessions(id)
-ON DELETE SET NULL;
+-- Step 2: Add foreign key constraint to sessions table (if not exists)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'fk_tasks_session_id'
+  ) THEN
+    ALTER TABLE tasks
+    ADD CONSTRAINT fk_tasks_session_id
+    FOREIGN KEY (session_id)
+    REFERENCES sessions(id)
+    ON DELETE SET NULL;
+  END IF;
+END $$;
 
 -- Step 3: Create index for efficient joins and filtering
 CREATE INDEX IF NOT EXISTS idx_tasks_session_id

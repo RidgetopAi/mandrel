@@ -19,7 +19,8 @@ CREATE TABLE IF NOT EXISTS sessions (
     context_summary TEXT,
     tokens_used INTEGER DEFAULT 0,
     metadata JSONB DEFAULT '{}'::jsonb,
-    
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+
     -- Performance constraint: sessions should have reasonable duration
     CONSTRAINT reasonable_session_duration 
     CHECK (ended_at IS NULL OR ended_at >= started_at)

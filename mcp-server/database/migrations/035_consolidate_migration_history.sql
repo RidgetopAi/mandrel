@@ -27,9 +27,10 @@ BEGIN
           AND table_schema = 'public'
     ) THEN
         FOR rec IN SELECT version, description, applied_at FROM schema_migrations LOOP
+            -- Map legacy version names to current file names (after renumbering)
             mapped_filename := CASE rec.version
-                WHEN '2025_09_10_create_change_pattern_tables' THEN '019_create_change_pattern_tables.sql'
-                WHEN '2025_09_10_create_development_metrics_tables' THEN '018_create_development_metrics_tables.sql'
+                WHEN '2025_09_10_create_change_pattern_tables' THEN '030_create_change_pattern_tables.sql'
+                WHEN '2025_09_10_create_development_metrics_tables' THEN '028_create_development_metrics_tables.sql'
                 WHEN '2025_09_10_create_git_tracking_tables' THEN '010_create_git_tracking_system.sql'
                 WHEN '2025_09_09_enforce_session_project_fk' THEN '014_enforce_session_project_fk.sql'
                 WHEN '2025_09_10_add_session_title_description' THEN '017_add_session_title_description.sql'
@@ -37,8 +38,8 @@ BEGIN
             END;
 
             mapped_number := CASE rec.version
-                WHEN '2025_09_10_create_change_pattern_tables' THEN 19
-                WHEN '2025_09_10_create_development_metrics_tables' THEN 18
+                WHEN '2025_09_10_create_change_pattern_tables' THEN 30
+                WHEN '2025_09_10_create_development_metrics_tables' THEN 28
                 WHEN '2025_09_10_create_git_tracking_tables' THEN 10
                 WHEN '2025_09_09_enforce_session_project_fk' THEN 14
                 WHEN '2025_09_10_add_session_title_description' THEN 17

@@ -1,12 +1,10 @@
 -- Migration 016: Remove agent system and migrate to simple tasks
--- This migration is for upgrading existing installations.
--- For fresh installs, the tasks table doesn't exist yet (only agent_tasks).
+-- Handles both fresh installs and upgrades from agent-based system.
 
--- Only run if 'tasks' table exists (existing installation)
 DO $$
 BEGIN
     IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'tasks' AND table_schema = 'public') THEN
-        -- Add new columns to existing tasks table
+        -- UPGRADE PATH: Modify existing tasks table
         ALTER TABLE tasks ADD COLUMN IF NOT EXISTS progress INTEGER DEFAULT 0 CHECK (progress >= 0 AND progress <= 100);
         ALTER TABLE tasks ADD COLUMN IF NOT EXISTS started_at TIMESTAMP WITH TIME ZONE;
         ALTER TABLE tasks ADD COLUMN IF NOT EXISTS completed_at TIMESTAMP WITH TIME ZONE;
@@ -22,7 +20,43 @@ BEGIN
 
         RAISE NOTICE 'Migration 016: Updated existing tasks table';
     ELSE
-        RAISE NOTICE 'Migration 016: No tasks table found (fresh install), skipping';
+        -- FRESH INSTALL: Create the tasks table from scratch
+        CREATE TABLE tasks (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+            assigned_to VARCHAR(200),
+            created_by VARCHAR(200),
+            title VARCHAR(500) NOT NULL,
+            description TEXT,
+            type VARCHAR(100) NOT NULL DEFAULT 'general',
+            status VARCHAR(50) NOT NULL DEFAULT 'todo',
+            priority VARCHAR(20) NOT NULL DEFAULT 'medium',
+            progress INTEGER DEFAULT 0 CHECK (progress >= 0 AND progress <= 100),
+            dependencies UUID[] DEFAULT '{}',
+            tags TEXT[] DEFAULT '{}',
+            metadata JSONB DEFAULT '{}',
+            started_at TIMESTAMP WITH TIME ZONE,
+            completed_at TIMESTAMP WITH TIME ZONE,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );
+
+        -- Create indexes for the new tasks table
+        CREATE INDEX idx_tasks_project ON tasks(project_id);
+        CREATE INDEX idx_tasks_status ON tasks(status);
+        CREATE INDEX idx_tasks_priority ON tasks(priority);
+        CREATE INDEX idx_tasks_type ON tasks(type);
+        CREATE INDEX idx_tasks_created_at ON tasks(created_at);
+        CREATE INDEX idx_tasks_dependencies ON tasks USING GIN(dependencies);
+        CREATE INDEX idx_tasks_tags ON tasks USING GIN(tags);
+
+        -- Add updated_at trigger
+        CREATE TRIGGER update_tasks_updated_at
+            BEFORE UPDATE ON tasks
+            FOR EACH ROW
+            EXECUTE FUNCTION update_updated_at_column();
+
+        RAISE NOTICE 'Migration 016: Created tasks table (fresh install)';
     END IF;
 
     -- Only migrate data if backup tables exist

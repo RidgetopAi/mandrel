@@ -679,13 +679,18 @@ NEXT STEPS FOR P2.3 COMPLETION:
 
 */
 
--- Add migration tracking record
-INSERT INTO schema_migrations (version, applied_at, description)
-VALUES (
-    '023',
-    CURRENT_TIMESTAMP,
-    'P2.3: Create shadow tables for zero-downtime migration'
-) ON CONFLICT (version) DO NOTHING;
+-- Add migration tracking record (if legacy schema_migrations table exists)
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'schema_migrations') THEN
+    INSERT INTO schema_migrations (version, applied_at, description)
+    VALUES (
+        '023',
+        CURRENT_TIMESTAMP,
+        'P2.3: Create shadow tables for zero-downtime migration'
+    ) ON CONFLICT (version) DO NOTHING;
+  END IF;
+END $$;
 
 COMMENT ON TABLE projects_shadow IS 'P2.3 Shadow table for projects - zero-downtime migration infrastructure';
 COMMENT ON TABLE sessions_shadow IS 'P2.3 Shadow table for sessions - zero-downtime migration infrastructure';
