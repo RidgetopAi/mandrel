@@ -767,19 +767,19 @@ RETURNS TABLE (
 BEGIN
     RETURN QUERY
     SELECT
-        dwc.table_name,
+        dwc.table_name::TEXT,
         dwc.enabled,
-        dwc.sync_mode,
+        dwc.sync_mode::TEXT,
         dwc.failure_count,
         dwc.emergency_stop,
-        to_char(dwc.last_failure_at, 'YYYY-MM-DD HH24:MI:SS') as last_failure,
+        to_char(dwc.last_failure_at, 'YYYY-MM-DD HH24:MI:SS')::TEXT as last_failure,
         CASE
             WHEN dwc.emergency_stop THEN 'EMERGENCY STOP ACTIVE'
             WHEN NOT dwc.enabled THEN 'DISABLED'
             WHEN dwc.enabled AND dwc.failure_count = 0 THEN 'HEALTHY'
             WHEN dwc.enabled AND dwc.failure_count > 0 THEN format('WARNING: %s failures', dwc.failure_count)
             ELSE 'UNKNOWN'
-        END as status_summary
+        END::TEXT as status_summary
     FROM dual_write_config dwc
     ORDER BY dwc.table_name;
 END;
