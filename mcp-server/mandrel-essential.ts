@@ -24,7 +24,7 @@ import {
 import { Pool } from 'pg';
 
 const db = new Pool({
-  connectionString: process.env.DATABASE_URL || 'postgresql://ridgetop@localhost:5432/aidis_production',
+  connectionString: process.env.DATABASE_URL || 'postgresql://mandrel@localhost:5432/mandrel_production',
   max: 5, // Minimal pool size
   idleTimeoutMillis: 30000,
 });

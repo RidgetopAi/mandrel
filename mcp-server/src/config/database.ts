@@ -73,32 +73,14 @@ try {
  * efficiently, which is crucial for a high-performance MCP server.
  */
 
-// Helper function to get environment variable with MANDREL_ preferred, AIDIS_ fallback
-function getEnvVar(mandrelKey: string, aidisKey: string, legacyKey: string, defaultValue: string = ''): string {
-  // Priority: MANDREL_ > AIDIS_ (deprecated) > legacy key > default
-  if (process.env[mandrelKey]) {
-    return process.env[mandrelKey]!;
-  }
-  if (process.env[aidisKey]) {
-    console.warn(`\u26a0\ufe0f  ${aidisKey} is deprecated. Use ${mandrelKey} instead.`);
-    return process.env[aidisKey]!;
-  }
-  return process.env[legacyKey] || defaultValue;
-}
-
-function getEnvVarInt(mandrelKey: string, aidisKey: string, legacyKey: string, defaultValue: string = '0'): number {
-  const value = getEnvVar(mandrelKey, aidisKey, legacyKey, defaultValue);
-  return parseInt(value);
-}
-
 const dbConfig: PoolConfig = {
-  user: getEnvVar('MANDREL_DATABASE_USER', 'AIDIS_DATABASE_USER', 'DATABASE_USER', 'mandrel'),
-  host: getEnvVar('MANDREL_DATABASE_HOST', 'AIDIS_DATABASE_HOST', 'DATABASE_HOST', 'localhost'),
-  database: getEnvVar('MANDREL_DATABASE_NAME', 'AIDIS_DATABASE_NAME', 'DATABASE_NAME', '') || (() => {
-    throw new Error('MANDREL_DATABASE_NAME or DATABASE_NAME environment variable is required! No fallback allowed.');
+  user: process.env.DATABASE_USER || 'mandrel',
+  host: process.env.DATABASE_HOST || 'localhost',
+  database: process.env.DATABASE_NAME || (() => {
+    throw new Error('DATABASE_NAME environment variable is required!');
   })(),
-  password: getEnvVar('MANDREL_DATABASE_PASSWORD', 'AIDIS_DATABASE_PASSWORD', 'DATABASE_PASSWORD', ''),
-  port: getEnvVarInt('MANDREL_DATABASE_PORT', 'AIDIS_DATABASE_PORT', 'DATABASE_PORT', '5432'),
+  password: process.env.DATABASE_PASSWORD || '',
+  port: parseInt(process.env.DATABASE_PORT || '5432'),
   
   // Connection pool settings
   max: 20, // Maximum number of connections
@@ -130,14 +112,9 @@ export async function initializeDatabase(): Promise<void> {
     
     // Only run self-tests in development or when explicitly enabled
     // In production, assume DB is properly configured and skip CREATE EXTENSION/test tables
-    const shouldRunSelfTests = 
-      process.env.NODE_ENV !== 'production' || 
-      process.env.MANDREL_DB_SELFTEST === 'true' ||
-      process.env.AIDIS_DB_SELFTEST === 'true';
-    
-    if (process.env.AIDIS_DB_SELFTEST && !process.env.MANDREL_DB_SELFTEST) {
-      console.warn('⚠️  AIDIS_DB_SELFTEST is deprecated. Use MANDREL_DB_SELFTEST instead.');
-    }
+    const shouldRunSelfTests =
+      process.env.NODE_ENV !== 'production' ||
+      process.env.MANDREL_DB_SELFTEST === 'true';
     
     if (shouldRunSelfTests) {
       // Check if pgvector extension is installed

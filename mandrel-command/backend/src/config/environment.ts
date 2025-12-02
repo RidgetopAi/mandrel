@@ -51,72 +51,55 @@ try {
   }
 }
 
-// Helper function to get environment variable with MANDREL_ prefix and AIDIS_ fallback
-function getEnvVar(mandrelKey: string, aidisKey: string, defaultValue: string = ''): string {
-  const value = process.env[mandrelKey] || process.env[aidisKey] || defaultValue;
-  
-  // Log deprecation warning if old var is used
-  if (process.env[aidisKey] && !process.env[mandrelKey]) {
-    console.warn(`⚠️  ${aidisKey} is deprecated. Use ${mandrelKey} instead.`);
-  }
-  
-  return value;
-}
-
-function getEnvVarInt(mandrelKey: string, aidisKey: string, defaultValue: string = '0'): number {
-  const value = getEnvVar(mandrelKey, aidisKey, defaultValue);
-  return parseInt(value);
-}
-
 export const config = {
   // Server configuration
-  port: getEnvVarInt('MANDREL_HTTP_PORT', 'AIDIS_HTTP_PORT', '5000'),
+  port: parseInt(process.env.MANDREL_HTTP_PORT || process.env.PORT || '5000'),
   nodeEnv: process.env.NODE_ENV || 'development',
-  
+
   // Database configuration
   database: {
-    url: getEnvVar('MANDREL_DATABASE_URL', 'AIDIS_DATABASE_URL'),
-    user: getEnvVar('MANDREL_DATABASE_USER', 'AIDIS_DATABASE_USER', 'ridgetop'),
-    host: getEnvVar('MANDREL_DATABASE_HOST', 'AIDIS_DATABASE_HOST', 'localhost'),
-    database: getEnvVar('MANDREL_DATABASE_NAME', 'AIDIS_DATABASE_NAME', 'aidis_production'),
-    password: getEnvVar('MANDREL_DATABASE_PASSWORD', 'AIDIS_DATABASE_PASSWORD') || (() => {
+    url: process.env.DATABASE_URL,
+    user: process.env.DATABASE_USER || 'mandrel',
+    host: process.env.DATABASE_HOST || 'localhost',
+    database: process.env.DATABASE_NAME || 'aidis_production',
+    password: process.env.DATABASE_PASSWORD || (() => {
       if (process.env.NODE_ENV === 'production') {
-        throw new Error('MANDREL_DATABASE_PASSWORD or AIDIS_DATABASE_PASSWORD environment variable is required in production');
+        throw new Error('DATABASE_PASSWORD environment variable is required in production');
       }
-      console.warn('⚠️  MANDREL_DATABASE_PASSWORD not set - using empty string in development');
+      console.warn('⚠️  DATABASE_PASSWORD not set - using empty string in development');
       return '';
     })(),
-    port: getEnvVarInt('MANDREL_DATABASE_PORT', 'AIDIS_DATABASE_PORT', '5432'),
+    port: parseInt(process.env.DATABASE_PORT || '5432'),
   },
-  
+
   // Authentication configuration
   auth: {
-    jwtSecret: getEnvVar('MANDREL_JWT_SECRET', 'AIDIS_JWT_SECRET') || (() => {
+    jwtSecret: process.env.JWT_SECRET || (() => {
       if (process.env.NODE_ENV === 'production') {
-        throw new Error('MANDREL_JWT_SECRET or AIDIS_JWT_SECRET environment variable is required in production');
+        throw new Error('JWT_SECRET environment variable is required in production');
       }
-      console.warn('⚠️  Using default JWT secret - set MANDREL_JWT_SECRET environment variable');
+      console.warn('⚠️  Using default JWT secret - set JWT_SECRET environment variable');
       return 'dev-only-' + Math.random().toString(36).substring(7);
     })(),
-    jwtExpiresIn: getEnvVar('MANDREL_JWT_EXPIRES_IN', 'AIDIS_JWT_EXPIRES_IN', '24h'),
-    bcryptRounds: getEnvVarInt('MANDREL_BCRYPT_ROUNDS', 'AIDIS_BCRYPT_ROUNDS', '12'),
+    jwtExpiresIn: process.env.JWT_EXPIRES_IN || '24h',
+    bcryptRounds: parseInt(process.env.BCRYPT_ROUNDS || '12'),
   },
-  
+
   // CORS configuration
   cors: {
-    origin: (getEnvVar('MANDREL_CORS_ORIGIN', 'AIDIS_CORS_ORIGIN') || 'http://localhost:3000,http://localhost:3001').split(','),
+    origin: (process.env.CORS_ORIGIN || 'http://localhost:3000,http://localhost:3001').split(','),
     credentials: true,
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Correlation-ID', 'X-Project-ID'],
   },
-  
+
   // Logging configuration
   logging: {
-    level: getEnvVar('MANDREL_LOG_LEVEL', 'AIDIS_LOG_LEVEL', 'info'),
-    dbLogLevel: getEnvVar('MANDREL_DB_LOG_LEVEL', 'AIDIS_DB_LOG_LEVEL', 'warn'),
+    level: process.env.LOG_LEVEL || 'info',
+    dbLogLevel: process.env.DB_LOG_LEVEL || 'warn',
     enableConsole: process.env.NODE_ENV === 'development',
-    enableFileRotation: getEnvVar('MANDREL_ENABLE_LOG_ROTATION', 'AIDIS_ENABLE_LOG_ROTATION', 'true') !== 'false',
-    maxFileSize: getEnvVar('MANDREL_LOG_MAX_FILE_SIZE', 'AIDIS_LOG_MAX_FILE_SIZE', '20m'),
-    maxFiles: getEnvVar('MANDREL_LOG_MAX_FILES', 'AIDIS_LOG_MAX_FILES', '30d')
+    enableFileRotation: (process.env.ENABLE_LOG_ROTATION || 'true') !== 'false',
+    maxFileSize: process.env.LOG_MAX_FILE_SIZE || '20m',
+    maxFiles: process.env.LOG_MAX_FILES || '30d'
   },
 
   // Application info
