@@ -503,9 +503,10 @@ CREATE INDEX IF NOT EXISTS idx_insights_implementation ON pattern_insights(imple
 CREATE INDEX IF NOT EXISTS idx_insights_expires ON pattern_insights(expires_at, refresh_needed_at) WHERE expires_at IS NOT NULL;
 
 -- Full-text search indexes for content discovery
-CREATE INDEX IF NOT EXISTS idx_insights_title_fts ON pattern_insights USING gin(to_tsvector('english', title));
-CREATE INDEX IF NOT EXISTS idx_insights_description_fts ON pattern_insights USING gin(to_tsvector('english', description));
-CREATE INDEX IF NOT EXISTS idx_insights_recommendations_fts ON pattern_insights USING gin(to_tsvector('english', array_to_string(recommendations, ' ')));
+-- Note: Using ::regconfig cast makes to_tsvector immutable (required for index expressions)
+CREATE INDEX IF NOT EXISTS idx_insights_title_fts ON pattern_insights USING gin(to_tsvector('english'::regconfig, title));
+CREATE INDEX IF NOT EXISTS idx_insights_description_fts ON pattern_insights USING gin(to_tsvector('english'::regconfig, description));
+CREATE INDEX IF NOT EXISTS idx_insights_recommendations_fts ON pattern_insights USING gin(to_tsvector('english'::regconfig, array_to_string(recommendations, ' ')));
 
 -- Array indexes for efficient array operations (GIN indexes)
 CREATE INDEX IF NOT EXISTS idx_cooccurrence_commits ON file_cooccurrence_patterns USING gin(contributing_commits);
