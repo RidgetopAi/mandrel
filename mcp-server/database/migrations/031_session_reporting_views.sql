@@ -5,6 +5,7 @@
 BEGIN;
 
 -- Create v_session_summaries view
+-- Note: Some columns stubbed as they don't exist in current schema
 CREATE OR REPLACE VIEW v_session_summaries AS
 SELECT
   s.id,
@@ -18,9 +19,10 @@ SELECT
   s.status,
   s.title,
   s.description,
-  s.session_goal,
-  s.tags,
-  s.productivity_score,
+  -- Columns not in current schema - stubbed
+  NULL::text as session_goal,
+  NULL::text[] as tags,
+  NULL::numeric as productivity_score,
   s.tasks_created,
   s.tasks_completed,
   CASE
@@ -28,15 +30,16 @@ SELECT
     ELSE 0
   END as task_completion_rate,
   s.contexts_created,
-  s.lines_added,
-  s.lines_deleted,
-  s.lines_net,
-  s.files_modified_count,
-  s.activity_count,
+  -- Columns not in current schema - stubbed
+  0::integer as lines_added,
+  0::integer as lines_deleted,
+  0::integer as lines_net,
+  0::integer as files_modified_count,
+  0::integer as activity_count,
   s.input_tokens,
   s.output_tokens,
   s.total_tokens,
-  s.ai_model,
+  NULL::text as ai_model,
   s.last_activity_at,
   s.metadata
 FROM sessions s
