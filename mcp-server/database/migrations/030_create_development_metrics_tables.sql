@@ -544,26 +544,27 @@ SELECT
     COALESCE(velocity_avg.avg_velocity, 0) as avg_code_velocity,
     COALESCE(quality_trend.trend_direction, 'unknown') as quality_trend,
     COALESCE(debt_score.debt_level, 0) as technical_debt_level,
-    
+
     -- Pattern intelligence summary
     COALESCE(risk_files.high_risk_count, 0) as high_risk_files,
-    COALESCE(coupling_strength.avg_coupling, 0) as avg_coupling_strength,
-    COALESCE(hotspots.hotspot_count, 0) as active_hotspots,
-    
-    -- Productivity summary
-    COALESCE(team_productivity.avg_productivity, 0) as team_avg_productivity,
-    COALESCE(team_health.health_score, 0) as team_health_score,
-    COALESCE(collaboration.collaboration_score, 0) as collaboration_effectiveness,
-    
+    -- Note: coupling_strength, hotspots subqueries removed (incomplete in original)
+    0::numeric as avg_coupling_strength,
+    0::integer as active_hotspots,
+
+    -- Productivity summary (stubbed - subqueries were incomplete in original)
+    0::numeric as team_avg_productivity,
+    0::numeric as team_health_score,
+    0::numeric as collaboration_effectiveness,
+
     -- Alert summary
     COALESCE(active_alerts.critical_count, 0) as critical_alerts,
     COALESCE(active_alerts.warning_count, 0) as warning_alerts,
     COALESCE(active_alerts.total_count, 0) as total_active_alerts,
-    
-    -- Trend indicators
-    COALESCE(velocity_trend.direction, 'stable') as velocity_trend,
-    COALESCE(quality_evolution.direction, 'stable') as quality_evolution,
-    COALESCE(productivity_trend.direction, 'stable') as productivity_trend,
+
+    -- Trend indicators (stubbed - subqueries were incomplete in original)
+    'stable'::text as velocity_trend,
+    'stable'::text as quality_evolution,
+    'stable'::text as productivity_trend,
     
     -- Data freshness
     mcs.created_at as metrics_created_at,
