@@ -14,6 +14,7 @@ const nodeEnv = process.env.NODE_ENV || 'development';
 const configRoot = path.resolve(__dirname, '../../../../config');
 
 const envPaths = [
+  path.join(configRoot, 'environments', `.env.${nodeEnv}.local`), // Local overrides (gitignored) - loaded first for priority
   path.join(configRoot, 'environments', `.env.${nodeEnv}`),
   path.resolve(__dirname, '../../.env'),
   path.resolve(__dirname, '../../backend/.env')

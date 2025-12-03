@@ -45,13 +45,12 @@ export class McpService {
     return new Promise((resolve, reject) => {
       const postData = JSON.stringify({ arguments: params });
       
-      // Support both MANDREL_* (preferred) and AIDIS_* (deprecated) with fallback
-      const mcpPort = process.env.MANDREL_HTTP_PORT || process.env.AIDIS_HTTP_PORT || process.env.MANDREL_MCP_PORT || process.env.AIDIS_MCP_PORT || 8080;
-      
+      // MCP server port - MANDREL_MCP_PORT is the MCP server, NOT MANDREL_HTTP_PORT (which is the backend)
+      const mcpPort = process.env.MANDREL_MCP_PORT || process.env.AIDIS_MCP_PORT || process.env.AIDIS_MCP_HOST_PORT || 8080;
+
       // Log deprecation warning if old var is used
-      if ((process.env.AIDIS_HTTP_PORT && !process.env.MANDREL_HTTP_PORT) || 
-          (process.env.AIDIS_MCP_PORT && !process.env.MANDREL_MCP_PORT)) {
-        console.warn('⚠️  AIDIS_HTTP_PORT/AIDIS_MCP_PORT is deprecated. Use MANDREL_HTTP_PORT/MANDREL_MCP_PORT instead.');
+      if (process.env.AIDIS_MCP_PORT && !process.env.MANDREL_MCP_PORT) {
+        console.warn('⚠️  AIDIS_MCP_PORT is deprecated. Use MANDREL_MCP_PORT instead.');
       }
       
       const options = {
@@ -436,8 +435,8 @@ export class McpService {
     return new Promise((resolve, reject) => {
       const postData = body ? JSON.stringify(body) : '';
 
-      // Support both MANDREL_* (preferred) and AIDIS_* (deprecated) with fallback
-      const mcpPort = process.env.MANDREL_HTTP_PORT || process.env.AIDIS_HTTP_PORT || process.env.MANDREL_MCP_PORT || process.env.AIDIS_MCP_PORT || 8080;
+      // MCP server port - MANDREL_MCP_PORT is the MCP server, NOT MANDREL_HTTP_PORT (which is the backend)
+      const mcpPort = process.env.MANDREL_MCP_PORT || process.env.AIDIS_MCP_PORT || 8080;
       
       const options = {
         hostname: 'localhost',
