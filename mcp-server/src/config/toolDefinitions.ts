@@ -38,12 +38,8 @@ export const AIDIS_TOOL_DEFINITIONS: ToolDefinition[] = [
             description: 'Test connectivity to Mandrel server',
             inputSchema: {
               type: 'object',
-              properties: {
-                message: {
-                  type: 'string',
-                  description: 'Optional test message'
-                }
-              },
+              properties: {},
+              required: [],
               additionalProperties: true
             },
           },
@@ -53,6 +49,7 @@ export const AIDIS_TOOL_DEFINITIONS: ToolDefinition[] = [
             inputSchema: {
               type: 'object',
               properties: {},
+              required: [],
               additionalProperties: true
             },
           },
@@ -62,6 +59,7 @@ export const AIDIS_TOOL_DEFINITIONS: ToolDefinition[] = [
             inputSchema: {
               type: 'object',
               properties: {},
+              required: [],
               additionalProperties: true
             },
           },
@@ -100,26 +98,6 @@ export const AIDIS_TOOL_DEFINITIONS: ToolDefinition[] = [
                 type: {
                   type: 'string',
                   description: 'Context type: code, decision, error, discussion, planning, completion, milestone, reflections, handoff'
-                },
-                tags: {
-                  type: 'array',
-                  description: 'Optional tags for categorization'
-                },
-                relevanceScore: {
-                  type: 'number',
-                  description: 'Relevance score 0-10'
-                },
-                metadata: {
-                  type: 'object',
-                  description: 'Optional metadata key-value pairs'
-                },
-                projectId: {
-                  type: 'string',
-                  description: 'Optional project ID'
-                },
-                sessionId: {
-                  type: 'string',
-                  description: 'Optional session ID'
                 }
               },
               required: ['content', 'type'],
@@ -135,26 +113,6 @@ export const AIDIS_TOOL_DEFINITIONS: ToolDefinition[] = [
                 query: {
                   type: 'string',
                   description: 'Search query using semantic similarity'
-                },
-                type: {
-                  type: 'string',
-                  description: 'Filter by context type: code, decision, error, discussion, planning, completion, milestone, reflections, handoff'
-                },
-                tags: {
-                  type: 'array',
-                  description: 'Filter by tags'
-                },
-                limit: {
-                  type: 'number',
-                  description: 'Maximum results, 1-50'
-                },
-                minSimilarity: {
-                  type: 'number',
-                  description: 'Minimum similarity percentage 0-100'
-                },
-                projectId: {
-                  type: 'string',
-                  description: 'Optional project ID filter'
                 }
               },
               required: ['query'],
@@ -166,16 +124,8 @@ export const AIDIS_TOOL_DEFINITIONS: ToolDefinition[] = [
             description: 'Get recent contexts in chronological order (newest first)',
             inputSchema: {
               type: 'object',
-              properties: {
-                limit: {
-                  type: 'number',
-                  description: 'Maximum results, 1-20'
-                },
-                projectId: {
-                  type: 'string',
-                  description: 'Optional project ID'
-                }
-              },
+              properties: {},
+              required: [],
               additionalProperties: true
             },
           },
@@ -184,12 +134,8 @@ export const AIDIS_TOOL_DEFINITIONS: ToolDefinition[] = [
             description: 'Get context statistics for a project',
             inputSchema: {
               type: 'object',
-              properties: {
-                projectId: {
-                  type: 'string',
-                  description: 'Optional project ID'
-                }
-              },
+              properties: {},
+              required: [],
               additionalProperties: true
             },
           },
@@ -198,12 +144,8 @@ export const AIDIS_TOOL_DEFINITIONS: ToolDefinition[] = [
             description: 'List all available projects with statistics',
             inputSchema: {
               type: 'object',
-              properties: {
-                includeStats: {
-                  type: 'boolean',
-                  description: 'Include context statistics'
-                }
-              },
+              properties: {},
+              required: [],
               additionalProperties: true
             },
           },
@@ -216,22 +158,6 @@ export const AIDIS_TOOL_DEFINITIONS: ToolDefinition[] = [
                 name: {
                   type: 'string',
                   description: 'Unique project name'
-                },
-                description: {
-                  type: 'string',
-                  description: 'Project description'
-                },
-                gitRepoUrl: {
-                  type: 'string',
-                  description: 'Git repository URL'
-                },
-                rootDirectory: {
-                  type: 'string',
-                  description: 'Root directory path'
-                },
-                metadata: {
-                  type: 'object',
-                  description: 'Metadata key-value pairs'
                 }
               },
               required: ['name'],
@@ -259,6 +185,7 @@ export const AIDIS_TOOL_DEFINITIONS: ToolDefinition[] = [
             inputSchema: {
               type: 'object',
               properties: {},
+              required: [],
               additionalProperties: true
             },
           },
@@ -302,26 +229,6 @@ export const AIDIS_TOOL_DEFINITIONS: ToolDefinition[] = [
                 impactLevel: {
                   type: 'string',
                   description: 'Impact: low, medium, high, critical'
-                },
-                alternativesConsidered: {
-                  type: 'array',
-                  description: 'Alternatives considered (array of objects with name, pros, cons, reasonRejected)'
-                },
-                problemStatement: {
-                  type: 'string',
-                  description: 'Problem being solved'
-                },
-                affectedComponents: {
-                  type: 'array',
-                  description: 'Affected components'
-                },
-                tags: {
-                  type: 'array',
-                  description: 'Categorization tags'
-                },
-                projectId: {
-                  type: 'string',
-                  description: 'Project ID'
                 }
               },
               required: ['decisionType', 'title', 'description', 'rationale', 'impactLevel'],
@@ -333,36 +240,8 @@ export const AIDIS_TOOL_DEFINITIONS: ToolDefinition[] = [
             description: 'Search technical decisions with various filters',
             inputSchema: {
               type: 'object',
-              properties: {
-                query: {
-                  type: 'string',
-                  description: 'Search query'
-                },
-                decisionType: {
-                  type: 'string',
-                  description: 'Filter by type: architecture, library, framework, pattern, api_design, database, deployment, security, performance, ui_ux, testing, tooling, process, naming_convention, code_style'
-                },
-                impactLevel: {
-                  type: 'string',
-                  description: 'Filter by impact: low, medium, high, critical'
-                },
-                component: {
-                  type: 'string',
-                  description: 'Find decisions affecting this component'
-                },
-                tags: {
-                  type: 'array',
-                  description: 'Filter by tags'
-                },
-                limit: {
-                  type: 'number',
-                  description: 'Maximum results, 1-50'
-                },
-                projectId: {
-                  type: 'string',
-                  description: 'Project ID'
-                }
-              },
+              properties: {},
+              required: [],
               additionalProperties: true
             },
           },
@@ -375,18 +254,6 @@ export const AIDIS_TOOL_DEFINITIONS: ToolDefinition[] = [
                 decisionId: {
                   type: 'string',
                   description: 'Decision ID to update'
-                },
-                outcomeStatus: {
-                  type: 'string',
-                  description: 'Outcome: unknown, successful, failed, mixed, too_early'
-                },
-                outcomeNotes: {
-                  type: 'string',
-                  description: 'Outcome notes'
-                },
-                lessonsLearned: {
-                  type: 'string',
-                  description: 'Lessons learned'
                 }
               },
               required: ['decisionId'],
@@ -398,12 +265,8 @@ export const AIDIS_TOOL_DEFINITIONS: ToolDefinition[] = [
             description: 'Get technical decision statistics and analysis',
             inputSchema: {
               type: 'object',
-              properties: {
-                projectId: {
-                  type: 'string',
-                  description: 'Project ID'
-                }
-              },
+              properties: {},
+              required: [],
               additionalProperties: true
             },
           },
@@ -419,38 +282,6 @@ export const AIDIS_TOOL_DEFINITIONS: ToolDefinition[] = [
                 title: {
                   type: 'string',
                   description: 'Task title'
-                },
-                description: {
-                  type: 'string',
-                  description: 'Task description'
-                },
-                type: {
-                  type: 'string',
-                  description: 'Type: feature, bugfix, refactor, test, review, documentation'
-                },
-                priority: {
-                  type: 'string',
-                  description: 'Priority: low, medium, high, urgent'
-                },
-                assignedTo: {
-                  type: 'string',
-                  description: 'Agent ID to assign to'
-                },
-                tags: {
-                  type: 'array',
-                  description: 'Task tags'
-                },
-                dependencies: {
-                  type: 'array',
-                  description: 'Task IDs this depends on'
-                },
-                projectId: {
-                  type: 'string',
-                  description: 'Project ID'
-                },
-                metadata: {
-                  type: 'object',
-                  description: 'Additional metadata'
                 }
               },
               required: ['title'],
@@ -462,40 +293,8 @@ export const AIDIS_TOOL_DEFINITIONS: ToolDefinition[] = [
             description: 'List tasks with optional filtering',
             inputSchema: {
               type: 'object',
-              properties: {
-                projectId: {
-                  type: 'string',
-                  description: 'Project ID'
-                },
-                assignedTo: {
-                  type: 'string',
-                  description: 'Filter by agent ID'
-                },
-                status: {
-                  type: 'string',
-                  description: 'Filter by status: todo, in_progress, blocked, completed, cancelled'
-                },
-                statuses: {
-                  type: 'array',
-                  description: 'Filter by multiple statuses (takes precedence)'
-                },
-                type: {
-                  type: 'string',
-                  description: 'Filter by type'
-                },
-                tags: {
-                  type: 'array',
-                  description: 'Filter by tags (matches ANY)'
-                },
-                priority: {
-                  type: 'string',
-                  description: 'Filter by priority: low, medium, high, urgent'
-                },
-                phase: {
-                  type: 'string',
-                  description: 'Filter by phase'
-                }
-              },
+              properties: {},
+              required: [],
               additionalProperties: true
             },
           },
@@ -512,14 +311,6 @@ export const AIDIS_TOOL_DEFINITIONS: ToolDefinition[] = [
                 status: {
                   type: 'string',
                   description: 'New status: todo, in_progress, blocked, completed, cancelled'
-                },
-                assignedTo: {
-                  type: 'string',
-                  description: 'Agent ID to assign to'
-                },
-                metadata: {
-                  type: 'object',
-                  description: 'Additional metadata'
                 }
               },
               required: ['taskId', 'status'],
@@ -535,10 +326,6 @@ export const AIDIS_TOOL_DEFINITIONS: ToolDefinition[] = [
                 taskId: {
                   type: 'string',
                   description: 'Task ID'
-                },
-                projectId: {
-                  type: 'string',
-                  description: 'Project ID'
                 }
               },
               required: ['taskId'],
@@ -553,31 +340,8 @@ export const AIDIS_TOOL_DEFINITIONS: ToolDefinition[] = [
               properties: {
                 task_ids: {
                   type: 'array',
+                  items: { type: 'string' },
                   description: 'Task IDs to update'
-                },
-                status: {
-                  type: 'string',
-                  description: 'New status: todo, in_progress, blocked, completed, cancelled'
-                },
-                assignedTo: {
-                  type: 'string',
-                  description: 'Agent ID to assign to'
-                },
-                priority: {
-                  type: 'string',
-                  description: 'New priority: low, medium, high, urgent'
-                },
-                metadata: {
-                  type: 'object',
-                  description: 'Additional metadata'
-                },
-                notes: {
-                  type: 'string',
-                  description: 'Notes to add'
-                },
-                projectId: {
-                  type: 'string',
-                  description: 'Project ID for validation'
                 }
               },
               required: ['task_ids'],
@@ -589,16 +353,8 @@ export const AIDIS_TOOL_DEFINITIONS: ToolDefinition[] = [
             description: 'Get task progress summary with grouping and completion percentages',
             inputSchema: {
               type: 'object',
-              properties: {
-                groupBy: {
-                  type: 'string',
-                  description: 'Group by: phase, status, priority, type, assignedTo'
-                },
-                projectId: {
-                  type: 'string',
-                  description: 'Project ID to analyze'
-                }
-              },
+              properties: {},
+              required: [],
               additionalProperties: true
             }
           },
@@ -611,18 +367,6 @@ export const AIDIS_TOOL_DEFINITIONS: ToolDefinition[] = [
                 query: {
                   type: 'string',
                   description: 'Search query'
-                },
-                includeTypes: {
-                  type: 'array',
-                  description: 'Data sources: context, component, decision, naming, task, agent'
-                },
-                limit: {
-                  type: 'number',
-                  description: 'Maximum results'
-                },
-                projectId: {
-                  type: 'string',
-                  description: 'Project ID'
                 }
               },
               required: ['query'],
@@ -638,14 +382,6 @@ export const AIDIS_TOOL_DEFINITIONS: ToolDefinition[] = [
                 context: {
                   type: 'string',
                   description: 'What you are working on'
-                },
-                type: {
-                  type: 'string',
-                  description: 'Type: naming, implementation, architecture, testing'
-                },
-                projectId: {
-                  type: 'string',
-                  description: 'Project ID'
                 }
               },
               required: ['context'],
@@ -657,12 +393,8 @@ export const AIDIS_TOOL_DEFINITIONS: ToolDefinition[] = [
             description: 'Get comprehensive project health and insights',
             inputSchema: {
               type: 'object',
-              properties: {
-                projectId: {
-                  type: 'string',
-                  description: 'Project ID'
-                }
-              },
+              properties: {},
+              required: [],
               additionalProperties: true
             },
           },
