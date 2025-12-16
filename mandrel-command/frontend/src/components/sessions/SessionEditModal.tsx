@@ -18,6 +18,7 @@ import { EditOutlined, SaveOutlined, CloseOutlined, SyncOutlined, FolderOutlined
 import type { Session, UpdateSessionRequest } from '../../types/session';
 import { useUpdateSession, useProjects } from '../../hooks/useProjects';
 import { sessionsClient } from '../../api/sessionsClient';
+import GitSyncModal from './GitSyncModal';
 
 const { Text, Title } = Typography;
 const { TextArea } = Input;
@@ -342,6 +343,9 @@ const SessionEditModal: React.FC<SessionEditModalProps> = ({
               >
                 {syncLoading ? 'Syncing files from git...' : 'Sync Files from Git'}
               </Button>
+              <Text type="secondary" style={{ fontSize: 11 }}>
+                For local Mandrel installations with git access
+              </Text>
               {syncResult && (
                 <Alert
                   message={syncResult}
@@ -351,6 +355,11 @@ const SessionEditModal: React.FC<SessionEditModalProps> = ({
                   onClose={() => setSyncResult(null)}
                 />
               )}
+              <Divider style={{ margin: '12px 0' }}>or</Divider>
+              <GitSyncModal sessionId={session.id} projectId={session.project_id || ''} />
+              <Text type="secondary" style={{ fontSize: 11 }}>
+                For remote Mandrel (VPS) - push git data via API
+              </Text>
             </Space>
 
             <Form.Item style={{ marginBottom: 0 }}>
