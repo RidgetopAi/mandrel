@@ -1,0 +1,185 @@
+# Dependencies
+node_modules/
+*/node_modules/
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Logs
+*.log
+logs/
+debug-logs/
+backend.log
+frontend.log
+backend_*.log
+frontend_*.log
+
+# Runtime data
+pids
+*.pid
+*.seed
+run/
+sessions/
+
+# Database
+*.db
+*.sqlite
+*_dump.sql
+*_backup.sql
+# Keep migrations tracked
+!mcp-server/database/migrations/*.sql
+
+# Backups
+backups/
+archive/
+*.backup
+*.tar.gz
+
+# Archive directories (keep local, exclude from repo)
+mcp-server-archive/
+docs/
+tests/
+ridge-parser-tui/
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Build outputs
+build/
+dist/
+*/build/
+*/dist/
+
+# Test coverage
+coverage/
+
+# Temporary files
+tmp/
+temp/
+
+# Debug and test artifacts
+debug-images/
+debug-tests/
+*.png
+*.jpg
+*.jpeg
+test-*.js
+test-*.ts
+docs/tests/test-sse-integration.js
+
+# AIDIS specific - runtime
+aidis.service
+aidis-user.service
+aidis_restart.log
+create_admin.sql
+fresh_login.json
+auth_response.json
+server-*.pid
+*.pid
+
+# AIDIS specific - development artifacts
+*_INVESTIGATION_REPORT.md
+*_IMPLEMENTATION_COMPLETE.md
+*_IMPLEMENTATION_PLAN.md
+*_IMPLEMENTATION_SUMMARY.md
+*_FIX_COMPLETE.md
+*_FIX_SUMMARY.md
+*_PLAN.md
+*_SUMMARY.md
+*_QUICK_REFERENCE.md
+*_QUICK_SUMMARY.md
+*_FLOW_DIAGRAM.md
+*_FEATURE_MATRIX.md
+*_ARCHITECTURE_DIAGRAM.md
+*_VISUAL.txt
+*_INDEX.md
+*_EXECUTIVE_SUMMARY.md
+*_STRATEGY.md
+*_CHECKLIST.md
+*_VALIDATION_*.md
+PHASE*.md
+ORACLE*.md
+SESSION*.md
+TS006*.md
+TS007*.md
+TT009*.md
+TR001*.md
+T011_*.json
+P2_*.md
+MCP_*.md
+BRIDGE_*.md
+CONTEXT*.md
+DECISION_*.md
+MANUAL_*.md
+REFRACTOR_*.md
+REFRESH_*.md
+SECURITY_*.md
+TASK_*.md
+TASK-*.md
+TOKEN_*.txt
+TOOL_*.md
+Workflow_*.md
+*-specs.md
+baseline-*.md
+baseline-*.ts
+aidis-rebuild-*.ts
+agent*.txt
+*.svg
+playwright-*.json
+sample.py
+
+# AIDIS specific - development scripts
+aidis-stdio-mock*.js
+claude-http-mcp-bridge*.js
+compare-mcp-servers.js
+debug-mcp-protocol.js
+emergency-rollback.sh
+health-check.sh
+monitor-health.sh
+rollback-*.sh
+mcp-*.js
+*-wrapper.js
+verify-*.ts
+measure-*.ts
+performance-*.ts
+dep-viewer.html
+deps.json
+fixed-tool-list.js
+logging-config.env
+
+# Personal projects - not part of AIDIS
+projects/
+forge-web/
+logo/
+
+# Configuration backups
+.backup-*/
+.mcp-mock.json
+.mcp-original.json
+.claude.json
+.playwright-mcp/
+
+# Zone identifier files
+*:Zone.Identifier
+
+# Sensitive files
+Assets/
+
+# Spindles proxy (contains sensitive data)
+spindles-proxy/

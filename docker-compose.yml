@@ -1,0 +1,58 @@
+# Mandrel Docker Compose Configuration
+# Quick start: docker-compose up -d postgres redis
+# Full stack: docker-compose up -d
+
+version: '3.8'
+
+# Health check configuration template
+x-healthcheck-defaults: &healthcheck-defaults
+  interval: 30s
+  timeout: 10s
+  retries: 3
+  start_period: 15s
+
+services:
+  # PostgreSQL with pgvector extension (required for Mandrel)
+  postgres:
+    image: ankane/pgvector:latest
+    container_name: mandrel-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-aidis_production}
+      POSTGRES_USER: ${POSTGRES_USER:-mandrel}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-mandrel_dev_password}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - mandrel-network
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-mandrel}"]
+
+  # Redis for BullMQ queue system
+  redis:
+    image: redis:7-alpine
+    container_name: mandrel-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    networks:
+      - mandrel-network
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD", "redis-cli", "ping"]
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  mandrel-network:
+    driver: bridge

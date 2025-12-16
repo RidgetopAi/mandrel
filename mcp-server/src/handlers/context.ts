@@ -1,0 +1,731 @@
+/**
+ * AIDIS Context Handler
+ * 
+ * This handles all context management operations:
+ * - Storing context with automatic embedding generation
+ * - Searching context using vector similarity
+ * - Managing context metadata and relationships
+ * 
+ * This is where AI agents store their memories and retrieve them later!
+ */
+
+import { db } from '../config/database.js';
+import { embeddingService } from '../services/embedding.js';
+import { dimensionalityReductionService } from '../services/dimensionality-reduction.js';
+import { projectHandler } from './project.js';
+import { logContextEvent, logHierarchicalMemorySearch } from '../middleware/eventLogger.js';
+
+export interface StoreContextRequest {
+  projectId?: string;
+  sessionId?: string;
+  type: 'code' | 'decision' | 'error' | 'discussion' | 'planning' | 'completion' | 'milestone' | 'reflections' | 'handoff' | 'lessons';
+  content: string;
+  tags?: string[];
+  relevanceScore?: number;
+  metadata?: Record<string, any>;
+}
+
+export interface ContextEntry {
+  id: string;
+  projectId: string;
+  sessionId: string | null;
+  contextType: string;
+  content: string;
+  createdAt: Date;
+  relevanceScore: number;
+  tags: string[];
+  metadata: Record<string, any>;
+  embedding?: number[];
+}
+
+export interface SearchContextRequest {
+  projectId?: string;
+  query: string;
+  type?: string;
+  limit?: number;
+  minSimilarity?: number;
+  tags?: string[];
+}
+
+export interface SearchResult extends ContextEntry {
+  similarity?: number;
+  searchReason?: string;
+  // Score components for observability (Instance #49)
+  recency_score?: number;
+  importance_score?: number;
+  type_weight?: number;
+  combined_score?: number;
+}
+
+export class ContextHandler {
+
+  /**
+   * Extract meaningful title from content for hybrid embeddings
+   */
+  private extractTitle(content: string): string {
+    const trimmed = content.trim();
+
+    // Look for markdown-style headers or bold text
+    const markdownTitleMatch = trimmed.match(/^#{1,6}\s*(.+)|^\*\*(.+?)\*\*/);
+    if (markdownTitleMatch) {
+      return markdownTitleMatch[1] || markdownTitleMatch[2];
+    }
+
+    // Look for lines that look like titles (short first lines)
+    const firstLine = trimmed.split('\n')[0];
+    if (firstLine && firstLine.length <= 100 && firstLine.length >= 10) {
+      // Check if it's likely a title (no punctuation at end except : or -)
+      if (!/[.!?]$/.test(firstLine) || /[:-]$/.test(firstLine)) {
+        return firstLine;
+      }
+    }
+
+    // Fall back to first 50 characters
+    return trimmed.substring(0, 50).replace(/\s+$/, '');
+  }
+
+  /**
+   * Store new context with automatic hybrid embedding generation
+   * Combines title + tags + type + content for better semantic search
+   */
+  async storeContext(request: StoreContextRequest): Promise<ContextEntry> {
+    if (process.env.AIDIS_DETAILED_LOGGING === 'true') {
+        console.log(`📝 Storing ${request.type} context: "${request.content.substring(0, 60)}..."`);
+      }
+
+    try {
+      // Validate required fields
+      if (!request.content?.trim()) {
+        throw new Error('Context content cannot be empty');
+      }
+
+      if (!request.type) {
+        throw new Error('Context type is required');
+      }
+
+      // Get or create project/session
+      const projectId = await this.ensureProjectId(request.projectId);
+      const sessionId = await this.ensureSessionId(request.sessionId, projectId);
+
+      // Create hybrid embedding text combining title, tags, type, and content
+      const extractedTitle = this.extractTitle(request.content);
+      const embeddingText = [
+        `Type: ${request.type}`,
+        request.tags?.length ? `Tags: ${request.tags.join(', ')}` : '',
+        extractedTitle,
+        request.content.substring(0, 1000) // Limit content to avoid dilution
+      ].filter(Boolean).join('\n');
+
+      // Generate hybrid embedding
+      console.log('🔮 Generating hybrid embedding (title + tags + content)...');
+      console.log(`📋 Extracted title: "${extractedTitle}"`);
+      const embeddingResult = await embeddingService.generateEmbedding({
+        text: embeddingText
+      });
+
+      // Prepare context data
+      const contextData = {
+        project_id: projectId,
+        session_id: sessionId,
+        context_type: request.type,
+        content: request.content.trim(),
+        embedding: JSON.stringify(embeddingResult.embedding), // PostgreSQL vector format
+        relevance_score: request.relevanceScore || 5.0,
+        tags: request.tags || [],
+        metadata: JSON.stringify(request.metadata || {})
+      };
+
+      // DEBUG: Track context creation calls to detect duplicates
+      const callStack = new Error().stack;
+      console.error(`🔍 CONTEXT_STORE CALLED: "${extractedTitle}" - Stack: ${callStack?.split('\n')[2]?.trim()}`);
+
+      console.log(`🔍 DEBUG: About to insert context_type = "${contextData.context_type}" (type: ${typeof contextData.context_type})`);
+      console.log(`🔍 DEBUG: context_type length = ${contextData.context_type.length}`);
+      console.log(`🔍 DEBUG: context_type char codes = [${Array.from(contextData.context_type).map(c => c.charCodeAt(0)).join(',')}]`);
+
+      // Generate 3D coordinates for the vector
+      let vectorCoords = { x: 0, y: 0, z: 0 };
+      try {
+        // Get existing vectors for context-aware mapping
+        const existingVectorsResult = await db.query(
+          `SELECT embedding, vector_x, vector_y, vector_z 
+           FROM contexts 
+           WHERE project_id = $1 AND vector_x IS NOT NULL 
+           ORDER BY created_at DESC 
+           LIMIT 100`,
+          [projectId]
+        );
+
+        if (existingVectorsResult.rows.length > 0) {
+          const referenceVectors = existingVectorsResult.rows.map(r => 
+            typeof r.embedding === 'string' ? JSON.parse(r.embedding) : r.embedding
+          );
+          const referenceCoords = existingVectorsResult.rows.map(r => [r.vector_x, r.vector_y, r.vector_z]);
+          
+          const result = await dimensionalityReductionService.mapSingleVector(
+            embeddingResult.embedding,
+            referenceVectors,
+            referenceCoords
+          );
+          vectorCoords = { x: result.x, y: result.y, z: result.z || 0 };
+        } else {
+          // First vector in project - use fallback
+          const fallback = await dimensionalityReductionService.reduceVectors([embeddingResult.embedding], { dimensions: 3 });
+          vectorCoords = { x: fallback[0][0], y: fallback[0][1], z: fallback[0][2] };
+        }
+      } catch (coordError) {
+        console.warn('⚠️  Failed to generate coordinates, using default:', coordError);
+      }
+
+      // Insert into database
+      const sqlQuery = `
+        INSERT INTO contexts (
+          project_id, session_id, context_type, content, 
+          embedding, relevance_score, tags, metadata,
+          vector_x, vector_y, vector_z, mapping_method, mapped_at
+        ) VALUES ($1, $2, $3, $4, $5::vector, $6, $7, $8, $9, $10, $11, $12, CURRENT_TIMESTAMP)
+        RETURNING id, created_at
+      `;
+      
+      const sqlParams = [
+        contextData.project_id,
+        contextData.session_id,
+        contextData.context_type,
+        contextData.content,
+        `[${embeddingResult.embedding.join(',')}]`, // Convert to PostgreSQL vector format
+        contextData.relevance_score,
+        contextData.tags,
+        contextData.metadata,
+        vectorCoords.x,
+        vectorCoords.y,
+        vectorCoords.z,
+        'umap'
+      ];
+
+      if (process.env.AIDIS_DETAILED_LOGGING === 'true') {
+        console.log(`🔍 DEBUG: Executing SQL query with parameters:`);
+        console.log(`🔍 DEBUG: SQL: ${sqlQuery.replace(/\s+/g, ' ').trim()}`);
+        console.log(`🔍 DEBUG: Param $3 (context_type): "${sqlParams[2]}" (${typeof sqlParams[2]})`);
+      }
+      
+      const result = await db.query(sqlQuery, sqlParams);
+
+      // TS004-1: Update session activity after context storage
+      if (sessionId) {
+        const { SessionTracker } = await import('../services/sessionTracker.js');
+        await SessionTracker.updateSessionActivity(sessionId);
+        // TS007-2: Record context creation for activity tracking
+        SessionTracker.recordContextCreated(sessionId);
+      }
+
+      const storedContext: ContextEntry = {
+        id: result.rows[0].id,
+        projectId: projectId,
+        sessionId: sessionId,
+        contextType: request.type,
+        content: request.content,
+        createdAt: result.rows[0].created_at,
+        relevanceScore: request.relevanceScore || 5.0,
+        tags: request.tags || [],
+        metadata: request.metadata || {},
+        embedding: embeddingResult.embedding
+      };
+
+      if (process.env.AIDIS_DETAILED_LOGGING === 'true') {
+        console.log(`✅ Context stored successfully! ID: ${storedContext.id}`);
+        console.log(`🔍 Embedding: ${embeddingResult.dimensions}D vector (${embeddingResult.model})`);
+        console.log(`🏷️  Tags: [${storedContext.tags.join(', ')}]`);
+      }
+      
+      // Log the context creation event
+      await logContextEvent(storedContext.id, 'stored', {
+        context_type: storedContext.contextType,
+        content_length: storedContext.content.length,
+        tags: storedContext.tags,
+        relevance_score: storedContext.relevanceScore,
+        embedding_model: embeddingResult.model,
+        embedding_dimensions: embeddingResult.dimensions
+      });
+      
+      return storedContext;
+
+    } catch (error) {
+      console.error('❌ Failed to store context:', error);
+      throw new Error(`Context storage failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  /**
+   * Check if hierarchical memory is enabled for a project
+   * Instance #48: Changed to default-on (opt-out instead of opt-in)
+   * After 10 instances of validation, hierarchical memory is production-ready
+   */
+  private async isHierarchicalEnabled(projectId?: string): Promise<boolean> {
+    if (!projectId) return false;
+
+    try {
+      const result = await db.query(
+        `SELECT metadata->>'hierarchical_memory_enabled' as enabled FROM projects WHERE id = $1`,
+        [projectId]
+      );
+      const flagValue = result.rows[0]?.enabled;
+      
+      // Default to enabled unless explicitly set to 'false'
+      // This enables hierarchical memory for all projects by default
+      return flagValue !== 'false';
+    } catch (error) {
+      console.error('Error checking hierarchical memory flag:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Detect if query explicitly requests recent/current information
+   * Instance #43: Fix for hierarchical memory recency limitation
+   */
+  private isRecencyQuery(query: string): boolean {
+    const recencyKeywords = [
+      'recent', 'latest', 'current', 'now',
+      'today', 'yesterday', 'this week', 'this month',
+      'new', 'newest', 'just', 'last'
+    ];
+
+    const queryLower = query.toLowerCase();
+    return recencyKeywords.some(keyword => queryLower.includes(keyword));
+  }
+
+  /**
+   * Extract which recency keywords matched in the query
+   * Instance #49: For observability logging
+   */
+  private extractRecencyKeywords(query: string): string[] {
+    const recencyKeywords = [
+      'recent', 'latest', 'current', 'now',
+      'today', 'yesterday', 'this week', 'this month',
+      'new', 'newest', 'just', 'last'
+    ];
+
+    const queryLower = query.toLowerCase();
+    return recencyKeywords.filter(keyword => queryLower.includes(keyword));
+  }
+
+  /**
+   * Search contexts using vector similarity and filters
+   * Supports hierarchical memory scoring when enabled for project
+   */
+  async searchContext(request: SearchContextRequest): Promise<SearchResult[]> {
+    console.log(`🔍 Searching contexts: "${request.query}"`);
+
+    // Instance #49: Start performance timing for observability
+    const startTime = performance.now();
+
+    try {
+      // Resolve projectId (name or UUID) to actual UUID, or use current project
+      // This ensures searches are scoped to the correct project
+      const actualProjectId = await this.ensureProjectId(request.projectId);
+
+      // Generate embedding for search query
+      const queryEmbedding = await embeddingService.generateEmbedding({
+        text: request.query
+      });
+
+      // Check if hierarchical memory is enabled for this project
+      const hierarchicalEnabled = await this.isHierarchicalEnabled(actualProjectId);
+
+      // Check if query explicitly requests recent information (Instance #43 fix)
+      const isRecencyFocused = hierarchicalEnabled && this.isRecencyQuery(request.query);
+
+      // Log scoring mode
+      if (hierarchicalEnabled) {
+        console.log(`🧠 Hierarchical memory: ${isRecencyFocused ? 'RECENCY-FOCUSED' : 'BALANCED'}`);
+      } else {
+        console.log(`🧠 Hierarchical memory: disabled`);
+      }
+
+      // Build search query with filters
+      let sql: string;
+
+      if (hierarchicalEnabled && isRecencyFocused) {
+        // Recency-focused: TEMPORAL FILTER + dominant recency weighting
+        // Instance #43: Added temporal filter (only last 60 days)
+        // Instance #43: Aggressive recency weight (90%) with 7-day halflife
+        // Addresses Instance #42+ finding: hierarchical failed on "recent" queries
+        sql = `
+          SELECT
+            id, project_id, session_id, context_type, content,
+            created_at, relevance_score, tags, metadata,
+            1 - (embedding <=> $1::vector) as similarity,
+            EXP(-EXTRACT(EPOCH FROM (NOW() - created_at)) / (7.0 * 24.0 * 3600)) as recency_score,
+            COALESCE(relevance_score, 5.0) / 10.0 as importance_score,
+            CASE context_type
+              WHEN 'milestone' THEN 1.0
+              WHEN 'decision' THEN 0.9
+              WHEN 'completion' THEN 0.8
+              WHEN 'reflections' THEN 0.7
+              WHEN 'planning' THEN 0.6
+              WHEN 'code' THEN 0.5
+              ELSE 0.4
+            END as type_weight,
+            (
+              ((1 - (embedding <=> $1::vector)) * 0.05) +
+              (EXP(-EXTRACT(EPOCH FROM (NOW() - created_at)) / (7.0 * 24.0 * 3600)) * 0.90) +
+              (COALESCE(relevance_score, 5.0) / 10.0 * 0.025) +
+              (CASE context_type
+                WHEN 'milestone' THEN 1.0
+                WHEN 'decision' THEN 0.9
+                WHEN 'completion' THEN 0.8
+                WHEN 'reflections' THEN 0.7
+                WHEN 'planning' THEN 0.6
+                WHEN 'code' THEN 0.5
+                ELSE 0.4
+              END * 0.025)
+            ) as combined_score
+          FROM contexts
+          WHERE embedding IS NOT NULL
+            AND created_at > NOW() - INTERVAL '60 days'
+        `;
+      } else if (hierarchicalEnabled) {
+        // Balanced: vector similarity + recency + importance + context type weights
+        // Instance #43: Fixed decay parameter - 30-day halflife (was 1-day)
+        sql = `
+          SELECT
+            id, project_id, session_id, context_type, content,
+            created_at, relevance_score, tags, metadata,
+            1 - (embedding <=> $1::vector) as similarity,
+            EXP(-EXTRACT(EPOCH FROM (NOW() - created_at)) / (30.0 * 24.0 * 3600)) as recency_score,
+            COALESCE(relevance_score, 5.0) / 10.0 as importance_score,
+            CASE context_type
+              WHEN 'milestone' THEN 1.0
+              WHEN 'decision' THEN 0.9
+              WHEN 'completion' THEN 0.8
+              WHEN 'reflections' THEN 0.7
+              WHEN 'planning' THEN 0.6
+              WHEN 'code' THEN 0.5
+              ELSE 0.4
+            END as type_weight,
+            (
+              (1 - (embedding <=> $1::vector)) +
+              EXP(-EXTRACT(EPOCH FROM (NOW() - created_at)) / (30.0 * 24.0 * 3600)) +
+              COALESCE(relevance_score, 5.0) / 10.0 +
+              CASE context_type
+                WHEN 'milestone' THEN 1.0
+                WHEN 'decision' THEN 0.9
+                WHEN 'completion' THEN 0.8
+                WHEN 'reflections' THEN 0.7
+                WHEN 'planning' THEN 0.6
+                WHEN 'code' THEN 0.5
+                ELSE 0.4
+              END
+            ) / 4.0 as combined_score
+          FROM contexts
+          WHERE embedding IS NOT NULL
+        `;
+      } else {
+        // Baseline: vector similarity only
+        sql = `
+          SELECT
+            id, project_id, session_id, context_type, content,
+            created_at, relevance_score, tags, metadata,
+            1 - (embedding <=> $1::vector) as similarity
+          FROM contexts
+          WHERE embedding IS NOT NULL
+        `;
+      }
+
+      const params: any[] = [`[${queryEmbedding.embedding.join(',')}]`];
+      let paramIndex = 2;
+
+      // Always filter by project (actualProjectId is guaranteed by ensureProjectId)
+      sql += ` AND project_id = $${paramIndex}`;
+      params.push(actualProjectId);
+      paramIndex++;
+
+      if (request.type) {
+        sql += ` AND context_type = $${paramIndex}`;
+        params.push(request.type);
+        paramIndex++;
+      }
+
+      if (request.tags && request.tags.length > 0) {
+        sql += ` AND tags && $${paramIndex}`;
+        params.push(request.tags);
+        paramIndex++;
+      }
+
+      // Order by appropriate score and limit results
+      if (hierarchicalEnabled) {
+        sql += ` ORDER BY combined_score DESC LIMIT $${paramIndex}`;
+      } else {
+        sql += ` ORDER BY similarity DESC LIMIT $${paramIndex}`;
+      }
+      params.push(request.limit || 10);
+
+      console.log('🔍 Executing vector similarity search...');
+      const result = await db.query(sql, params);
+
+      // Convert results and calculate similarities with substring boosting
+      const results: SearchResult[] = result.rows.map(row => {
+        // Handle potential null/undefined similarity values to prevent NaN
+        const rawSimilarity = row.similarity;
+        let similarity = Math.max(0, (rawSimilarity && !isNaN(parseFloat(rawSimilarity))) ? parseFloat(rawSimilarity) : 0) * 100;
+
+        // Apply substring boosting for exact matches
+        const queryLower = request.query.toLowerCase();
+        const contentLower = row.content.toLowerCase();
+        const tagsLower = (row.tags || []).join(' ').toLowerCase();
+
+        let boost = 0;
+        let boostReason = '';
+
+        // +20% boost for content substring matches
+        if (contentLower.includes(queryLower)) {
+          boost += 20;
+          boostReason = 'Content substring match';
+        }
+
+        // +15% boost for tag substring matches
+        if (tagsLower.includes(queryLower)) {
+          boost += 15;
+          boostReason = boostReason ? boostReason + ' + Tag substring match' : 'Tag substring match';
+        }
+
+        // Apply boost
+        if (boost > 0) {
+          similarity = Math.min(100, similarity + boost); // Cap at 100%
+        }
+
+        const finalSearchReason = boostReason ?
+          `${similarity > 70 ? 'High' : similarity > 40 ? 'Moderate' : 'Low'} similarity match (${boostReason})` :
+          similarity > 70 ? 'High similarity match' :
+          similarity > 40 ? 'Moderate similarity match' :
+          'Low similarity match';
+
+        return {
+          id: row.id,
+          projectId: row.project_id,
+          sessionId: row.session_id,
+          contextType: row.context_type,
+          content: row.content,
+          createdAt: row.created_at,
+          relevanceScore: row.relevance_score,
+          tags: row.tags || [],
+          metadata: typeof row.metadata === 'string' ? JSON.parse(row.metadata) : row.metadata,
+          similarity: Math.round(similarity * 10) / 10, // Round to 1 decimal place
+          searchReason: finalSearchReason,
+          // Include score components for observability (Instance #49)
+          recency_score: row.recency_score ? parseFloat(row.recency_score) : undefined,
+          importance_score: row.importance_score ? parseFloat(row.importance_score) : undefined,
+          type_weight: row.type_weight ? parseFloat(row.type_weight) : undefined,
+          combined_score: row.combined_score ? parseFloat(row.combined_score) : undefined
+        };
+      });
+
+      // Filter by minimum similarity if specified
+      const filtered = request.minSimilarity 
+        ? results.filter(r => r.similarity! >= request.minSimilarity!)
+        : results;
+
+      console.log(`✅ Found ${filtered.length} matching contexts`);
+      if (filtered.length > 0) {
+        console.log(`🎯 Top match: ${filtered[0].similarity}% similarity - "${filtered[0].content.substring(0, 60)}..."`);
+      }
+
+      // Instance #49: Calculate query latency and log hierarchical memory search with observability data
+      const queryLatency = Math.round(performance.now() - startTime);
+
+      // Determine mode and extract matched keywords
+      const mode = hierarchicalEnabled ? (isRecencyFocused ? 'recency' : 'balanced') : 'baseline';
+      const intentKeywordsMatched = isRecencyFocused ? this.extractRecencyKeywords(request.query) : [];
+
+      // Log with detailed observability data (Oracle Priority 1)
+      await logHierarchicalMemorySearch({
+        query: request.query,
+        mode: mode,
+        intentKeywordsMatched: intentKeywordsMatched,
+        results: filtered,
+        queryLatencyMs: queryLatency,
+        filters: request,
+        projectId: actualProjectId,
+        hierarchicalEnabled: hierarchicalEnabled
+      });
+
+      return filtered;
+
+    } catch (error) {
+      console.error('❌ Context search failed:', error);
+      throw new Error(`Context search failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  /**
+   * Ensure we have a valid project ID (get current project or specified project)
+   * Accepts both UUID and project name
+   */
+  private async ensureProjectId(projectId?: string): Promise<string> {
+    if (projectId) {
+      // Check if projectId is a valid UUID format
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      const isUuid = uuidRegex.test(projectId);
+
+      // Query by UUID or name
+      const result = await db.query(
+        isUuid
+          ? 'SELECT id FROM projects WHERE id = $1'
+          : 'SELECT id FROM projects WHERE name = $1',
+        [projectId]
+      );
+
+      if (result.rows.length > 0) {
+        return result.rows[0].id;
+      }
+      throw new Error(`Project ${projectId} not found`);
+    }
+
+    // Use current active project from project handler
+    await projectHandler.initializeSession(); // Ensure session is initialized
+    const currentProject = await projectHandler.getCurrentProject();
+
+    if (currentProject) {
+      console.log(`📋 Using current project: ${currentProject.name}`);
+      return currentProject.id;
+    }
+
+    throw new Error('No current project set. Use project_switch to set an active project or specify a project ID.');
+  }
+
+  /**
+   * Ensure we have a valid session ID (get current or create new)
+   */
+  private async ensureSessionId(sessionId?: string, _projectId?: string): Promise<string | null> {
+    if (sessionId) {
+      // Verify the session exists
+      const result = await db.query('SELECT id FROM sessions WHERE id = $1', [sessionId]);
+      if (result.rows.length > 0) {
+        return sessionId;
+      }
+      throw new Error(`Session ${sessionId} not found`);
+    }
+
+    // Get or create an active session using the SessionTracker
+    try {
+      const { SessionTracker } = await import('../services/sessionTracker.js');
+      const activeSessionId = await SessionTracker.getActiveSession();
+      if (activeSessionId) {
+        console.log(`📋 Using active session: ${activeSessionId.substring(0, 8)}... for context storage`);
+        return activeSessionId;
+      }
+
+      console.warn('⚠️  No active session found - context will be stored without session association');
+      return null;
+    } catch (error) {
+      console.warn('⚠️  Failed to get active session, storing context without session:', error);
+      return null; // Fallback to no session if session tracking fails
+    }
+  }
+
+  /**
+   * Get recent contexts in chronological order (newest first)
+   */
+  async getRecentContext(projectId?: string, limit: number = 5): Promise<SearchResult[]> {
+    console.log(`📋 Getting ${limit} most recent contexts`);
+
+    try {
+      // Ensure we have a valid project
+      const actualProjectId = await this.ensureProjectId(projectId);
+
+      // Build query to get recent contexts
+      const sql = `
+        SELECT 
+          id, project_id, session_id, context_type, content,
+          created_at, relevance_score, tags, metadata
+        FROM contexts 
+        WHERE project_id = $1
+        ORDER BY created_at DESC 
+        LIMIT $2
+      `;
+      
+      console.log('🔍 Executing recent contexts query...');
+      const result = await db.query(sql, [actualProjectId, limit]);
+
+      // Convert results to SearchResult format (same as searchContext)
+      const results: SearchResult[] = result.rows.map(row => ({
+        id: row.id,
+        projectId: row.project_id,
+        sessionId: row.session_id,
+        contextType: row.context_type,
+        content: row.content,
+        createdAt: row.created_at,
+        relevanceScore: row.relevance_score,
+        tags: row.tags || [],
+        metadata: typeof row.metadata === 'string' ? JSON.parse(row.metadata) : row.metadata,
+        searchReason: 'Recent context (chronological order)'
+      }));
+
+      console.log(`✅ Found ${results.length} recent contexts`);
+      if (results.length > 0) {
+        console.log(`📅 Most recent: ${results[0].createdAt} - "${results[0].content.substring(0, 60)}..."`);
+      }
+
+      return results;
+
+    } catch (error) {
+      console.error('❌ Failed to get recent contexts:', error);
+      throw new Error(`Recent context retrieval failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  /**
+   * Get context statistics for a project
+   */
+  async getContextStats(projectId?: string): Promise<{
+    totalContexts: number;
+    contextsByType: Record<string, number>;
+    recentContexts: number;
+    embeddedContexts: number;
+  }> {
+    const actualProjectId = await this.ensureProjectId(projectId);
+
+    const [total, byType, recent, embedded] = await Promise.all([
+      // Total contexts
+      db.query('SELECT COUNT(*) as count FROM contexts WHERE project_id = $1', [actualProjectId]),
+      
+      // Contexts by type
+      db.query(`
+        SELECT context_type, COUNT(*) as count 
+        FROM contexts 
+        WHERE project_id = $1 
+        GROUP BY context_type
+        ORDER BY count DESC
+      `, [actualProjectId]),
+      
+      // Recent contexts (last 24 hours)
+      db.query(`
+        SELECT COUNT(*) as count 
+        FROM contexts 
+        WHERE project_id = $1 AND created_at > NOW() - INTERVAL '24 hours'
+      `, [actualProjectId]),
+      
+      // Contexts with embeddings
+      db.query(`
+        SELECT COUNT(*) as count 
+        FROM contexts 
+        WHERE project_id = $1 AND embedding IS NOT NULL
+      `, [actualProjectId])
+    ]);
+
+    const contextsByType: Record<string, number> = {};
+    byType.rows.forEach(row => {
+      contextsByType[row.context_type] = parseInt(row.count);
+    });
+
+    return {
+      totalContexts: parseInt(total.rows[0].count),
+      contextsByType,
+      recentContexts: parseInt(recent.rows[0].count),
+      embeddedContexts: parseInt(embedded.rows[0].count)
+    };
+  }
+}
+
+// Export singleton instance
+export const contextHandler = new ContextHandler();
