@@ -9,7 +9,7 @@ import type { UpdateSession } from './generated/models/UpdateSession';
 // Configurable via REACT_APP_MCP_URL environment variable
 // Defaults to localhost:8080 for development
 // Note: We append /api/v2 to the base URL since mandrelApiClient uses the root
-const MCP_BASE_URL = (import.meta.env?.VITE_MCP_BASE_URL as string | undefined) || 'http://localhost:8080';
+const MCP_BASE_URL = process.env.REACT_APP_MCP_URL || 'http://localhost:8080';
 const REST_API_BASE = `${MCP_BASE_URL}/api/v2`;
 
 const ensureSuccess = <T extends ApiSuccessResponse>(response: T, failureMessage: string): T => {
