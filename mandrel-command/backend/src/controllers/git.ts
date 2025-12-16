@@ -146,6 +146,18 @@ export class GitController {
                 ]
               );
               filesCreated++;
+
+              // Also upsert into session_files for UI display
+              await client.query(
+                `INSERT INTO session_files (session_id, file_path, lines_added, lines_deleted, source)
+                 VALUES ($1, $2, $3, $4, 'git')
+                 ON CONFLICT (session_id, file_path)
+                 DO UPDATE SET
+                   lines_added = session_files.lines_added + EXCLUDED.lines_added,
+                   lines_deleted = session_files.lines_deleted + EXCLUDED.lines_deleted,
+                   last_modified = NOW()`,
+                [session_id, file.path, file.lines_added || 0, file.lines_removed || 0]
+              );
             }
           }
         }
