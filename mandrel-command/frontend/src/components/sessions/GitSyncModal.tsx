@@ -17,11 +17,12 @@ const GitSyncModal: React.FC<GitSyncModalProps> = ({ sessionId, projectId }) => 
   // Backend URL - use window location origin for production
   const backendUrl = useMemo(() => {
     const hostname = window.location.hostname;
-    // If running locally, use localhost:3001, otherwise use the current host
+    // If running locally, use localhost:5000 (backend port), otherwise use current origin (nginx proxy)
     if (hostname === 'localhost' || hostname === '127.0.0.1') {
-      return 'http://localhost:3001';
+      return 'http://localhost:5000';
     }
-    return `${window.location.protocol}//${hostname}:3001`;
+    // Production: use origin without port - nginx proxies /api to backend
+    return window.location.origin;
   }, []);
 
   // Git commands to collect data locally
