@@ -180,6 +180,17 @@ export class GitController {
         }
       }
 
+      // Update session-level aggregates from session_files
+      await client.query(
+        `UPDATE sessions SET
+          files_modified_count = (SELECT COUNT(DISTINCT file_path) FROM session_files WHERE session_id = $1),
+          lines_added = (SELECT COALESCE(SUM(lines_added), 0) FROM session_files WHERE session_id = $1),
+          lines_deleted = (SELECT COALESCE(SUM(lines_deleted), 0) FROM session_files WHERE session_id = $1),
+          lines_net = (SELECT COALESCE(SUM(lines_added - lines_deleted), 0) FROM session_files WHERE session_id = $1)
+        WHERE id = $1`,
+        [session_id]
+      );
+
       await client.query('COMMIT');
 
       res.json({
