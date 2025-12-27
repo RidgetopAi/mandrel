@@ -98,6 +98,11 @@ export const AIDIS_TOOL_DEFINITIONS: ToolDefinition[] = [
                 type: {
                   type: 'string',
                   description: 'Context type: code, decision, error, discussion, planning, completion, milestone, reflections, handoff'
+                },
+                tags: {
+                  type: 'array',
+                  items: { type: 'string' },
+                  description: 'Optional tags for categorization and filtering (e.g., ["bug-fix", "authentication"])'
                 }
               },
               required: ['content', 'type'],
