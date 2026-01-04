@@ -2,6 +2,7 @@ import { contextHandler } from '../handlers/context.js';
 import { SessionTrackingMiddleware } from '../api/middleware/sessionTracking.js';
 import { formatMcpError } from '../utils/mcpFormatter.js';
 import type { McpResponse } from '../utils/mcpFormatter.js';
+import { db } from '../config/database.js';
 
 /**
  * Context Management Routes
@@ -68,9 +69,46 @@ export class ContextRoutes {
 
   /**
    * Handle context search requests
+   * Supports both semantic search (query) and direct ID lookup (id)
    */
   async handleSearch(args: any): Promise<McpResponse> {
     try {
+      // Direct lookup by ID - bypasses semantic search entirely
+      if (args.id) {
+        console.log(`🔍 Context direct lookup by ID: ${args.id}`);
+
+        const result = await db.query(
+          `SELECT id, project_id, session_id, context_type, content,
+                  created_at, relevance_score, tags, metadata
+           FROM contexts WHERE id = $1`,
+          [args.id]
+        );
+
+        if (result.rows.length === 0) {
+          return {
+            content: [{
+              type: 'text',
+              text: `❌ Context not found: ${args.id}\n\n💡 Use context_get_recent to see recent context IDs`
+            }],
+          };
+        }
+
+        const ctx = result.rows[0];
+        const tags = ctx.tags?.length > 0 ? `\n🏷️  Tags: [${ctx.tags.join(', ')}]` : '';
+
+        return {
+          content: [{
+            type: 'text',
+            text: `📄 Context Details\n\n` +
+                  `🆔 ID: ${ctx.id}\n` +
+                  `📝 Type: ${ctx.context_type}\n` +
+                  `📅 Created: ${new Date(ctx.created_at).toLocaleString()}${tags}\n` +
+                  `⭐ Relevance: ${ctx.relevance_score}/10\n\n` +
+                  `---\n\n${ctx.content}`
+          }],
+        };
+      }
+
       console.log(`🔍 Context search request: "${args.query}"`);
 
       const results = await contextHandler.searchContext({

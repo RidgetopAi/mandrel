@@ -50,7 +50,8 @@ export const contextSchemas = {
   }),
   
   search: z.object({
-    query: baseQuery,
+    id: z.string().uuid().optional(), // Direct lookup by context ID - bypasses semantic search
+    query: z.string().min(1).max(1000).optional(), // Optional when id is provided
     type: z.enum(['code', 'decision', 'error', 'discussion', 'planning', 'completion', 'milestone', 'reflections', 'handoff', 'lessons']).optional(),
     tags: baseTags,
     limit: baseLimit,
@@ -58,6 +59,8 @@ export const contextSchemas = {
     offset: z.number().int().min(0).optional(),
     projectId: z.string().optional(),
     sessionId: z.string().optional()
+  }).refine(data => data.id || data.query, {
+    message: "Either 'id' or 'query' must be provided"
   }),
   
   get_recent: z.object({

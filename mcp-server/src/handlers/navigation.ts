@@ -27,7 +27,7 @@ export class NavigationHandler {
     ],
     'Context Management': [
       { name: 'context_store', description: 'Store development context with automatic embedding' },
-      { name: 'context_search', description: 'Search stored contexts using semantic similarity' },
+      { name: 'context_search', description: 'Search contexts semantically or fetch by ID' },
       { name: 'context_get_recent', description: 'Get recent contexts chronologically (newest first)' },
       { name: 'context_stats', description: 'Get context statistics for a project' }
     ],
@@ -114,6 +114,12 @@ export class NavigationHandler {
       }
     ],
     'context_search': [
+      {
+        title: 'Fetch specific context by ID',
+        example: `context_search({
+  id: "86df4635-8090-41ff-a4d4-ed77925dbf17"
+})`
+      },
       {
         title: 'Find authentication-related contexts',
         example: `context_search({
