@@ -475,16 +475,43 @@ export class ContextHandler {
         let boost = 0;
         let boostReason = '';
 
-        // +20% boost for content substring matches
-        if (contentLower.includes(queryLower)) {
-          boost += 20;
-          boostReason = 'Content substring match';
-        }
+        // Word-level substring matching (improved from whole-phrase matching)
+        // Tokenize query into meaningful terms (filter out very short words)
+        const queryTerms = queryLower.split(/\s+/).filter(term => term.length >= 3);
 
-        // +15% boost for tag substring matches
-        if (tagsLower.includes(queryLower)) {
-          boost += 15;
-          boostReason = boostReason ? boostReason + ' + Tag substring match' : 'Tag substring match';
+        if (queryTerms.length > 0) {
+          // Check content for individual word matches
+          const contentMatches = queryTerms.filter(term => contentLower.includes(term));
+          const contentMatchRatio = contentMatches.length / queryTerms.length;
+
+          // Check tags for individual word matches
+          const tagMatches = queryTerms.filter(term => tagsLower.includes(term));
+          const tagMatchRatio = tagMatches.length / queryTerms.length;
+
+          // Apply proportional boosts based on match ratio
+          // Max +25% for content matches, +15% for tag matches
+          if (contentMatchRatio > 0) {
+            const contentBoost = Math.round(contentMatchRatio * 25);
+            boost += contentBoost;
+            boostReason = `${contentMatches.length}/${queryTerms.length} terms matched`;
+          }
+
+          if (tagMatchRatio > 0) {
+            const tagBoost = Math.round(tagMatchRatio * 15);
+            boost += tagBoost;
+            const tagReason = `${tagMatches.length}/${queryTerms.length} in tags`;
+            boostReason = boostReason ? boostReason + ' + ' + tagReason : tagReason;
+          }
+        } else if (queryLower.length >= 2) {
+          // Fallback for very short queries (1-2 char terms only)
+          if (contentLower.includes(queryLower)) {
+            boost += 20;
+            boostReason = 'Exact match';
+          }
+          if (tagsLower.includes(queryLower)) {
+            boost += 15;
+            boostReason = boostReason ? boostReason + ' + tag match' : 'Tag match';
+          }
         }
 
         // Apply boost
