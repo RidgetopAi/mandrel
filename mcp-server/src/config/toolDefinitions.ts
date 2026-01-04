@@ -111,16 +111,20 @@ export const AIDIS_TOOL_DEFINITIONS: ToolDefinition[] = [
           },
           {
             name: 'context_search',
-            description: 'Search stored contexts using semantic similarity and filters',
+            description: 'Search stored contexts using semantic similarity and filters, or fetch a specific context by ID',
             inputSchema: {
               type: 'object',
               properties: {
+                id: {
+                  type: 'string',
+                  description: 'Context UUID for direct lookup (bypasses semantic search)'
+                },
                 query: {
                   type: 'string',
                   description: 'Search query using semantic similarity'
                 }
               },
-              required: ['query'],
+              required: [],
               additionalProperties: true
             },
           },
