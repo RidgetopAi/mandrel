@@ -13,8 +13,8 @@ export const authenticateToken = async (
       return next();
     }
 
-    // Development mode bypass - attach mock user
-    if (process.env.NODE_ENV === 'development' && !req.headers.authorization) {
+    // Development mode bypass - always use mock user (ignores any stale tokens from frontend)
+    if (process.env.NODE_ENV === 'development') {
       req.user = {
         id: 'dev-user',
         username: 'developer',
