@@ -1,0 +1,69 @@
+{
+  "timestamp": "2025-08-23T01:31:09.962Z",
+  "fixValidation": {
+    "./frontend/src/types/index.ts": {
+      "exists": false
+    },
+    "./frontend/src/components/Tasks/TaskCard.tsx": {
+      "exists": false
+    },
+    "./frontend/src/components/Projects/ProjectCard.tsx": {
+      "exists": false
+    },
+    "./backend/src/types/index.ts": {
+      "exists": false
+    },
+    "./backend/src/routes/projects.ts": {
+      "exists": true,
+      "size": 745,
+      "lastModified": "2025-08-17T22:58:49.226Z",
+      "recentlyModified": false
+    },
+    "./backend/src/routes/tasks.ts": {
+      "exists": true,
+      "size": 1476,
+      "lastModified": "2025-08-17T22:58:49.226Z",
+      "recentlyModified": false
+    }
+  },
+  "codeIntegrity": {
+    "./package.json": {
+      "validJson": true,
+      "hasTypeScript": false
+    },
+    "./frontend/package.json": {
+      "validJson": true,
+      "hasTypeScript": true
+    },
+    "./backend/package.json": {
+      "validJson": true,
+      "hasTypeScript": true
+    },
+    "importAnalysis": {
+      "filesAnalyzed": 10,
+      "totalImports": 45,
+      "potentialIssues": 0
+    }
+  },
+  "criticalIssues": [
+    "Missing critical file: ./frontend/src/types/index.ts",
+    "Missing critical file: ./frontend/src/components/Tasks/TaskCard.tsx",
+    "Missing critical file: ./frontend/src/components/Projects/ProjectCard.tsx",
+    "Missing critical file: ./backend/src/types/index.ts"
+  ],
+  "recommendations": [
+    "⚠️  Some critical files are missing - investigate",
+    "🚨 Address detected critical issues immediately",
+    "🔧 Verify TypeScript compilation passes without errors",
+    "🧪 Run end-to-end tests to confirm Projects/Tasks integration",
+    "📊 Monitor system for any regression issues",
+    "📚 Document the fix in technical decision records"
+  ],
+  "summary": {
+    "filesChecked": 6,
+    "filesExisting": 2,
+    "criticalIssuesCount": 4,
+    "status": "NEEDS_ATTENTION",
+    "fixValidation": "ISSUES_DETECTED"
+  }
+}

@@ -1,0 +1,58 @@
+{
+  "timestamp": "2025-08-23T01:27:18.473Z",
+  "totalTests": 6,
+  "passed": 3,
+  "failed": 3,
+  "warnings": 2,
+  "sections": {
+    "systemHealth": {
+      "tests": 2,
+      "passed": 0,
+      "failed": 2,
+      "issues": [
+        "Backend Health: Health check failed: 404",
+        "Frontend: connect ECONNREFUSED 127.0.0.1:3000"
+      ]
+    },
+    "authentication": {
+      "tests": 1,
+      "passed": 0,
+      "failed": 1,
+      "issues": [
+        "Login: Login failed: 500 - \"Proxy error: Could not proxy request /api/auth/login from localhost:3001 to http://localhost:5000 (ECONNREFUSED).\""
+      ]
+    },
+    "websocket": {
+      "tests": 1,
+      "passed": 1,
+      "failed": 0,
+      "issues": []
+    },
+    "errorHandling": {
+      "tests": 2,
+      "passed": 2,
+      "failed": 0,
+      "issues": []
+    }
+  },
+  "criticalIssues": [
+    "CRITICAL: Backend health check failed - Health check failed: 404",
+    "CRITICAL: Authentication broken - Login failed: 500 - \"Proxy error: Could not proxy request /api/auth/login from localhost:3001 to http://localhost:5000 (ECONNREFUSED).\""
+  ],
+  "recommendations": [
+    "Immediate attention required for failed API tests",
+    "Address critical API failures and connectivity issues",
+    "Review warning conditions - may indicate configuration issues",
+    "CRITICAL: Authentication system needs immediate attention",
+    "Implement automated API regression tests for future TypeScript changes",
+    "Add API contract testing to prevent interface breaking changes",
+    "Consider implementing API versioning for backward compatibility",
+    "Add comprehensive API documentation and OpenAPI spec"
+  ],
+  "successRate": "50.0%",
+  "summary": {
+    "status": "NEEDS_ATTENTION",
+    "recommendation": "Critical API issues detected, immediate fixes required",
+    "fixValidation": "Emergency fix validation FAILED - Projects API still has issues"
+  }
+}
