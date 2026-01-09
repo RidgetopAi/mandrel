@@ -13,12 +13,12 @@ export const authenticateToken = async (
       return next();
     }
 
-    // Development mode bypass - always use mock user (ignores any stale tokens from frontend)
+    // Development mode bypass - use default dev user (matches real user for settings persistence)
     if (process.env.NODE_ENV === 'development') {
       req.user = {
-        id: 'dev-user',
-        username: 'developer',
-        email: 'developer@localhost',
+        id: 'f7ad70e4-ae50-4c42-9447-7be278023db4',
+        username: 'ridgetopai',
+        email: 'brianj@ridgetopai.net',
         role: 'admin',
         is_active: true,
         created_at: new Date(),
