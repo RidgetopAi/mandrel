@@ -18,8 +18,8 @@ export const ensureAuthForSse = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    // Development mode bypass - attach mock user
-    if (process.env.NODE_ENV === 'development' && !req.headers.authorization && !req.query.token) {
+    // Development mode bypass - always use mock user (ignores any stale tokens from frontend)
+    if (process.env.NODE_ENV === 'development') {
       logger.debug('SSE Auth: Development mode bypass');
       req.user = {
         id: 'dev-user',
