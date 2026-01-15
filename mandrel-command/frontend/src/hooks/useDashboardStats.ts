@@ -38,7 +38,8 @@ export const useDashboardStats = (projectId?: string): UseDashboardStatsResult =
     } finally {
       setIsLoading(false);
     }
-  }, [projectId, currentProject?.id]); // Fixed: Use consistent dependency (id instead of name)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectId, currentProject?.id]); // Intentionally use id, not name - avoids unnecessary refetches
 
   // Auto-refetch when ProjectContext changes (Oracle requirement)
   useEffect(() => {

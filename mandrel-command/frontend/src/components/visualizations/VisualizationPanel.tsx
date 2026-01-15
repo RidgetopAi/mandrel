@@ -37,7 +37,7 @@ import visualizationApi, {
   ComplexModulesResult,
 } from '../../services/visualizationApi';
 
-const { Title, Text, Paragraph } = Typography;
+const { Text, Paragraph } = Typography;
 
 interface VisualizationPanelProps {
   targetPath?: string;

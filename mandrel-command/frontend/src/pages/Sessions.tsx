@@ -32,7 +32,7 @@ import { useSessionsList } from '../hooks/useProjects';
 import SessionEditModal from '../components/sessions/SessionEditModal';
 import StartSessionModal from '../components/sessions/StartSessionModal';
 import { sessionsClient } from '../api/sessionsClient';
-import type { Session, SessionDetail } from '../types/session';
+import type { Session } from '../types/session';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -177,6 +177,7 @@ const Sessions: React.FC = () => {
   // Fetch active sessions on mount only
   useEffect(() => {
     fetchActiveSessions();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Only on mount - manual refresh after operations
 
   // Handle start session

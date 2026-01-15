@@ -25,34 +25,7 @@ const GitSyncModal: React.FC<GitSyncModalProps> = ({ sessionId, projectId }) => 
     return window.location.origin;
   }, []);
 
-  // Git commands to collect data locally
-  const gitCommands = `# Run these commands in your local git repository
-# Collect last N commits (adjust number as needed)
-git log -10 --pretty=format:'{"sha":"%H","message":"%s","author_name":"%an","author_email":"%ae","author_date":"%aI","branch":"'$(git branch --show-current)'"}' --numstat`;
-
-  // Curl command for the API
-  const curlCommand = `curl -X POST '${backendUrl}/api/git/push-stats' \\
-  -H 'Content-Type: application/json' \\
-  -H 'Authorization: Bearer YOUR_TOKEN' \\
-  -d '{
-    "session_id": "${sessionId}",
-    "project_id": "${projectId}",
-    "commits": [
-      {
-        "sha": "COMMIT_SHA_HERE",
-        "message": "commit message",
-        "author_name": "Your Name",
-        "author_email": "you@example.com",
-        "author_date": "2025-01-01T00:00:00Z",
-        "branch": "main",
-        "files": [
-          {"path": "src/file.ts", "change_type": "modified", "lines_added": 10, "lines_removed": 5}
-        ]
-      }
-    ]
-  }'`;
-
-  // Simpler script that collects and sends
+  // Full script that collects and sends
   const fullScript = `#!/bin/bash
 # Git Sync Script for Mandrel
 # Run this in your local git repository

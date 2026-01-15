@@ -7,7 +7,6 @@ import { useTheme } from '../../contexts/ThemeContext';
 import {
   useEmbeddingProjectionQuery,
 } from '../../hooks/useEmbeddings';
-import { useEmbeddingStore } from '../../stores/embeddingStore';
 import { useEmbeddingDatasetSelection } from '../../hooks/useEmbeddingDatasetSelection';
 
 const { Option } = Select;
@@ -19,12 +18,6 @@ type ProjectionPoint = {
   label: string;
   content: string;
   id: string;
-};
-
-type ProjectionData = {
-  points: ProjectionPoint[];
-  algorithm: string;
-  varianceExplained?: number[];
 };
 
 const ScatterProjection: React.FC = () => {

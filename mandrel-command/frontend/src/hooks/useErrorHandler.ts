@@ -148,7 +148,8 @@ export const useErrorHandler = (config: ErrorHandlerConfig) => {
     ) {
       scheduleRetry();
     }
-  }, [classifyError, reportErrorToAidis, finalConfig, errorState.retryCount]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [classifyError, reportErrorToAidis, finalConfig, errorState.retryCount]); // scheduleRetry excluded to prevent infinite loops
 
   const getUserFriendlyMessage = (error: Error | ApiError, errorType: ErrorState['errorType']): string => {
     switch (errorType) {

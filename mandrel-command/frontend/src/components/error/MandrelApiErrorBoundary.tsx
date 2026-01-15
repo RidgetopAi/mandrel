@@ -7,7 +7,7 @@ import React, { Component, ReactNode } from 'react';
 import { Alert, Button, Card, Space, Typography, Spin } from 'antd';
 import { ExclamationCircleOutlined, ReloadOutlined, ApiOutlined } from '@ant-design/icons';
 import { mandrelApi } from '../../api/mandrelApiClient';
-import type { ApiError } from '../../api/mandrelApiClient';
+
 
 const { Text, Title } = Typography;
 
@@ -241,7 +241,7 @@ export class MandrelApiErrorBoundary extends Component<MandrelApiErrorBoundaryPr
   }
 
   private renderFallbackUI() {
-    const { fallbackComponent, componentName, enableAutoRetry } = this.props;
+    const { fallbackComponent, enableAutoRetry } = this.props;
     const { error, isRetrying, retryCount, aidisApiConnected, lastErrorTime } = this.state;
 
     if (fallbackComponent) {

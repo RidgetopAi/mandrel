@@ -6,7 +6,7 @@ import {
   ThunderboltOutlined, ApiOutlined, ClockCircleOutlined 
 } from '@ant-design/icons';
 import { useSystemHealthQuery, useSystemMetricsQuery } from '../../hooks/useMonitoring';
-import type { MonitoringHealth as SystemHealth, MonitoringMetrics as SystemMetrics } from '../../api/monitoringClient';
+
 
 const { Text } = Typography;
 
