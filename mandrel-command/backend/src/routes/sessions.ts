@@ -110,32 +110,12 @@ router.get('/stats-by-period', SessionController.getSessionStatsByPeriod);
  * @swagger
  * /sessions/assign:
  *   post:
- *     summary: Assign the current session to the specified project
+ *     summary: (REMOVED) Assign session to project - use project_switch MCP tool instead
  *     tags: [Sessions]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               projectName:
- *                 type: string
- *             required: ['projectName']
+ *     deprecated: true
  *     responses:
- *       200:
- *         description: Session assignment result
- *         content:
- *           application/json:
- *             schema:
- *               allOf:
- *                 - $ref: '#/components/schemas/ApiSuccessResponse'
- *                 - type: object
- *                   properties:
- *                     data:
- *                       $ref: '#/components/schemas/SessionAssignmentResponse'
- *       501:
- *         description: Endpoint temporarily disabled
+ *       410:
+ *         description: Endpoint removed - sessions auto-inherit project from project_switch
  */
 router.post('/assign', SessionController.assignCurrentSession);
 

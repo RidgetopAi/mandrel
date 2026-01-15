@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { McpService } from '../services/mcp';
+import { db } from '../database/connection';
 
 export class DecisionController {
   /**
@@ -305,14 +306,40 @@ export class DecisionController {
   /**
    * DELETE /api/decisions/:id - Delete decision
    */
-  static async deleteDecision(_req: Request, res: Response): Promise<void> {
+  static async deleteDecision(req: Request, res: Response): Promise<void> {
     try {
-      // Note: AIDIS doesn't currently have a delete_decision MCP tool
-      // For now, return not implemented
-      res.status(501).json({
-        success: false,
-        message: 'Decision deletion not yet implemented',
-        error: 'This feature requires AIDIS MCP delete_decision tool'
+      const { id } = req.params;
+
+      if (!id) {
+        res.status(400).json({
+          success: false,
+          message: 'Decision ID is required'
+        });
+        return;
+      }
+
+      // First check if decision exists
+      const checkResult = await db.query(
+        'SELECT id, title FROM technical_decisions WHERE id = $1',
+        [id]
+      );
+
+      if (checkResult.rows.length === 0) {
+        res.status(404).json({
+          success: false,
+          message: 'Decision not found'
+        });
+        return;
+      }
+
+      const decisionTitle = checkResult.rows[0].title;
+
+      // Delete the decision
+      await db.query('DELETE FROM technical_decisions WHERE id = $1', [id]);
+
+      res.json({
+        success: true,
+        message: `Decision "${decisionTitle}" deleted successfully`
       });
 
     } catch (error) {

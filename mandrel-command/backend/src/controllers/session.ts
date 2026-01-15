@@ -261,12 +261,22 @@ export class SessionController {
 
   /**
    * POST /sessions/assign - Assign current session to a project
+   * 
+   * REMOVED: This endpoint was disabled because sessions now auto-inherit 
+   * project from project_switch MCP tool or session start parameters.
+   * Manual mid-session reassignment would require mcp-server REST API 
+   * (see SessionManagementHandler.assignSessionToProject).
+   * 
+   * If needed in future, wire to mcp-server via McpService.callTool().
    */
   static async assignCurrentSession(_req: Request, res: Response): Promise<void> {
-    // Temporarily disabled for task investigation
-    res.status(501).json({
+    res.status(410).json({
       success: false,
-      error: 'Session assignment endpoint temporarily disabled'
+      error: {
+        type: 'removed',
+        message: 'Session assignment endpoint removed. Sessions auto-inherit project from project_switch or session start.',
+        recommendation: 'Use project_switch MCP tool to set project context before starting work.'
+      }
     });
   }
 

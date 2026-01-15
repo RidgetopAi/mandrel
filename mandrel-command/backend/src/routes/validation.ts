@@ -12,8 +12,8 @@ import { z } from 'zod';
 
 const router = Router();
 
-// Apply authentication to validation routes (optional for testing)
-// router.use(authenticateToken);
+// Apply authentication to validation routes
+router.use(authenticateToken);
 
 // ================================
 // SCHEMA VALIDATION ENDPOINTS

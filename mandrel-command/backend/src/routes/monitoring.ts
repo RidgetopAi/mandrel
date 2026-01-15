@@ -6,12 +6,12 @@
 import { Router, Request, Response } from 'express';
 import { MonitoringController } from '../controllers/monitoring';
 import { monitoringService } from '../services/monitoring';
-// import { authenticateToken } from '../middleware/auth'; // Temporarily removed for testing
+import { authenticateToken } from '../middleware/auth';
 
 const router = Router();
 
-// Apply authentication to monitoring routes (temporarily disabled for testing)
-// router.use(authenticateToken);
+// Apply authentication to monitoring routes
+router.use(authenticateToken);
 
 // Legacy monitoring routes (maintain backward compatibility)
 
