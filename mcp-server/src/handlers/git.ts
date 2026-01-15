@@ -12,18 +12,10 @@
  * - Confidence-based correlation scoring
  */
 
-import GitServiceModule from '../../../mandrel-command/backend/dist/services/gitService.js';
-import { SessionDetailService } from '../../../mandrel-command/backend/dist/services/sessionDetail.js';
+import { GitCorrelationService } from '../services/gitCorrelation.js';
 import { db } from '../config/database.js';
 import { logEvent } from '../middleware/eventLogger.js';
 import { getCurrentSession } from '../services/sessionTracker.js';
-
-// The compiled gitService module exports both `GitService` and `default` in CommonJS format.
-// When imported from ESM (the MCP server), Node returns the module namespace object.
-// Normalize the export here so downstream code always works with the class itself.
-const GitService = (GitServiceModule as any)?.GitService
-  ?? (GitServiceModule as any)?.default
-  ?? GitServiceModule;
 
 export interface GitSessionCommitsParams {
   sessionId?: string; // If not provided, uses current session
@@ -490,8 +482,8 @@ export class GitHandler {
 
       const startTime = Date.now();
 
-      // Use SessionDetailService correlation method
-      const correlationResult = await SessionDetailService.correlateSessionWithGit(sessionId);
+      // Use local GitCorrelationService (mcp-server is source of truth)
+      const correlationResult = await GitCorrelationService.correlateSessionWithGit(sessionId);
 
       if (!correlationResult.success) {
         throw new Error(correlationResult.message);
@@ -514,7 +506,7 @@ export class GitHandler {
 
       if (projectId) {
         try {
-          const gitCorrelationResult = await GitService.correlateCommitsWithSessions({
+          const gitCorrelationResult = await GitCorrelationService.correlateCommitsWithSessions({
             project_id: projectId,
             confidence_threshold: params.confidenceThreshold || 0.3
           });
@@ -637,7 +629,7 @@ export class GitHandler {
       const session = sessionResult.rows[0];
       
       // Check for commits in the last 5 minutes
-      const recentCommitsResult = await GitService.getRecentCommits({
+      const recentCommitsResult = await GitCorrelationService.getRecentCommits({
         project_id: session.project_id,
         hours: 0.083, // 5 minutes
       });
@@ -646,7 +638,7 @@ export class GitHandler {
         console.log(`🔄 Found ${recentCommitsResult.commits.length} recent commits, triggering auto-correlation`);
         
         // Auto-correlate recent commits
-        await SessionDetailService.correlateSessionWithGit(sessionId);
+        await GitCorrelationService.correlateSessionWithGit(sessionId);
         
         return {
           success: true,
