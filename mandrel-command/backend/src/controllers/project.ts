@@ -5,6 +5,30 @@ import { ProjectInsightsService } from '../services/projectInsights';
 
 export class ProjectController {
   /**
+   * GET /projects/watchable - Get projects with root_directory for mandrel-watcher
+   * This endpoint is unauthenticated - used by local watcher daemon
+   */
+  static async getWatchableProjects(_req: Request, res: Response): Promise<void> {
+    try {
+      const projects = await ProjectService.getWatchableProjects();
+
+      res.json({
+        success: true,
+        data: {
+          projects,
+          total: projects.length
+        }
+      });
+    } catch (error) {
+      console.error('Get watchable projects error:', error);
+      res.status(500).json({
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to get watchable projects'
+      });
+    }
+  }
+
+  /**
    * GET /projects - Get all projects
    */
   static async getAllProjects(_req: Request, res: Response): Promise<void> {
