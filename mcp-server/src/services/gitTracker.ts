@@ -14,7 +14,7 @@
 import { watchFile, unwatchFile, existsSync } from 'fs';
 import { join } from 'path';
 import { GitHandler } from '../handlers/git.js';
-import { SessionDetailService } from '../../../mandrel-command/backend/dist/services/sessionDetail.js';
+import { GitCorrelationService } from './gitCorrelation.js';
 import { getCurrentSession } from './sessionTracker.js';
 import { db } from '../config/database.js';
 import { logEvent } from '../middleware/eventLogger.js';
@@ -416,7 +416,7 @@ export class GitTracker {
 
       console.log(`🔗 Force triggering correlation for session: ${sessionId.substring(0, 8)}...`);
 
-      const result = await SessionDetailService.correlateSessionWithGit(sessionId);
+      const result = await GitCorrelationService.correlateSessionWithGit(sessionId);
       
       if (result.success) {
         this.status.correlationsTriggered++;
