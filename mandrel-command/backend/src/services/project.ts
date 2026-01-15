@@ -54,7 +54,39 @@ export interface UpdateProjectRequest {
   metadata?: Record<string, any>;
 }
 
+export interface WatchableProject {
+  id: string;
+  name: string;
+  root_directory: string;
+}
+
 export class ProjectService {
+  /**
+   * Get projects that have root_directory set (for mandrel-watcher)
+   * Returns minimal data needed for git watching
+   */
+  static async getWatchableProjects(): Promise<WatchableProject[]> {
+    try {
+      const result = await pool.query(`
+        SELECT id, name, root_directory
+        FROM projects
+        WHERE root_directory IS NOT NULL
+          AND root_directory != ''
+          AND status = 'active'
+        ORDER BY name
+      `);
+
+      return result.rows.map(row => ({
+        id: row.id,
+        name: row.name,
+        root_directory: row.root_directory
+      }));
+    } catch (error) {
+      console.error('Get watchable projects error:', error);
+      throw new Error('Failed to get watchable projects');
+    }
+  }
+
   /**
    * Get all projects with statistics
    */

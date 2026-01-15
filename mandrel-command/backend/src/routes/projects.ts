@@ -22,7 +22,22 @@ import {
 
 const router = Router();
 
-// Apply authentication to all project routes
+/**
+ * @swagger
+ * /projects/watchable:
+ *   get:
+ *     summary: Get projects with root_directory for mandrel-watcher
+ *     description: Returns projects that have a local path configured. Used by mandrel-watcher daemon.
+ *     tags: [Projects]
+ *     security: []
+ *     responses:
+ *       200:
+ *         description: Watchable projects retrieved successfully
+ */
+// Unauthenticated - used by local mandrel-watcher daemon
+router.get('/watchable', ProjectController.getWatchableProjects);
+
+// Apply authentication to all other project routes
 router.use(authenticateToken);
 
 // TR004-6: Apply contract enforcement middleware
