@@ -19,7 +19,7 @@ import {
   FolderOutlined,
   BulbOutlined,
   DotChartOutlined,
-  TagOutlined,
+
   SettingOutlined,
   UserOutlined,
   LogoutOutlined,

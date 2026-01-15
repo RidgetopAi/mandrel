@@ -23,7 +23,7 @@ const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({
   const { isAuthenticated, isLoading: authLoading } = useAuthContext();
 
   // Use React Query to fetch projects (only when authenticated)
-  const { data: projectsData, isLoading: loading, error } = useProjects(
+  const { data: projectsData, isLoading: loading } = useProjects(
     { page: 1, limit: 100 },
     { enabled: isAuthenticated && !authLoading }
   );

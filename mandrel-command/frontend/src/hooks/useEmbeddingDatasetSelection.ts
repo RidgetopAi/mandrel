@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import type { EmbeddingDataset } from '../api/generated';
 import { useEmbeddingStore } from '../stores/embeddingStore';
 import { useEmbeddingDatasets } from './useEmbeddings';
@@ -24,7 +24,8 @@ export const useEmbeddingDatasetSelection = (
     refetchOnWindowFocus: false,
   });
 
-  const datasets = datasetsQuery.data ?? [];
+  // Memoize datasets to prevent re-renders causing effect loops
+  const datasets = useMemo(() => datasetsQuery.data ?? [], [datasetsQuery.data]);
 
   useEffect(() => {
     if (!projectId) {

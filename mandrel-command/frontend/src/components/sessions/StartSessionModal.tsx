@@ -8,7 +8,6 @@ import {
   Typography,
   Space,
   Select,
-  Tag,
   Radio,
 } from 'antd';
 import { PlayCircleOutlined, CloseOutlined } from '@ant-design/icons';

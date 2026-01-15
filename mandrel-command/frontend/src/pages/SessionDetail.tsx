@@ -16,8 +16,6 @@ import {
   Empty,
   List,
   Table,
-  Badge,
-  Progress
 } from 'antd';
 import {
   ArrowLeftOutlined,
@@ -36,11 +34,9 @@ import {
   CheckCircleOutlined
 } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
-import contextsClient from '../api/contextsClient';
 import { sessionsClient } from '../api/sessionsClient';
 import { SessionsService } from '../api/generated';
 import type { Context } from '../types/context';
-import type { SessionFile } from '../types/session';
 import { getTypeColor, getTypeDisplayName } from '../utils/contextHelpers';
 
 // Session detail type
@@ -105,16 +101,6 @@ interface SessionDetailType {
     impact_level?: string;
     created_at: string;
   }>;
-}
-
-// Backend context type (uses context_type instead of type)
-interface BackendContext {
-  id: string;
-  context_type: string;
-  content: string;
-  created_at: string;
-  tags?: string[];
-  relevance_score?: number;
 }
 
 const { Title, Text, Paragraph } = Typography;

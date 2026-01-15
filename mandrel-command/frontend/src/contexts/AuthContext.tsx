@@ -45,7 +45,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       authStore.initialize();
       setIsInitialized(true);
     }
-  }, [isInitialized]); // Fixed: Remove authStore dependency to prevent infinite loop
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isInitialized]); // Intentionally omit authStore to prevent infinite loop
 
   // Clean up token conflicts only once
   useEffect(() => {
@@ -86,7 +87,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const clearError = React.useCallback(() => {
     authStore.clearError();
-  }, []); // Fixed: Empty dependency array since authStore.clearError is stable
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Intentionally empty - authStore.clearError is stable
 
   // Determine loading state
   const isLoading = !isInitialized || checkingAuth || loginMutation.isPending || logoutMutation.isPending;

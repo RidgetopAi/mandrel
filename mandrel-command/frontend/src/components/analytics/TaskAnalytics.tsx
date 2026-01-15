@@ -3,18 +3,13 @@ import { Card, Row, Col, Statistic, Spin, notification, Empty, DatePicker, Selec
 import { 
   Pie, 
   Column, 
-  Line,
   Bar,
-  Area
 } from '@ant-design/plots';
 import { 
   CheckCircleOutlined, 
   ClockCircleOutlined, 
   ExclamationCircleOutlined,
   TrophyOutlined,
-  LineChartOutlined,
-  AreaChartOutlined,
-  BarChartOutlined
 } from '@ant-design/icons';
 import { apiService } from '../../services/api';
 import dayjs from 'dayjs';
@@ -36,16 +31,6 @@ interface TaskStats {
   weeklyVelocity?: Array<{week: string, completed: number}>;
 }
 
-interface SessionTrends {
-  date: string;
-  session_count: number;
-  total_duration: number;
-  avg_duration: number;
-  total_contexts: number;
-  total_tokens: number;
-  productivity_score: number;
-}
-
 interface SessionAnalytics {
   total_sessions: number;
   total_duration: number;
@@ -55,18 +40,6 @@ interface SessionAnalytics {
   total_tokens: number;
   avg_tokens_per_session: number;
   productivity_score: number;
-}
-
-interface Task {
-  id: string;
-  title: string;
-  status: string;
-  priority: string;
-  type: string;
-  created_at: string;
-  updated_at: string;
-  completed_at?: string;
-  metadata?: any;
 }
 
 interface TaskAnalyticsProps {
@@ -81,9 +54,7 @@ const TaskAnalytics: React.FC<TaskAnalyticsProps> = ({
   refreshInterval = 300000 // 5 minutes
 }) => {
   const [stats, setStats] = useState<TaskStats | null>(null);
-  const [sessionTrends, setSessionTrends] = useState<SessionTrends[]>([]);
   const [sessionAnalytics, setSessionAnalytics] = useState<SessionAnalytics | null>(null);
-  const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedDateRange, setSelectedDateRange] = useState<[Date, Date]>(dateRange);
   const [viewMode, setViewMode] = useState<'basic' | 'advanced'>('advanced');
@@ -111,14 +82,9 @@ const TaskAnalytics: React.FC<TaskAnalyticsProps> = ({
       const params = projectId ? { project_id: projectId } : {};
       const paramsWithDate = { ...params, ...dateRangeParams };
 
-      // Load all analytics data including sessions
-      const [statsResponse, tasksResponse, sessionTrendsResponse, sessionAnalyticsResponse] = await Promise.all([
+      // Load analytics data
+      const [statsResponse, sessionAnalyticsResponse] = await Promise.all([
         apiService.get<{success: boolean; data: {stats: TaskStats}}>('/tasks/stats', { params: paramsWithDate }),
-        apiService.get<{success: boolean; data: {tasks: Task[]}}>('/tasks', { params: { ...paramsWithDate, limit: 1000 } }),
-        apiService.get<{success: boolean; data: {stats: any[]}}>(
-          '/sessions/stats-by-period', 
-          { params: { period: 'day', limit: 30, ...paramsWithDate } }
-        ).catch(() => ({ data: { stats: [] } })), // Fallback if endpoint doesn't exist
         apiService.get<{success: boolean; data: any}>(
           '/sessions/analytics', 
           { params: paramsWithDate }
@@ -134,23 +100,6 @@ const TaskAnalytics: React.FC<TaskAnalyticsProps> = ({
       };
 
       setStats(normalizedStats);
-      setTasks(tasksResponse.data.tasks);
-      
-      // Set session data if available
-      if (sessionTrendsResponse.data?.stats) {
-        const trends = sessionTrendsResponse.data.stats.map((stat: any) => ({
-          date: stat.period,
-          session_count: stat.session_count || 0,
-          total_duration: stat.total_duration_minutes || 0,
-          avg_duration: stat.avg_duration_minutes || 0,
-          total_contexts: stat.total_contexts || 0,
-          total_tokens: stat.total_tokens || 0,
-          productivity_score: Math.min(stat.total_contexts * 2 + stat.session_count, 100) // Simple scoring
-        }));
-        setSessionTrends(trends);
-      } else {
-        setSessionTrends([]);
-      }
       
       if (sessionAnalyticsResponse.data) {
         const analytics = {
@@ -181,93 +130,6 @@ const TaskAnalytics: React.FC<TaskAnalyticsProps> = ({
       setLoading(false);
     }
   }, [projectId, dateRangeParams]);
-
-  const leadTimeData = useMemo(() => {
-    const completedTasks = tasks.filter(task =>
-      task.status === 'completed' && task.created_at && task.completed_at
-    );
-
-    if (completedTasks.length === 0) {
-      return {
-        distribution: [],
-        stats: { totalTasks: 0, averageLeadTime: 0, p90LeadTime: 0 }
-      };
-    }
-
-    const leadTimes = completedTasks.map(task => {
-      const created = dayjs(task.created_at);
-      const completed = dayjs(task.completed_at!);
-      return Math.max(1, completed.diff(created, 'days'));
-    });
-
-    const maxLeadTime = Math.max(...leadTimes, 30);
-    const binSize = Math.max(1, Math.ceil(maxLeadTime / 10));
-    const distribution = [] as Array<{ label: string; count: number; color: string }>;
-
-    for (let i = 0; i <= maxLeadTime; i += binSize) {
-      const rangeEnd = Math.min(i + binSize - 1, maxLeadTime);
-      const count = leadTimes.filter(time => time >= i && time <= rangeEnd).length;
-      const color = i <= 3 ? '#52c41a' : i <= 7 ? '#faad14' : '#ff4d4f';
-      distribution.push({
-        label: `${i}-${rangeEnd}`,
-        count,
-        color
-      });
-    }
-
-    const sortedTimes = [...leadTimes].sort((a, b) => a - b);
-    const p90Index = Math.floor(sortedTimes.length * 0.9);
-    const average = sortedTimes.reduce((sum, val) => sum + val, 0) / sortedTimes.length;
-
-    return {
-      distribution,
-      stats: {
-        totalTasks: completedTasks.length,
-        averageLeadTime: average,
-        p90LeadTime: sortedTimes[p90Index] || 0
-      }
-    };
-  }, [tasks]);
-
-  const weeklyVelocityData = useMemo(() => {
-    if (!sessionTrends.length) {
-      return [];
-    }
-
-    const weeklyData = sessionTrends.reduce((acc: Record<string, any>, trend) => {
-      const week = dayjs(trend.date).startOf('week').format('YYYY-MM-DD');
-      if (!acc[week]) {
-        acc[week] = {
-          week,
-          contexts: 0,
-          sessions: 0,
-          productivity: 0,
-          count: 0
-        };
-      }
-      acc[week].contexts += trend.total_contexts;
-      acc[week].sessions += trend.session_count;
-      acc[week].productivity += trend.productivity_score;
-      acc[week].count += 1;
-      return acc;
-    }, {});
-
-    return Object.values(weeklyData).map((week: any) => ({
-      week: dayjs(week.week).format('MMM DD'),
-      contexts: week.contexts,
-      sessions: week.sessions,
-      avgProductivity: week.count > 0 ? week.productivity / week.count : 0,
-      target: 50
-    }));
-  }, [sessionTrends]);
-
-  const cumulativeFlowData: Array<{
-    date: string;
-    'Todo': number;
-    'In Progress': number;
-    'Completed': number;
-    total: number;
-  }> = [];
 
   useEffect(() => {
     loadAllData();
@@ -384,109 +246,8 @@ const TaskAnalytics: React.FC<TaskAnalyticsProps> = ({
     interactions: [{ type: 'element-active' }],
   };
 
-  // Lead time histogram config
-  const leadTimeHistogramConfig = {
-    data: leadTimeData?.distribution || [],
-    xField: 'label',
-    yField: 'count',
-    color: '#1890ff',
-    columnStyle: {
-      radius: [2, 2, 0, 0],
-    },
-    label: {
-      position: 'top' as const,
-      style: {
-        fill: '#666',
-        fontSize: 12
-      }
-    },
-    // Annotations disabled for stability
-    annotations: []
-  };
 
-  // Weekly velocity line chart config
-  const velocityLineConfig = {
-    data: weeklyVelocityData || [],
-    xField: 'week',
-    yField: 'contexts',
-    point: {
-      size: 4,
-      shape: 'circle',
-      style: {
-        fill: '#1890ff',
-        stroke: '#1890ff',
-        strokeWidth: 2
-      }
-    },
-    line: {
-      style: {
-        stroke: '#1890ff',
-        strokeWidth: 3
-      }
-    },
-    annotations: [
-      {
-        type: 'line',
-        start: ['min', 50],
-        end: ['max', 50],
-        style: {
-          stroke: '#52c41a',
-          strokeWidth: 2,
-          strokeDasharray: '5,5'
-        },
-        text: {
-          content: 'Target: 50 contexts/week',
-          position: 'start',
-          offsetY: -10,
-          style: { fill: '#52c41a' }
-        }
-      }
-    ],
-    tooltip: {
-      customContent: (title: string, items: any[]) => {
-        if (!items.length) return null;
-        const data = items[0].data;
-        return `
-          <div style="padding: 8px;">
-            <p><strong>Week: ${title}</strong></p>
-            <p>Contexts: ${data.contexts}</p>
-            <p>Sessions: ${data.sessions}</p>
-            <p>Avg Productivity: ${(data.avgProductivity || 0).toFixed(1)}</p>
-          </div>
-        `;
-      }
-    }
-  };
 
-  // Cumulative flow area chart config
-  const cumulativeFlowConfig = {
-    data: cumulativeFlowData || [],
-    xField: 'date',
-    yField: 'value',
-    seriesField: 'category',
-    isStack: true,
-    color: ['#faad14', '#1890ff', '#52c41a'], // Todo, In Progress, Completed
-    areaStyle: {
-      fillOpacity: 0.7
-    },
-    legend: {
-      position: 'top' as const
-    },
-    smooth: true,
-    tooltip: {
-      shared: true,
-      showCrosshairs: true
-    }
-  };
-
-  // Transform cumulative flow data for stacked area
-  const cumulativeFlowStackedData = cumulativeFlowData.flatMap(item => [
-    { date: item.date, category: 'Todo', value: item['Todo'] },
-    { date: item.date, category: 'In Progress', value: item['In Progress'] },
-    { date: item.date, category: 'Completed', value: item['Completed'] }
-  ]);
-
-  const completedTasks = stats.by_status.completed || 0;
   const inProgressTasks = stats.by_status.in_progress || 0;
   const blockedTasks = stats.by_status.blocked || 0;
 

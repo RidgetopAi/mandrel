@@ -21,12 +21,14 @@ export const useContextSearchQuery = (
   options?: Partial<UseQueryOptions<ContextSearchResult>>
 ) => {
   // Stabilize params to prevent unnecessary re-renders
+  const tagsJson = JSON.stringify(params.tags || []);
   const stableParams = useMemo(() => {
     return params;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     params.query,
     params.type,
-    JSON.stringify(params.tags || []), // Stabilize array comparison
+    tagsJson,
     params.date_from,
     params.date_to,
     params.project_id,

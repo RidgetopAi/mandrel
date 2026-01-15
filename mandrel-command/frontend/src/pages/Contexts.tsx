@@ -157,8 +157,8 @@ const Contexts: React.FC = () => {
     if (statsData) {
       setStats(statsData);
     }
-    // searchParams changes are already tracked by the query hooks
-  }, [contextsData, statsData, setSearchResults, setStats]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [contextsData, statsData, setSearchResults, setStats]); // searchParams changes tracked by query hooks
 
   const handleSearch = useCallback(() => {
     refetchContexts();

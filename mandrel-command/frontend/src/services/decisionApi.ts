@@ -1,4 +1,3 @@
-import React from 'react';
 import { TechnicalDecision, DecisionSearchParams, DecisionStats, DecisionSearchResult } from '../components/decisions/types';
 import decisionsClient from '../api/decisionsClient';
 import type { CreateDecisionRequest, UpdateDecisionRequest } from '../api/generated';

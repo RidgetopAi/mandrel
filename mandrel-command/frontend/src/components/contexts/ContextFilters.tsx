@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
-  Card, Space, Input, Select, DatePicker, Button, Row, Col,
+  Card, Space, Input, Select, DatePicker, Button,
   Slider, Typography, Tag, Collapse
 } from 'antd';
 import {
@@ -56,7 +56,8 @@ const ContextFilters: React.FC<ContextFiltersProps> = ({ onSearch, loading }) =>
     if (!searchParams.query && localQuery) {
       setLocalQuery('');
     }
-  }, [searchParams.query]); // Remove localQuery from dependencies to prevent circular updates
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams.query]); // Intentionally omit localQuery to prevent circular updates
 
   // Optimized debounced search with useCallback and useRef
   const debouncedSearch = useCallback((query: string) => {

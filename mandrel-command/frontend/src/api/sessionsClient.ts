@@ -2,7 +2,7 @@ import { SessionsService, type ApiSuccessResponse } from './generated';
 import type { Session, SessionDetail, UpdateSessionRequest, FileSyncResponse, SessionFile } from '../types/session';
 import type { SessionAssignmentResponse } from './generated/models/SessionAssignmentResponse';
 import type { SessionCurrentResponse } from './generated/models/SessionCurrentResponse';
-import type { SessionDetailResponse } from './generated/models/SessionDetailResponse';
+
 import type { UpdateSession } from './generated/models/UpdateSession';
 
 // Base URL for REST API endpoints (not in generated client)

@@ -329,7 +329,8 @@ export const ProjectProvider: React.FC<ProjectProviderProps> = ({ children }) =>
         console.error('Failed to load project from storage:', storageError);
       }
     }
-  }, [selectBootstrapProject, allSessions]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectBootstrapProject, allSessions]); // Intentionally omit allProjects/defaultProject to avoid bootstrap loops
 
   const refreshProjects = useCallback(async (): Promise<Project[]> => {
     try {
