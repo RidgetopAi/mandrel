@@ -75,7 +75,7 @@ export class McpService {
           try {
             if (res.statusCode === 200) {
               const parsed = JSON.parse(data);
-              
+
               if (parsed.isError || parsed.success === false) {
                 const message = parsed.error || parsed.message || 'AIDIS MCP tool error';
                 reject(new Error(message));
@@ -124,8 +124,15 @@ export class McpService {
         });
       });
 
-      req.on('error', (error) => {
-        reject(new Error(`Request failed: ${error.message}`));
+      req.on('error', (error: NodeJS.ErrnoException) => {
+        const errorDetails = error.code ? `${error.code}: ${error.message}` : error.message || 'Unknown socket error';
+        console.error(`[MCP] Tool call connection error to localhost:${mcpPort}/mcp/tools/${toolName}:`, {
+          code: error.code,
+          message: error.message,
+          syscall: error.syscall,
+          errno: error.errno
+        });
+        reject(new Error(`Request failed: ${errorDetails}`));
       });
 
       req.on('timeout', () => {
@@ -470,8 +477,15 @@ export class McpService {
         });
       });
 
-      req.on('error', (error) => {
-        reject(new Error(`Request failed: ${error.message}`));
+      req.on('error', (error: NodeJS.ErrnoException) => {
+        const errorDetails = error.code ? `${error.code}: ${error.message}` : error.message || 'Unknown socket error';
+        console.error(`[MCP] REST API connection error to localhost:${mcpPort}${path}:`, {
+          code: error.code,
+          message: error.message,
+          syscall: error.syscall,
+          errno: error.errno
+        });
+        reject(new Error(`Request failed: ${errorDetails}`));
       });
 
       req.on('timeout', () => {
