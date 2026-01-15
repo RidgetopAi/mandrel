@@ -4,7 +4,6 @@ import type {
   MonitoringAlert,
   MonitoringHealth,
   MonitoringMetrics,
-  MonitoringServiceStatus,
   MonitoringStats,
   MonitoringTrends,
 } from '../api/monitoringClient';
@@ -14,8 +13,6 @@ export const monitoringQueryKeys = {
   health: () => [...monitoringQueryKeys.all, 'health'] as const,
   metrics: () => [...monitoringQueryKeys.all, 'metrics'] as const,
   trends: (minutes: number) => [...monitoringQueryKeys.all, 'trends', minutes] as const,
-  services: () => [...monitoringQueryKeys.all, 'services'] as const,
-  service: (name: string) => [...monitoringQueryKeys.services(), name] as const,
   stats: () => [...monitoringQueryKeys.all, 'stats'] as const,
   alerts: (limit: number) => [...monitoringQueryKeys.all, 'alerts', limit] as const,
 };
@@ -47,28 +44,6 @@ export const usePerformanceTrendsQuery = (
   return useQuery({
     queryKey: monitoringQueryKeys.trends(minutes),
     queryFn: () => monitoringClient.getTrends(minutes),
-    ...options,
-  });
-};
-
-export const useMonitoredServicesQuery = (
-  options?: Partial<UseQueryOptions<MonitoringServiceStatus[]>>
-) => {
-  return useQuery({
-    queryKey: monitoringQueryKeys.services(),
-    queryFn: () => monitoringClient.getServices(),
-    ...options,
-  });
-};
-
-export const useMonitoredServiceQuery = (
-  serviceName: string | undefined,
-  options?: Partial<UseQueryOptions<MonitoringServiceStatus>>
-) => {
-  return useQuery({
-    queryKey: monitoringQueryKeys.service(serviceName ?? '__missing__'),
-    queryFn: () => monitoringClient.getService(serviceName as string),
-    enabled: Boolean(serviceName),
     ...options,
   });
 };
