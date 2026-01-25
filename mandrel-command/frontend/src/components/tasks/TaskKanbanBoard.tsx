@@ -10,7 +10,8 @@ import {
   Typography,
   Tooltip,
   Avatar,
-  Spin
+  Spin,
+  message
 } from 'antd';
 import './TaskCard.css';
 import {
@@ -21,7 +22,12 @@ import {
   CheckCircleOutlined,
   ClockCircleOutlined,
   ExclamationCircleOutlined,
-  StopOutlined
+  StopOutlined,
+  ExpandAltOutlined,
+  ShrinkOutlined,
+  CopyOutlined,
+  CalendarOutlined,
+  TagOutlined
 } from '@ant-design/icons';
 import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
 import TaskForm from './TaskForm';
@@ -76,6 +82,27 @@ const TaskKanbanBoard: React.FC<TaskKanbanBoardProps> = ({
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [showEditForm, setShowEditForm] = useState(false);
   const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
+  const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
+
+  const toggleTaskExpansion = (taskId: string) => {
+    const newExpanded = new Set(expandedTasks);
+    if (newExpanded.has(taskId)) {
+      newExpanded.delete(taskId);
+    } else {
+      newExpanded.add(taskId);
+    }
+    setExpandedTasks(newExpanded);
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
 
   // Group tasks by status column
   const tasksByColumn = useMemo(() => {
@@ -194,6 +221,7 @@ const TaskKanbanBoard: React.FC<TaskKanbanBoardProps> = ({
 
   const renderTaskCard = (task: Task, index: number) => {
     const isBeingDragged = draggedTaskId === task.id;
+    const isExpanded = expandedTasks.has(task.id);
 
     return (
       <Draggable key={task.id} draggableId={task.id} index={index}>
@@ -215,7 +243,7 @@ const TaskKanbanBoard: React.FC<TaskKanbanBoardProps> = ({
             >
               <Card
                 hoverable
-                className={`task-card kanban-card ${isBeingDragged ? 'kanban-card-dragging' : ''} priority-${task.priority} status-${task.status}`}
+                className={`task-card kanban-card ${isBeingDragged ? 'kanban-card-dragging' : ''} ${isExpanded ? 'expanded' : ''} priority-${task.priority} status-${task.status}`}
                 style={{
                   border: `2px solid ${getStatusColor(task.status)}40`,
                   borderRadius: '8px',
@@ -227,18 +255,29 @@ const TaskKanbanBoard: React.FC<TaskKanbanBoardProps> = ({
                 }}
                 bodyStyle={{ padding: '12px' }}
               >
-                {/* Task Title */}
-                <div style={{ marginBottom: 8 }}>
+                {/* Task Title with Expand */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
                   <Text
                     strong
                     style={{
                       fontSize: '14px',
-                      display: 'block',
-                      marginBottom: 4
+                      flex: 1
                     }}
                   >
                     {task.title}
                   </Text>
+                  <Tooltip title={isExpanded ? "Collapse" : "Expand"}>
+                    <Button
+                      type="text"
+                      size="small"
+                      icon={isExpanded ? <ShrinkOutlined /> : <ExpandAltOutlined />}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleTaskExpansion(task.id);
+                      }}
+                      style={{ padding: '2px 4px', marginLeft: 4 }}
+                    />
+                  </Tooltip>
                 </div>
 
                 {/* Description */}
@@ -342,6 +381,66 @@ const TaskKanbanBoard: React.FC<TaskKanbanBoardProps> = ({
                   <ProjectOutlined style={{ fontSize: '10px' }} />
                   {getProjectName(task.project_id)}
                 </div>
+
+                {/* Expanded Details */}
+                {isExpanded && (
+                  <div
+                    onClick={(e) => e.stopPropagation()}
+                    style={{
+                      marginTop: 12,
+                      padding: '10px',
+                      borderRadius: '6px',
+                      border: '1px solid #e8e8e8'
+                    }}
+                  >
+                    {/* Task ID with Copy */}
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8,
+                      marginBottom: 8,
+                      paddingBottom: 8,
+                      borderBottom: '1px solid #e8e8e8'
+                    }}>
+                      <Text style={{ fontSize: '11px' }}>
+                        <strong>ID:</strong>
+                      </Text>
+                      <Text code style={{ fontSize: '10px' }}>{task.id}</Text>
+                      <Button
+                        type="text"
+                        size="small"
+                        icon={<CopyOutlined />}
+                        onClick={() => {
+                          navigator.clipboard.writeText(task.id);
+                          message.success('Task ID copied');
+                        }}
+                        style={{ marginLeft: 'auto', padding: '2px 4px' }}
+                      />
+                    </div>
+
+                    {/* Task Info */}
+                    <Space direction="vertical" size={4} style={{ width: '100%' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <CalendarOutlined style={{ color: '#52c41a', fontSize: '11px' }} />
+                        <Text style={{ fontSize: '11px' }}>
+                          <strong>Created:</strong> {formatDate(task.created_at)}
+                        </Text>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <CalendarOutlined style={{ color: '#1890ff', fontSize: '11px' }} />
+                        <Text style={{ fontSize: '11px' }}>
+                          <strong>Updated:</strong> {formatDate(task.updated_at)}
+                        </Text>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <TagOutlined style={{ color: '#722ed1', fontSize: '11px' }} />
+                        <Text style={{ fontSize: '11px' }}>
+                          <strong>Type:</strong> {task.type}
+                        </Text>
+                      </div>
+                    </Space>
+                  </div>
+                )}
               </Card>
             </Badge.Ribbon>
           </div>
