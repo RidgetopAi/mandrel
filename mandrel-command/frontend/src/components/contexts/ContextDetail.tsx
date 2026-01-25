@@ -286,7 +286,7 @@ const ContextDetail: React.FC<ContextDetailProps> = ({
 
             {/* Collapsible Metadata */}
             {showMetadata && (
-              <Descriptions column={1} size="small" bordered style={{ background: '#fafafa' }}>
+              <Descriptions column={1} size="small" bordered>
                 {context.session_id && (
                   <Descriptions.Item label={<><UserOutlined /> Session</>}>
                     <Space>
