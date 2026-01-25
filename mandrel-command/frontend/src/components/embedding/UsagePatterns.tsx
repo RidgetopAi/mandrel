@@ -39,7 +39,7 @@ const UsagePatterns: React.FC = () => {
       min: 0,
     },
     tooltip: {
-      title: (datum: string) => datum,
+      title: (_: unknown, __: unknown, data: Record<string, unknown>) => String(data?.date ?? ''),
       formatter: (datum: Record<string, unknown>) => ({
         name: 'Contexts',
         value: datum.contexts ?? 0,
@@ -58,7 +58,7 @@ const UsagePatterns: React.FC = () => {
       contexts: { alias: 'Contexts' },
     },
     tooltip: {
-      title: (datum: string) => `${datum}:00`,
+      title: (_: unknown, __: unknown, data: Record<string, unknown>) => `${data?.hour ?? 0}:00`,
       formatter: (datum: Record<string, unknown>) => ({
         name: 'Contexts',
         value: datum.contexts ?? 0,
@@ -77,7 +77,8 @@ const UsagePatterns: React.FC = () => {
       count: { alias: 'Contexts' },
     },
     tooltip: {
-      title: (datum: string) => datum.toUpperCase(),
+      title: (_: unknown, __: unknown, data: Record<string, unknown>) =>
+        String(data?.type ?? 'unknown').toUpperCase(),
       formatter: (datum: Record<string, unknown>) => {
         const percentage = Number(datum.percentage ?? 0);
         return {
