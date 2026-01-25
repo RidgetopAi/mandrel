@@ -15,7 +15,7 @@ import createSessionRouter from '../api/v2/sessionRoutes.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-export class HttpMcpBridge {
+class HttpMcpBridge {
   private app: express.Application;
   private server: any;
   private port: number;

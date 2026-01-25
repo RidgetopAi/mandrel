@@ -10,32 +10,32 @@ import { z } from 'zod';
 // ================================
 
 // Common field validations
-export const requiredString = (fieldName: string, minLength = 1, maxLength = 255) =>
+const requiredString = (fieldName: string, minLength = 1, maxLength = 255) =>
   z.string()
     .min(minLength, `${fieldName} is required`)
     .max(maxLength, `${fieldName} must be less than ${maxLength} characters`)
     .trim();
 
-export const optionalString = (maxLength = 255) =>
+const optionalString = (maxLength = 255) =>
   z.string()
     .max(maxLength, `Field must be less than ${maxLength} characters`)
     .trim()
     .optional();
 
-export const email = z.string()
+const email = z.string()
   .email('Please enter a valid email address')
   .max(255, 'Email must be less than 255 characters');
 
-export const url = z.union([
+const url = z.union([
   z.string().url('Please enter a valid URL'),
   z.literal('')
 ]).optional();
 
-export const positiveInteger = z.number()
+const positiveInteger = z.number()
   .int('Must be an integer')
   .positive('Must be a positive number');
 
-export const tags = z.array(z.string().min(1).max(50))
+const tags = z.array(z.string().min(1).max(50))
   .max(10, 'Maximum 10 tags allowed')
   .optional();
 
@@ -204,7 +204,7 @@ export interface FormFieldError {
   code?: string;
 }
 
-export const formatZodError = (error: z.ZodError): FormFieldError[] => {
+const formatZodError = (error: z.ZodError): FormFieldError[] => {
   return error.issues.map(issue => ({
     field: issue.path.join('.'),
     message: issue.message,
@@ -223,7 +223,7 @@ export const formatFieldErrors = (errors: FormFieldError[]): Record<string, stri
 // SCHEMA REGISTRY
 // ================================
 
-export const SchemaRegistry = {
+const SchemaRegistry = {
   // Projects
   CreateProject: CreateProjectSchema,
   UpdateProject: UpdateProjectSchema,
@@ -253,7 +253,7 @@ export const SchemaRegistry = {
 
 export type SchemaName = keyof typeof SchemaRegistry;
 
-export const getSchema = (schemaName: SchemaName) => {
+const getSchema = (schemaName: SchemaName) => {
   return SchemaRegistry[schemaName];
 };
 

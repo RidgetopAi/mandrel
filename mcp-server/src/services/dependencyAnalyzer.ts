@@ -53,7 +53,7 @@ export interface GraphGenerationOptions {
   tsConfig?: string;
 }
 
-export class DependencyAnalyzerService {
+class DependencyAnalyzerService {
   private static instance: DependencyAnalyzerService;
   private visualizationsDir: string;
 

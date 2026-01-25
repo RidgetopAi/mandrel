@@ -36,7 +36,7 @@ function getDefaultRegistryPath(): string {
   return path.join(os.homedir(), '.mandrel', 'run', 'port-registry.json');
 }
 
-export class PortManager {
+class PortManager {
   private config: PortDiscoveryConfig;
   private registryPath: string;
 

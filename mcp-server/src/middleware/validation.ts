@@ -16,7 +16,7 @@ const baseLimit = z.number().int().min(1).max(100).default(10);
 const baseRelevanceScore = z.number().min(0).max(10).optional();
 
 // System Health Schemas
-export const mandrelSystemSchemas = {
+const mandrelSystemSchemas = {
   ping: z.object({
     message: z.string().max(500).optional()
   }),
@@ -35,10 +35,10 @@ export const mandrelSystemSchemas = {
 };
 
 // Legacy alias for backward compatibility
-export const aidisSystemSchemas = mandrelSystemSchemas;
+const aidisSystemSchemas = mandrelSystemSchemas;
 
 // Context Management Schemas
-export const contextSchemas = {
+const contextSchemas = {
   store: z.object({
     content: z.string().min(1).max(10000),
     type: z.enum(['code', 'decision', 'error', 'discussion', 'planning', 'completion', 'milestone', 'reflections', 'handoff', 'lessons']),
@@ -72,7 +72,7 @@ export const contextSchemas = {
 };
 
 // Project Management Schemas
-export const projectSchemas = {
+const projectSchemas = {
   create: z.object({
     name: baseName,
     description: baseDescription,
@@ -104,7 +104,7 @@ export const projectSchemas = {
 };
 
 // Naming Registry Schemas
-export const namingSchemas = {
+const namingSchemas = {
   register: z.object({
     canonicalName: baseName,
     entityType: z.enum(['variable', 'function', 'class', 'interface', 'type', 'component', 
@@ -138,7 +138,7 @@ export const namingSchemas = {
 };
 
 // Technical Decision Schemas
-export const decisionSchemas = {
+const decisionSchemas = {
   record: z.object({
     decisionType: z.enum(['architecture', 'library', 'framework', 'pattern', 'api_design', 'database', 'deployment', 'security', 'performance', 'ui_ux', 'testing', 'tooling', 'process', 'naming_convention', 'code_style']),
     title: z.string().min(1).max(255),
@@ -185,7 +185,7 @@ export const decisionSchemas = {
 };
 
 // Multi-Agent Coordination Schemas
-export const agentSchemas = {
+const agentSchemas = {
   register: z.object({
     name: z.string().min(1).max(100),
     type: z.string().min(1).max(100).optional(),
@@ -232,8 +232,8 @@ export const agentSchemas = {
   })
 };
 
-// Task Management Schemas  
-export const taskSchemas = {
+// Task Management Schemas
+const taskSchemas = {
   create: z.object({
     title: z.string().min(1).max(255),
     description: z.string().max(2000).optional(),
@@ -285,7 +285,7 @@ export const taskSchemas = {
 };
 
 // Complexity Analysis Schemas
-export const complexitySchemas = {
+const complexitySchemas = {
   analyze: z.object({
     target: z.string().min(1),
     type: z.enum(['file', 'files', 'commit', 'function']),
@@ -302,7 +302,7 @@ export const complexitySchemas = {
 };
 
 // Code Analysis Schemas
-export const codeSchemas = {
+const codeSchemas = {
   analyze: z.object({
     filePath: z.string().min(1).max(1000),
     language: z.enum(['typescript', 'javascript', 'python', 'java', 'csharp']).optional()
@@ -325,7 +325,7 @@ export const codeSchemas = {
 };
 
 // Smart Search & AI Recommendations Schemas
-export const smartSearchSchemas = {
+const smartSearchSchemas = {
   search: z.object({
     query: baseQuery,
     projectId: z.string().optional(),
@@ -346,7 +346,7 @@ export const smartSearchSchemas = {
 // REST API endpoints at /api/v2/sessions/* handle UI analytics needs
 
 // Main validation schema registry
-export const validationSchemas = {
+const validationSchemas = {
   // System Health (with backward compatibility aliases)
   mandrel_ping: aidisSystemSchemas.ping,
   mandrel_status: aidisSystemSchemas.status,

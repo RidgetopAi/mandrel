@@ -3,7 +3,7 @@
  * Implements intelligent caching, performance monitoring, and optimization strategies
  */
 
-export interface CacheEntry<T> {
+interface CacheEntry<T> {
   data: T | string;
   timestamp: number;
   ttl: number;
@@ -15,7 +15,7 @@ export interface CacheEntry<T> {
   compressed?: boolean;
 }
 
-export interface CacheStats {
+interface CacheStats {
   totalEntries: number;
   totalSize: number;
   hitRate: number;
@@ -28,7 +28,7 @@ export interface CacheStats {
   compressionRatio: number;
 }
 
-export interface PerformanceMetrics {
+interface PerformanceMetrics {
   renderTime: number;
   apiResponseTime: number;
   cacheHitRate: number;
@@ -39,7 +39,7 @@ export interface PerformanceMetrics {
   errorRate: number;
 }
 
-export class AdvancedPerformanceCache {
+class AdvancedPerformanceCache {
   private cache = new Map<string, CacheEntry<any>>();
   private stats: CacheStats = {
     totalEntries: 0,
@@ -608,7 +608,7 @@ export class AdvancedPerformanceCache {
 }
 
 // Singleton instance for global use
-export const performanceCache = new AdvancedPerformanceCache({
+const performanceCache = new AdvancedPerformanceCache({
   maxSize: 1000,
   maxMemory: 100, // 100MB
   compressionEnabled: true,
@@ -616,7 +616,7 @@ export const performanceCache = new AdvancedPerformanceCache({
 });
 
 // Cache performance monitoring utilities
-export const getCacheStats = () => performanceCache.getStats();
-export const getPerformanceMetrics = () => performanceCache.getPerformanceMetrics();
-export const clearCache = () => performanceCache.clear();
-export const warmCache = (strategies?: any) => performanceCache.warmCache(strategies);
+const getCacheStats = () => performanceCache.getStats();
+const getPerformanceMetrics = () => performanceCache.getPerformanceMetrics();
+const clearCache = () => performanceCache.clear();
+const warmCache = (strategies?: any) => performanceCache.warmCache(strategies);

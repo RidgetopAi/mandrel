@@ -24,7 +24,7 @@ export interface Recommendation {
     metadata: Record<string, any>;
 }
 
-export class SmartSearchHandler {
+class SmartSearchHandler {
     constructor(private pool: Pool = db) {}
 
     async smartSearch(

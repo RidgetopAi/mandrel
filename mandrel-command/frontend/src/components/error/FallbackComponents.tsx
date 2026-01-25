@@ -20,14 +20,14 @@ const { Text, Title } = Typography;
 // API FALLBACK COMPONENTS
 // ================================
 
-export interface ApiErrorFallbackProps {
+interface ApiErrorFallbackProps {
   error?: Error;
   onRetry?: () => void;
   isRetrying?: boolean;
   componentName?: string;
 }
 
-export const ApiErrorFallback: React.FC<ApiErrorFallbackProps> = ({
+const ApiErrorFallback: React.FC<ApiErrorFallbackProps> = ({
   error,
   onRetry,
   isRetrying = false,
@@ -67,12 +67,12 @@ export const ApiErrorFallback: React.FC<ApiErrorFallbackProps> = ({
 // NETWORK FALLBACK COMPONENTS
 // ================================
 
-export interface NetworkErrorFallbackProps {
+interface NetworkErrorFallbackProps {
   onRetry?: () => void;
   isRetrying?: boolean;
 }
 
-export const NetworkErrorFallback: React.FC<NetworkErrorFallbackProps> = ({
+const NetworkErrorFallback: React.FC<NetworkErrorFallbackProps> = ({
   onRetry,
   isRetrying = false
 }) => (
@@ -116,13 +116,13 @@ export const NetworkErrorFallback: React.FC<NetworkErrorFallbackProps> = ({
 // DATA LOADING FALLBACK COMPONENTS
 // ================================
 
-export interface DataLoadingFallbackProps {
+interface DataLoadingFallbackProps {
   message?: string;
   showRetry?: boolean;
   onRetry?: () => void;
 }
 
-export const DataLoadingFallback: React.FC<DataLoadingFallbackProps> = ({
+const DataLoadingFallback: React.FC<DataLoadingFallbackProps> = ({
   message = 'Loading data...',
   showRetry = false,
   onRetry
@@ -147,7 +147,7 @@ export const DataLoadingFallback: React.FC<DataLoadingFallbackProps> = ({
 // EMPTY STATE FALLBACK COMPONENTS
 // ================================
 
-export interface EmptyDataFallbackProps {
+interface EmptyDataFallbackProps {
   title?: string;
   description?: string;
   actionText?: string;
@@ -155,7 +155,7 @@ export interface EmptyDataFallbackProps {
   icon?: React.ReactNode;
 }
 
-export const EmptyDataFallback: React.FC<EmptyDataFallbackProps> = ({
+const EmptyDataFallback: React.FC<EmptyDataFallbackProps> = ({
   title = 'No Data Available',
   description = 'There\'s no data to display right now',
   actionText,
@@ -186,14 +186,14 @@ export const EmptyDataFallback: React.FC<EmptyDataFallbackProps> = ({
 // COMPONENT ERROR FALLBACK
 // ================================
 
-export interface ComponentErrorFallbackProps {
+interface ComponentErrorFallbackProps {
   error?: Error;
   componentName?: string;
   onReset?: () => void;
   showDetails?: boolean;
 }
 
-export const ComponentErrorFallback: React.FC<ComponentErrorFallbackProps> = ({
+const ComponentErrorFallback: React.FC<ComponentErrorFallbackProps> = ({
   error,
   componentName = 'Component',
   onReset,
@@ -242,14 +242,14 @@ export const ComponentErrorFallback: React.FC<ComponentErrorFallbackProps> = ({
 // PARTIAL DEGRADATION COMPONENTS
 // ================================
 
-export interface PartialFallbackProps {
+interface PartialFallbackProps {
   title: string;
   workingFeatures: string[];
   failedFeatures: string[];
   onRetryFailed?: () => void;
 }
 
-export const PartialFallback: React.FC<PartialFallbackProps> = ({
+const PartialFallback: React.FC<PartialFallbackProps> = ({
   title,
   workingFeatures,
   failedFeatures,
@@ -300,7 +300,7 @@ export const PartialFallback: React.FC<PartialFallbackProps> = ({
 // SMART FALLBACK SELECTOR
 // ================================
 
-export interface SmartFallbackProps {
+interface SmartFallbackProps {
   error?: Error;
   errorType?: 'api' | 'network' | 'component' | 'validation' | 'unknown';
   componentName?: string;
@@ -310,7 +310,7 @@ export interface SmartFallbackProps {
   fallbackComponent?: React.ReactNode;
 }
 
-export const SmartFallback: React.FC<SmartFallbackProps> = ({
+const SmartFallback: React.FC<SmartFallbackProps> = ({
   error,
   errorType = 'unknown',
   componentName,
@@ -380,22 +380,4 @@ export const SmartFallback: React.FC<SmartFallbackProps> = ({
   }
 };
 
-export {
-  ApiErrorFallback as ApiError,
-  NetworkErrorFallback as NetworkError,
-  DataLoadingFallback as DataLoading,
-  EmptyDataFallback as EmptyData,
-  ComponentErrorFallback as ComponentError,
-  PartialFallback as PartialDegradation,
-  SmartFallback as Smart
-};
-
-export default {
-  ApiError: ApiErrorFallback,
-  NetworkError: NetworkErrorFallback,
-  DataLoading: DataLoadingFallback,
-  EmptyData: EmptyDataFallback,
-  ComponentError: ComponentErrorFallback,
-  PartialDegradation: PartialFallback,
-  Smart: SmartFallback,
-};
+// Exports removed - all components are unused

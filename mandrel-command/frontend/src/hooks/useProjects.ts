@@ -40,7 +40,7 @@ type ProjectDetailQueryData = {
   raw: ApiSuccessResponse & { data?: ProjectDetailResponse };
 };
 
-export const projectQueryKeys = {
+const projectQueryKeys = {
   all: ['projects'] as const,
   lists: () => [...projectQueryKeys.all, 'list'] as const,
   list: (filters?: any) => [...projectQueryKeys.lists(), filters] as const,
@@ -278,7 +278,7 @@ export const useSessionsList = (options?: {
 };
 
 // Session query keys for cache management
-export const sessionQueryKeys = {
+const sessionQueryKeys = {
   all: ['sessions'] as const,
   lists: () => [...sessionQueryKeys.all, 'list'] as const,
   details: () => [...sessionQueryKeys.all, 'detail'] as const,
@@ -289,7 +289,7 @@ export const sessionQueryKeys = {
 /**
  * Hook to fetch session details by ID
  */
-export const useSessionDetail = (sessionId: string | undefined) => {
+const useSessionDetail = (sessionId: string | undefined) => {
   return useQuery({
     queryKey: sessionQueryKeys.detail(sessionId!),
     queryFn: () => sessionsClient.getSessionDetail(sessionId!),
@@ -301,7 +301,7 @@ export const useSessionDetail = (sessionId: string | undefined) => {
 /**
  * Hook to fetch current active session
  */
-export const useCurrentSession = () => {
+const useCurrentSession = () => {
   return useQuery({
     queryKey: sessionQueryKeys.current(),
     queryFn: () => sessionsClient.getCurrentSession(),
@@ -347,7 +347,7 @@ export const useUpdateSession = () => {
 /**
  * Hook to assign current session to a project
  */
-export const useAssignCurrentSession = () => {
+const useAssignCurrentSession = () => {
   const queryClient = useQueryClient();
 
   return useMutation({

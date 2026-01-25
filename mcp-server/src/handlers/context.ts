@@ -57,7 +57,7 @@ export interface SearchResult extends ContextEntry {
   combined_score?: number;
 }
 
-export class ContextHandler {
+class ContextHandler {
 
   /**
    * Extract meaningful title from content for hybrid embeddings

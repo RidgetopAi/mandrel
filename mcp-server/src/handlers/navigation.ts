@@ -11,7 +11,7 @@
 
 import { AIDIS_TOOL_DEFINITIONS } from '../config/toolDefinitions.js';
 
-export class NavigationHandler {
+class NavigationHandler {
   /**
    * All 27 Mandrel tools organized by category with descriptions 
    */

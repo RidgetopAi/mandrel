@@ -31,7 +31,7 @@ export const truncateContent = (content: string, maxLength = 150): string => {
   return `${content.substring(0, maxLength).trim()}...`;
 };
 
-export const highlightSearchTerms = (text: string, searchTerm?: string): string => {
+const highlightSearchTerms = (text: string, searchTerm?: string): string => {
   if (!searchTerm || !searchTerm.trim()) {
     return text;
   }
@@ -89,7 +89,7 @@ export const highlightSearchTermsAsNodes = (
   });
 };
 
-export const formatFileSize = (bytes: number): string => {
+const formatFileSize = (bytes: number): string => {
   if (bytes === 0) return '0 Bytes';
 
   const k = 1024;

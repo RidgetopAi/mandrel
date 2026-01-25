@@ -22,7 +22,7 @@ export interface Task {
     updatedAt: Date;
 }
 
-export class TasksHandler {
+class TasksHandler {
     constructor(private pool: Pool = db) {}
 
     async createTask(

@@ -119,11 +119,11 @@ export const reportError = (error: Error, context?: Record<string, any>) => {
   });
 };
 
-export const reportMessage = (message: string, level: 'info' | 'warning' | 'error' = 'info') => {
+const reportMessage = (message: string, level: 'info' | 'warning' | 'error' = 'info') => {
   Sentry.captureMessage(message, level);
 };
 
-export const setUserContext = (user: { id?: string; email?: string; username?: string }) => {
+const setUserContext = (user: { id?: string; email?: string; username?: string }) => {
   Sentry.setUser(user);
 };
 
@@ -137,7 +137,7 @@ export const addBreadcrumb = (message: string, category?: string, data?: Record<
 };
 
 // Performance monitoring helpers
-export const startTransaction = (name: string) => {
+const startTransaction = (name: string) => {
   return Sentry.startSpan({
     name,
     op: 'navigation',
@@ -146,4 +146,4 @@ export const startTransaction = (name: string) => {
   });
 };
 
-export { Sentry };
+// Sentry export removed - unused

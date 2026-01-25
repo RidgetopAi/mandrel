@@ -19,7 +19,7 @@ const MAX_RECONNECT_ATTEMPTS = 5;
 const RECONNECT_INTERVAL = 2000; // 2 seconds
 const SESSION_SYNC_INTERVAL = 30000; // 30 seconds
 
-export class SessionRecoveryService {
+class SessionRecoveryService {
   private state: SessionState = {
     currentSession: null,
     lastSyncTime: 0,

@@ -41,7 +41,7 @@ export interface FuzzFailure {
  * Comprehensive Fuzz Tester for MCP Components
  * Tests parser resilience against malformed and extreme inputs
  */
-export class McpFuzzTester {
+class McpFuzzTester {
   private static readonly DEFAULT_CONFIG: FuzzTestConfig = {
     iterations: 10000,
     enableLogging: false,

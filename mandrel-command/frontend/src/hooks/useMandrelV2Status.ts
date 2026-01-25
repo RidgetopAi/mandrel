@@ -18,7 +18,7 @@ export interface AidisV2Status {
   responseTime?: number;
 }
 
-export const useMandrelV2Status = (
+const useMandrelV2Status = (
   pollInterval: number = 30000, // 30 seconds
   enabled: boolean = true
 ) => {

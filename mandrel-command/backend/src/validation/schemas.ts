@@ -11,13 +11,13 @@ import { z } from 'zod';
 // ================================
 
 // Common field validations
-export const requiredString = (fieldName: string, minLength = 1, maxLength = 255) =>
+const requiredString = (fieldName: string, minLength = 1, maxLength = 255) =>
   z.string()
     .min(minLength, `${fieldName} is required`)
     .max(maxLength, `${fieldName} must be less than ${maxLength} characters`)
     .trim();
 
-export const optionalString = (maxLength = 255) =>
+const optionalString = (maxLength = 255) =>
   z.string()
     .max(maxLength, `Field must be less than ${maxLength} characters`)
     .trim()
@@ -25,22 +25,22 @@ export const optionalString = (maxLength = 255) =>
     .nullable()
     .transform(val => val === null ? undefined : val);
 
-export const email = z.string()
+const email = z.string()
   .email('Please enter a valid email address')
   .max(255, 'Email must be less than 255 characters');
 
-export const url = z.union([
+const url = z.union([
   z.string().url('Please enter a valid URL'),
   z.literal(''),
   z.null()
 ]).optional()
   .transform(val => val === null ? undefined : val);
 
-export const positiveInteger = z.number()
+const positiveInteger = z.number()
   .int('Must be an integer')
   .positive('Must be a positive number');
 
-export const tags = z.array(z.string().min(1).max(50))
+const tags = z.array(z.string().min(1).max(50))
   .max(10, 'Maximum 10 tags allowed')
   .optional();
 
@@ -234,7 +234,7 @@ export interface ValidationError {
   code?: string;
 }
 
-export const formatZodError = (error: z.ZodError): ValidationError[] => {
+const formatZodError = (error: z.ZodError): ValidationError[] => {
   return error.issues.map(issue => ({
     field: issue.path.join('.'),
     message: issue.message,
@@ -242,7 +242,7 @@ export const formatZodError = (error: z.ZodError): ValidationError[] => {
   }));
 };
 
-export const formatFieldErrors = (errors: ValidationError[]): Record<string, string> => {
+const formatFieldErrors = (errors: ValidationError[]): Record<string, string> => {
   return errors.reduce((acc, error) => {
     acc[error.field] = error.message;
     return acc;
@@ -283,7 +283,7 @@ export const SchemaRegistry = {
 
 export type SchemaName = keyof typeof SchemaRegistry;
 
-export const getSchema = (schemaName: SchemaName) => {
+const getSchema = (schemaName: SchemaName) => {
   return SchemaRegistry[schemaName];
 };
 
@@ -310,7 +310,7 @@ export const validateData = <T>(schema: z.ZodSchema<T>, data: any): {
   }
 };
 
-export const validatePartial = <T>(schema: z.ZodSchema<T>, data: any): {
+const validatePartial = <T>(schema: z.ZodSchema<T>, data: any): {
   success: boolean;
   data?: Partial<T>;
   errors?: ValidationError[];

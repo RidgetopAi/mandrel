@@ -136,7 +136,7 @@ export const authenticateToken = async (
   }
 };
 
-export const requireRole = (requiredRoles: string | string[]) => {
+const requireRole = (requiredRoles: string | string[]) => {
   const roles = Array.isArray(requiredRoles) ? requiredRoles : [requiredRoles];
 
   return (req: AuthenticatedRequest, res: Response, next: NextFunction): void => {
@@ -183,7 +183,7 @@ export const requireRole = (requiredRoles: string | string[]) => {
 
 export const requireAdmin = requireRole('admin');
 
-export const requireActiveUser = (req: AuthenticatedRequest, res: Response, next: NextFunction): void => {
+const requireActiveUser = (req: AuthenticatedRequest, res: Response, next: NextFunction): void => {
   if (!req.user) {
     res.status(401).json({
       success: false,

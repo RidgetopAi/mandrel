@@ -18,7 +18,7 @@ export interface CircuitBreakerState {
   state: 'CLOSED' | 'OPEN' | 'HALF_OPEN';
 }
 
-export class EnhancedRetryLogic {
+class EnhancedRetryLogic {
   private circuitBreaker: CircuitBreakerState = {
     failures: 0,
     lastFailureTime: 0,
@@ -178,52 +178,3 @@ export class EnhancedRetryLogic {
 // Global retry logic instance
 export const globalRetryLogic = new EnhancedRetryLogic();
 
-/**
- * Decorator for adding retry logic to async functions
- */
-export function withRetry<T extends any[], R>(
-  target: any,
-  propertyKey: string,
-  descriptor: TypedPropertyDescriptor<(...args: T) => Promise<R>>
-) {
-  const originalMethod = descriptor.value;
-  
-  if (originalMethod) {
-    descriptor.value = async function(...args: T): Promise<R> {
-      return globalRetryLogic.executeWithRetry(
-        () => originalMethod.apply(this, args),
-        `${target.constructor.name}.${propertyKey}`
-      );
-    };
-  }
-  
-  return descriptor;
-}
-
-/**
- * Helper for database operations with retry
- */
-export async function executeDbOperationWithRetry<T>(
-  operation: () => Promise<T>,
-  operationName: string
-): Promise<T> {
-  return globalRetryLogic.executeWithRetryAndTimeout(
-    operation,
-    10000, // 10 second timeout for DB operations
-    `DB: ${operationName}`
-  );
-}
-
-/**
- * Helper for MCP operations with retry
- */
-export async function executeMcpOperationWithRetry<T>(
-  operation: () => Promise<T>,
-  operationName: string
-): Promise<T> {
-  return globalRetryLogic.executeWithRetryAndTimeout(
-    operation,
-    5000, // 5 second timeout for MCP operations
-    `MCP: ${operationName}`
-  );
-}

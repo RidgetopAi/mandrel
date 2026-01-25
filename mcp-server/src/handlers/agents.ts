@@ -64,7 +64,7 @@ export interface AgentCollaboration {
     updatedAt: Date;
 }
 
-export class AgentsHandler {
+class AgentsHandler {
     constructor(private pool: Pool = db) {}
 
     async registerAgent(

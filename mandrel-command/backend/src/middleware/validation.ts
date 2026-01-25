@@ -32,7 +32,7 @@ interface ValidationResult {
 /**
  * Generic validation middleware factory
  */
-export const createValidationMiddleware = (options: ValidationOptions) => {
+const createValidationMiddleware = (options: ValidationOptions) => {
   return (req: Request, res: Response, next: NextFunction) => {
     try {
       const { schema, source, required = true, customErrorMessage } = options;
@@ -162,7 +162,7 @@ export const validateQuery = (schema: z.ZodSchema<any>, options?: { required?: b
 /**
  * Validate route parameters against a schema
  */
-export const validateParams = (schema: z.ZodSchema<any>, options?: { required?: boolean; customErrorMessage?: string }) => {
+const validateParams = (schema: z.ZodSchema<any>, options?: { required?: boolean; customErrorMessage?: string }) => {
   return createValidationMiddleware({
     schema,
     source: 'params',
@@ -175,23 +175,23 @@ export const validateParams = (schema: z.ZodSchema<any>, options?: { required?: 
 // COMMON PARAMETER SCHEMAS
 // ================================
 
-export const UUIDParamSchema = z.object({
+const UUIDParamSchema = z.object({
   id: z.string().uuid('Invalid UUID format')
 });
 
-export const ProjectParamSchema = z.object({
+const ProjectParamSchema = z.object({
   projectId: z.string().uuid('Invalid project ID format')
 });
 
-export const TaskParamSchema = z.object({
+const TaskParamSchema = z.object({
   taskId: z.string().uuid('Invalid task ID format')
 });
 
-export const SessionParamSchema = z.object({
+const SessionParamSchema = z.object({
   sessionId: z.string().uuid('Invalid session ID format')
 });
 
-export const PaginationQuerySchema = z.object({
+const PaginationQuerySchema = z.object({
   page: z.string().regex(/^\d+$/, 'Page must be a number').transform(Number).optional(),
   limit: z.string().regex(/^\d+$/, 'Limit must be a number').transform(Number).optional(),
   sortBy: z.string().optional(),
@@ -210,17 +210,17 @@ export const validateUUIDParam = () => validateParams(UUIDParamSchema);
 /**
  * Validate project ID parameter
  */
-export const validateProjectParam = () => validateParams(ProjectParamSchema);
+const validateProjectParam = () => validateParams(ProjectParamSchema);
 
 /**
  * Validate task ID parameter
  */
-export const validateTaskParam = () => validateParams(TaskParamSchema);
+const validateTaskParam = () => validateParams(TaskParamSchema);
 
 /**
  * Validate session ID parameter
  */
-export const validateSessionParam = () => validateParams(SessionParamSchema);
+const validateSessionParam = () => validateParams(SessionParamSchema);
 
 /**
  * Validate pagination query parameters
@@ -258,7 +258,7 @@ export const contractEnforcementMiddleware = (req: Request, _res: Response, next
 // VALIDATION ERROR FORMATTER
 // ================================
 
-export const formatValidationResponse = (
+const formatValidationResponse = (
   success: boolean,
   data?: any,
   errors?: ValidationError[],

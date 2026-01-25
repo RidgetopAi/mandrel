@@ -20,7 +20,7 @@ export interface MCPSession {
   duration?: number;
 }
 
-export class MCPIntegrationService {
+class MCPIntegrationService {
   /**
    * Get current session from MCP server
    */

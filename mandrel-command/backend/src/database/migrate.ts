@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { db as pool } from './connection';
 
-export async function runMigration(migrationFile: string): Promise<void> {
+async function runMigration(migrationFile: string): Promise<void> {
   const migrationPath = path.join(__dirname, 'migrations', migrationFile);
   
   if (!fs.existsSync(migrationPath)) {
@@ -21,7 +21,7 @@ export async function runMigration(migrationFile: string): Promise<void> {
   }
 }
 
-export async function runAllMigrations(): Promise<void> {
+async function runAllMigrations(): Promise<void> {
   const migrationsDir = path.join(__dirname, 'migrations');
   const migrationFiles = fs.readdirSync(migrationsDir)
     .filter(file => file.endsWith('.sql'))

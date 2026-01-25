@@ -4,7 +4,7 @@ import process from 'process';
 
 const LOCK_FILE = process.env.AIDIS_LOCK_FILE || path.join(process.cwd(), 'aidis.pid');
 
-export class ProcessLock {
+class ProcessLock {
   private static instance: ProcessLock;
   private locked = false;
 

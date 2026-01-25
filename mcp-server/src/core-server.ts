@@ -1446,4 +1446,4 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   })();
 }
 
-export { AIDISCoreServer };
+// AIDISCoreServer class is internal - instantiated only in this file

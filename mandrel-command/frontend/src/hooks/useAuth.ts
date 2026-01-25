@@ -88,7 +88,7 @@ export const useLogout = () => {
   });
 };
 
-export const useProfile = (enabled = true) => {
+const useProfile = (enabled = true) => {
   // Use a ref to track token state without causing re-renders
   const [tokenState, setTokenState] = React.useState(() => !!localStorage.getItem('aidis_token'));
 
@@ -147,7 +147,7 @@ export const useProfile = (enabled = true) => {
   });
 };
 
-export const useRefreshToken = () => {
+const useRefreshToken = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -178,7 +178,7 @@ export const useRefreshToken = () => {
   });
 };
 
-export const useRegister = () => {
+const useRegister = () => {
   return useMutation({
     mutationFn: async (data: RegisterRequest) => {
       const response = await AuthenticationService.postAuthRegister({

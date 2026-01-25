@@ -57,7 +57,7 @@ export const useContextStatsQuery = (options?: Partial<UseQueryOptions<ContextSt
   });
 };
 
-export const useContextDetailQuery = (id: string | undefined, options?: Partial<UseQueryOptions<Context>>) => {
+const useContextDetailQuery = (id: string | undefined, options?: Partial<UseQueryOptions<Context>>) => {
   return useQuery({
     queryKey: contextQueryKeys.detail(id ?? '__missing__'),
     queryFn: () => contextsClient.getContext(id as string),
@@ -138,7 +138,7 @@ export const useBulkUpdateContexts = () => {
   });
 };
 
-export const useSemanticContextSearch = () => {
+const useSemanticContextSearch = () => {
   return useMutation({
     mutationFn: (params: ContextSearchParams) => contextsClient.semanticSearch(params),
   });

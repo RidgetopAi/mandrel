@@ -384,36 +384,6 @@ export class MandrelApiClient {
 
 export const mandrelApi = new MandrelApiClient();
 
-// Factory function for custom configurations
-export const createMandrelApiClient = (config?: {
-  baseUrl?: string;
-  timeout?: number;
-  retryConfig?: Partial<RetryConfig>;
-}) => new MandrelApiClient(config);
-
-// Legacy exports for backward compatibility - DEPRECATED
-// These will be removed in a future major version
-// Please use mandrelApi, createMandrelApiClient, and MandrelApiClient instead
-let deprecationWarned = false;
-function warnDeprecation(oldName: string, newName: string) {
-  if (!deprecationWarned) {
-    console.warn(`⚠️  ${oldName} is deprecated. Use ${newName} instead. Backward compatibility will be removed in a future version.`);
-    deprecationWarned = true;
-  }
-}
-
-export const aidisApi = new Proxy(mandrelApi, {
-  get(target, prop) {
-    warnDeprecation('aidisApi', 'mandrelApi');
-    return (target as any)[prop];
-  }
-});
-
-export const createAidisApiClient = (...args: Parameters<typeof createMandrelApiClient>) => {
-  warnDeprecation('createAidisApiClient', 'createMandrelApiClient');
-  return createMandrelApiClient(...args);
-};
-
-export const AidisApiClient = MandrelApiClient;
+// Deprecated exports removed - were never imported
 
 export default mandrelApi;

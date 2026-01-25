@@ -15,7 +15,7 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 import * as http from 'http';
 
-export class AIDISMCPProxy {
+class AIDISMCPProxy {
   private server: Server;
   private healthEndpoint: string;
 

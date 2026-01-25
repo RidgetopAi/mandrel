@@ -12,7 +12,7 @@ import type {
   EmbeddingUsagePatterns,
 } from '../api/generated';
 
-export const embeddingsQueryKeys = {
+const embeddingsQueryKeys = {
   all: ['embeddings'] as const,
   datasets: (projectId?: string) => [...embeddingsQueryKeys.all, 'datasets', projectId ?? 'none'] as const,
   similarity: (datasetId: string | undefined, rows: number, cols: number, projectId?: string) =>

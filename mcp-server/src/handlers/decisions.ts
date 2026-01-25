@@ -111,7 +111,7 @@ export interface SearchDecisionsRequest {
   limit?: number;
 }
 
-export class DecisionsHandler {
+class DecisionsHandler {
 
   /**
    * Record a new technical decision

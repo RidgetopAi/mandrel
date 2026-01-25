@@ -55,7 +55,7 @@ async function readConfig(configPath: string): Promise<FeatureFlagConfig | null>
   }
 }
 
-export class FeatureFlagStore {
+class FeatureFlagStore {
   private configPath: string;
   private flags: Record<string, boolean> = {};
   private refreshInterval: number;

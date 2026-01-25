@@ -12,7 +12,7 @@ import type {
   UpdateDecisionRequest,
 } from '../api/generated';
 
-export const decisionQueryKeys = {
+const decisionQueryKeys = {
   all: ['decisions'] as const,
   lists: () => [...decisionQueryKeys.all, 'list'] as const,
   list: (params: DecisionSearchParams) => [...decisionQueryKeys.lists(), params] as const,
@@ -44,7 +44,7 @@ export const useDecisionStatsQuery = (
   });
 };
 
-export const useDecisionDetailQuery = (
+const useDecisionDetailQuery = (
   decisionId: string | undefined,
   options?: Partial<UseQueryOptions<TechnicalDecision>>
 ) => {
@@ -56,7 +56,7 @@ export const useDecisionDetailQuery = (
   });
 };
 
-export const useCreateDecision = () => {
+const useCreateDecision = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -68,7 +68,7 @@ export const useCreateDecision = () => {
   });
 };
 
-export const useUpdateDecision = () => {
+const useUpdateDecision = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -82,7 +82,7 @@ export const useUpdateDecision = () => {
   });
 };
 
-export const useDeleteDecision = () => {
+const useDeleteDecision = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
