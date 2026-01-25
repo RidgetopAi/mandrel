@@ -1,16 +1,11 @@
 import { useMemo } from 'react';
-import { useMutation, useQuery, useQueryClient, type UseQueryOptions } from '@tanstack/react-query';
+import { useQuery, type UseQueryOptions } from '@tanstack/react-query';
 import decisionsClient from '../api/decisionsClient';
 import type {
   DecisionSearchParams,
   DecisionSearchResult,
   DecisionStats,
-  TechnicalDecision,
 } from '../components/decisions/types';
-import type {
-  CreateDecisionRequest,
-  UpdateDecisionRequest,
-} from '../api/generated';
 
 const decisionQueryKeys = {
   all: ['decisions'] as const,
@@ -44,52 +39,3 @@ export const useDecisionStatsQuery = (
   });
 };
 
-const useDecisionDetailQuery = (
-  decisionId: string | undefined,
-  options?: Partial<UseQueryOptions<TechnicalDecision>>
-) => {
-  return useQuery({
-    queryKey: decisionQueryKeys.detail(decisionId ?? '__missing__'),
-    queryFn: () => decisionsClient.getDecision(decisionId as string),
-    enabled: Boolean(decisionId),
-    ...options,
-  });
-};
-
-const useCreateDecision = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (payload: CreateDecisionRequest) => decisionsClient.createDecision(payload),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: decisionQueryKeys.lists() });
-      queryClient.invalidateQueries({ queryKey: decisionQueryKeys.stats() });
-    },
-  });
-};
-
-const useUpdateDecision = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({ id, updates }: { id: string; updates: UpdateDecisionRequest }) =>
-      decisionsClient.updateDecision(id, updates),
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: decisionQueryKeys.detail(variables.id) });
-      queryClient.invalidateQueries({ queryKey: decisionQueryKeys.lists() });
-      queryClient.invalidateQueries({ queryKey: decisionQueryKeys.stats() });
-    },
-  });
-};
-
-const useDeleteDecision = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (id: string) => decisionsClient.deleteDecision(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: decisionQueryKeys.lists() });
-      queryClient.invalidateQueries({ queryKey: decisionQueryKeys.stats() });
-    },
-  });
-};

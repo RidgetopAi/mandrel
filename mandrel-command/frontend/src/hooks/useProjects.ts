@@ -287,29 +287,6 @@ const sessionQueryKeys = {
 };
 
 /**
- * Hook to fetch session details by ID
- */
-const useSessionDetail = (sessionId: string | undefined) => {
-  return useQuery({
-    queryKey: sessionQueryKeys.detail(sessionId!),
-    queryFn: () => sessionsClient.getSessionDetail(sessionId!),
-    enabled: !!sessionId,
-    staleTime: 1000 * 60 * 5, // 5 minutes
-  });
-};
-
-/**
- * Hook to fetch current active session
- */
-const useCurrentSession = () => {
-  return useQuery({
-    queryKey: sessionQueryKeys.current(),
-    queryFn: () => sessionsClient.getCurrentSession(),
-    staleTime: 1000 * 60 * 2, // 2 minutes - current session changes more frequently
-  });
-};
-
-/**
  * Hook to update a session's title and description
  */
 export const useUpdateSession = () => {
@@ -344,30 +321,3 @@ export const useUpdateSession = () => {
   });
 };
 
-/**
- * Hook to assign current session to a project
- */
-const useAssignCurrentSession = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (projectName: string) => sessionsClient.assignSession(projectName),
-    onSuccess: () => {
-      // Invalidate current session to refetch with new project assignment
-      queryClient.invalidateQueries({ queryKey: sessionQueryKeys.current() });
-
-      // Invalidate all sessions lists as assignments might affect them
-      queryClient.invalidateQueries({ queryKey: sessionQueryKeys.lists() });
-      queryClient.invalidateQueries({ queryKey: ['sessions', 'all'] });
-
-      // Invalidate project sessions for all projects
-      queryClient.invalidateQueries({
-        queryKey: projectQueryKeys.all,
-        predicate: (query) => query.queryKey.includes('sessions')
-      });
-    },
-    onError: (error) => {
-      console.error('Failed to assign session to project:', error);
-    },
-  });
-};
