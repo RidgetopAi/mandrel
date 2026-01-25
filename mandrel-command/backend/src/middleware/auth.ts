@@ -20,6 +20,7 @@ export const authenticateToken = async (
         username: 'ridgetopai',
         email: 'brianj@ridgetopai.net',
         role: 'admin',
+        theme: 'dark',
         is_active: true,
         created_at: new Date(),
         updated_at: new Date()
