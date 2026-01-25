@@ -465,10 +465,10 @@ describe('SessionManagementHandler Unit Tests', () => {
       
       expect(result.success).toBe(true);
       expect(result.session).toBeDefined();
-      expect(result.session.id).toBe(activeSessionId);
-      expect(result.session.project_name).toBe('TestProject');
-      expect(result.session.contexts_created).toBe(3);
-      expect(result.session.decisions_created).toBe(1);
+      expect(result.session!.id).toBe(activeSessionId);
+      expect(result.session!.project_name).toBe('TestProject');
+      expect(result.session!.contexts_created).toBe(3);
+      expect(result.session!.decisions_created).toBe(1);
     });
 
     it('should handle no active session', async () => {
