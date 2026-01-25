@@ -150,8 +150,8 @@ describe('Session Management E2E Tests', () => {
       const status = await SessionManagementHandler.getSessionStatus();
       expect(status.success).toBeTruthy();
       expect(status.session).toBeDefined();
-      expect(status.session.id).toBe(sessionId);
-      expect(status.session.project_name).toBe(testProjectName);
+      expect(status.session!.id).toBe(sessionId);
+      expect(status.session!.project_name).toBe(testProjectName);
       expect(status.session).toHaveProperty('duration_minutes');
       expect(status.session).toHaveProperty('contexts_created');
       expect(status.session).toHaveProperty('decisions_created');
