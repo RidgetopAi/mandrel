@@ -220,7 +220,8 @@ backup_database() {
     log "Backup file: $BACKUP_FILE"
 
     # Create custom format backup (most flexible for restore)
-    if sudo -u postgres pg_dump -Fc -v "$OLD_DB_NAME" > "$BACKUP_FILE" 2>&1; then
+    # Note: stderr goes to separate log file to avoid corrupting the backup
+    if sudo -u postgres pg_dump -Fc "$OLD_DB_NAME" > "$BACKUP_FILE" 2>"${BACKUP_FILE}.log"; then
         local backup_size=$(du -h "$BACKUP_FILE" | cut -f1)
         success "Backup created successfully ($backup_size)"
     else
