@@ -6,7 +6,7 @@ import {
 import {
   EditOutlined, SaveOutlined, ShareAltOutlined,
   DeleteOutlined, TagsOutlined, CalendarOutlined, DatabaseOutlined,
-  LinkOutlined, FolderOutlined, UserOutlined
+  LinkOutlined, FolderOutlined, UserOutlined, CopyOutlined, DownOutlined, UpOutlined
 } from '@ant-design/icons';
 import { useContextStore } from '../../stores/contextStore';
 import { useProjectContext } from '../../contexts/ProjectContext';
@@ -50,6 +50,7 @@ const ContextDetail: React.FC<ContextDetailProps> = ({
   const { allProjects } = useProjectContext();
   const [isEditing, setIsEditing] = useState(false);
   const [originalProjectId, setOriginalProjectId] = useState<string | null>(null);
+  const [showMetadata, setShowMetadata] = useState(false);
   const [form] = Form.useForm();
   const updateContextMutation = useUpdateContext();
   const deleteContextMutation = useDeleteContext();
@@ -261,53 +262,79 @@ const ContextDetail: React.FC<ContextDetailProps> = ({
     >
       <Tabs defaultActiveKey="content">
         <TabPane tab="Content" key="content">
-          <Space direction="vertical" size="large" style={{ width: '100%' }}>
-            {/* Metadata */}
-            <Descriptions column={1} size="small" bordered>
-              <Descriptions.Item label={<><DatabaseOutlined /> ID</>}>
-                <Text code>{context.id}</Text>
-              </Descriptions.Item>
-              <Descriptions.Item label={<><FolderOutlined /> Project</>}>
-                {context.project_name || 'Unknown'}
-              </Descriptions.Item>
-              <Descriptions.Item label={<><TagsOutlined /> Type</>}>
-                <Tag color={typeColor}>{typeDisplayName}</Tag>
-              </Descriptions.Item>
-              {context.session_id && (
-                <Descriptions.Item label={<><UserOutlined /> Session</>}>
-                  <Text code>{context.session_id}</Text>
-                </Descriptions.Item>
-              )}
-              <Descriptions.Item label={<><CalendarOutlined /> Created</>}>
-                {dayjs(context.created_at).format('YYYY-MM-DD HH:mm:ss')}
-                <Text type="secondary"> ({dayjs.utc(context.created_at).local().fromNow()})</Text>
-              </Descriptions.Item>
-              <Descriptions.Item label="Last Updated">
-                {dayjs(context.updated_at).format('YYYY-MM-DD HH:mm:ss')}
-                <Text type="secondary"> ({dayjs.utc(context.updated_at).local().fromNow()})</Text>
-              </Descriptions.Item>
-            </Descriptions>
+          <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+            {/* Compact Header */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+              <Space>
+                <DatabaseOutlined />
+                <Text code copyable={{ text: context.id }}>{context.id.substring(0, 8)}...</Text>
+              </Space>
+              <Space>
+                <FolderOutlined />
+                <Text strong>{context.project_name || 'Unknown'}</Text>
+              </Space>
+              <Tag color={typeColor}>{typeDisplayName}</Tag>
+              <Button
+                type="text"
+                size="small"
+                icon={showMetadata ? <UpOutlined /> : <DownOutlined />}
+                onClick={() => setShowMetadata(!showMetadata)}
+              >
+                {showMetadata ? 'Less' : 'More'}
+              </Button>
+            </div>
 
-            {/* Editable Content */}
-            <Card title="Content" size="small">
+            {/* Collapsible Metadata */}
+            {showMetadata && (
+              <Descriptions column={1} size="small" bordered style={{ background: '#fafafa' }}>
+                {context.session_id && (
+                  <Descriptions.Item label={<><UserOutlined /> Session</>}>
+                    <Space>
+                      <Text code>{context.session_id}</Text>
+                      <Button
+                        type="text"
+                        size="small"
+                        icon={<CopyOutlined />}
+                        onClick={() => {
+                          navigator.clipboard.writeText(context.session_id || '');
+                          message.success('Session ID copied');
+                        }}
+                      />
+                    </Space>
+                  </Descriptions.Item>
+                )}
+                <Descriptions.Item label={<><CalendarOutlined /> Created</>}>
+                  {dayjs(context.created_at).format('YYYY-MM-DD HH:mm:ss')}
+                  <Text type="secondary"> ({dayjs.utc(context.created_at).local().fromNow()})</Text>
+                </Descriptions.Item>
+                <Descriptions.Item label="Last Updated">
+                  {dayjs(context.updated_at).format('YYYY-MM-DD HH:mm:ss')}
+                  <Text type="secondary"> ({dayjs.utc(context.updated_at).local().fromNow()})</Text>
+                </Descriptions.Item>
+              </Descriptions>
+            )}
+
+            {/* Editable Content - Larger viewing area */}
+            <Card title="Content" size="small" style={{ flex: 1 }}>
               {isEditing ? (
                 <Form form={form} layout="vertical">
-                  <Form.Item 
-                    name="content" 
+                  <Form.Item
+                    name="content"
                     rules={[{ required: true, message: 'Content is required' }]}
                   >
-                    <TextArea 
-                      rows={12}
+                    <TextArea
+                      rows={16}
                       placeholder="Enter context content..."
                     />
                   </Form.Item>
                 </Form>
               ) : (
                 <Paragraph
-                  style={{ 
-                    whiteSpace: 'pre-wrap', 
-                    maxHeight: '400px', 
-                    overflowY: 'auto' 
+                  style={{
+                    whiteSpace: 'pre-wrap',
+                    maxHeight: 'calc(100vh - 380px)',
+                    minHeight: '300px',
+                    overflowY: 'auto'
                   }}
                 >
                   {context.content}
