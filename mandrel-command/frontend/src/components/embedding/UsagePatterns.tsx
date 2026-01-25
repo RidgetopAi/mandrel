@@ -39,10 +39,9 @@ const UsagePatterns: React.FC = () => {
       min: 0,
     },
     tooltip: {
-      title: (_: unknown, __: unknown, data: Record<string, unknown>) => String(data?.date ?? ''),
       formatter: (datum: Record<string, unknown>) => ({
-        name: 'Contexts',
-        value: datum.contexts ?? 0,
+        name: String(datum.date ?? ''),
+        value: `${datum.contexts ?? 0} contexts`,
       }),
     },
   }), [usage?.dailyActivity]);
@@ -58,10 +57,9 @@ const UsagePatterns: React.FC = () => {
       contexts: { alias: 'Contexts' },
     },
     tooltip: {
-      title: (_: unknown, __: unknown, data: Record<string, unknown>) => `${data?.hour ?? 0}:00`,
       formatter: (datum: Record<string, unknown>) => ({
-        name: 'Contexts',
-        value: datum.contexts ?? 0,
+        name: `${datum.hour ?? 0}:00`,
+        value: `${datum.contexts ?? 0} contexts`,
       }),
     },
   }), [usage?.hourlyDistribution]);
@@ -77,13 +75,14 @@ const UsagePatterns: React.FC = () => {
       count: { alias: 'Contexts' },
     },
     tooltip: {
-      title: (_: unknown, __: unknown, data: Record<string, unknown>) =>
-        String(data?.type ?? 'unknown').toUpperCase(),
       formatter: (datum: Record<string, unknown>) => {
+        // Try multiple possible field names for the type
+        const type = String(datum.type ?? datum.x ?? datum['Context Type'] ?? 'unknown').toUpperCase();
+        const count = Number(datum.count ?? datum.y ?? datum['Contexts'] ?? 0);
         const percentage = Number(datum.percentage ?? 0);
         return {
-          name: `${percentage.toFixed(1)}%`,
-          value: datum.count ?? 0,
+          name: `${type} (${percentage.toFixed(1)}%)`,
+          value: `${count} contexts`,
         };
       },
     },
