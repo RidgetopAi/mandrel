@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import { AuthenticatedRequest } from '../types/auth';
 import { ContextService, ContextSearchParams } from '../services/context';
+import { McpService } from '../services/mcp';
 import type { UpdateContextData } from '../validation/schemas';
 
 export class ContextController {
@@ -418,6 +419,56 @@ export class ContextController {
       res.status(500).json({
         success: false,
         message: 'Failed to perform semantic search',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  }
+
+  /**
+   * POST /api/contexts - Create a new context via MCP
+   */
+  static async createContext(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      const { content, type, tags, metadata } = req.body;
+
+      if (!content || typeof content !== 'string') {
+        res.status(400).json({
+          success: false,
+          message: 'Content is required and must be a string'
+        });
+        return;
+      }
+
+      // Use project from header or body
+      const projectId = req.projectId || req.body.projectId;
+
+      const result = await McpService.callTool('context_store', {
+        content,
+        type: type || 'discussion',
+        tags: tags || [],
+        metadata: metadata || {},
+        projectId
+      });
+
+      if (!result.success) {
+        res.status(500).json({
+          success: false,
+          message: 'Failed to create context',
+          error: result.error
+        });
+        return;
+      }
+
+      res.status(201).json({
+        success: true,
+        data: result.data,
+        message: 'Context created successfully'
+      });
+    } catch (error) {
+      console.error('Create context error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to create context',
         error: error instanceof Error ? error.message : 'Unknown error'
       });
     }

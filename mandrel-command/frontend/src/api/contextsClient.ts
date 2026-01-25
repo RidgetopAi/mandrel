@@ -80,6 +80,35 @@ export const contextsClient = {
     };
   },
 
+  async createContext(data: {
+    content: string;
+    type?: string;
+    tags?: string[];
+    metadata?: Record<string, unknown>;
+    projectId?: string;
+  }): Promise<Context> {
+    const baseUrl = OpenAPI.BASE ?? '';
+    const endpoint = baseUrl.replace(/\/$/, '') + '/contexts';
+    const token = typeof window !== 'undefined' ? localStorage.getItem('aidis_token') : undefined;
+
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || 'Failed to create context');
+    }
+
+    const result = await response.json();
+    return result.data as Context;
+  },
+
   async getContext(id: string): Promise<Context> {
     const response = await ContextsService.getContexts1({ id });
     const result = ensureSuccess(response, 'Failed to fetch context');

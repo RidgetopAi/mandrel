@@ -128,24 +128,13 @@ const BulkActions: React.FC<BulkActionsProps> = ({
 
     setCreating(true);
     try {
-      // Use AIDIS MCP context_store tool via HTTP bridge
-      const response = await fetch('http://localhost:8080/mcp/tools/context_store', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          arguments: {
-            content: newContextData.content,
-            type: newContextData.type,
-            tags: newContextData.tags.length > 0 ? newContextData.tags : undefined,
-            metadata: Object.keys(newContextData.metadata).length > 0 ? newContextData.metadata : undefined,
-            projectId: currentProject?.id // FIX: Pass selected project ID
-          }
-        })
+      await contextsClient.createContext({
+        content: newContextData.content,
+        type: newContextData.type,
+        tags: newContextData.tags.length > 0 ? newContextData.tags : undefined,
+        metadata: Object.keys(newContextData.metadata).length > 0 ? newContextData.metadata : undefined,
+        projectId: currentProject?.id
       });
-
-      if (!response.ok) {
-        throw new Error('Failed to create context');
-      }
 
       message.success('Context created successfully');
       setAddContextModalVisible(false);

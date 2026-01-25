@@ -77,6 +77,47 @@ router.get('/', validateQuery(ContextSearchQuerySchema, { required: false }), Co
 
 /**
  * @swagger
+ * /contexts:
+ *   post:
+ *     summary: Create a new context
+ *     tags: [Contexts]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - content
+ *             properties:
+ *               content:
+ *                 type: string
+ *                 description: The context content
+ *               type:
+ *                 type: string
+ *                 enum: [code, decision, error, discussion, planning, completion, milestone, reflections, handoff]
+ *                 default: discussion
+ *               tags:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *               metadata:
+ *                 type: object
+ *               projectId:
+ *                 type: string
+ *                 format: uuid
+ *     responses:
+ *       201:
+ *         description: Context created successfully
+ *       400:
+ *         description: Invalid request body
+ *       500:
+ *         description: Server error
+ */
+router.post('/', ContextController.createContext);
+
+/**
+ * @swagger
  * /contexts/stats:
  *   get:
  *     summary: Retrieve context statistics for the current project
