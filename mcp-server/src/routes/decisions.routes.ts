@@ -213,12 +213,24 @@ class DecisionsRoutes {
           text: `📊 Technical Decision Statistics\n\n` +
                 `📈 Total Decisions: ${stats.totalDecisions}\n` +
                 `✅ Success Rate: ${stats.outcomeSuccess}%\n` +
-                `🕐 Recent Activity: ${stats.recentActivity}\n\n` +
+                `🕐 Recent Activity: ${stats.recentActivity}\n` +
+                `📁 Projects with Decisions: ${stats.totalProjects}\n\n` +
                 `📋 By Type:\n${typeBreakdown || '   (no decisions yet)'}\n\n` +
                 `📊 By Status:\n${statusBreakdown || '   (no decisions yet)'}\n\n` +
                 `⚡ By Impact:\n${impactBreakdown || '   (no decisions yet)'}\n\n` +
                 `🎯 Track decision outcomes to improve future choices!`
         }],
+        // Structured data for frontend consumption (snake_case format)
+        data: {
+          total_decisions: stats.totalDecisions,
+          recent_decisions: stats.recentActivity,
+          total_projects: stats.totalProjects,
+          by_status: stats.decisionsByStatus,
+          by_type: stats.decisionsByType,
+          by_impact: stats.decisionsByImpact,
+          by_project: stats.decisionsByProject,
+          outcome_success_rate: stats.outcomeSuccess
+        }
       };
     } catch (error) {
       return formatMcpError(error as Error, 'decision_stats');
