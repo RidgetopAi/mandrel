@@ -116,8 +116,8 @@ npm run dev:command         # Terminal 2: Dashboard
 ```bash
 brew install postgresql@16 redis node
 brew services start postgresql@16
-createdb aidis_production
-psql -d aidis_production -c "CREATE EXTENSION IF NOT EXISTS vector;"
+createdb mandrel
+psql -d mandrel -c "CREATE EXTENSION IF NOT EXISTS vector;"
 
 git clone https://github.com/RidgetopAi/mandrel.git
 cd mandrel
@@ -129,6 +129,118 @@ npm run dev:mcp
 - Dashboard: http://localhost:3000
 - MCP HTTP Bridge: http://localhost:8080
 - MCP STDIO: Port 5001
+
+### Verify Your Installation
+
+After completing either Docker or Native installation, verify everything is working:
+
+```bash
+# Run the comprehensive installation validator
+./scripts/validate-install.sh
+
+# Or manually test the MCP health endpoint
+curl http://localhost:8080/health
+```
+
+**Expected successful output from health check:**
+```json
+{"status":"ok","version":"1.0.0","uptime":123.456}
+```
+
+**Expected output from validate-install.sh:**
+```
+Mandrel Installation Validator
+==============================
+[✓] Node.js 20.x (required: 18+)
+[✓] PostgreSQL 16.x running
+[✓] Database 'mandrel' accessible
+[✓] pgvector extension installed
+[✓] pg_trgm extension installed
+[✓] pgcrypto extension installed
+[✗] Redis not running (optional - needed for job queues)
+[✓] MCP server responding on :8080
+
+Result: 7/8 checks passed
+```
+
+---
+
+## Troubleshooting
+
+### Connection refused on port 8080
+
+**Symptom:** `curl: (7) Failed to connect to localhost port 8080: Connection refused`
+
+**Cause:** The MCP server is not running.
+
+**Solution:**
+```bash
+# Check if the server is running
+ps aux | grep "mcp"
+
+# Start the MCP server
+npm run dev:mcp
+
+# Or check the logs if running as a service
+tail -f /var/log/mandrel-mcp.log
+```
+
+### pgvector extension not found
+
+**Symptom:** Database error mentioning `vector` type not found or `extension "vector" does not exist`
+
+**Cause:** The pgvector extension is not installed in your PostgreSQL database.
+
+**Solution:**
+```bash
+# Connect to your database and install the extension
+psql -d mandrel -c "CREATE EXTENSION IF NOT EXISTS vector;"
+
+# Verify it's installed
+psql -d mandrel -c "SELECT extname FROM pg_extension WHERE extname = 'vector';"
+```
+
+If pgvector is not available on your system, install it first:
+```bash
+# macOS with Homebrew
+brew install pgvector
+
+# Ubuntu/Debian
+sudo apt install postgresql-16-pgvector
+
+# Then restart PostgreSQL and create the extension
+```
+
+### Authentication failed
+
+**Symptom:** `FATAL: password authentication failed for user` or similar authentication errors
+
+**Cause:** The database credentials in your `.env` file don't match your PostgreSQL configuration.
+
+**Solution:**
+1. Check your `.env` file has correct credentials:
+```bash
+cat .env | grep DATABASE
+```
+
+2. Verify the credentials work directly:
+```bash
+psql -h localhost -U <your_user> -d mandrel
+```
+
+3. If using the default setup, ensure your `.env` matches:
+```
+DATABASE_HOST=localhost
+DATABASE_PORT=5432
+DATABASE_NAME=mandrel
+DATABASE_USER=mandrel
+DATABASE_PASSWORD=<your_password>
+```
+
+4. If you need to reset the password:
+```bash
+sudo -u postgres psql -c "ALTER USER mandrel WITH PASSWORD 'new_password';"
+```
 
 ---
 

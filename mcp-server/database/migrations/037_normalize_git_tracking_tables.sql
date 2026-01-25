@@ -25,7 +25,7 @@
 --
 -- Author: AIDIS Phase 2.2 Refactoring Team
 -- Date: 2025-09-17
--- Target: aidis_production database
+-- Target: mandrel database
 
 -- =============================================
 -- PHASE 1: GIT_COMMITS TABLE NORMALIZATION

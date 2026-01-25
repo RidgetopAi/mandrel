@@ -158,11 +158,11 @@ curl -X POST http://localhost:8080/mcp/tools/mandrel_ping \
 
 ### Database Configuration
 
-- **Database**: aidis_production
+- **Database**: mandrel
 - **Port**: 5432
 - **Default User**: mandrel (configurable via `DATABASE_USER` or `MANDREL_DATABASE_USER`)
-- **Connection**: `postgresql://localhost:5432/aidis_production`
-- **Test**: `psql -d aidis_production -c "SELECT current_database();"`
+- **Connection**: `postgresql://localhost:5432/mandrel`
+- **Test**: `psql -d mandrel -c "SELECT current_database();"`
 
 ### Environment Variable Priority
 

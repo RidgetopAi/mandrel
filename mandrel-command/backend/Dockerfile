@@ -59,15 +59,15 @@ RUN mkdir -p /app/logs /app/uploads /app/data && \
 USER aidis
 
 # Expose backend port
-EXPOSE 3001
+EXPOSE 5000
 
 # Health check with better error handling
 HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:3001/health || exit 1
+    CMD wget --no-verbose --tries=1 --spider http://localhost:5000/health || exit 1
 
 # Environment optimization
 ENV NODE_ENV=production \
-    PORT=3001 \
+    PORT=5000 \
     NODE_OPTIONS="--max-old-space-size=512" \
     NPM_CONFIG_LOGLEVEL=warn
 

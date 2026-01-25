@@ -1,7 +1,7 @@
 # Vector Coordinate Mapping Implementation
 
 ## Overview
-Added 3D coordinate mapping for 1536-dimensional embeddings in the aidis_production database.
+Added 3D coordinate mapping for 1536-dimensional embeddings in the mandrel database.
 
 ## Changes Made
 
@@ -132,7 +132,7 @@ npm run type-check
 npx tsx map-existing-vectors.ts
 
 # Verify in database
-psql -h localhost -p 5432 -d aidis_production -c "SELECT COUNT(*) FROM contexts WHERE vector_x IS NOT NULL"
+psql -h localhost -p 5432 -d mandrel -c "SELECT COUNT(*) FROM contexts WHERE vector_x IS NOT NULL"
 ```
 
 ---

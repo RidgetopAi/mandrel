@@ -59,7 +59,7 @@ class DatabasePoolManager {
 
     const dbUser = process.env.DATABASE_USER || 'mandrel';
     const dbHost = process.env.DATABASE_HOST || 'localhost';
-    const dbName = process.env.DATABASE_NAME || 'aidis_production';
+    const dbName = process.env.DATABASE_NAME || 'mandrel';
     const dbPassword = process.env.DATABASE_PASSWORD || '';
     const dbPort = parseInt(process.env.DATABASE_PORT || '5432');
 

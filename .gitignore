@@ -42,6 +42,7 @@ archive/
 # Archive directories (keep local, exclude from repo)
 mcp-server-archive/
 docs/
+!docs/DEPLOYMENT.md
 tests/
 ridge-parser-tui/
 

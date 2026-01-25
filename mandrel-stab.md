@@ -40,7 +40,7 @@ This document catalogs **every occurrence** of "AIDIS" branding across the codeb
 
 1. **Environment Variables**: Support both `AIDIS_*` and `MANDREL_*` for 1 release cycle
 2. **API Routes**: Keep `/aidis` as alias to `/mandrel` with deprecation warnings
-3. **Database**: Use migrations with views/aliases (do NOT rename `aidis_production` immediately)
+3. **Database**: Use migrations with views/aliases (do NOT rename `mandrel` immediately)
 4. **Package Names**: Consider publishing under both scopes initially
 5. **LocalStorage Keys**: Support both `aidis_*` and `mandrel_*` keys
 
@@ -161,7 +161,7 @@ This document catalogs **every occurrence** of "AIDIS" branding across the codeb
 #### Database Configuration
 - `AIDIS_DATABASE_USER` → `MANDREL_DATABASE_USER`
 - `AIDIS_DATABASE_HOST` → `MANDREL_DATABASE_HOST`
-- `AIDIS_DATABASE_NAME` → `MANDREL_DATABASE_NAME` ⚠️ **Keep DB name as `aidis_production` for now**
+- `AIDIS_DATABASE_NAME` → `MANDREL_DATABASE_NAME` ⚠️ **Keep DB name as `mandrel` for now**
 - `AIDIS_DATABASE_PASSWORD` → `MANDREL_DATABASE_PASSWORD`
 - `AIDIS_DATABASE_PORT` → `MANDREL_DATABASE_PORT`
 - `AIDIS_DATABASE_URL` → `MANDREL_DATABASE_URL`
@@ -214,7 +214,7 @@ This document catalogs **every occurrence** of "AIDIS" branding across the codeb
 ⚠️ **HIGH RISK - Requires Migration Strategy**
 
 **Current Database Names:**
-- `aidis_production` (production database)
+- `mandrel` (production database)
 - `aidis_development` (development database)
 
 **PostgreSQL Channel Name:**
@@ -225,7 +225,7 @@ This document catalogs **every occurrence** of "AIDIS" branding across the codeb
 
 **Strategy Recommendation:**
 1. **DO NOT** rename database immediately
-2. Create aliases/synonyms: `mandrel_production` → `aidis_production`
+2. Create aliases/synonyms: `mandrel_production` → `mandrel`
 3. Update connection strings to use new names but keep old DBs
 4. Plan migration 2-3 releases later
 5. Support both names in environment configuration
@@ -687,7 +687,7 @@ fi
 ### High Risk Areas
 
 1. **Database Name Changes** ⚠️ **CRITICAL**
-   - Renaming `aidis_production` requires downtime
+   - Renaming `mandrel` requires downtime
    - External tools may reference database name
    - **Mitigation**: Use database aliases, defer to later release
 
@@ -835,7 +835,7 @@ echo "✨ Rename complete!"
 - **27 MCP tools** need renaming
 - **20+ environment variables** require updates
 - **6 package names** need renaming
-- **Critical database name**: Recommend NOT renaming `aidis_production` immediately
+- **Critical database name**: Recommend NOT renaming `mandrel` immediately
 
 ### Recommended Approach
 1. **Start with documentation** (zero risk, high visibility)
@@ -893,7 +893,7 @@ aidis-([a-z-]+) → mandrel-\1
 'aidis_([a-z_]+)' → 'mandrel_\1'
 
 # Database references (be careful!)
-aidis_production → mandrel_production (DEFER)
+mandrel → mandrel_production (DEFER)
 aidis_changes → mandrel_changes
 ```
 
@@ -912,7 +912,7 @@ If the rename goes wrong, you can restore to this exact state:
 - **Short Hash**: `6e930b1`
 - **Branch**: `aidis-stab`
 - **Date**: October 31, 2025 19:39 EDT
-- **Database**: `aidis_production` (PostgreSQL 16.9)
+- **Database**: `mandrel` (PostgreSQL 16.9)
 - **Working Tree**: Clean (all changes committed)
 
 ### Quick Recovery Commands

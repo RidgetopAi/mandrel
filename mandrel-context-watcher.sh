@@ -94,18 +94,18 @@ collect_debug_context() {
         echo ""
 
         echo "=== DATABASE CONNECTION ==="
-        if psql -h localhost -p 5432 -d aidis_production -c "SELECT 1" >/dev/null 2>&1; then
+        if psql -h localhost -p 5432 -d mandrel -c "SELECT 1" >/dev/null 2>&1; then
             echo -e "${GREEN}✓ PostgreSQL: Connected${NC}"
-            psql -h localhost -p 5432 -d aidis_production -c "SELECT current_database(), current_user, pg_backend_pid();" 2>&1 | head -5
+            psql -h localhost -p 5432 -d mandrel -c "SELECT current_database(), current_user, pg_backend_pid();" 2>&1 | head -5
             echo ""
             echo "--- Recent Database Activity ---"
-            psql -h localhost -p 5432 -d aidis_production -c "SELECT count(*) as total_contexts FROM contexts;" 2>&1
-            psql -h localhost -p 5432 -d aidis_production -c "SELECT count(*) as total_sessions FROM sessions;" 2>&1
-            psql -h localhost -p 5432 -d aidis_production -c "SELECT count(*) as total_projects FROM projects;" 2>&1
+            psql -h localhost -p 5432 -d mandrel -c "SELECT count(*) as total_contexts FROM contexts;" 2>&1
+            psql -h localhost -p 5432 -d mandrel -c "SELECT count(*) as total_sessions FROM sessions;" 2>&1
+            psql -h localhost -p 5432 -d mandrel -c "SELECT count(*) as total_projects FROM projects;" 2>&1
         else
             echo -e "${RED}✗ PostgreSQL: Connection Failed${NC}"
             echo "Last error:"
-            psql -h localhost -p 5432 -d aidis_production -c "SELECT 1" 2>&1 | tail -5
+            psql -h localhost -p 5432 -d mandrel -c "SELECT 1" 2>&1 | tail -5
         fi
         echo ""
 
@@ -278,10 +278,10 @@ case "${1:-live}" in
         ;;
     "db")
         echo -e "${BLUE}=== DATABASE STATUS ===${NC}"
-        if psql -h localhost -p 5432 -d aidis_production -c "SELECT 1" >/dev/null 2>&1; then
+        if psql -h localhost -p 5432 -d mandrel -c "SELECT 1" >/dev/null 2>&1; then
             echo -e "${GREEN}✓ PostgreSQL: Connected${NC}"
             echo ""
-            psql -h localhost -p 5432 -d aidis_production -c "
+            psql -h localhost -p 5432 -d mandrel -c "
                 SELECT
                     (SELECT count(*) FROM contexts) as contexts,
                     (SELECT count(*) FROM sessions) as sessions,

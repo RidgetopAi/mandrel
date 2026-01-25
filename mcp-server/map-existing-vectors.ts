@@ -13,7 +13,7 @@ import { dimensionalityReductionService } from './src/services/dimensionality-re
 const pool = new Pool({
   host: 'localhost',
   port: 5432,
-  database: 'aidis_production',
+  database: 'mandrel',
   user: 'ridgetop',
 });
 

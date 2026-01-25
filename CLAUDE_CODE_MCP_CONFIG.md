@@ -94,7 +94,7 @@ Add this to your Claude Code MCP settings:
 
 ### Database Schema
 - **PostgreSQL** on localhost:5432
-- **Production DB**: `aidis_production`
+- **Production DB**: `mandrel`
 - **Development DB**: `aidis_development`
 - **Key tables**: contexts, projects, technical_decisions, agents, tasks, naming_registry, code_components
 

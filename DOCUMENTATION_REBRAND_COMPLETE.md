@@ -76,7 +76,7 @@ All documentation files have been successfully rebranded from AIDIS to Mandrel. 
 
 These items were **NOT changed** per investigation requirements:
 
-1. **Database name**: `aidis_production` (kept for backward compatibility)
+1. **Database name**: `mandrel` (kept for backward compatibility)
 2. **Git repository URL**: `https://github.com/RidgetopAi/aidis`
 3. **Root directory**: `/home/ridgetop/aidis`
 4. **Package.json names**: May still reference aidis internally
