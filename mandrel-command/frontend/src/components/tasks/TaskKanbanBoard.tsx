@@ -268,7 +268,6 @@ const TaskKanbanBoard: React.FC<TaskKanbanBoardProps> = ({
                       }}
                       style={{
                         padding: '4px',
-                        backgroundColor: isExpanded ? '#e6f7ff' : '#f5f5f5',
                         borderRadius: '4px',
                         flexShrink: 0
                       }}
@@ -396,7 +395,7 @@ const TaskKanbanBoard: React.FC<TaskKanbanBoardProps> = ({
                       marginTop: 12,
                       padding: '10px',
                       borderRadius: '6px',
-                      border: '1px solid #e8e8e8'
+                      border: '1px solid var(--ant-color-border, #d9d9d9)'
                     }}
                   >
                     {/* Task ID with Copy */}
@@ -406,7 +405,7 @@ const TaskKanbanBoard: React.FC<TaskKanbanBoardProps> = ({
                       gap: 8,
                       marginBottom: 8,
                       paddingBottom: 8,
-                      borderBottom: '1px solid #e8e8e8'
+                      borderBottom: '1px solid var(--ant-color-border, #d9d9d9)'
                     }}>
                       <Text style={{ fontSize: '11px' }}>
                         <strong>ID:</strong>
@@ -594,17 +593,16 @@ const TaskKanbanBoard: React.FC<TaskKanbanBoardProps> = ({
             padding: '60px 20px',
             textAlign: 'center',
             borderRadius: '8px',
-            border: '2px dashed #d9d9d9',
-            background: '#fafafa'
+            border: '2px dashed var(--ant-color-border, #d9d9d9)'
           }}
         >
-          <ExclamationCircleOutlined style={{ fontSize: '48px', color: '#d9d9d9' }} />
+          <ExclamationCircleOutlined style={{ fontSize: '48px' }} />
           <div style={{ fontSize: '18px', fontWeight: '500', marginTop: '16px', marginBottom: '8px' }}>
             No tasks found
           </div>
-          <div style={{ fontSize: '14px', color: '#999' }}>
+          <Text type="secondary" style={{ fontSize: '14px' }}>
             Create a new task to get started
-          </div>
+          </Text>
         </div>
       )}
 

@@ -265,7 +265,6 @@ const TaskCardList: React.FC<TaskCardListProps> = ({
                         <div style={{
                           padding: '4px',
                           borderRadius: '4px',
-                          backgroundColor: isExpanded ? '#e6f7ff' : '#f5f5f5',
                           transition: 'all 0.2s ease',
                           flexShrink: 0
                         }}>
@@ -359,23 +358,22 @@ const TaskCardList: React.FC<TaskCardListProps> = ({
 
                     {/* Expanded Details */}
                     {isExpanded && (
-                      <div 
-                        className="task-details-expand" 
+                      <div
+                        className="task-details-expand"
                         onClick={(e) => e.stopPropagation()}
                         style={{
-                          background: 'linear-gradient(135deg, #fafafa 0%, #f0f0f0 100%)',
                           padding: '12px',
                           borderRadius: '8px',
                           margin: '8px -16px -16px -16px',
-                          border: '1px solid #e8e8e8'
+                          border: '1px solid var(--ant-color-border, #d9d9d9)'
                         }}
                       >
-                        <div style={{ 
-                          display: 'flex', 
-                          alignItems: 'center', 
+                        <div style={{
+                          display: 'flex',
+                          alignItems: 'center',
                           marginBottom: '12px',
                           paddingBottom: '8px',
-                          borderBottom: '1px solid #d9d9d9'
+                          borderBottom: '1px solid var(--ant-color-border, #d9d9d9)'
                         }}>
                           <Text strong style={{ color: '#1890ff', fontSize: '13px' }}>
                             📋 Detailed Information
@@ -423,7 +421,7 @@ const TaskCardList: React.FC<TaskCardListProps> = ({
                             gap: 8,
                             padding: '8px 10px',
                             borderRadius: '6px',
-                            border: '1px solid #e8e8e8'
+                            border: '1px solid var(--ant-color-border, #d9d9d9)'
                           }}>
                             <Text style={{ fontSize: '12px' }}>
                               <strong>ID:</strong>
@@ -445,9 +443,9 @@ const TaskCardList: React.FC<TaskCardListProps> = ({
                           <div style={{
                             padding: '10px',
                             borderRadius: '6px',
-                            border: '1px solid #e8e8e8'
+                            border: '1px solid var(--ant-color-border, #d9d9d9)'
                           }}>
-                            <Text strong style={{ fontSize: '12px', display: 'block', marginBottom: 8, color: '#666' }}>
+                            <Text strong style={{ fontSize: '12px', display: 'block', marginBottom: 8 }} type="secondary">
                               ℹ️ Task Information
                             </Text>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
@@ -473,12 +471,11 @@ const TaskCardList: React.FC<TaskCardListProps> = ({
                           {/* Dependencies */}
                           {task.dependencies.length > 0 && (
                             <div style={{
-                              background: '#fff',
                               padding: '10px',
                               borderRadius: '6px',
-                              border: '1px solid #e8e8e8'
+                              border: '1px solid var(--ant-color-border, #d9d9d9)'
                             }}>
-                              <Text strong style={{ fontSize: '12px', display: 'block', marginBottom: 8, color: '#666' }}>
+                              <Text strong style={{ fontSize: '12px', display: 'block', marginBottom: 8 }} type="secondary">
                                 🔗 Dependencies ({task.dependencies.length})
                               </Text>
                               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
@@ -496,16 +493,16 @@ const TaskCardList: React.FC<TaskCardListProps> = ({
                             <div style={{
                               padding: '10px',
                               borderRadius: '6px',
-                              border: '1px solid #e8e8e8'
+                              border: '1px solid var(--ant-color-border, #d9d9d9)'
                             }}>
-                              <Text strong style={{ fontSize: '12px', display: 'block', marginBottom: 8, color: '#666' }}>
+                              <Text strong style={{ fontSize: '12px', display: 'block', marginBottom: 8 }} type="secondary">
                                 🔧 Additional Details
                               </Text>
-                              <div style={{ fontSize: '12px', color: '#666' }}>
+                              <Text type="secondary" style={{ fontSize: '12px' }}>
                                 {Object.entries(task.metadata).map(([key, value]) => (
                                   <div key={key}><strong>{key}:</strong> {String(value)}</div>
                                 ))}
-                              </div>
+                              </Text>
                             </div>
                           )}
                         </Space>
