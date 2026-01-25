@@ -42,6 +42,7 @@ import { dbPool } from '../services/databasePool.js';
 import { AIDIS_TOOL_DEFINITIONS } from '../config/toolDefinitions.js';
 import { validationMiddleware } from '../middleware/validation.js';
 import { SessionTracker, ensureActiveSession } from '../services/sessionTracker.js';
+import { ActiveSessionStore } from '../services/session/index.js';
 import { ensureFeatureFlags } from '../utils/featureFlags.js';
 // Phase 6.3: Route executor integration - replaces individual handler imports
 import { routeExecutor } from '../routes/index.js';
@@ -322,12 +323,10 @@ export default class MandrelMcpServer {
   // All routing logic centralized in routes/index.ts via routeExecutor()
 
   /**
-   * Get current session ID (placeholder for future session tracking enhancement)
+   * Get current session ID from active session store
    */
-  private getCurrentSessionId(): string {
-    // In future versions, this would come from proper session tracking
-    // For now, use a default session ID that integrates with existing ProjectHandler
-    return 'default-session';
+  private getCurrentSessionId(): string | null {
+    return ActiveSessionStore.get();
   }
 
   /**
