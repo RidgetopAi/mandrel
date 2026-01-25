@@ -6,7 +6,6 @@ import type {
   EmbeddingProjection,
   EmbeddingQualityMetrics,
   EmbeddingSimilarityMatrix,
-  EmbeddingRelevanceMetrics,
   EmbeddingProjectRelationships,
   EmbeddingKnowledgeGaps,
   EmbeddingUsagePatterns,
@@ -27,7 +26,6 @@ const embeddingsQueryKeys = {
     [...embeddingsQueryKeys.all, 'clusters', projectId ?? 'none', datasetId ?? 'none', clusterCount] as const,
   metrics: (datasetId: string | undefined, projectId?: string) =>
     [...embeddingsQueryKeys.all, 'metrics', projectId ?? 'none', datasetId ?? 'none'] as const,
-  relevance: (projectId?: string) => [...embeddingsQueryKeys.all, 'relevance', projectId ?? 'none'] as const,
   relationships: (projectId?: string) => [...embeddingsQueryKeys.all, 'relationships', projectId ?? 'none'] as const,
   knowledge: (projectId?: string) => [...embeddingsQueryKeys.all, 'knowledge', projectId ?? 'none'] as const,
   usage: (projectId?: string) => [...embeddingsQueryKeys.all, 'usage', projectId ?? 'none'] as const,
@@ -148,26 +146,6 @@ export const useEmbeddingMetricsQuery = (
       return embeddingsClient.getQualityMetrics(datasetId, projectId);
     },
     enabled: Boolean(datasetId && projectId) && (enabled ?? true),
-    ...rest,
-  });
-};
-
-export const useEmbeddingRelevanceQuery = (
-  projectId: string | undefined,
-  options?: QueryOptions<EmbeddingRelevanceMetrics>
-) => {
-  const { enabled, ...rest } = options ?? {};
-
-  return useQuery({
-    queryKey: embeddingsQueryKeys.relevance(projectId),
-    queryFn: () => {
-      if (!projectId) {
-        throw new Error('Project context is required for relevance analytics.');
-      }
-      return embeddingsClient.getRelevanceMetrics(projectId);
-    },
-    enabled: Boolean(projectId) && (enabled ?? true),
-    staleTime: 5 * 60 * 1000,
     ...rest,
   });
 };

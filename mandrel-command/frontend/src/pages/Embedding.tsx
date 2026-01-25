@@ -7,7 +7,6 @@ import {
   ThunderboltOutlined,
   BarChartOutlined,
   SettingOutlined,
-  AimOutlined,
   ClusterOutlined,
   AlertOutlined,
   LineChartOutlined,
@@ -17,7 +16,6 @@ import SimilarityHeatmap from '../components/embedding/SimilarityHeatmap';
 import ScatterProjection from '../components/embedding/ScatterProjection';
 import ClusterAnalysis from '../components/embedding/ClusterAnalysis';
 import QualityMetrics from '../components/embedding/QualityMetrics';
-import RelevanceDashboard from '../components/embedding/RelevanceDashboard';
 import ProjectRelationshipMap from '../components/embedding/ProjectRelationshipMap';
 import KnowledgeGapInsights from '../components/embedding/KnowledgeGapInsights';
 import UsagePatterns from '../components/embedding/UsagePatterns';
@@ -57,16 +55,6 @@ const Embedding: React.FC = () => {
         </Space>
       ),
       children: <ClusterAnalysis />,
-    },
-    {
-      key: 'relevance',
-      label: (
-        <Space>
-          <AimOutlined />
-          Relevance
-        </Space>
-      ),
-      children: <RelevanceDashboard />,
     },
     {
       key: 'relationships',

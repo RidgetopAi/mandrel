@@ -363,58 +363,6 @@ router.get('/metrics', async (req: AuthenticatedRequest, res: Response) => {
 
 /**
  * @swagger
- * /embedding/relevance:
- *   get:
- *     summary: Retrieve relevance quality metrics for contexts within the active project
- *     tags: [Embeddings]
- *     parameters:
- *       - in: header
- *         name: X-Project-ID
- *         required: true
- *         description: Project context (UUID). Legacy support accepts `project` header with project name.
- *         schema:
- *           type: string
- *           format: uuid
- *     responses:
- *       200:
- *         description: Relevance metrics returned
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/EmbeddingRelevanceMetrics'
- */
-router.get('/relevance', async (req: AuthenticatedRequest, res: Response) => {
-  try {
-    if (!req.user?.id) {
-      return res.status(401).json({ error: 'User not authenticated' });
-    }
-
-    const scope = resolveProjectScope(req);
-
-    if (!scope.projectId && !scope.projectName) {
-      return res.status(400).json({
-        error: 'Project context required',
-        details: 'Provide X-Project-ID header to scope relevance analytics',
-      });
-    }
-
-    const metrics = await EmbeddingService.getRelevanceMetrics(
-      req.user.id,
-      scope
-    );
-
-    return res.json(metrics);
-  } catch (error) {
-    console.error('Error getting relevance metrics:', error);
-    return res.status(500).json({
-      error: 'Failed to get relevance metrics',
-      details: error instanceof Error ? error.message : 'Unknown error',
-    });
-  }
-});
-
-/**
- * @swagger
  * /embedding/relationships:
  *   get:
  *     summary: Retrieve project relationship network for the active project
