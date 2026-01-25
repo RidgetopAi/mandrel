@@ -33,15 +33,16 @@ const UsagePatterns: React.FC = () => {
     smooth: true,
     meta: {
       date: { alias: 'Date' },
-      contexts: { alias: 'Contexts' },
+      contexts: { alias: 'Contexts Created' },
     },
     yAxis: {
       min: 0,
     },
     tooltip: {
-      formatter: (datum: { date: string; contexts: number }) => ({
+      title: (datum: string) => datum,
+      formatter: (datum: Record<string, unknown>) => ({
         name: 'Contexts',
-        value: datum.contexts,
+        value: datum.contexts ?? 0,
       }),
     },
   }), [usage?.dailyActivity]);
@@ -57,9 +58,9 @@ const UsagePatterns: React.FC = () => {
       contexts: { alias: 'Contexts' },
     },
     tooltip: {
-      formatter: (datum: { hour: number; contexts: number }) => ({
-        name: `${datum.hour}:00`,
-        value: datum.contexts,
+      formatter: (datum: Record<string, unknown>) => ({
+        name: `${datum.hour ?? 0}:00`,
+        value: datum.contexts ?? 0,
       }),
     },
   }), [usage?.hourlyDistribution]);
@@ -75,10 +76,14 @@ const UsagePatterns: React.FC = () => {
       count: { alias: 'Contexts' },
     },
     tooltip: {
-      formatter: (datum: { type: string; count: number; percentage: number }) => ({
-        name: `${datum.type.toUpperCase()} (${datum.percentage.toFixed(1)}%)`,
-        value: datum.count,
-      }),
+      formatter: (datum: Record<string, unknown>) => {
+        const type = String(datum.type ?? 'unknown').toUpperCase();
+        const percentage = Number(datum.percentage ?? 0);
+        return {
+          name: `${type} (${percentage.toFixed(1)}%)`,
+          value: datum.count ?? 0,
+        };
+      },
     },
   }), [usage?.contextsByType]);
 
