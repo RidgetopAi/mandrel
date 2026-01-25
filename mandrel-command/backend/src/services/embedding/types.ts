@@ -73,40 +73,6 @@ export interface QualityMetrics {
   };
 }
 
-export interface RelevanceDistributionBucket {
-  range: string;
-  count: number;
-  percentage: number;
-}
-
-export interface RelevanceTrendPoint {
-  date: string;
-  averageScore: number;
-  sampleSize: number;
-}
-
-export interface RelevanceTopTag {
-  tag: string;
-  averageScore: number;
-  count: number;
-}
-
-export interface RelevanceMetrics {
-  totalContexts: number;
-  scoredContexts: number;
-  unscoredContexts: number;
-  coverageRate: number;
-  averageScore: number;
-  medianScore: number;
-  minScore: number;
-  maxScore: number;
-  highConfidenceRate: number;
-  lowConfidenceRate: number;
-  distribution: RelevanceDistributionBucket[];
-  trend: RelevanceTrendPoint[];
-  topTags: RelevanceTopTag[];
-}
-
 export interface ProjectRelationshipNode {
   projectId: string;
   projectName: string;

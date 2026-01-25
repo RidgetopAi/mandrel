@@ -5,7 +5,6 @@ import type {
   EmbeddingProjection,
   EmbeddingQualityMetrics,
   EmbeddingSimilarityMatrix,
-  EmbeddingRelevanceMetrics,
   EmbeddingProjectRelationships,
   EmbeddingKnowledgeGaps,
   EmbeddingUsagePatterns,
@@ -115,13 +114,6 @@ export const embeddingsClient = {
     return EmbeddingsService.getEmbeddingMetrics({
       xProjectId: effectiveProjectId,
       id: datasetId,
-    });
-  },
-
-  async getRelevanceMetrics(projectId?: string): Promise<EmbeddingRelevanceMetrics> {
-    const effectiveProjectId = requireProjectId(projectId);
-    return EmbeddingsService.getEmbeddingRelevance({
-      xProjectId: effectiveProjectId,
     });
   },
 
