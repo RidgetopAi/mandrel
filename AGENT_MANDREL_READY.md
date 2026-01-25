@@ -126,8 +126,8 @@ cd /home/ridgetop/aidis/mcp-server
 
 ### **Database Connection Issues:**
 - **Port:** Always 5432 (NOT 5434)
-- **Database:** aidis_production
-- **Test:** `psql -h localhost -p 5432 -d aidis_production -c "SELECT current_database();"`
+- **Database:** mandrel
+- **Test:** `psql -h localhost -p 5432 -d mandrel -c "SELECT current_database();"`
 
 ---
 

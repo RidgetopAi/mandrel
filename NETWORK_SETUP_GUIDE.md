@@ -114,7 +114,7 @@ Run separate Mandrel instances on each machine, sharing the same PostgreSQL data
 
 **Desktop database connection string:**
 ```bash
-postgresql://ridgetop@localhost:5432/aidis_production
+postgresql://ridgetop@localhost:5432/mandrel
 ```
 
 **Laptop connects to desktop's PostgreSQL:**
@@ -131,7 +131,7 @@ sudo systemctl restart postgresql
 # On laptop .env file:
 DATABASE_HOST=192.168.0.175
 DATABASE_PORT=5432
-DATABASE_NAME=aidis_production
+DATABASE_NAME=mandrel
 DATABASE_USER=ridgetop
 DATABASE_PASSWORD=your_password
 ```

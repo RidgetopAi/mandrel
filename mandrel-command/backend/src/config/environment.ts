@@ -62,7 +62,7 @@ export const config = {
     url: process.env.DATABASE_URL,
     user: process.env.DATABASE_USER || 'mandrel',
     host: process.env.DATABASE_HOST || 'localhost',
-    database: process.env.DATABASE_NAME || 'aidis_production',
+    database: process.env.DATABASE_NAME || 'mandrel',
     password: process.env.DATABASE_PASSWORD || (() => {
       if (process.env.NODE_ENV === 'production') {
         throw new Error('DATABASE_PASSWORD environment variable is required in production');

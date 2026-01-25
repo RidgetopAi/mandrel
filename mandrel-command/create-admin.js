@@ -4,9 +4,9 @@ const { Pool } = require('pg');
 async function createAdminUser() {
   // Try different common PostgreSQL configurations
   const configs = [
-    { user: process.env.DB_USER || 'postgres', password: process.env.DB_PASSWORD || '', database: process.env.DB_NAME || 'aidis_production' },
-    { user: 'postgres', password: '', database: 'aidis_production' },
-    { user: 'postgres', password: 'postgres', database: 'aidis_production' },
+    { user: process.env.DB_USER || 'postgres', password: process.env.DB_PASSWORD || '', database: process.env.DB_NAME || 'mandrel' },
+    { user: 'postgres', password: '', database: 'mandrel' },
+    { user: 'postgres', password: 'postgres', database: 'mandrel' },
   ];
 
   for (const config of configs) {

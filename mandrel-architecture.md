@@ -65,7 +65,7 @@ LAYER 4: SERVICES LAYER
 LAYER 5: DATA LAYER
 
           ┌──────────────────────────────────────┐
-          │    PostgreSQL (aidis_production)     │
+          │    PostgreSQL (mandrel)     │
           ├──────────────────────────────────────┤
           │  Core Tables:                        │
           │  • projects - Project definitions    │

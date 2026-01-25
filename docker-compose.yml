@@ -18,7 +18,7 @@ services:
     container_name: mandrel-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-aidis_production}
+      POSTGRES_DB: ${POSTGRES_DB:-mandrel}
       POSTGRES_USER: ${POSTGRES_USER:-mandrel}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-mandrel_dev_password}
     ports:
@@ -47,10 +47,104 @@ services:
       <<: *healthcheck-defaults
       test: ["CMD", "redis-cli", "ping"]
 
+  # MCP Server - Core Mandrel context management service
+  mcp-server:
+    build:
+      context: ./mcp-server
+      dockerfile: Dockerfile
+    container_name: mandrel-mcp-server
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      NODE_ENV: production
+      DATABASE_HOST: postgres
+      DATABASE_PORT: 5432
+      DATABASE_NAME: ${POSTGRES_DB:-mandrel}
+      DATABASE_USER: ${POSTGRES_USER:-mandrel}
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD:-mandrel_dev_password}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      MCP_HTTP_PORT: 8080
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - mandrel-network
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+    volumes:
+      - mcp_data:/app/data
+      - mcp_logs:/app/logs
+
+  # Mandrel Command Backend - REST API server
+  mandrel-command-backend:
+    build:
+      context: ./mandrel-command/backend
+      dockerfile: Dockerfile
+    container_name: mandrel-command-backend
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      NODE_ENV: production
+      PORT: 5000
+      DATABASE_HOST: postgres
+      DATABASE_PORT: 5432
+      DATABASE_NAME: ${POSTGRES_DB:-mandrel}
+      DATABASE_USER: ${POSTGRES_USER:-mandrel}
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD:-mandrel_dev_password}
+      MCP_SERVER_URL: http://mcp-server:8080
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mcp-server:
+        condition: service_healthy
+    networks:
+      - mandrel-network
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5000/health"]
+    volumes:
+      - command_logs:/app/logs
+      - command_uploads:/app/uploads
+
+  # Mandrel Command Frontend - React UI served via nginx
+  mandrel-command-frontend:
+    build:
+      context: ./mandrel-command/frontend
+      dockerfile: Dockerfile
+    container_name: mandrel-command-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      REACT_APP_API_URL: /api
+    depends_on:
+      mandrel-command-backend:
+        condition: service_healthy
+    networks:
+      - mandrel-network
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000"]
+
 volumes:
   postgres_data:
     driver: local
   redis_data:
+    driver: local
+  mcp_data:
+    driver: local
+  mcp_logs:
+    driver: local
+  command_logs:
+    driver: local
+  command_uploads:
     driver: local
 
 networks:

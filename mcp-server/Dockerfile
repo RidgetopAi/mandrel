@@ -81,4 +81,4 @@ ENV NODE_ENV=production \
 ENTRYPOINT ["dumb-init", "--"]
 
 # Start with tsx for runtime TypeScript compilation
-CMD ["tsx", "src/server.ts"]
+CMD ["tsx", "src/main.ts"]

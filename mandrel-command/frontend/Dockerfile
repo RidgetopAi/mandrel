@@ -90,7 +90,7 @@ RUN echo 'server {
 
     # API proxy with optimizations
     location /api {
-        proxy_pass http://aidis-command-backend:3001;
+        proxy_pass http://mandrel-command-backend:5000;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection upgrade;

@@ -7,7 +7,7 @@ const { Pool } = require('pg');
 const pool = new Pool({
   user: 'ridgetop',
   host: 'localhost',
-  database: 'aidis_production',
+  database: 'mandrel',
   password: '',
   port: 5432,
 });

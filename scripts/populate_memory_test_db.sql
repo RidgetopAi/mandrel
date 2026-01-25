@@ -7,7 +7,7 @@
 -- Copy projects
 INSERT INTO projects (id, name, description, created_at, updated_at, status, git_repo_url, root_directory, metadata)
 SELECT id, name, description, created_at, updated_at, status, git_repo_url, root_directory, metadata
-FROM dblink('dbname=aidis_production',
+FROM dblink('dbname=mandrel',
   'SELECT id, name, description, created_at, updated_at, status, git_repo_url, root_directory, metadata
    FROM projects
    WHERE name IN (''emergence-notes'', ''aidis'', ''ridge-code'', ''aidis-alpha'')')
@@ -18,7 +18,7 @@ ON CONFLICT (id) DO NOTHING;
 -- Copy sessions from those projects (last 30 days)
 INSERT INTO sessions
 SELECT s.*
-FROM dblink('dbname=aidis_production',
+FROM dblink('dbname=mandrel',
   'SELECT s.* FROM sessions s
    JOIN projects p ON s.project_id = p.id
    WHERE p.name IN (''emergence-notes'', ''aidis'', ''ridge-code'', ''aidis-alpha'')
@@ -35,7 +35,7 @@ ON CONFLICT (id) DO NOTHING;
 -- Copy contexts from those sessions
 INSERT INTO contexts
 SELECT c.*
-FROM dblink('dbname=aidis_production',
+FROM dblink('dbname=mandrel',
   'SELECT c.* FROM contexts c
    JOIN sessions s ON c.session_id = s.id
    JOIN projects p ON s.project_id = p.id

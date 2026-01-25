@@ -5,7 +5,7 @@
 set -e  # Exit on any error
 
 # Configuration
-DB_NAME="aidis_production"
+DB_NAME="mandrel"
 DB_HOST="localhost"
 DB_PORT="5432"
 DB_USER="ridgetop"

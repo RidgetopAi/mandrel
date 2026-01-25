@@ -45,7 +45,7 @@ describe('SSE Integration Tests', () => {
     pool = new Pool({
       user: process.env.AIDIS_DB_USER || 'ridgetop',
       host: process.env.AIDIS_DB_HOST || 'localhost',
-      database: process.env.AIDIS_DB_DATABASE || 'aidis_production',
+      database: process.env.AIDIS_DB_DATABASE || 'mandrel',
       password: process.env.AIDIS_DB_PASSWORD || '',
       port: parseInt(process.env.AIDIS_DB_PORT || '5432'),
     });

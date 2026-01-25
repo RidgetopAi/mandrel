@@ -11,7 +11,7 @@ import { EmbeddingService } from '../mcp-server/src/services/embedding.js';
 const pool = new Pool({
   host: process.env.DB_HOST || 'localhost',
   port: parseInt(process.env.DB_PORT || '5432'),
-  database: process.env.DB_NAME || 'aidis_production',
+  database: process.env.DB_NAME || 'mandrel',
   user: process.env.DB_USER || 'ridgetop',
 });
 

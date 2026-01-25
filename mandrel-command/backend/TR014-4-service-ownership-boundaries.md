@@ -80,7 +80,7 @@ This document establishes clear service ownership, responsibilities, and boundar
 ```
 
 #### Dependencies
-- **Database**: PostgreSQL (aidis_production)
+- **Database**: PostgreSQL (mandrel)
 - **Internal**: None (standalone service)
 - **External**: JWT libraries, Express ecosystem
 
@@ -163,7 +163,7 @@ Analytics: complexity_*, metrics_*, pattern_* (30+ tools)
 ```mermaid
 graph TB
     Frontend[Frontend Dev<br/>Port 3000] --> Backend[Command Backend<br/>Port 5000]
-    Backend --> Database[(PostgreSQL<br/>aidis_production)]
+    Backend --> Database[(PostgreSQL<br/>mandrel)]
     Backend --> WebSocket[WebSocket<br/>/ws endpoint]
 
     Bridge[HTTP-MCP Bridge] --> MCP[AIDIS MCP Server<br/>Port 8080]
@@ -199,7 +199,7 @@ graph TB
 
 #### 3. Internal Services ↔ Database
 - **Protocol**: PostgreSQL connection pooling
-- **Connection**: `postgresql://ridgetop@localhost:5432/aidis_production`
+- **Connection**: `postgresql://ridgetop@localhost:5432/mandrel`
 - **Pool Configuration**: Service-specific connection limits
 - **Transaction Management**: Automatic rollback on failures
 

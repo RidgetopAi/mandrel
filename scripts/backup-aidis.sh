@@ -16,12 +16,12 @@ mkdir -p "$BACKUP_PATH"
 
 # 1. DATABASE BACKUPS (CRITICAL) - FIXED FOR CORRECT DATABASE
 echo "📊 Backing up PostgreSQL databases on port 5432..."
-pg_dump -h localhost -p 5432 -U ridgetop -d aidis_production --format=custom --verbose --file="$BACKUP_PATH/aidis_production_$TIMESTAMP.backup"
+pg_dump -h localhost -p 5432 -U ridgetop -d mandrel --format=custom --verbose --file="$BACKUP_PATH/mandrel_$TIMESTAMP.backup"
 pg_dump -h localhost -p 5432 -U ridgetop -d aidis_development --format=custom --verbose --file="$BACKUP_PATH/aidis_development_$TIMESTAMP.backup"
 
 # 2. SCHEMA-ONLY BACKUP (for quick restore structure)
 echo "🏗️  Creating schema-only backups..."
-pg_dump -h localhost -p 5432 -U ridgetop -d aidis_production --schema-only > "$BACKUP_PATH/aidis_production_schema.sql"
+pg_dump -h localhost -p 5432 -U ridgetop -d mandrel --schema-only > "$BACKUP_PATH/mandrel_schema.sql"
 pg_dump -h localhost -p 5432 -U ridgetop -d aidis_development --schema-only > "$BACKUP_PATH/aidis_development_schema.sql"
 
 # 3. APPLICATION CODE BACKUP
@@ -58,11 +58,11 @@ echo "🔄 AIDIS Restore Starting from backup: $TIMESTAMP"
 
 # 1. Restore databases
 echo "📊 Restoring databases..."
-createdb -h localhost -p 5432 -U ridgetop aidis_production_restored 2>/dev/null || echo "DB exists"
+createdb -h localhost -p 5432 -U ridgetop mandrel_restored 2>/dev/null || echo "DB exists"
 createdb -h localhost -p 5432 -U ridgetop aidis_development_restored 2>/dev/null || echo "DB exists"
 
 # Restore from custom format
-pg_restore -h localhost -p 5432 -U ridgetop -d aidis_production_restored --verbose "$BACKUP_DIR/aidis_production_${TIMESTAMP}.backup"
+pg_restore -h localhost -p 5432 -U ridgetop -d mandrel_restored --verbose "$BACKUP_DIR/mandrel_${TIMESTAMP}.backup"
 pg_restore -h localhost -p 5432 -U ridgetop -d aidis_development_restored --verbose "$BACKUP_DIR/aidis_development_${TIMESTAMP}.backup"
 
 # 2. Restore code (manual step)
@@ -70,7 +70,7 @@ echo "💻 Code backup available at: $BACKUP_DIR/aidis_code.tar.gz"
 echo "   Extract with: tar -xzf aidis_code.tar.gz -C /"
 
 echo "✅ Database restore complete!"
-echo "   - Databases restored as: aidis_production_restored, aidis_development_restored"
+echo "   - Databases restored as: mandrel_restored, aidis_development_restored"
 echo "   - Rename them when ready to use"
 EOF
 
@@ -87,16 +87,16 @@ Host: $(hostname)
 User: $(whoami)
 
 Contents:
-- aidis_production_${TIMESTAMP}.backup (PostgreSQL custom format - LIVE DATA)
+- mandrel_${TIMESTAMP}.backup (PostgreSQL custom format - LIVE DATA)
 - aidis_development_${TIMESTAMP}.backup (PostgreSQL custom format - DEV DATA)
-- aidis_production_schema.sql (Schema only)
+- mandrel_schema.sql (Schema only)
 - aidis_development_schema.sql (Schema only)
 - aidis_code.tar.gz (Application code)
 - amp_config/ (Amp configuration)
 - restore.sh (Restoration script)
 
 Database Stats:
-$(psql -h localhost -p 5432 -U ridgetop -d aidis_production -c "SELECT schemaname,tablename,n_tup_ins,n_tup_upd,n_tup_del FROM pg_stat_user_tables;" 2>/dev/null || echo "Could not get stats")
+$(psql -h localhost -p 5432 -U ridgetop -d mandrel -c "SELECT schemaname,tablename,n_tup_ins,n_tup_upd,n_tup_del FROM pg_stat_user_tables;" 2>/dev/null || echo "Could not get stats")
 EOF
 
 # 8. CLEANUP OLD BACKUPS (keep last 10)
@@ -114,5 +114,5 @@ echo "🔄 Restore with: $BACKUP_PATH/restore.sh"
 echo ""
 echo "Quick Recovery Commands:"
 echo "========================"
-echo "Production DB: pg_restore -h localhost -p 5432 -U ridgetop -d NEW_DB_NAME $BACKUP_PATH/aidis_production_${TIMESTAMP}.backup"
+echo "Production DB: pg_restore -h localhost -p 5432 -U ridgetop -d NEW_DB_NAME $BACKUP_PATH/mandrel_${TIMESTAMP}.backup"
 echo "Full restore:  $BACKUP_PATH/restore.sh"
