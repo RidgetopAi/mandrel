@@ -472,61 +472,78 @@ class DecisionsHandler {
     decisionsByType: Record<string, number>;
     decisionsByStatus: Record<string, number>;
     decisionsByImpact: Record<string, number>;
+    decisionsByProject: Record<string, number>;
     outcomeSuccess: number;
     recentActivity: number;
+    totalProjects: number;
   }> {
     const actualProjectId = await this.ensureProjectId(projectId);
 
-    const [total, byType, byStatus, byImpact, outcomes, recent] = await Promise.all([
+    const [total, byType, byStatus, byImpact, outcomes, recent, byProject, projectCount] = await Promise.all([
       // Total decisions
       db.query('SELECT COUNT(*) as count FROM technical_decisions WHERE project_id = $1', [actualProjectId]),
-      
+
       // Decisions by type
       db.query(`
-        SELECT decision_type, COUNT(*) as count 
-        FROM technical_decisions 
-        WHERE project_id = $1 
+        SELECT decision_type, COUNT(*) as count
+        FROM technical_decisions
+        WHERE project_id = $1
         GROUP BY decision_type
         ORDER BY count DESC
       `, [actualProjectId]),
-      
+
       // Decisions by status
       db.query(`
-        SELECT status, COUNT(*) as count 
-        FROM technical_decisions 
-        WHERE project_id = $1 
+        SELECT status, COUNT(*) as count
+        FROM technical_decisions
+        WHERE project_id = $1
         GROUP BY status
       `, [actualProjectId]),
-      
+
       // Decisions by impact level
       db.query(`
-        SELECT impact_level, COUNT(*) as count 
-        FROM technical_decisions 
-        WHERE project_id = $1 
+        SELECT impact_level, COUNT(*) as count
+        FROM technical_decisions
+        WHERE project_id = $1
         GROUP BY impact_level
-        ORDER BY 
-          CASE impact_level 
-            WHEN 'critical' THEN 1 
-            WHEN 'high' THEN 2 
-            WHEN 'medium' THEN 3 
-            WHEN 'low' THEN 4 
+        ORDER BY
+          CASE impact_level
+            WHEN 'critical' THEN 1
+            WHEN 'high' THEN 2
+            WHEN 'medium' THEN 3
+            WHEN 'low' THEN 4
           END
       `, [actualProjectId]),
-      
+
       // Outcome success rate
       db.query(`
-        SELECT outcome_status, COUNT(*) as count 
-        FROM technical_decisions 
+        SELECT outcome_status, COUNT(*) as count
+        FROM technical_decisions
         WHERE project_id = $1 AND outcome_status != 'unknown'
         GROUP BY outcome_status
       `, [actualProjectId]),
-      
+
       // Recent activity (last 30 days)
       db.query(`
-        SELECT COUNT(*) as count 
-        FROM technical_decisions 
+        SELECT COUNT(*) as count
+        FROM technical_decisions
         WHERE project_id = $1 AND decision_date > NOW() - INTERVAL '30 days'
-      `, [actualProjectId])
+      `, [actualProjectId]),
+
+      // Decisions by project (with project names)
+      db.query(`
+        SELECT p.name as project_name, COUNT(td.id) as count
+        FROM technical_decisions td
+        JOIN projects p ON td.project_id = p.id
+        GROUP BY p.id, p.name
+        ORDER BY count DESC
+      `),
+
+      // Total distinct projects with decisions
+      db.query(`
+        SELECT COUNT(DISTINCT project_id) as count
+        FROM technical_decisions
+      `)
     ]);
 
     const decisionsByType: Record<string, number> = {};
@@ -544,6 +561,11 @@ class DecisionsHandler {
       decisionsByImpact[row.impact_level] = parseInt(row.count);
     });
 
+    const decisionsByProject: Record<string, number> = {};
+    byProject.rows.forEach(row => {
+      decisionsByProject[row.project_name] = parseInt(row.count);
+    });
+
     // Calculate success rate
     let totalOutcomes = 0;
     let successfulOutcomes = 0;
@@ -554,7 +576,7 @@ class DecisionsHandler {
         successfulOutcomes += count;
       }
     });
-    
+
     const outcomeSuccess = totalOutcomes > 0 ? Math.round((successfulOutcomes / totalOutcomes) * 100) : 0;
 
     return {
@@ -562,8 +584,10 @@ class DecisionsHandler {
       decisionsByType,
       decisionsByStatus,
       decisionsByImpact,
+      decisionsByProject,
       outcomeSuccess,
-      recentActivity: parseInt(recent.rows[0].count)
+      recentActivity: parseInt(recent.rows[0].count),
+      totalProjects: parseInt(projectCount.rows[0].count)
     };
   }
 
