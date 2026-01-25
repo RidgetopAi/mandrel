@@ -2,7 +2,6 @@ import React from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AuthenticationService } from '../api/generated/services/AuthenticationService';
 import { LoginRequest } from '../api/generated/models/LoginRequest';
-import { RegisterRequest } from '../api/generated/models/RegisterRequest';
 import { User } from '../api/generated/models/User';
 import { useAuthStore } from '../stores/authStore';
 import { OpenAPI } from '../api/generated/core/OpenAPI';
@@ -144,51 +143,6 @@ const useProfile = (enabled = true) => {
     staleTime: 5 * 60 * 1000, // 5 minutes
     refetchOnWindowFocus: false, // Prevent unnecessary refetches
     refetchOnReconnect: false,
-  });
-};
-
-const useRefreshToken = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async () => {
-      const response = await AuthenticationService.postAuthRefresh();
-      return response;
-    },
-    onSuccess: (data) => {
-      if (data.data?.token) {
-        // Update token
-        localStorage.setItem('aidis_token', data.data.token);
-        setAuthToken(data.data.token);
-
-        // Refetch profile
-        queryClient.invalidateQueries({ queryKey: ['auth', 'profile'] });
-      }
-    },
-    onError: (error: any) => {
-      console.error('Token refresh failed:', error);
-      // If refresh fails, logout user
-      if (error.status === 401) {
-        localStorage.removeItem('aidis_token');
-        setAuthToken(null);
-        useAuthStore.getState().logout();
-        queryClient.clear();
-      }
-    },
-  });
-};
-
-const useRegister = () => {
-  return useMutation({
-    mutationFn: async (data: RegisterRequest) => {
-      const response = await AuthenticationService.postAuthRegister({
-        requestBody: data,
-      });
-      return response;
-    },
-    onError: (error: any) => {
-      console.error('Registration failed:', error);
-    },
   });
 };
 

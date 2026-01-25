@@ -2,10 +2,10 @@ import { useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient, type UseQueryOptions } from '@tanstack/react-query';
 import contextsClient from '../api/contextsClient';
 import type {
-  Context,
   ContextSearchParams,
   ContextSearchResult,
   ContextStats,
+  Context,
 } from '../types/context';
 
 export const contextQueryKeys = {
@@ -53,15 +53,6 @@ export const useContextStatsQuery = (options?: Partial<UseQueryOptions<ContextSt
     queryKey: contextQueryKeys.stats(),
     queryFn: () => contextsClient.getContextStats(),
     staleTime: 1000 * 60 * 5,
-    ...options,
-  });
-};
-
-const useContextDetailQuery = (id: string | undefined, options?: Partial<UseQueryOptions<Context>>) => {
-  return useQuery({
-    queryKey: contextQueryKeys.detail(id ?? '__missing__'),
-    queryFn: () => contextsClient.getContext(id as string),
-    enabled: Boolean(id),
     ...options,
   });
 };
@@ -138,8 +129,3 @@ export const useBulkUpdateContexts = () => {
   });
 };
 
-const useSemanticContextSearch = () => {
-  return useMutation({
-    mutationFn: (params: ContextSearchParams) => contextsClient.semanticSearch(params),
-  });
-};

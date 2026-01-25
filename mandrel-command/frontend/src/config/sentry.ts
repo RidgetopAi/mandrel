@@ -119,30 +119,12 @@ export const reportError = (error: Error, context?: Record<string, any>) => {
   });
 };
 
-const reportMessage = (message: string, level: 'info' | 'warning' | 'error' = 'info') => {
-  Sentry.captureMessage(message, level);
-};
-
-const setUserContext = (user: { id?: string; email?: string; username?: string }) => {
-  Sentry.setUser(user);
-};
-
 export const addBreadcrumb = (message: string, category?: string, data?: Record<string, any>) => {
   Sentry.addBreadcrumb({
     message,
     category: category || 'custom',
     data,
     level: 'info',
-  });
-};
-
-// Performance monitoring helpers
-const startTransaction = (name: string) => {
-  return Sentry.startSpan({
-    name,
-    op: 'navigation',
-  }, () => {
-    // Transaction implementation
   });
 };
 

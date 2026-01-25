@@ -1421,8 +1421,15 @@ export class SessionTracker {
   static async flushTokensToDatabase(): Promise<void> {
     try {
       const flushPromises: Array<{ sessionId: string; promise: Promise<any> }> = [];
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
       for (const [sessionId, tokens] of this.sessionTokens.entries()) {
+        // Skip non-UUID session IDs (like 'default-session') - clean up from memory but don't flush to DB
+        if (!uuidRegex.test(sessionId)) {
+          this.sessionTokens.delete(sessionId);
+          continue;
+        }
+
         const updatePromise = db.query(
           `UPDATE sessions
            SET input_tokens = input_tokens + $1,
@@ -1488,8 +1495,15 @@ export class SessionTracker {
   static async flushActivityToDatabase(): Promise<void> {
     try {
       const flushPromises: Array<{ sessionId: string; promise: Promise<any> }> = [];
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
       for (const [sessionId, activity] of this.sessionActivity.entries()) {
+        // Skip non-UUID session IDs (like 'default-session') - clean up from memory but don't flush to DB
+        if (!uuidRegex.test(sessionId)) {
+          this.sessionActivity.delete(sessionId);
+          continue;
+        }
+
         const updatePromise = db.query(
           `UPDATE sessions
            SET tasks_created = tasks_created + $1,
