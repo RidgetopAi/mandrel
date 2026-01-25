@@ -1,5 +1,4 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
 import {
   Typography,
   Card,
@@ -27,12 +26,11 @@ import MonitoringAlerts from '../components/analytics/MonitoringAlerts';
 import MonitoringTrends from '../components/analytics/MonitoringTrends';
 import SessionSummaries from '../components/analytics/SessionSummaries';
 
-const { Title, Text, Paragraph } = Typography;
+const { Title, Text } = Typography;
 
 const Dashboard: React.FC = () => {
   const { user } = useAuthContext();
   const { currentProject } = useProjectContext();
-  const navigate = useNavigate();
 
   // Oracle Phase 2: Use dashboard stats hook with real data
   const { stats, isLoading, error, refetch } = useDashboardStats();
@@ -173,42 +171,6 @@ const Dashboard: React.FC = () => {
         </Col>
         <Col xs={24} xl={8}>
           <MonitoringTrends />
-        </Col>
-      </Row>
-
-      {/* Feature Cards */}
-      <Row gutter={[24, 24]}>
-        <Col xs={24} lg={8}>
-          <Card
-            title="Context Management"
-            extra={<DatabaseOutlined style={{ color: '#1890ff' }} />}
-            hoverable
-          >
-            <Paragraph>
-              Store and retrieve development contexts with semantic search.
-              Maintain consistency across multi-week projects.
-            </Paragraph>
-            <Button type="primary" ghost onClick={() => navigate('/contexts')}>
-              Browse Contexts
-            </Button>
-          </Card>
-        </Col>
-        
-        
-        <Col xs={24} lg={8}>
-          <Card
-            title="Project Switching"
-            extra={<FolderOutlined style={{ color: '#722ed1' }} />}
-            hoverable
-          >
-            <Paragraph>
-              Seamlessly switch between projects while maintaining context
-              and decision history.
-            </Paragraph>
-            <Button type="primary" ghost>
-              Switch Projects
-            </Button>
-          </Card>
         </Col>
       </Row>
     </Space>
