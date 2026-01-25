@@ -1,22 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Card, 
-  Tag, 
-  Button, 
-  Space, 
-  Popconfirm, 
-  Select, 
-  Input, 
-  Row, 
+import {
+  Card,
+  Tag,
+  Button,
+  Space,
+  Popconfirm,
+  Select,
+  Input,
+  Row,
   Col,
   Badge,
   Typography,
-  Tooltip
+  Tooltip,
+  message
 } from 'antd';
 import './TaskCard.css';
-import { 
-  EditOutlined, 
-  DeleteOutlined, 
+import {
+  EditOutlined,
+  DeleteOutlined,
   UserOutlined,
   CalendarOutlined,
   TagOutlined,
@@ -27,7 +28,8 @@ import {
   ExclamationCircleOutlined,
   StopOutlined,
   ExpandAltOutlined,
-  ShrinkOutlined
+  ShrinkOutlined,
+  CopyOutlined
 } from '@ant-design/icons';
 import TaskForm from './TaskForm';
 
@@ -414,9 +416,33 @@ const TaskCardList: React.FC<TaskCardListProps> = ({
                             />
                           </div>
 
+                          {/* Task ID with Copy */}
+                          <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 8,
+                            padding: '8px 10px',
+                            borderRadius: '6px',
+                            border: '1px solid #e8e8e8'
+                          }}>
+                            <Text style={{ fontSize: '12px' }}>
+                              <strong>ID:</strong>
+                            </Text>
+                            <Text code style={{ fontSize: '11px' }}>{task.id}</Text>
+                            <Button
+                              type="text"
+                              size="small"
+                              icon={<CopyOutlined />}
+                              onClick={() => {
+                                navigator.clipboard.writeText(task.id);
+                                message.success('Task ID copied');
+                              }}
+                              style={{ marginLeft: 'auto' }}
+                            />
+                          </div>
+
                           {/* Metadata */}
                           <div style={{
-                            background: '#fff',
                             padding: '10px',
                             borderRadius: '6px',
                             border: '1px solid #e8e8e8'
@@ -465,10 +491,9 @@ const TaskCardList: React.FC<TaskCardListProps> = ({
                             </div>
                           )}
 
-                          {/* Task ID and Additional Metadata */}
+                          {/* Additional Metadata */}
                           {task.metadata && Object.keys(task.metadata).length > 0 && (
                             <div style={{
-                              background: '#fff',
                               padding: '10px',
                               borderRadius: '6px',
                               border: '1px solid #e8e8e8'
@@ -477,7 +502,6 @@ const TaskCardList: React.FC<TaskCardListProps> = ({
                                 🔧 Additional Details
                               </Text>
                               <div style={{ fontSize: '12px', color: '#666' }}>
-                                <div><strong>Task ID:</strong> {task.id}</div>
                                 {Object.entries(task.metadata).map(([key, value]) => (
                                   <div key={key}><strong>{key}:</strong> {String(value)}</div>
                                 ))}
