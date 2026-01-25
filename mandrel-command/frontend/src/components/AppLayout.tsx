@@ -27,7 +27,7 @@ import {
   MenuUnfoldOutlined,
   HistoryOutlined,
   BarChartOutlined,
-  BranchesOutlined,
+  RadarChartOutlined,
 } from '@ant-design/icons';
 import { useAuthContext } from '../contexts/AuthContext';
 import { useProjectContext } from '../contexts/ProjectContext';
@@ -89,9 +89,9 @@ const AppLayout: React.FC = () => {
       label: 'Analytics',
     },
     {
-      key: '/visualizations',
-      icon: <BranchesOutlined />,
-      label: 'Visualizations',
+      key: '/surveyor',
+      icon: <RadarChartOutlined />,
+      label: 'Surveyor',
     },
     {
       key: '/settings',
