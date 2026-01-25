@@ -1,5 +1,5 @@
 import { db as pool } from '../database/connection';
-import GitService from './gitService';
+import { GitService } from './gitService';
 
 export interface SessionDetail {
   id: string;

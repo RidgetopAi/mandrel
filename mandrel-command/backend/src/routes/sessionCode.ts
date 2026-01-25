@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { authenticateToken } from '../middleware/auth';
 import { SessionDetailService } from '../services/sessionDetail';
-import GitService from '../services/gitService';
+import { GitService } from '../services/gitService';
 import { db as pool } from '../database/connection';
 
 const router = Router();
