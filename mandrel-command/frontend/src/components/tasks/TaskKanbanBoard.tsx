@@ -256,28 +256,34 @@ const TaskKanbanBoard: React.FC<TaskKanbanBoardProps> = ({
                 bodyStyle={{ padding: '12px' }}
               >
                 {/* Task Title with Expand */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
-                  <Text
-                    strong
-                    style={{
-                      fontSize: '14px',
-                      flex: 1
-                    }}
-                  >
-                    {task.title}
-                  </Text>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 8 }}>
                   <Tooltip title={isExpanded ? "Collapse" : "Expand"}>
                     <Button
                       type="text"
                       size="small"
-                      icon={isExpanded ? <ShrinkOutlined /> : <ExpandAltOutlined />}
+                      icon={isExpanded ? <ShrinkOutlined style={{ color: '#1890ff' }} /> : <ExpandAltOutlined />}
                       onClick={(e) => {
                         e.stopPropagation();
                         toggleTaskExpansion(task.id);
                       }}
-                      style={{ padding: '2px 4px', marginLeft: 4 }}
+                      style={{
+                        padding: '4px',
+                        backgroundColor: isExpanded ? '#e6f7ff' : '#f5f5f5',
+                        borderRadius: '4px',
+                        flexShrink: 0
+                      }}
                     />
                   </Tooltip>
+                  <Text
+                    strong
+                    style={{
+                      fontSize: '14px',
+                      flex: 1,
+                      paddingRight: 40
+                    }}
+                  >
+                    {task.title}
+                  </Text>
                 </div>
 
                 {/* Description */}
