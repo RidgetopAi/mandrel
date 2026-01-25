@@ -116,6 +116,8 @@ class MonitoringService {
   constructor() {
     this.initializeServices();
     this.initializeAlertRules();
+    // Auto-start service monitoring on boot
+    this.startServiceMonitoring();
   }
 
   // TR015-4: Service initialization based on TR014-4 boundaries
