@@ -245,7 +245,7 @@ export class ProjectController {
 
       res.json({
         success: true,
-        data: { stats }
+        data: stats
       });
     } catch (error) {
       console.error('Get project stats error:', error);
