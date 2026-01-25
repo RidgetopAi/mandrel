@@ -7,7 +7,7 @@ import type { McpResponse } from '../utils/mcpFormatter.js';
  * Project Management Routes
  * Handles: project_list, project_create, project_switch, project_current, project_info, project_insights
  */
-export class ProjectRoutes {
+class ProjectRoutes {
   /**
    * Get current session ID (placeholder for future session tracking enhancement)
    */

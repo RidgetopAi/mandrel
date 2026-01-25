@@ -668,49 +668,6 @@ export class GitHandler {
 }
 
 /**
- * Utility functions for external usage
- */
-
-/**
- * Simple function to get session commits
- */
-export async function getSessionCommits(sessionId?: string): Promise<CommitInfo[]> {
-  try {
-    const result = await GitHandler.gitSessionCommits({ sessionId });
-    return result.success ? result.commits : [];
-  } catch (error) {
-    console.error('❌ Failed to get session commits:', error);
-    return [];
-  }
-}
-
-/**
- * Simple function to get commit sessions
- */
-export async function getCommitSessions(commitSha: string): Promise<SessionInfo[]> {
-  try {
-    const result = await GitHandler.gitCommitSessions({ commitSha });
-    return result.success ? result.sessions : [];
-  } catch (error) {
-    console.error('❌ Failed to get commit sessions:', error);
-    return [];
-  }
-}
-
-/**
- * Simple function to trigger session correlation
- */
-export async function correlateCurrentSession(): Promise<boolean> {
-  try {
-    const result = await GitHandler.gitCorrelateSession({});
-    return result.success;
-  } catch (error) {
-    console.error('❌ Failed to correlate current session:', error);
-    return false;
-  }
-}
-
-/**
  * Export the main handler
  */
 export default GitHandler;

@@ -25,7 +25,7 @@ enum CircuitState {
   HALF_OPEN = 'HALF_OPEN' // Testing if service recovered
 }
 
-export class ServiceMeshClient extends EventEmitter {
+class ServiceMeshClient extends EventEmitter {
   private services = new Map<string, ServiceEndpoint>();
   private circuitBreakers = new Map<string, CircuitBreakerState>();
   private healthChecks = new Map<string, boolean>();
@@ -237,12 +237,6 @@ export function getServiceMeshClient(): ServiceMeshClient {
     serviceMeshClient = new ServiceMeshClient();
   }
   return serviceMeshClient;
-}
-
-// Service discovery helper
-export async function discoverService(serviceName: string): Promise<ServiceEndpoint | null> {
-  const client = getServiceMeshClient();
-  return (client as any).services.get(serviceName) || null;
 }
 
 // Health check helper

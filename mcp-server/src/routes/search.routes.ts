@@ -7,7 +7,7 @@ import type { McpResponse } from '../utils/mcpFormatter.js';
  * Smart Search & AI Routes
  * Handles: smart_search, get_recommendations, project_insights
  */
-export class SearchRoutes {
+class SearchRoutes {
   /**
    * Handle smart search requests
    */

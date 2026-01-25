@@ -162,26 +162,3 @@ export class SessionTrackingMiddleware {
   }
 }
 
-/**
- * Convenience wrapper functions for backward compatibility
- */
-export async function autoTrackActivity(activityType: string, metadata?: any): Promise<void> {
-  try {
-    const activeSessionId = await SessionTracker.getActiveSession();
-    if (activeSessionId) {
-      await SessionTracker.recordActivity(activeSessionId, activityType, metadata);
-    }
-  } catch (error) {
-    const err = error as Error;
-    logger.warn(`Auto-track activity failed (${activityType}):`, err);
-  }
-}
-
-export async function autoTrackFileEdit(
-  filePath: string,
-  linesAdded: number,
-  linesDeleted: number,
-  source: 'tool' | 'git' | 'manual' = 'tool'
-): Promise<void> {
-  await SessionTrackingMiddleware.trackFileEdit(filePath, linesAdded, linesDeleted, source);
-}

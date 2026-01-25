@@ -6,7 +6,7 @@
 import { z } from 'zod';
 
 // Comprehensive MCP response schemas
-export const McpContentSchema = z.object({
+const McpContentSchema = z.object({
   type: z.enum(['text', 'resource', 'image']),
   text: z.string().optional(),
   data: z.string().optional(),
@@ -18,24 +18,24 @@ export const McpContentSchema = z.object({
   }).optional(),
 });
 
-export const McpToolResponseSchema = z.object({
+const McpToolResponseSchema = z.object({
   content: z.array(McpContentSchema),
   additionalFields: z.record(z.any()).optional(),
 });
 
-export const McpSuccessResponseSchema = z.object({
+const McpSuccessResponseSchema = z.object({
   success: z.literal(true),
   data: z.any(),
   additionalFields: z.record(z.any()).optional(),
 });
 
-export const McpErrorResponseSchema = z.object({
+const McpErrorResponseSchema = z.object({
   success: z.literal(false),
   error: z.string(),
   additionalFields: z.record(z.any()).optional(),
 });
 
-export const McpResponseSchema = z.union([
+const McpResponseSchema = z.union([
   McpToolResponseSchema,
   McpSuccessResponseSchema,
   McpErrorResponseSchema,

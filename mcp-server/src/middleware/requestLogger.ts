@@ -357,30 +357,4 @@ export class RequestLogger {
   }
 }
 
-/**
- * Decorator for automatic request logging
- */
-export function loggedOperation(tool: string) {
-  return function(_target: any, _propertyKey: string, descriptor: PropertyDescriptor) {
-    const originalMethod = descriptor.value;
-
-    descriptor.value = async function(...args: any[]) {
-      const operationArgs = args[0] || {};
-      const context = this as any;
-      
-      return RequestLogger.wrapOperation(
-        tool,
-        operationArgs,
-        () => originalMethod.apply(this, args),
-        {
-          sessionId: context.sessionId,
-          projectId: context.projectId
-        }
-      );
-    };
-
-    return descriptor;
-  };
-}
-
 // RequestLogger class is already exported above

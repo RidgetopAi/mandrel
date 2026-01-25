@@ -8,7 +8,7 @@ import { db } from '../config/database.js';
  * Context Management Routes
  * Handles: context_store, context_search, context_get_recent, context_stats
  */
-export class ContextRoutes {
+class ContextRoutes {
   /**
    * Helper to format relative time
    */

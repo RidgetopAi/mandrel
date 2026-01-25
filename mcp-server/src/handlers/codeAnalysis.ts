@@ -55,7 +55,7 @@ export interface AnalysisSession {
     completedAt?: Date;
 }
 
-export class CodeAnalysisHandler {
+class CodeAnalysisHandler {
     constructor(private pool: Pool = db) {}
 
     async analyzeFile(

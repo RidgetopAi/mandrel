@@ -65,49 +65,6 @@ export function formatMcpError(
 }
 
 /**
- * Format list response (for list/search tools)
- */
-export function formatMcpList(
-  items: any[],
-  title: string,
-  itemFormatter: (item: any) => string
-): McpResponse {
-  let text = `📋 ${title}\n`;
-  text += `\nTotal: ${items.length}\n\n`;
-
-  if (items.length === 0) {
-    text += 'No items found.\n';
-  } else {
-    items.forEach((item, index) => {
-      text += `${index + 1}. ${itemFormatter(item)}\n`;
-    });
-  }
-
-  return {
-    content: [{ type: 'text', text }]
-  };
-}
-
-/**
- * Format statistics response
- */
-export function formatMcpStats(
-  stats: Record<string, any>,
-  title: string
-): McpResponse {
-  let text = `📊 ${title}\n\n`;
-
-  Object.entries(stats).forEach(([key, value]) => {
-    const label = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-    text += `${label}: ${value}\n`;
-  });
-
-  return {
-    content: [{ type: 'text', text }]
-  };
-}
-
-/**
  * Default detail formatter
  */
 function formatDefaultDetails(data: any): string {

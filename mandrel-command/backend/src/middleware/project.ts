@@ -69,7 +69,7 @@ export const projectContextMiddleware = async (
  * 
  * Enforces that a project context is required for the endpoint
  */
-export const requireProjectContext = (
+const requireProjectContext = (
   req: AuthenticatedRequest,
   res: Response,
   next: NextFunction

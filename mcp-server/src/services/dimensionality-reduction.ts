@@ -19,7 +19,7 @@ export interface VectorMapping {
   coordinates: CoordinateResult;
 }
 
-export class DimensionalityReductionService {
+class DimensionalityReductionService {
   private umapCache: Map<string, UMAP> = new Map();
 
   /**

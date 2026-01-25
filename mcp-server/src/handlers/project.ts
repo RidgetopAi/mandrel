@@ -16,7 +16,7 @@ export type { ProjectInfo, CreateProjectRequest, SessionState } from '../types/p
 // Import for internal use
 import type { ProjectInfo, CreateProjectRequest, SessionState } from '../types/project.js';
 
-export class ProjectHandler {
+class ProjectHandler {
   // In-memory session state (in production, this could be Redis/database)
   private sessionStates = new Map<string, SessionState>();
   private defaultSessionId = 'default-session';

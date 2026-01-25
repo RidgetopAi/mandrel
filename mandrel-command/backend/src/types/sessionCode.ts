@@ -277,7 +277,7 @@ export interface SessionCodeConfig {
   enableMetricsCollection: boolean;
 }
 
-export const DEFAULT_SESSION_CODE_CONFIG: SessionCodeConfig = {
+const DEFAULT_SESSION_CODE_CONFIG: SessionCodeConfig = {
   defaultConfidenceThreshold: 0.3,
   maxAnalysisFiles: 1000,
   analysisTimeout: 300000, // 5 minutes

@@ -242,90 +242,13 @@ class SimpleMonitoring {
 // Global monitoring instance
 export const monitoring = new SimpleMonitoring();
 
-/**
- * Decorator for monitoring method execution
- */
-export function withMonitoring(metricPrefix: string = 'method') {
-  return function<T extends any[], R>(
-    _target: any,
-    propertyKey: string,
-    descriptor: TypedPropertyDescriptor<(...args: T) => Promise<R>>
-  ) {
-    const originalMethod = descriptor.value;
-    
-    if (originalMethod) {
-      descriptor.value = async function(...args: T): Promise<R> {
-        const startTime = Date.now();
-        const methodName = `${metricPrefix}_${propertyKey}`;
-        
-        try {
-          monitoring.incrementCounter(`${methodName}_requests`);
-          const result = await originalMethod.apply(this, args);
-          monitoring.recordTiming(`${methodName}_duration`, startTime);
-          monitoring.incrementCounter(`${methodName}_success`);
-          return result;
-        } catch (error) {
-          monitoring.incrementCounter(`${methodName}_errors`);
-          monitoring.recordTiming(`${methodName}_duration`, startTime, { status: 'error' });
-          throw error;
-        }
-      };
-    }
-    
-    return descriptor;
-  };
-}
-
-/**
- * Express-like middleware for monitoring HTTP requests
- */
-export function createMonitoringEndpoints() {
-  return {
-    // Health endpoint
-    health: (_req: any, res: any) => {
-      const health = monitoring.getSystemHealth();
-      const statusCode = health.status === 'healthy' ? 200 : health.status === 'degraded' ? 200 : 503;
-
-      res.writeHead(statusCode, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({
-        status: health.status,
-        timestamp: new Date().toISOString(),
-        checks: health.checks.reduce((acc, check) => {
-          acc[check.name] = {
-            status: check.status,
-            message: check.message,
-            responseTime: check.responseTime
-          };
-          return acc;
-        }, {} as any)
-      }, null, 2));
-    },
-
-    // Metrics endpoint
-    metrics: (_req: any, res: any) => {
-      const dashboard = monitoring.getDashboardData();
-      
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify(dashboard, null, 2));
-    }
-  };
-}
-
 // Start background monitoring when module is imported
 let backgroundCleanup: (() => void) | null = null;
 
-export function startMonitoring() {
+function startMonitoring() {
   if (!backgroundCleanup) {
     backgroundCleanup = monitoring.startBackgroundMonitoring();
     console.log('📊 Background monitoring started');
-  }
-}
-
-export function stopMonitoring() {
-  if (backgroundCleanup) {
-    backgroundCleanup();
-    backgroundCleanup = null;
-    console.log('📊 Background monitoring stopped');
   }
 }
 

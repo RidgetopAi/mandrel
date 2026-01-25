@@ -3,7 +3,7 @@
  * Handles live data streaming, caching, and performance optimization
  */
 
-export interface DataStreamConfig {
+interface DataStreamConfig {
   endpoint: string;
   interval: number;
   maxRetries: number;
@@ -12,13 +12,13 @@ export interface DataStreamConfig {
   cacheTTL: number;
 }
 
-export interface DataCacheEntry<T> {
+interface DataCacheEntry<T> {
   data: T;
   timestamp: number;
   ttl: number;
 }
 
-export interface StreamMetrics {
+interface StreamMetrics {
   totalRequests: number;
   successfulRequests: number;
   failedRequests: number;
@@ -27,7 +27,7 @@ export interface StreamMetrics {
   lastUpdate: Date;
 }
 
-export class RealTimeDataService {
+class RealTimeDataService {
   private cache = new Map<string, DataCacheEntry<any>>();
   private activeStreams = new Map<string, NodeJS.Timeout>();
   private metrics: StreamMetrics = {
@@ -350,13 +350,13 @@ export class RealTimeDataService {
 }
 
 // Singleton instance
-export const realTimeDataService = new RealTimeDataService();
+const realTimeDataService = new RealTimeDataService();
 
 // Get MCP base URL from environment
 const MCP_BASE_URL = process.env.REACT_APP_MCP_URL || 'http://localhost:8080';
 
 // Default configurations for different data types
-export const defaultConfigs = {
+const defaultConfigs = {
   fileAnalysis: {
     endpoint: `${MCP_BASE_URL}/mcp/tools/complexity_analyze`,
     interval: 30000, // 30 seconds

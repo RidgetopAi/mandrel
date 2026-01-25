@@ -27,26 +27,6 @@ interface GeneratedTypes {
 }
 
 /**
- * Generate TypeScript interface from Zod schema
- */
-function generateInterfaceFromSchema(schemaName: string, schema: z.ZodSchema<any>): string {
-  // This is a simplified type generation - in a real implementation,
-  // you would use a library like zod-to-ts for more comprehensive generation
-
-  const typeName = schemaName.replace(/Schema$/, 'Type');
-
-  return `// Generated from ${schemaName}
-export interface ${typeName} {
-  // Auto-generated interface from Zod schema
-  // Use z.infer<typeof ${schemaName}> for precise typing
-  [key: string]: any;
-}
-
-export type ${typeName}Input = z.infer<typeof ${schemaName}>;
-export type ${typeName}Output = ${typeName};`;
-}
-
-/**
  * Generate API response types
  */
 function generateApiResponseTypes(): string {
@@ -221,7 +201,7 @@ export interface ErrorHandlerState {
 /**
  * Generate the complete type definition file
  */
-export async function generateTypeDefinitions(): Promise<string> {
+async function generateTypeDefinitions(): Promise<string> {
   const timestamp = new Date().toISOString();
 
   let content = `/**
@@ -346,7 +326,7 @@ export const TaskType = {
 /**
  * Write type definitions to file
  */
-export async function writeTypeDefinitions(outputPath: string): Promise<void> {
+async function writeTypeDefinitions(outputPath: string): Promise<void> {
   try {
     const content = await generateTypeDefinitions();
     const dir = path.dirname(outputPath);
@@ -374,7 +354,7 @@ export async function writeTypeDefinitions(outputPath: string): Promise<void> {
 /**
  * Sync types between frontend and backend
  */
-export async function syncTypes(
+async function syncTypes(
   backendTypesPath: string,
   frontendTypesPath: string
 ): Promise<void> {
@@ -432,7 +412,7 @@ export interface TableProps<T = any> extends ComponentProps {
 /**
  * Validate type consistency
  */
-export async function validateTypeConsistency(): Promise<{
+async function validateTypeConsistency(): Promise<{
   valid: boolean;
   issues: string[];
 }> {
@@ -481,7 +461,7 @@ export async function validateTypeConsistency(): Promise<{
 /**
  * CLI command to generate types
  */
-export async function generateTypesCommand(): Promise<void> {
+async function generateTypesCommand(): Promise<void> {
   const backendPath = path.join(__dirname, '../types/generated.ts');
   const frontendPath = path.join(__dirname, '../../../frontend/src/types/generated.ts');
 
@@ -497,7 +477,7 @@ export async function generateTypesCommand(): Promise<void> {
 /**
  * Validate types command
  */
-export async function validateTypesCommand(): Promise<void> {
+async function validateTypesCommand(): Promise<void> {
   try {
     const result = await validateTypeConsistency();
 

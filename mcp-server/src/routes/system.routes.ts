@@ -6,7 +6,7 @@ import type { McpResponse } from '../utils/mcpFormatter.js';
  * System & Navigation Routes
  * Handles: ping, status, help, explain, examples
  */
-export class SystemRoutes {
+class SystemRoutes {
   /**
    * Handle ping tool - simple connectivity test
    */

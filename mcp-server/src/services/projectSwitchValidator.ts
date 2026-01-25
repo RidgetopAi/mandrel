@@ -73,7 +73,7 @@ export enum PostSwitchValidation {
 /**
  * Main ProjectSwitchValidator Class
  */
-export class ProjectSwitchValidator {
+class ProjectSwitchValidator {
   private static activeSwitches = new Map<string, SwitchContext>();
   private static readonly MAX_CONCURRENT_SWITCHES = 5;
   private static readonly SWITCH_TIMEOUT_MS = 30000; // 30 seconds

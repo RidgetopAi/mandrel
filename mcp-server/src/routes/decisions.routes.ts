@@ -7,7 +7,7 @@ import type { McpResponse } from '../utils/mcpFormatter.js';
  * Technical Decisions Routes
  * Handles: decision_record, decision_search, decision_update, decision_stats
  */
-export class DecisionsRoutes {
+class DecisionsRoutes {
   /**
    * Handle decision record requests
    */

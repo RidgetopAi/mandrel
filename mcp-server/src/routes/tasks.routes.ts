@@ -7,7 +7,7 @@ import type { McpResponse } from '../utils/mcpFormatter.js';
  * Task Management Routes
  * Handles: task_create, task_list, task_update, task_details, task_bulk_update, task_progress_summary
  */
-export class TasksRoutes {
+class TasksRoutes {
   /**
    * Handle task creation requests
    */

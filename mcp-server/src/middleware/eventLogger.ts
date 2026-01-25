@@ -163,46 +163,6 @@ export async function logDecisionEvent(
 }
 
 /**
- * Log session start/end events
- */
-export async function logSessionEvent(
-  eventType: 'session_start' | 'session_end',
-  metadata?: any
-): Promise<string> {
-  const sessionId = eventType === 'session_start' 
-    ? SessionManager.generateSessionId() 
-    : SessionManager.getCurrentSessionId();
-    
-  return logEvent({
-    actor: 'system',
-    session_id: sessionId,
-    event_type: eventType,
-    status: eventType === 'session_start' ? 'open' : 'closed',
-    metadata,
-    tags: ['session']
-  });
-}
-
-/**
- * Log operation timing (for performance analytics)
- */
-export async function logOperationTiming(
-  operationType: string,
-  durationMs: number,
-  success: boolean,
-  metadata?: any
-): Promise<string> {
-  return logEvent({
-    actor: 'system',
-    event_type: `operation_${operationType}`,
-    duration_ms: durationMs,
-    status: success ? 'closed' : 'error',
-    metadata,
-    tags: ['performance', operationType]
-  });
-}
-
-/**
  * Log hierarchical memory search queries with detailed observability data
  * Instance #49: Oracle Priority 1 - Observability before expansion
  */
@@ -290,4 +250,4 @@ export async function logHierarchicalMemorySearch(data: {
 /**
  * Export session manager for external access
  */
-export { SessionManager };
+// SessionManager is internal, not exported

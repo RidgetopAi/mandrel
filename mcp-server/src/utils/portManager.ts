@@ -22,7 +22,7 @@ export interface PortDiscoveryConfig {
   portRange: { min: number; max: number };
 }
 
-export class PortManager {
+class PortManager {
   private config: PortDiscoveryConfig;
   private registryPath: string;
 

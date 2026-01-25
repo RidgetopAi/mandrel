@@ -40,7 +40,7 @@ export interface V2McpResponse {
  * Versioned MCP API Router
  * Provides strict API versioning with backward compatibility
  */
-export class V2McpRouter {
+class V2McpRouter {
   private router: express.Router;
   private toolHandlers: Map<string, any>;
 
