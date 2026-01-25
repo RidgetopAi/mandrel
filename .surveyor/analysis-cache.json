@@ -3556,9 +3556,9 @@
       "model": "grok-4-1-fast-reasoning"
     },
     "file:mandrel-command/backend/src/middleware/auth.ts:fn:authenticateToken:5": {
-      "contentHash": "e74c778bafbc025d",
+      "contentHash": "2847253271f3fc44",
       "result": {
-        "summary": "Express middleware to authenticate JWT from Bearer token, set req.user or return 401",
+        "summary": "Express middleware to authenticate JWT token from Authorization header",
         "flags": {
           "databaseRead": false,
           "databaseWrite": false,
@@ -3569,9 +3569,9 @@
           "modifiesGlobalState": false,
           "hasSideEffects": true
         },
-        "rawResponse": "{\"summary\":\"Express middleware to authenticate JWT from Bearer token, set req.user or return 401\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":true}}"
+        "rawResponse": "{\"summary\":\"Express middleware to authenticate JWT token from Authorization header\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":true}}"
       },
-      "analyzedAt": "2026-01-25T08:06:16.475Z",
+      "analyzedAt": "2026-01-25T19:49:01.980Z",
       "model": "grok-4-1-fast-reasoning"
     },
     "file:mandrel-command/backend/src/database/migrate.ts:fn:runAllMigrations:24": {
@@ -9615,7 +9615,1337 @@
       },
       "analyzedAt": "2026-01-25T17:28:23.298Z",
       "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/services/embedding/localModel.ts:fn:getLocalModelName:47": {
+      "contentHash": "ddd6a06b96e0d687",
+      "result": {
+        "summary": "Returns the name of the local model constant.",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\"summary\":\"Returns the name of the local model constant.\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":false}}"
+      },
+      "analyzedAt": "2026-01-25T19:48:57.611Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/services/embedding/openai.ts:fn:isOpenAIAvailable:13": {
+      "contentHash": "41309b7f662cd9a6",
+      "result": {
+        "summary": "Checks if a valid OpenAI API key is set in environment variables.",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\"summary\":\"Checks if a valid OpenAI API key is set in environment variables.\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":false}}"
+      },
+      "analyzedAt": "2026-01-25T19:48:58.009Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/services/embedding/mock.ts:fn:simpleHash:12": {
+      "contentHash": "30e2bd112f5c1cf9",
+      "result": {
+        "summary": "Computes a simple 32-bit hash for a given string.",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\"summary\":\"Computes a simple 32-bit hash for a given string.\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":false}}"
+      },
+      "analyzedAt": "2026-01-25T19:48:58.173Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/services/embedding/mock.ts:fn:addContentSignals:25": {
+      "contentHash": "d46499d7b7a42028",
+      "result": {
+        "summary": "Boosts specific embedding dimensions based on keywords in text",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": true
+        },
+        "rawResponse": "{\"summary\":\"Boosts specific embedding dimensions based on keywords in text\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":true}}"
+      },
+      "analyzedAt": "2026-01-25T19:48:58.575Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/services/embedding/normalize.ts:fn:applyTargetDimensions:59": {
+      "contentHash": "75a40cb8ce164474",
+      "result": {
+        "summary": "Normalizes embedding to target dimensions, logs change if any, and updates metadata.",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": true
+        },
+        "rawResponse": "{\"summary\":\"Normalizes embedding to target dimensions, logs change if any, and updates metadata.\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":true}}"
+      },
+      "analyzedAt": "2026-01-25T19:48:58.654Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/services/embedding/openai.ts:fn:generateOpenAIEmbedding:21": {
+      "contentHash": "4e39e93c044c9e0c",
+      "result": {
+        "summary": "Generates OpenAI embedding vector for text via API with retry, timeout, and error handling",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": true,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": true
+        },
+        "rawResponse": "{\"summary\":\"Generates OpenAI embedding vector for text via API with retry, timeout, and error handling\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":true,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":true}}"
+      },
+      "analyzedAt": "2026-01-25T19:48:58.668Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/services/embedding/normalize.ts:fn:normalizeEmbedding:13": {
+      "contentHash": "cf0ee91e4fbdfa76",
+      "result": {
+        "summary": "Normalizes embedding vector to target dimensions via sampling/padding and unit L2 norm.",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\"summary\":\"Normalizes embedding vector to target dimensions via sampling/padding and unit L2 norm.\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":false}}"
+      },
+      "analyzedAt": "2026-01-25T19:48:58.741Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/services/embedding/localModel.ts:fn:isLocalModelLoaded:40": {
+      "contentHash": "ee176de4908fe3de",
+      "result": {
+        "summary": "Checks if localModel is loaded by returning !!localModel",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\"summary\":\"Checks if localModel is loaded by returning !!localModel\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":false}}"
+      },
+      "analyzedAt": "2026-01-25T19:48:59.247Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mandrel-command/backend/src/middleware/auth.ts:fn:requireActiveUser:187": {
+      "contentHash": "14b6ba38956cda6a",
+      "result": {
+        "summary": "Express middleware checks for authenticated active user, rejects with 401/403 if not",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": true
+        },
+        "rawResponse": "{\"summary\":\"Express middleware checks for authenticated active user, rejects with 401/403 if not\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":true}}"
+      },
+      "analyzedAt": "2026-01-25T19:48:59.261Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/services/embedding/mock.ts:fn:generateMockEmbedding:66": {
+      "contentHash": "17fc9a879e52776b",
+      "result": {
+        "summary": "Generates mock embedding vector from text with target dimensions for dev purposes",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": true
+        },
+        "rawResponse": "{\n  \"summary\": \"Generates mock embedding vector from text with target dimensions for dev purposes\",\n  \"flags\": {\n    \"databaseRead\": false,\n    \"databaseWrite\": false,\n    \"httpCall\": false,\n    \"fileRead\": false,\n    \"fileWrite\": false,\n    \"sendsNotification\": false,\n    \"modifiesGlobalState\": false,\n    \"hasSideEffects\": true\n  }\n}"
+      },
+      "analyzedAt": "2026-01-25T19:48:59.955Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/services/embedding/retry.ts:fn:createRetryConfig:12": {
+      "contentHash": "2b0d8815d1e8e773",
+      "result": {
+        "summary": "Creates RetryConfig object from environment variables with defaults.",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\"summary\":\"Creates RetryConfig object from environment variables with defaults.\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":false}}"
+      },
+      "analyzedAt": "2026-01-25T19:49:00.364Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/server/handlers/system.ts:fn:createSystemHandlers:11": {
+      "contentHash": "ee26a5c88e5098e4",
+      "result": {
+        "summary": "Creates handlers for ping, status, and help endpoints returning system info",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\n  \"summary\": \"Creates handlers for ping, status, and help endpoints returning system info\",\n  \"flags\": {\n    \"databaseRead\": false,\n    \"databaseWrite\": false,\n    \"httpCall\": false,\n    \"fileRead\": false,\n    \"fileWrite\": false,\n    \"sendsNotification\": false,\n    \"modifiesGlobalState\": false,\n    \"hasSideEffects\": false\n  }\n}"
+      },
+      "analyzedAt": "2026-01-25T19:49:00.728Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/services/embedding/types.ts:fn:createDefaultMetrics:97": {
+      "contentHash": "edb53493dcfc8e1c",
+      "result": {
+        "summary": "Returns a default EmbeddingMetrics object with zeroed counters.",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\"summary\":\"Returns a default EmbeddingMetrics object with zeroed counters.\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":false}}"
+      },
+      "analyzedAt": "2026-01-25T19:49:00.729Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/core-server.ts:fn:shutdown:26": {
+      "contentHash": "09d952cd770243ce",
+      "result": {
+        "summary": "Gracefully shuts down server instance if available and exits process",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": true,
+          "hasSideEffects": true
+        },
+        "rawResponse": "{\"summary\":\"Gracefully shuts down server instance if available and exits process\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":true,\"hasSideEffects\":true}}"
+      },
+      "analyzedAt": "2026-01-25T19:49:00.932Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/services/embedding/retry.ts:fn:isRetryableError:45": {
+      "contentHash": "9928332b4c7ea37e",
+      "result": {
+        "summary": "Determines if an error is retryable based on type, code, status, or message.",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\"summary\":\"Determines if an error is retryable based on type, code, status, or message.\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":false}}"
+      },
+      "analyzedAt": "2026-01-25T19:49:01.083Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mandrel-command/backend/src/middleware/auth.ts:fn:requireRole:140": {
+      "contentHash": "69319db6ad3c073f",
+      "result": {
+        "summary": "Express middleware enforcing required user roles, denying access if insufficient.",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": true
+        },
+        "rawResponse": "{\"summary\":\"Express middleware enforcing required user roles, denying access if insufficient.\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":true}}"
+      },
+      "analyzedAt": "2026-01-25T19:49:01.148Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/services/embedding/similarity.ts:fn:validateEmbedding:86": {
+      "contentHash": "e365c1282cc4545b",
+      "result": {
+        "summary": "Validates embedding array: type, length, numeric values in [-1,1] range, logs warnings.",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": true
+        },
+        "rawResponse": "{\"summary\":\"Validates embedding array: type, length, numeric values in [-1,1] range, logs warnings.\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":true}}"
+      },
+      "analyzedAt": "2026-01-25T19:49:01.661Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/handlers/sessionAnalytics/utils.ts:fn:recordSessionOperation:26": {
+      "contentHash": "c229e9bff23949ed",
+      "result": {
+        "summary": "Records session operation via SessionAnalyticsHandler and returns success boolean.",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": true,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": true
+        },
+        "rawResponse": "{\n  \"summary\": \"Records session operation via SessionAnalyticsHandler and returns success boolean.\",\n  \"flags\": {\n    \"databaseRead\": false,\n    \"databaseWrite\": true,\n    \"httpCall\": false,\n    \"fileRead\": false,\n    \"fileWrite\": false,\n    \"sendsNotification\": false,\n    \"modifiesGlobalState\": false,\n    \"hasSideEffects\": true\n  }\n}"
+      },
+      "analyzedAt": "2026-01-25T19:49:01.799Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/services/embedding/similarity.ts:fn:calculateCosineSimilarity:13": {
+      "contentHash": "6a7a0795771a2b1a",
+      "result": {
+        "summary": "Calculates cosine similarity between two numeric embedding vectors.",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": true
+        },
+        "rawResponse": "{\"summary\":\"Calculates cosine similarity between two numeric embedding vectors.\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":true}}"
+      },
+      "analyzedAt": "2026-01-25T19:49:02.023Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/services/embedding/retry.ts:fn:calculateRetryDelay:31": {
+      "contentHash": "0b0133befc6f0ab4",
+      "result": {
+        "summary": "Calculates exponential backoff retry delay with jitter, capped at maxDelay.",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\"summary\":\"Calculates exponential backoff retry delay with jitter, capped at maxDelay.\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":false}}"
+      },
+      "analyzedAt": "2026-01-25T19:49:02.341Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/handlers/sessionAnalytics/utils.ts:fn:startSessionTracking:39": {
+      "contentHash": "2426c8e637b44522",
+      "result": {
+        "summary": "Starts session tracking for a project and returns active session ID if successful.",
+        "flags": {
+          "databaseRead": true,
+          "databaseWrite": true,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": true,
+          "hasSideEffects": true
+        },
+        "rawResponse": "{\"summary\":\"Starts session tracking for a project and returns active session ID if successful.\",\"flags\":{\"databaseRead\":true,\"databaseWrite\":true,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":true,\"hasSideEffects\":true}}"
+      },
+      "analyzedAt": "2026-01-25T19:49:02.888Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/services/embedding/retry.ts:fn:sleep:24": {
+      "contentHash": "dc12492e56231210",
+      "result": {
+        "summary": "Returns a Promise that resolves after a specified number of milliseconds.",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": true
+        },
+        "rawResponse": "{\"summary\":\"Returns a Promise that resolves after a specified number of milliseconds.\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":true}}"
+      },
+      "analyzedAt": "2026-01-25T19:49:03.336Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/services/embedding/localModel.ts:fn:initializeLocalModel:18": {
+      "contentHash": "09c44455fe17f2b7",
+      "result": {
+        "summary": "Initializes local embedding model with pipeline, caches if needed, sets global localModel",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": true,
+          "fileRead": true,
+          "fileWrite": true,
+          "sendsNotification": false,
+          "modifiesGlobalState": true,
+          "hasSideEffects": true
+        },
+        "rawResponse": "{\n  \"summary\": \"Initializes local embedding model with pipeline, caches if needed, sets global localModel\",\n  \"flags\": {\n    \"databaseRead\": false,\n    \"databaseWrite\": false,\n    \"httpCall\": true,\n    \"fileRead\": true,\n    \"fileWrite\": true,\n    \"sendsNotification\": false,\n    \"modifiesGlobalState\": true,\n    \"hasSideEffects\": true\n  }\n}"
+      },
+      "analyzedAt": "2026-01-25T19:49:03.540Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mandrel-command/backend/src/services/embedding/core.ts:fn:cosineSimilarity:33": {
+      "contentHash": "a145f53a1928e434",
+      "result": {
+        "summary": "Computes cosine similarity between two numeric vectors.",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\"summary\":\"Computes cosine similarity between two numeric vectors.\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":false}}"
+      },
+      "analyzedAt": "2026-01-25T19:49:03.901Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mandrel-command/backend/src/services/embedding/core.ts:fn:resolveProjectId:13": {
+      "contentHash": "8bc1abaea13efc63",
+      "result": {
+        "summary": "Resolves project ID from scope.projectId or queries DB by projectName.",
+        "flags": {
+          "databaseRead": true,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": true
+        },
+        "rawResponse": "{\"summary\":\"Resolves project ID from scope.projectId or queries DB by projectName.\",\"flags\":{\"databaseRead\":true,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":true}}"
+      },
+      "analyzedAt": "2026-01-25T19:49:04.009Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/services/session/SessionTracker.ts:fn:getCurrentSession:347": {
+      "contentHash": "8e2b1a8d283f14ed",
+      "result": {
+        "summary": "Retrieves the current active session ID or null via SessionTracker.",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\"summary\":\"Retrieves the current active session ID or null via SessionTracker.\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":false}}"
+      },
+      "analyzedAt": "2026-01-25T19:49:04.560Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/server/http/HttpServer.ts:fn:createHttpServer:14": {
+      "contentHash": "60295cbf460c2683",
+      "result": {
+        "summary": "Creates HTTP server for health checks, readiness, tools listing, and tool requests.",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\"summary\":\"Creates HTTP server for health checks, readiness, tools listing, and tool requests.\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":false}}"
+      },
+      "analyzedAt": "2026-01-25T19:49:04.609Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/services/embedding/validation.ts:fn:validateInput:12": {
+      "contentHash": "33b51a457eca1db3",
+      "result": {
+        "summary": "Validates input text for type, non-emptiness, length limit, and control characters, throwing errors if invalid.",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": true
+        },
+        "rawResponse": "{\"summary\":\"Validates input text for type, non-emptiness, length limit, and control characters, throwing errors if invalid.\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":true}}"
+      },
+      "analyzedAt": "2026-01-25T19:49:04.665Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mandrel-command/backend/src/services/embedding/datasets.ts:fn:getAvailableDatasets:14": {
+      "contentHash": "f44c308393cacdae",
+      "result": {
+        "summary": "Queries database for embedding datasets from project contexts, grouped by project (top 25 by count)",
+        "flags": {
+          "databaseRead": true,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": true
+        },
+        "rawResponse": "{\"summary\":\"Queries database for embedding datasets from project contexts, grouped by project (top 25 by count)\",\"flags\":{\"databaseRead\":true,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":true}}"
+      },
+      "analyzedAt": "2026-01-25T19:49:04.932Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mandrel-command/backend/src/services/embedding/quality.ts:fn:getQualityMetrics:14": {
+      "contentHash": "c5cc5764a904a0f2",
+      "result": {
+        "summary": "Computes embedding quality metrics by querying and analyzing vectors from database",
+        "flags": {
+          "databaseRead": true,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": true
+        },
+        "rawResponse": "{\"summary\":\"Computes embedding quality metrics by querying and analyzing vectors from database\",\"flags\":{\"databaseRead\":true,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":true}}"
+      },
+      "analyzedAt": "2026-01-25T19:49:05.071Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/services/session/state/ActivityCountStore.ts:fn:defaultCounts:15": {
+      "contentHash": "6d51c1393caadc1d",
+      "result": {
+        "summary": "Returns default ActivityCounts object with all counts set to zero.",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\"summary\":\"Returns default ActivityCounts object with all counts set to zero.\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":false}}"
+      },
+      "analyzedAt": "2026-01-25T19:49:05.836Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/handlers/sessionAnalytics/utils.ts:fn:getSessionStatistics:13": {
+      "contentHash": "d4beedd476e3e091",
+      "result": {
+        "summary": "Fetches session statistics via SessionAnalyticsHandler for a project or returns null on error.",
+        "flags": {
+          "databaseRead": true,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": true
+        },
+        "rawResponse": "{\"summary\":\"Fetches session statistics via SessionAnalyticsHandler for a project or returns null on error.\",\"flags\":{\"databaseRead\":true,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":true}}"
+      },
+      "analyzedAt": "2026-01-25T19:49:05.851Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/services/embedding/localModel.ts:fn:generateLocalEmbedding:54": {
+      "contentHash": "32469d64aca37488",
+      "result": {
+        "summary": "Generates embedding vector using local ML model with retry, validation, and error handling",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": true
+        },
+        "rawResponse": "{\n  \"summary\": \"Generates embedding vector using local ML model with retry, validation, and error handling\",\n  \"flags\": {\n    \"databaseRead\": false,\n    \"databaseWrite\": false,\n    \"httpCall\": false,\n    \"fileRead\": false,\n    \"fileWrite\": false,\n    \"sendsNotification\": false,\n    \"modifiesGlobalState\": false,\n    \"hasSideEffects\": true\n  }\n}"
+      },
+      "analyzedAt": "2026-01-25T19:49:05.914Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mandrel-command/backend/src/services/git/utils/branchAnalysis.ts:fn:classifyBranchType:11": {
+      "contentHash": "8891b21bbdb43043",
+      "result": {
+        "summary": "Classifies git branch type based on name patterns (main, feature, hotfix, etc.).",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\"summary\":\"Classifies git branch type based on name patterns (main, feature, hotfix, etc.).\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":false}}"
+      },
+      "analyzedAt": "2026-01-25T19:49:06.160Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mandrel-command/backend/src/services/embedding/relationships.ts:fn:getProjectRelationships:20": {
+      "contentHash": "56369bdcc58cd83d",
+      "result": {
+        "summary": "Fetches project relationship analytics via SQL queries on contexts and tags",
+        "flags": {
+          "databaseRead": true,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": true
+        },
+        "rawResponse": "{\n  \"summary\": \"Fetches project relationship analytics via SQL queries on contexts and tags\",\n  \"flags\": {\n    \"databaseRead\": true,\n    \"databaseWrite\": false,\n    \"httpCall\": false,\n    \"fileRead\": false,\n    \"fileWrite\": false,\n    \"sendsNotification\": false,\n    \"modifiesGlobalState\": false,\n    \"hasSideEffects\": true\n  }\n}"
+      },
+      "analyzedAt": "2026-01-25T19:49:06.188Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mandrel-command/backend/src/services/git/utils/errors.ts:fn:createServiceError:10": {
+      "contentHash": "2f07b9a4e26d1d67",
+      "result": {
+        "summary": "Creates a GitServiceError object with code, message, details, and stack trace.",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\"summary\":\"Creates a GitServiceError object with code, message, details, and stack trace.\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":false}}"
+      },
+      "analyzedAt": "2026-01-25T19:49:06.464Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mandrel-command/backend/src/services/embedding/knowledgeGap.ts:fn:getKnowledgeGapMetrics:21": {
+      "contentHash": "ed2fe51c1e412f86",
+      "result": {
+        "summary": "Queries database for project contexts, tags, last activity, and missing tags to compute knowledge gap metrics.",
+        "flags": {
+          "databaseRead": true,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": true
+        },
+        "rawResponse": "{\"summary\":\"Queries database for project contexts, tags, last activity, and missing tags to compute knowledge gap metrics.\",\"flags\":{\"databaseRead\":true,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":true}}"
+      },
+      "analyzedAt": "2026-01-25T19:49:06.612Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mandrel-command/backend/src/services/git/utils/branchAnalysis.ts:fn:getMostActiveCategory:33": {
+      "contentHash": "c9b3dbb76cbeb034",
+      "result": {
+        "summary": "Finds file category with highest total change count from hotspots array",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\"summary\":\"Finds file category with highest total change count from hotspots array\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":false}}"
+      },
+      "analyzedAt": "2026-01-25T19:49:06.767Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/services/embedding/retry.ts:fn:executeWithRetry:76": {
+      "contentHash": "39c99f2358e64b78",
+      "result": {
+        "summary": "Retries an async operation up to maxRetries times on retryable errors",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": true
+        },
+        "rawResponse": "{\"summary\":\"Retries an async operation up to maxRetries times on retryable errors\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":true}}"
+      },
+      "analyzedAt": "2026-01-25T19:49:06.848Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mandrel-command/backend/src/services/git/utils/branchAnalysis.ts:fn:findDefaultBranch:24": {
+      "contentHash": "b94db8bb224e266f",
+      "result": {
+        "summary": "Finds default branch from list, preferring is_default, then 'main', then 'master'.",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\"summary\":\"Finds default branch from list, preferring is_default, then 'main', then 'master'.\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":false}}"
+      },
+      "analyzedAt": "2026-01-25T19:49:06.975Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mandrel-command/backend/src/services/git/utils/fileAnalysis.ts:fn:getFileExtension:9": {
+      "contentHash": "2ba1ed7afa20155d",
+      "result": {
+        "summary": "Extracts the lowercase file extension from a file path or returns null if none.",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\"summary\":\"Extracts the lowercase file extension from a file path or returns null if none.\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":false}}"
+      },
+      "analyzedAt": "2026-01-25T19:49:07.038Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mandrel-command/backend/src/services/git/utils/fileAnalysis.ts:fn:calculateChangeMagnitude:45": {
+      "contentHash": "bdee050bc28d10f1",
+      "result": {
+        "summary": "Categorizes git change magnitude based on total insertions and deletions.",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\"summary\":\"Categorizes git change magnitude based on total insertions and deletions.\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":false}}"
+      },
+      "analyzedAt": "2026-01-25T19:49:07.069Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/services/session/SessionTracker.ts:fn:recordSessionOperation:339": {
+      "contentHash": "f04da3d9aad24581",
+      "result": {
+        "summary": "Ensures active session and records operation type on SessionTracker.",
+        "flags": {
+          "databaseRead": true,
+          "databaseWrite": true,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": true,
+          "hasSideEffects": true
+        },
+        "rawResponse": "{\"summary\":\"Ensures active session and records operation type on SessionTracker.\",\"flags\":{\"databaseRead\":true,\"databaseWrite\":true,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":true,\"hasSideEffects\":true}}"
+      },
+      "analyzedAt": "2026-01-25T19:49:07.492Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mandrel-command/backend/src/services/embedding/relevance.ts:fn:getRelevanceMetrics:20": {
+      "contentHash": "2d2bfbc70bd99c37",
+      "result": {
+        "summary": "Queries database for relevance metrics like counts, avg, median, min/max scores on project contexts",
+        "flags": {
+          "databaseRead": true,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": true
+        },
+        "rawResponse": "{\n  \"summary\": \"Queries database for relevance metrics like counts, avg, median, min/max scores on project contexts\",\n  \"flags\": {\n    \"databaseRead\": true,\n    \"databaseWrite\": false,\n    \"httpCall\": false,\n    \"fileRead\": false,\n    \"fileWrite\": false,\n    \"sendsNotification\": false,\n    \"modifiesGlobalState\": false,\n    \"hasSideEffects\": true\n  }\n}"
+      },
+      "analyzedAt": "2026-01-25T19:49:07.506Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mandrel-command/backend/src/services/embedding/visualization.ts:fn:getSimilarityMatrix:15": {
+      "contentHash": "c4940bebe67f63ed",
+      "result": {
+        "summary": "Computes cosine similarity matrix from project context embeddings.",
+        "flags": {
+          "databaseRead": true,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": true
+        },
+        "rawResponse": "{\n  \"summary\": \"Computes cosine similarity matrix from project context embeddings.\",\n  \"flags\": {\n    \"databaseRead\": true,\n    \"databaseWrite\": false,\n    \"httpCall\": false,\n    \"fileRead\": false,\n    \"fileWrite\": false,\n    \"sendsNotification\": false,\n    \"modifiesGlobalState\": false,\n    \"hasSideEffects\": true\n  }\n}"
+      },
+      "analyzedAt": "2026-01-25T19:49:07.799Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mandrel-command/backend/src/services/git/utils/fileAnalysis.ts:fn:categorizeFile:17": {
+      "contentHash": "fb1b52436afbaa1c",
+      "result": {
+        "summary": "Categorizes a file by its extension into predefined categories like source, web, config.",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\"summary\":\"Categorizes a file by its extension into predefined categories like source, web, config.\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":false}}"
+      },
+      "analyzedAt": "2026-01-25T19:49:08.170Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mandrel-command/backend/src/services/git/utils/fileAnalysis.ts:fn:isTestFile:99": {
+      "contentHash": "8faf2eea20b2c278",
+      "result": {
+        "summary": "Checks if a file path matches common test file patterns using regex.",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\"summary\":\"Checks if a file path matches common test file patterns using regex.\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":false}}"
+      },
+      "analyzedAt": "2026-01-25T19:49:08.254Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mandrel-command/backend/src/services/git/utils/messageAnalysis.ts:fn:mapConventionalCommitType:29": {
+      "contentHash": "b91949e5e68e0db4",
+      "result": {
+        "summary": "Maps conventional commit types to standardized CommitType values.",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\"summary\":\"Maps conventional commit types to standardized CommitType values.\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":false}}"
+      },
+      "analyzedAt": "2026-01-25T19:49:08.545Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mandrel-command/backend/src/services/git/utils/fileAnalysis.ts:fn:analyzeFileChange:182": {
+      "contentHash": "ae50417cdef3aa5e",
+      "result": {
+        "summary": "Analyzes file path and change stats to categorize file, magnitude, and properties.",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\"summary\":\"Analyzes file path and change stats to categorize file, magnitude, and properties.\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":false}}"
+      },
+      "analyzedAt": "2026-01-25T19:49:08.598Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mandrel-command/backend/src/services/git/utils/fileAnalysis.ts:fn:isDocumentationFile:82": {
+      "contentHash": "f43cf3932a005aa9",
+      "result": {
+        "summary": "Checks if file path matches documentation patterns (e.g., .md, README, docs/).",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\"summary\":\"Checks if file path matches documentation patterns (e.g., .md, README, docs/).\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":false}}"
+      },
+      "analyzedAt": "2026-01-25T19:49:08.639Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mandrel-command/backend/src/services/git/utils/fileAnalysis.ts:fn:isGeneratedFile:116": {
+      "contentHash": "d5a8224b262f946b",
+      "result": {
+        "summary": "Checks if file path matches patterns for generated/build artifacts.",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\"summary\":\"Checks if file path matches patterns for generated/build artifacts.\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":false}}"
+      },
+      "analyzedAt": "2026-01-25T19:49:08.755Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mandrel-command/backend/src/services/git/utils/fileAnalysis.ts:fn:isConfigurationFile:59": {
+      "contentHash": "d070db08cec3a9e9",
+      "result": {
+        "summary": "Checks if a file path matches common configuration file patterns.",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\"summary\":\"Checks if a file path matches common configuration file patterns.\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":false}}"
+      },
+      "analyzedAt": "2026-01-25T19:49:08.799Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mandrel-command/backend/src/services/git/utils/fileAnalysis.ts:fn:detectProgrammingLanguage:140": {
+      "contentHash": "f54cc8b4228b8d45",
+      "result": {
+        "summary": "Detects programming language from file extension using a predefined map.",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\"summary\":\"Detects programming language from file extension using a predefined map.\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":false}}"
+      },
+      "analyzedAt": "2026-01-25T19:49:08.863Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mandrel-command/backend/src/services/git/utils/messageAnalysis.ts:fn:classifyCommitType:11": {
+      "contentHash": "1141e1eeacc33eaf",
+      "result": {
+        "summary": "Classifies git commit message type based on conventional commit prefixes.",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\"summary\":\"Classifies git commit message type based on conventional commit prefixes.\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":false}}"
+      },
+      "analyzedAt": "2026-01-25T19:49:08.897Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mandrel-command/backend/src/services/git/utils/fileAnalysis.ts:fn:calculateFileRiskScore:205": {
+      "contentHash": "4e53c1e04ad378d4",
+      "result": {
+        "summary": "Calculates file risk score from change count, contributors, avg change size, and last change date.",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\"summary\":\"Calculates file risk score from change count, contributors, avg change size, and last change date.\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":false}}"
+      },
+      "analyzedAt": "2026-01-25T19:49:09.350Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mandrel-command/backend/src/services/git/utils/messageAnalysis.ts:fn:determineMergeStrategy:116": {
+      "contentHash": "dc057b50e4cf76a5",
+      "result": {
+        "summary": "Determines Git merge strategy ('squash', 'rebase', 'fast-forward', or 'merge') based on keywords in message.",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\"summary\":\"Determines Git merge strategy ('squash', 'rebase', 'fast-forward', or 'merge') based on keywords in message.\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":false}}"
+      },
+      "analyzedAt": "2026-01-25T19:49:09.493Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mandrel-command/backend/src/services/git/utils/messageAnalysis.ts:fn:parseCommitStats:126": {
+      "contentHash": "c31c01427f9b7c93",
+      "result": {
+        "summary": "Parses git show output to extract commit stats including files changed, insertions, deletions, and per-file details",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": true
+        },
+        "rawResponse": "{\"summary\":\"Parses git show output to extract commit stats including files changed, insertions, deletions, and per-file details\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":true}}"
+      },
+      "analyzedAt": "2026-01-25T19:49:09.524Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mandrel-command/backend/src/services/git/utils/messageAnalysis.ts:fn:extractBranches:180": {
+      "contentHash": "e9a7e9f2b29d55d9",
+      "result": {
+        "summary": "Extracts branch names from git refs string, filtering tags/HEAD and stripping origin/ prefix.",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\"summary\":\"Extracts branch names from git refs string, filtering tags/HEAD and stripping origin/ prefix.\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":false}}"
+      },
+      "analyzedAt": "2026-01-25T19:49:09.605Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/services/session/domain/productivity/productivity.ts:fn:calculateBasicProductivity:12": {
+      "contentHash": "af0b04a42e74f607",
+      "result": {
+        "summary": "Calculates productivity score from session contexts, decisions, and duration",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\"summary\":\"Calculates productivity score from session contexts, decisions, and duration\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":false}}"
+      },
+      "analyzedAt": "2026-01-25T19:49:09.844Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mandrel-command/backend/src/services/git/utils/messageAnalysis.ts:fn:analyzeCommitMessage:50": {
+      "contentHash": "11f3fbf70425f95e",
+      "result": {
+        "summary": "Analyzes commit message for type, scope, breaking changes, conventional format, tickets, and co-authors",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\n  \"summary\": \"Analyzes commit message for type, scope, breaking changes, conventional format, tickets, and co-authors\",\n  \"flags\": {\n    \"databaseRead\": false,\n    \"databaseWrite\": false,\n    \"httpCall\": false,\n    \"fileRead\": false,\n    \"fileWrite\": false,\n    \"sendsNotification\": false,\n    \"modifiesGlobalState\": false,\n    \"hasSideEffects\": false\n  }\n}"
+      },
+      "analyzedAt": "2026-01-25T19:49:10.135Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mandrel-command/backend/src/services/embedding/visualization.ts:fn:getProjection:92": {
+      "contentHash": "99bf5c47004b516c",
+      "result": {
+        "summary": "Fetches embeddings from DB for project, computes PCA 2D/3D projection, returns points.",
+        "flags": {
+          "databaseRead": true,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": true
+        },
+        "rawResponse": "{\"summary\":\"Fetches embeddings from DB for project, computes PCA 2D/3D projection, returns points.\",\"flags\":{\"databaseRead\":true,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":true}}"
+      },
+      "analyzedAt": "2026-01-25T19:49:10.322Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mandrel-command/backend/src/services/embedding/usagePatterns.ts:fn:getUsagePatterns:13": {
+      "contentHash": "56b19ad86c4d7312",
+      "result": {
+        "summary": "Fetches usage pattern metrics (daily, type, tag, hourly, summary) for a project from database",
+        "flags": {
+          "databaseRead": true,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": true
+        },
+        "rawResponse": "{\n  \"summary\": \"Fetches usage pattern metrics (daily, type, tag, hourly, summary) for a project from database\",\n  \"flags\": {\n    \"databaseRead\": true,\n    \"databaseWrite\": false,\n    \"httpCall\": false,\n    \"fileRead\": false,\n    \"fileWrite\": false,\n    \"sendsNotification\": false,\n    \"modifiesGlobalState\": false,\n    \"hasSideEffects\": true\n  }\n}"
+      },
+      "analyzedAt": "2026-01-25T19:49:10.514Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mandrel-command/backend/src/services/git/infra/db/BranchRepo.ts:fn:mapRowToGitBranch:11": {
+      "contentHash": "85d6942897a1b67e",
+      "result": {
+        "summary": "Maps database row to GitBranch object with defaults and date conversions",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\"summary\":\"Maps database row to GitBranch object with defaults and date conversions\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":false}}"
+      },
+      "analyzedAt": "2026-01-25T19:49:10.895Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mandrel-command/backend/src/services/git/infra/db/ChangeRepo.ts:fn:mapRowToGitFileChange:11": {
+      "contentHash": "30d2cf28adc2a609",
+      "result": {
+        "summary": "Maps a database row to a GitFileChange object with type casting and defaults",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\"summary\":\"Maps a database row to a GitFileChange object with type casting and defaults\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":false}}"
+      },
+      "analyzedAt": "2026-01-25T19:49:10.961Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/services/session/infra/git/GitFileSync.ts:fn:parseGitDiffNumstat:25": {
+      "contentHash": "c0b4b9e7634f2e56",
+      "result": {
+        "summary": "Parses git diff --numstat output to map file paths to added/deleted line counts.",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\"summary\":\"Parses git diff --numstat output to map file paths to added/deleted line counts.\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":false}}"
+      },
+      "analyzedAt": "2026-01-25T19:49:11.267Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mandrel-command/backend/src/services/git/infra/db/CommitRepo.ts:fn:mapRowToGitCommit:11": {
+      "contentHash": "dfd3374479fbffd3",
+      "result": {
+        "summary": "Maps database row to GitCommit object with date conversions and defaults.",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\"summary\":\"Maps database row to GitCommit object with date conversions and defaults.\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":false}}"
+      },
+      "analyzedAt": "2026-01-25T19:49:11.986Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/services/session/domain/productivity/productivity.ts:fn:calculateWeightedProductivity:25": {
+      "contentHash": "b437a2e9a9ca6247",
+      "result": {
+        "summary": "Calculates weighted productivity score from session data and component weights",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\"summary\":\"Calculates weighted productivity score from session data and component weights\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":false}}"
+      },
+      "analyzedAt": "2026-01-25T19:49:12.318Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mandrel-command/backend/src/services/embedding/visualization.ts:fn:getClusters:169": {
+      "contentHash": "446133134303ed7c",
+      "result": {
+        "summary": "Fetches PCA projection and computes mock k-means clusters with centroids",
+        "flags": {
+          "databaseRead": true,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": true
+        },
+        "rawResponse": "{\"summary\":\"Fetches PCA projection and computes mock k-means clusters with centroids\",\"flags\":{\"databaseRead\":true,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":true}}"
+      },
+      "analyzedAt": "2026-01-25T19:49:13.302Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/services/session/domain/lifecycle/projectResolution.ts:fn:resolveProjectForSession:17": {
+      "contentHash": "a7a3bad25fd29c43",
+      "result": {
+        "summary": "Resolves project ID for session via context, primary/default DB query, or creates new project",
+        "flags": {
+          "databaseRead": true,
+          "databaseWrite": true,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": true
+        },
+        "rawResponse": "{\n  \"summary\": \"Resolves project ID for session via context, primary/default DB query, or creates new project\",\n  \"flags\": {\n    \"databaseRead\": true,\n    \"databaseWrite\": true,\n    \"httpCall\": false,\n    \"fileRead\": false,\n    \"fileWrite\": false,\n    \"sendsNotification\": false,\n    \"modifiesGlobalState\": false,\n    \"hasSideEffects\": true\n  }\n}"
+      },
+      "analyzedAt": "2026-01-25T19:49:14.182Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/services/session/SessionTracker.ts:fn:ensureActiveSession:319": {
+      "contentHash": "b0d59f5e3fb19213",
+      "result": {
+        "summary": "Retrieves active session ID or starts a new one if none exists",
+        "flags": {
+          "databaseRead": true,
+          "databaseWrite": true,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": true,
+          "hasSideEffects": true
+        },
+        "rawResponse": "{\n  \"summary\": \"Retrieves active session ID or starts a new one if none exists\",\n  \"flags\": {\n    \"databaseRead\": true,\n    \"databaseWrite\": true,\n    \"httpCall\": false,\n    \"fileRead\": false,\n    \"fileWrite\": false,\n    \"sendsNotification\": false,\n    \"modifiesGlobalState\": true,\n    \"hasSideEffects\": true\n  }\n}"
+      },
+      "analyzedAt": "2026-01-25T19:49:17.377Z",
+      "model": "grok-4-1-fast-reasoning"
     }
   },
-  "updatedAt": "2026-01-25T17:28:23.298Z"
+  "updatedAt": "2026-01-25T19:49:17.377Z"
 }
