@@ -180,7 +180,8 @@ const Surveyor: React.FC = () => {
           message.destroy();
           message.error(`Analysis failed: ${error.message}`);
           setIsAnalyzing(false);
-          analysisTriggeredRef.current = null;
+          // Note: Do NOT reset analysisTriggeredRef - that causes retry loops
+          // User can click the button again to retry
         },
       }
     );
@@ -207,7 +208,7 @@ const Surveyor: React.FC = () => {
       analysisTriggeredRef.current !== latestScan.id &&
       !isAnalyzing
     ) {
-      // Mark as triggered to prevent duplicates
+      // Mark as triggered to prevent duplicates - keep set even on error to prevent retry loops
       analysisTriggeredRef.current = latestScan.id;
       setIsAnalyzing(true);
       message.loading('Running AI analysis...', 0);
@@ -225,8 +226,8 @@ const Surveyor: React.FC = () => {
             message.destroy();
             message.error(`Analysis failed: ${error.message}`);
             setIsAnalyzing(false);
-            // Reset ref so user can retry manually
-            analysisTriggeredRef.current = null;
+            // Note: Do NOT reset analysisTriggeredRef here - that causes retry loops
+            // User can still retry manually using the "Run AI Analysis" button
           },
         }
       );

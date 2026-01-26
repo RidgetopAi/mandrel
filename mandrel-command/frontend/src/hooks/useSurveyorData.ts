@@ -211,6 +211,7 @@ export function useTriggerAnalysis() {
       scanId: string;
       options?: { skipAnalyzed?: boolean; maxFunctions?: number };
     }) => surveyorClient.triggerAnalysis(scanId, options),
+    retry: false, // Don't retry on failure - analysis can be expensive
     onSuccess: (data, variables) => {
       // Invalidate the scan with nodes to refresh behavioral data
       queryClient.invalidateQueries({
