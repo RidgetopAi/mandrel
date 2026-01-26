@@ -58,16 +58,18 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.18.1",
     "@xenova/transformers": "^2.17.2",
+    "bullmq": "^5.34.8",
     "dotenv": "^16.4.0",
     "dotenv-safe": "^9.1.0",
     "express": "^5.1.0",
+    "glob": "^13.0.0",
     "json-rpc-2.0": "^1.7.1",
     "nearley": "^2.20.1",
     "pg": "^8.12.0",
     "pgvector": "^0.2.0",
     "simple-git": "^3.28.0",
+    "ts-morph": "^27.0.2",
     "umap-js": "^1.4.0",
-    "zod": "^3.25.76",
-    "bullmq": "^5.34.8"
+    "zod": "^3.25.76"
   }
 }

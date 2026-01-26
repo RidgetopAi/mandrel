@@ -104,4 +104,254 @@ router.post('/v2/sessions/:sessionId/sync-files', async (req: Request, res: Resp
   }
 });
 
+// ============================================
+// SURVEYOR PROXY ROUTES
+// ============================================
+
+/**
+ * Proxy POST /api/v2/surveyor/scan to MCP server
+ */
+router.post('/v2/surveyor/scan', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const url = `${MCP_BASE}/api/v2/surveyor/scan`;
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(req.body),
+    });
+
+    const data = await response.json();
+    res.status(response.status).json(data);
+  } catch (error) {
+    console.error('MCP proxy error (POST surveyor/scan):', error);
+    res.status(503).json({
+      success: false,
+      error: 'MCP service unavailable',
+      message: error instanceof Error ? error.message : 'Failed to proxy request to MCP server'
+    });
+  }
+});
+
+/**
+ * Proxy GET /api/v2/surveyor/scans to MCP server
+ */
+router.get('/v2/surveyor/scans', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const queryString = new URLSearchParams(req.query as Record<string, string>).toString();
+    const url = `${MCP_BASE}/api/v2/surveyor/scans${queryString ? `?${queryString}` : ''}`;
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    const data = await response.json();
+    res.status(response.status).json(data);
+  } catch (error) {
+    console.error('MCP proxy error (GET surveyor/scans):', error);
+    res.status(503).json({
+      success: false,
+      error: 'MCP service unavailable',
+      message: error instanceof Error ? error.message : 'Failed to proxy request to MCP server'
+    });
+  }
+});
+
+/**
+ * Proxy GET /api/v2/surveyor/scans/:id to MCP server
+ */
+router.get('/v2/surveyor/scans/:id', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const queryString = new URLSearchParams(req.query as Record<string, string>).toString();
+    const url = `${MCP_BASE}/api/v2/surveyor/scans/${id}${queryString ? `?${queryString}` : ''}`;
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    const data = await response.json();
+    res.status(response.status).json(data);
+  } catch (error) {
+    console.error('MCP proxy error (GET surveyor/scans/:id):', error);
+    res.status(503).json({
+      success: false,
+      error: 'MCP service unavailable',
+      message: error instanceof Error ? error.message : 'Failed to proxy request to MCP server'
+    });
+  }
+});
+
+/**
+ * Proxy DELETE /api/v2/surveyor/scans/:id to MCP server
+ */
+router.delete('/v2/surveyor/scans/:id', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const url = `${MCP_BASE}/api/v2/surveyor/scans/${id}`;
+
+    const response = await fetch(url, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    const data = await response.json();
+    res.status(response.status).json(data);
+  } catch (error) {
+    console.error('MCP proxy error (DELETE surveyor/scans/:id):', error);
+    res.status(503).json({
+      success: false,
+      error: 'MCP service unavailable',
+      message: error instanceof Error ? error.message : 'Failed to proxy request to MCP server'
+    });
+  }
+});
+
+/**
+ * Proxy GET /api/v2/surveyor/warnings/:scanId to MCP server
+ */
+router.get('/v2/surveyor/warnings/:scanId', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { scanId } = req.params;
+    const queryString = new URLSearchParams(req.query as Record<string, string>).toString();
+    const url = `${MCP_BASE}/api/v2/surveyor/warnings/${scanId}${queryString ? `?${queryString}` : ''}`;
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    const data = await response.json();
+    res.status(response.status).json(data);
+  } catch (error) {
+    console.error('MCP proxy error (GET surveyor/warnings/:scanId):', error);
+    res.status(503).json({
+      success: false,
+      error: 'MCP service unavailable',
+      message: error instanceof Error ? error.message : 'Failed to proxy request to MCP server'
+    });
+  }
+});
+
+/**
+ * Proxy GET /api/v2/surveyor/query to MCP server
+ */
+router.get('/v2/surveyor/query', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const queryString = new URLSearchParams(req.query as Record<string, string>).toString();
+    const url = `${MCP_BASE}/api/v2/surveyor/query${queryString ? `?${queryString}` : ''}`;
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    const data = await response.json();
+    res.status(response.status).json(data);
+  } catch (error) {
+    console.error('MCP proxy error (GET surveyor/query):', error);
+    res.status(503).json({
+      success: false,
+      error: 'MCP service unavailable',
+      message: error instanceof Error ? error.message : 'Failed to proxy request to MCP server'
+    });
+  }
+});
+
+/**
+ * Proxy GET /api/v2/surveyor/summary/:scanId to MCP server
+ */
+router.get('/v2/surveyor/summary/:scanId', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { scanId } = req.params;
+    const queryString = new URLSearchParams(req.query as Record<string, string>).toString();
+    const url = `${MCP_BASE}/api/v2/surveyor/summary/${scanId}${queryString ? `?${queryString}` : ''}`;
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    const data = await response.json();
+    res.status(response.status).json(data);
+  } catch (error) {
+    console.error('MCP proxy error (GET surveyor/summary/:scanId):', error);
+    res.status(503).json({
+      success: false,
+      error: 'MCP service unavailable',
+      message: error instanceof Error ? error.message : 'Failed to proxy request to MCP server'
+    });
+  }
+});
+
+/**
+ * Proxy GET /api/v2/surveyor/file to MCP server
+ */
+router.get('/v2/surveyor/file', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const queryString = new URLSearchParams(req.query as Record<string, string>).toString();
+    const url = `${MCP_BASE}/api/v2/surveyor/file${queryString ? `?${queryString}` : ''}`;
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    const data = await response.json();
+    res.status(response.status).json(data);
+  } catch (error) {
+    console.error('MCP proxy error (GET surveyor/file):', error);
+    res.status(503).json({
+      success: false,
+      error: 'MCP service unavailable',
+      message: error instanceof Error ? error.message : 'Failed to proxy request to MCP server'
+    });
+  }
+});
+
+/**
+ * Proxy GET /api/v2/surveyor/stats/:projectId to MCP server
+ */
+router.get('/v2/surveyor/stats/:projectId', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { projectId } = req.params;
+    const url = `${MCP_BASE}/api/v2/surveyor/stats/${projectId}`;
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    const data = await response.json();
+    res.status(response.status).json(data);
+  } catch (error) {
+    console.error('MCP proxy error (GET surveyor/stats/:projectId):', error);
+    res.status(503).json({
+      success: false,
+      error: 'MCP service unavailable',
+      message: error instanceof Error ? error.message : 'Failed to proxy request to MCP server'
+    });
+  }
+});
+
 export default router;

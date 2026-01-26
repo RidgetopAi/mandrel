@@ -11,6 +11,7 @@ import { dbPool, poolHealthCheck } from '../services/databasePool.js';
 import { AIDIS_TOOL_DEFINITIONS } from '../config/toolDefinitions.js';
 import { ProjectController } from '../api/controllers/projectController.js';
 import createSessionRouter from '../api/v2/sessionRoutes.js';
+import createSurveyorRouter from '../api/v2/surveyorRoutes.js';
 
 /**
  * HTTP Health Check Server
@@ -76,6 +77,11 @@ export class HealthServer {
     const sessionRouter = createSessionRouter();
     this.app.use('/api/v2/sessions', sessionRouter);
     logger.info('📊 Session Analytics API mounted: /api/v2/sessions/* (9 endpoints)');
+
+    // Mount surveyor REST API routes
+    const surveyorRouter = createSurveyorRouter();
+    this.app.use('/api/v2/surveyor', surveyorRouter);
+    logger.info('🔭 Surveyor API mounted: /api/v2/surveyor/* (9 endpoints)');
 
     // Health check endpoints (existing)
     this.app.get('/healthz', this.handleHealthCheckExpress.bind(this));
