@@ -169,6 +169,8 @@ export interface WarningDetectorOptions {
   pathAliases?: PathAliases;
   /** Enable Next.js/framework convention awareness */
   frameworkConventions?: boolean;
+  /** Include imports from test files when detecting unused exports (default: true) */
+  includeTestImports?: boolean;
 }
 
 /**
@@ -184,4 +186,5 @@ export const DEFAULT_WARNING_OPTIONS: Required<WarningDetectorOptions> = {
   detectMissingTypes: false,
   pathAliases: {},
   frameworkConventions: true,
+  includeTestImports: true,
 };

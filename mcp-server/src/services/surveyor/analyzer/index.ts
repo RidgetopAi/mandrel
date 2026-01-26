@@ -22,3 +22,4 @@ export {
 } from './browser-analyzer.js';
 // export { buildConnections } from './connection-builder';
 export { detectWarnings, updateWarningStats } from './warning-detector.js';
+export { scanTestFileImports } from './scan-test-imports.js';

@@ -16,6 +16,7 @@ import { NodeType } from '../types/node.types.js';
 import type { WarningDetectorOptions, PathAliases } from '../types/analyzer.types.js';
 import { DEFAULT_WARNING_OPTIONS } from '../types/analyzer.types.js';
 import { scanNonTsImports, mergeImportMaps } from './scan-non-ts-imports.js';
+import { scanTestFileImports } from './scan-test-imports.js';
 
 /**
  * Next.js framework conventions - exports that are used by the framework
@@ -498,6 +499,14 @@ async function detectUnusedExports(
   // Scan non-TS files for imports (.svelte, .vue, .astro, etc.)
   const nonTsImports = await scanNonTsImports(projectPath, opts.pathAliases);
   mergeImportMaps(allImportedNames, nonTsImports);
+
+  // Scan test files for imports (two-pass scanning)
+  // Test files are excluded from structural analysis but we need their imports
+  // to avoid false "unused export" warnings for exports used only by tests
+  if (opts.includeTestImports) {
+    const testImports = await scanTestFileImports(projectPath, opts.pathAliases);
+    mergeImportMaps(allImportedNames, testImports);
+  }
 
   for (const file of fileNodes) {
     for (const imp of file.imports) {
