@@ -4,7 +4,7 @@
  * Now using the ported dark theme Canvas component
  */
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useCallback } from 'react';
 import { Card, Spin, Empty, Space, Tag, Input } from 'antd';
 import { Search } from 'lucide-react';
 import { useScan, useWarnings } from '../../hooks/useSurveyorData';
@@ -16,7 +16,7 @@ const { Search: AntSearch } = Input;
 
 interface SurveyorCanvasProps {
   scanId: string | undefined;
-  onNodeClick?: (nodeId: string, nodeData: any) => void;
+  onNodeClick?: (nodeId: string, nodeData: any, scanNodes: Record<string, any>) => void;
 }
 
 /**
@@ -35,6 +35,18 @@ export const SurveyorCanvas: React.FC<SurveyorCanvasProps> = ({ scanId, onNodeCl
   }, [scanId, reset]);
 
   const warnings = warningsData?.warnings || [];
+
+  // Wrap onNodeClick to include scan nodes for drawer lookup
+  // Must be defined before early returns to satisfy React hooks rules
+  const handleNodeClick = useCallback((nodeId: string, nodeData: any) => {
+    if (onNodeClick && scan?.nodes) {
+      onNodeClick(nodeId, nodeData, scan.nodes);
+    }
+  }, [onNodeClick, scan?.nodes]);
+
+  const handleSearch = useCallback((value: string) => {
+    setSearchQuery(value);
+  }, [setSearchQuery]);
 
   if (isLoading) {
     return (
@@ -80,10 +92,6 @@ export const SurveyorCanvas: React.FC<SurveyorCanvasProps> = ({ scanId, onNodeCl
       </Card>
     );
   }
-
-  const handleSearch = (value: string) => {
-    setSearchQuery(value);
-  };
 
   return (
     <Card
@@ -146,7 +154,7 @@ export const SurveyorCanvas: React.FC<SurveyorCanvasProps> = ({ scanId, onNodeCl
         <Canvas
           scanData={scan}
           warnings={warnings}
-          onNodeClick={onNodeClick}
+          onNodeClick={handleNodeClick}
         />
       </div>
     </Card>

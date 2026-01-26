@@ -116,12 +116,14 @@ const Surveyor: React.FC = () => {
 
   // UI state
   const [selectedNode, setSelectedNode] = useState<any | null>(null);
+  const [scanNodes, setScanNodes] = useState<Record<string, any> | null>(null);
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [activeTab, setActiveTab] = useState('canvas');
 
   // Handlers
-  const handleNodeClick = useCallback((nodeId: string, nodeData: any) => {
+  const handleNodeClick = useCallback((nodeId: string, nodeData: any, nodes: Record<string, any>) => {
     setSelectedNode(nodeData);
+    setScanNodes(nodes);
     setDrawerVisible(true);
   }, []);
 
@@ -392,9 +394,9 @@ const Surveyor: React.FC = () => {
 
       {/* Node Detail Drawer */}
       <Drawer
-        title={<span style={{ color: COLORS.text.primary }}>Node Details</span>}
+        title={<span style={{ color: COLORS.text.primary }}>{selectedNode?.label || 'File Details'}</span>}
         placement="right"
-        width={500}
+        width={520}
         open={drawerVisible}
         onClose={() => setDrawerVisible(false)}
         styles={{
@@ -404,49 +406,170 @@ const Surveyor: React.FC = () => {
           },
           body: {
             background: COLORS.surface[1],
+            padding: '16px',
           },
         }}
       >
         {selectedNode && (
-          <Descriptions
-            column={1}
-            bordered
-            size="small"
-            labelStyle={{ background: COLORS.surface[2], color: COLORS.text.secondary }}
-            contentStyle={{ background: COLORS.surface[1], color: COLORS.text.primary }}
-          >
-            <Descriptions.Item label="Name">
-              <Text strong style={{ color: COLORS.text.primary }}>{selectedNode.label}</Text>
-            </Descriptions.Item>
-            <Descriptions.Item label="Type">
-              <Tag>{selectedNode.fileData?.type || 'file'}</Tag>
-            </Descriptions.Item>
-            <Descriptions.Item label="File Path">
-              <Text code style={{ fontSize: '12px', color: COLORS.text.secondary }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+            {/* File Path */}
+            <section>
+              <div style={{ color: COLORS.text.secondary, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
+                Path
+              </div>
+              <Text code style={{ fontSize: '12px', color: COLORS.accent.primary, wordBreak: 'break-all' }}>
                 {selectedNode.filePath}
               </Text>
-            </Descriptions.Item>
+            </section>
 
-            {selectedNode.fileData && (
-              <>
-                {selectedNode.fileData.functions?.length > 0 && (
-                  <Descriptions.Item label="Functions">
-                    {selectedNode.fileData.functions.length}
-                  </Descriptions.Item>
-                )}
-                {selectedNode.fileData.exports?.length > 0 && (
-                  <Descriptions.Item label="Exports">
-                    {selectedNode.fileData.exports.length}
-                  </Descriptions.Item>
-                )}
-                {selectedNode.fileData.imports?.length > 0 && (
-                  <Descriptions.Item label="Imports">
-                    {selectedNode.fileData.imports.length} modules
-                  </Descriptions.Item>
-                )}
-              </>
+            {/* Summary Stats */}
+            <section>
+              <div style={{ display: 'flex', gap: 16 }}>
+                <Tag color="blue">{selectedNode.fileData?.functions?.length || 0} functions</Tag>
+                <Tag color="green">{selectedNode.fileData?.exports?.length || 0} exports</Tag>
+                <Tag color="purple">{selectedNode.fileData?.imports?.length || 0} imports</Tag>
+              </div>
+            </section>
+
+            {/* Functions with AI Analysis */}
+            {selectedNode.fileData?.functions?.length > 0 && (
+              <section>
+                <div style={{ color: COLORS.text.secondary, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>
+                  Functions ({selectedNode.fileData.functions.length})
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {selectedNode.fileData.functions.map((fnIdOrObj: string | any, idx: number) => {
+                    // Handle both ID strings and full function objects
+                    const fnNode = typeof fnIdOrObj === 'string'
+                      ? scanNodes?.[fnIdOrObj]
+                      : fnIdOrObj;
+                    const fnName = fnNode?.name || (typeof fnIdOrObj === 'string' ? fnIdOrObj : 'Unknown');
+                    const behavioral = fnNode?.behavioral;
+
+                    return (
+                      <div
+                        key={idx}
+                        style={{
+                          background: COLORS.surface[2],
+                          borderRadius: 8,
+                          padding: 12,
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: behavioral ? 8 : 0 }}>
+                          <span style={{ fontFamily: 'monospace', color: COLORS.text.primary, fontWeight: 500 }}>
+                            {fnName}()
+                          </span>
+                          {fnNode?.isAsync && (
+                            <Tag color="cyan" style={{ margin: 0, fontSize: 10 }}>async</Tag>
+                          )}
+                        </div>
+
+                        {/* Behavioral Summary (AI Analysis) */}
+                        {behavioral && (
+                          <>
+                            <div style={{ color: COLORS.text.secondary, fontSize: 12, lineHeight: 1.5, marginBottom: 8 }}>
+                              {behavioral.summary}
+                            </div>
+
+                            {/* Side Effect Flags */}
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 6 }}>
+                              {behavioral.flags?.databaseRead && <Tag color="blue" style={{ fontSize: 10, margin: 0 }}>DB Read</Tag>}
+                              {behavioral.flags?.databaseWrite && <Tag color="orange" style={{ fontSize: 10, margin: 0 }}>DB Write</Tag>}
+                              {behavioral.flags?.httpCall && <Tag color="purple" style={{ fontSize: 10, margin: 0 }}>HTTP</Tag>}
+                              {behavioral.flags?.fileRead && <Tag color="cyan" style={{ fontSize: 10, margin: 0 }}>File Read</Tag>}
+                              {behavioral.flags?.fileWrite && <Tag color="gold" style={{ fontSize: 10, margin: 0 }}>File Write</Tag>}
+                              {behavioral.flags?.sendsNotification && <Tag color="magenta" style={{ fontSize: 10, margin: 0 }}>Notification</Tag>}
+                              {behavioral.flags?.modifiesGlobalState && <Tag color="red" style={{ fontSize: 10, margin: 0 }}>Global State</Tag>}
+                            </div>
+
+                            {/* Source Indicator */}
+                            <div style={{ color: COLORS.text.muted, fontSize: 10 }}>
+                              {behavioral.source === 'ai' ? '🤖 AI-generated' :
+                               behavioral.source === 'docstring' ? '📝 From docstring' :
+                               '✏️ Manual'}
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
             )}
-          </Descriptions>
+
+            {/* Exports */}
+            {selectedNode.fileData?.exports?.length > 0 && (
+              <section>
+                <div style={{ color: COLORS.text.secondary, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>
+                  Exports ({selectedNode.fileData.exports.length})
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  {selectedNode.fileData.exports.map((exp: any, idx: number) => (
+                    <div
+                      key={idx}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
+                        background: COLORS.surface[2],
+                        borderRadius: 6,
+                        padding: '6px 10px',
+                      }}
+                    >
+                      <Tag
+                        color={exp.isDefault ? 'blue' : 'default'}
+                        style={{ margin: 0, fontSize: 10 }}
+                      >
+                        {exp.kind || 'export'}
+                      </Tag>
+                      <span style={{ fontFamily: 'monospace', color: COLORS.text.primary, fontSize: 13 }}>
+                        {exp.name}
+                      </span>
+                      {exp.isDefault && (
+                        <span style={{ color: COLORS.text.muted, fontSize: 10 }}>(default)</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* Imports */}
+            {selectedNode.fileData?.imports?.length > 0 && (
+              <section>
+                <div style={{ color: COLORS.text.secondary, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>
+                  Imports ({selectedNode.fileData.imports.length})
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {selectedNode.fileData.imports.map((imp: any, idx: number) => (
+                    <div
+                      key={idx}
+                      style={{
+                        background: COLORS.surface[2],
+                        borderRadius: 6,
+                        padding: '8px 10px',
+                      }}
+                    >
+                      <div style={{ fontFamily: 'monospace', color: COLORS.accent.primary, fontSize: 12, marginBottom: imp.items?.length > 0 ? 6 : 0 }}>
+                        {imp.source}
+                      </div>
+                      {imp.items?.length > 0 && (
+                        <div style={{ marginLeft: 12, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                          {imp.items.map((item: any, itemIdx: number) => (
+                            <div key={itemIdx} style={{ fontFamily: 'monospace', color: COLORS.text.secondary, fontSize: 11 }}>
+                              {item.isDefault && <span style={{ color: COLORS.text.muted }}>(default) </span>}
+                              {item.name}
+                              {item.alias && <span style={{ color: COLORS.text.muted }}> as {item.alias}</span>}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+          </div>
         )}
       </Drawer>
 
