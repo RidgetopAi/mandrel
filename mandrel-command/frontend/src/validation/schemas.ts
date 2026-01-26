@@ -220,44 +220,6 @@ export const formatFieldErrors = (errors: FormFieldError[]): Record<string, stri
 };
 
 // ================================
-// SCHEMA REGISTRY
-// ================================
-
-const SchemaRegistry = {
-  // Projects
-  CreateProject: CreateProjectSchema,
-  UpdateProject: UpdateProjectSchema,
-
-  // Tasks
-  CreateTask: CreateTaskSchema,
-  UpdateTask: UpdateTaskSchema,
-
-  // Contexts
-  CreateContext: CreateContextSchema,
-
-  // Sessions
-  UpdateSession: UpdateSessionSchema,
-
-  // Decisions
-  CreateDecision: CreateDecisionSchema,
-
-  // Naming
-  RegisterNaming: RegisterNamingSchema,
-
-  // AIDIS API
-  AidisToolCall: AidisToolCallSchema,
-  AidisContextStore: AidisContextStoreSchema,
-  AidisContextSearch: AidisContextSearchSchema,
-  AidisProjectSwitch: AidisProjectSwitchSchema,
-} as const;
-
-export type SchemaName = keyof typeof SchemaRegistry;
-
-const getSchema = (schemaName: SchemaName) => {
-  return SchemaRegistry[schemaName];
-};
-
-// ================================
 // VALIDATION UTILITIES
 // ================================
 
@@ -317,5 +279,3 @@ export const validatePartial = <T>(schema: z.ZodSchema<T>, data: any): {
     };
   }
 };
-
-export default SchemaRegistry;

@@ -64,24 +64,3 @@ export const projectContextMiddleware = async (
   }
 };
 
-/**
- * Require Project Context Middleware
- * 
- * Enforces that a project context is required for the endpoint
- */
-const requireProjectContext = (
-  req: AuthenticatedRequest,
-  res: Response,
-  next: NextFunction
-): void => {
-  if (!req.projectId) {
-    res.status(400).json({
-      success: false,
-      error: 'Project context required',
-      message: 'X-Project-ID header is required for this endpoint'
-    });
-    return;
-  }
-  
-  next();
-};

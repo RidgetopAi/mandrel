@@ -7,19 +7,19 @@ import type {
   DecisionStats,
 } from '../components/decisions/types';
 
-const decisionQueryKeys = {
+// Query keys for cache management (internal use only)
+const queryKeys = {
   all: ['decisions'] as const,
-  lists: () => [...decisionQueryKeys.all, 'list'] as const,
-  list: (params: DecisionSearchParams) => [...decisionQueryKeys.lists(), params] as const,
-  stats: (projectId?: string) => [...decisionQueryKeys.all, 'stats', projectId ?? 'all'] as const,
-  detail: (id: string) => [...decisionQueryKeys.all, 'detail', id] as const,
+  lists: () => [...queryKeys.all, 'list'] as const,
+  list: (params: DecisionSearchParams) => [...queryKeys.lists(), params] as const,
+  stats: (projectId?: string) => [...queryKeys.all, 'stats', projectId ?? 'all'] as const,
 };
 
 export const useDecisionSearchQuery = (
   params: DecisionSearchParams,
   options?: Partial<UseQueryOptions<DecisionSearchResult>>
 ) => {
-  const queryKey = useMemo(() => decisionQueryKeys.list(params), [params]);
+  const queryKey = useMemo(() => queryKeys.list(params), [params]);
 
   return useQuery({
     queryKey,
@@ -33,7 +33,7 @@ export const useDecisionStatsQuery = (
   options?: Partial<UseQueryOptions<DecisionStats>>
 ) => {
   return useQuery({
-    queryKey: decisionQueryKeys.stats(projectId),
+    queryKey: queryKeys.stats(projectId),
     queryFn: () => decisionsClient.getDecisionStats(projectId),
     ...options,
   });

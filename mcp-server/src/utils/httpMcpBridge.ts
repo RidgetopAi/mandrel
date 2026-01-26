@@ -236,4 +236,4 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   });
 }
 
-export default HttpMcpBridge;
+// HttpMcpBridge class is internal - used only via CLI entry point above
