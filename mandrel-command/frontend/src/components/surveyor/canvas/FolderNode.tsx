@@ -37,6 +37,23 @@ function FolderNodeComponent({ data }: { data: FolderNodeDataProps }) {
     }
   };
 
+  // Determine visual state
+  const getBackground = () => {
+    if (isHighlighted) return COLORS.surface[2];
+    return COLORS.surface[1];
+  };
+
+  const getBorder = () => {
+    if (isHighlighted) return `2px solid ${COLORS.accent.primary}`;
+    return `2px dashed ${COLORS.surface[3]}`;
+  };
+
+  const getBoxShadow = () => {
+    if (isHighlighted) return `0 0 16px ${COLORS.accent.primary}60, 0 0 32px ${COLORS.accent.primary}30`;
+    if (isFaded) return 'none';
+    return '0 2px 8px rgba(0,0,0,0.2)';
+  };
+
   return (
     <motion.div
       initial="hidden"
@@ -44,14 +61,17 @@ function FolderNodeComponent({ data }: { data: FolderNodeDataProps }) {
       variants={nodeVariants}
       style={{
         position: 'relative',
-        background: COLORS.surface[1],
-        border: `2px dashed ${isHighlighted ? COLORS.accent.primary : COLORS.surface[3]}`,
+        background: getBackground(),
+        border: getBorder(),
         borderRadius: 12,
         padding: '12px 16px',
         minWidth: 160,
         cursor: 'pointer',
-        opacity: isFaded ? 0.3 : 1,
-        transition: 'all 0.15s ease',
+        opacity: isFaded ? 0.25 : 1,
+        boxShadow: getBoxShadow(),
+        transform: isHighlighted ? 'scale(1.05)' : 'scale(1)',
+        transition: 'all 0.2s ease',
+        zIndex: isHighlighted ? 100 : 1,
       }}
       whileHover={{
         borderColor: COLORS.accent.primary,

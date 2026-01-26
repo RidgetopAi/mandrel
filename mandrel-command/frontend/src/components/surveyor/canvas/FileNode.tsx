@@ -32,22 +32,41 @@ function FileNodeComponent({ data }: { data: FileNodeDataProps }) {
   const exportCount = data.fileData?.exports?.length || 0;
   const { isFaded, isHighlighted } = data;
 
+  // Determine visual state
+  const getBackground = () => {
+    if (isHighlighted) return COLORS.surface[3]; // Brighter when hovered
+    if (isFaded) return COLORS.surface[2];
+    return COLORS.surface[2];
+  };
+
+  const getBorder = () => {
+    if (isHighlighted) return `2px solid ${COLORS.accent.primary}`;
+    if (isFaded) return `1px solid ${COLORS.surface[3]}`;
+    return `1px solid ${COLORS.surface[3]}`;
+  };
+
+  const getBoxShadow = () => {
+    if (isHighlighted) return `0 0 12px ${COLORS.accent.primary}80, 0 0 24px ${COLORS.accent.primary}40`;
+    if (isFaded) return 'none';
+    return '0 2px 8px rgba(0,0,0,0.3)';
+  };
+
   return (
     <motion.div
       initial="hidden"
       animate={isHighlighted ? 'selected' : 'visible'}
       variants={nodeVariants}
       style={{
-        background: COLORS.surface[2],
-        border: `1px solid ${isHighlighted ? COLORS.accent.primary : COLORS.surface[3]}`,
+        background: getBackground(),
+        border: getBorder(),
         borderRadius: 8,
         padding: '8px 12px',
         minWidth: 140,
-        boxShadow: isHighlighted
-          ? `0 0 0 2px ${COLORS.accent.primary}40`
-          : '0 2px 8px rgba(0,0,0,0.3)',
-        opacity: isFaded ? 0.3 : 1,
-        transition: 'all 0.15s ease',
+        boxShadow: getBoxShadow(),
+        opacity: isFaded ? 0.25 : 1,
+        transform: isHighlighted ? 'scale(1.05)' : 'scale(1)',
+        transition: 'all 0.2s ease',
+        zIndex: isHighlighted ? 100 : 1,
       }}
     >
       <Handle
