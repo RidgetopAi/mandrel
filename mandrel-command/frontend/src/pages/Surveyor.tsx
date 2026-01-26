@@ -21,6 +21,8 @@ import {
   Spin,
   Empty,
   message,
+  Switch,
+  Tooltip,
 } from 'antd';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -31,9 +33,11 @@ import {
   AlertTriangle,
   CheckCircle,
   Clock,
+  Brain,
+  Sparkles,
 } from 'lucide-react';
 import { useProjectContext } from '../contexts/ProjectContext';
-import { useLatestScan, useProjectStats, useTriggerScan } from '../hooks/useSurveyorData';
+import { useLatestScan, useProjectStats, useTriggerScan, useAnalyzeStatus, useTriggerAnalysis, useScans } from '../hooks/useSurveyorData';
 import { SurveyorCanvas } from '../components/surveyor/SurveyorCanvas';
 import { SurveyorWarningList } from '../components/surveyor/SurveyorWarningList';
 import { COLORS } from '../components/surveyor/utils/colors';
@@ -110,15 +114,18 @@ const Surveyor: React.FC = () => {
   const projectId = currentProject?.id;
 
   // Data hooks
-  const { data: latestScan, isLoading: scanLoading } = useLatestScan(projectId);
+  const { data: latestScan, isLoading: scanLoading, refetch: refetchLatestScan } = useLatestScan(projectId);
   const { data: statsData, isLoading: statsLoading } = useProjectStats(projectId);
+  const { data: analyzeStatus } = useAnalyzeStatus();
   const triggerScanMutation = useTriggerScan();
+  const triggerAnalysisMutation = useTriggerAnalysis();
 
   // UI state
   const [selectedNode, setSelectedNode] = useState<any | null>(null);
   const [scanNodes, setScanNodes] = useState<Record<string, any> | null>(null);
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [activeTab, setActiveTab] = useState('canvas');
+  const [aiAnalysisEnabled, setAiAnalysisEnabled] = useState(true); // Default ON
 
   // Handlers
   const handleNodeClick = useCallback((nodeId: string, nodeData: any, nodes: Record<string, any>) => {
@@ -142,15 +149,53 @@ const Surveyor: React.FC = () => {
     });
   }, [projectId, currentProject, triggerScanMutation]);
 
-  // Show feedback when mutation completes
+  // Handler for triggering AI analysis
+  const handleTriggerAnalysis = useCallback(() => {
+    if (!latestScan?.id) {
+      message.warning('No scan available to analyze');
+      return;
+    }
+    triggerAnalysisMutation.mutate(
+      { scanId: latestScan.id, options: { skipAnalyzed: true } },
+      {
+        onSuccess: (data) => {
+          message.success(`AI analysis complete: ${data.analyzedCount} functions analyzed`);
+          refetchLatestScan();
+        },
+        onError: (error) => {
+          message.error(`Analysis failed: ${error.message}`);
+        },
+      }
+    );
+  }, [latestScan?.id, triggerAnalysisMutation, refetchLatestScan]);
+
+  // Show feedback when scan mutation completes and optionally trigger analysis
   useEffect(() => {
     if (triggerScanMutation.isSuccess) {
-      message.success('Scan request submitted. Run surveyor CLI to complete the scan.');
+      message.success('Scan completed successfully');
+      // Auto-trigger analysis if enabled and API is available
+      if (aiAnalysisEnabled && analyzeStatus?.available && latestScan?.id) {
+        message.loading('Running AI analysis...', 0);
+        triggerAnalysisMutation.mutate(
+          { scanId: latestScan.id, options: { skipAnalyzed: true } },
+          {
+            onSuccess: (data) => {
+              message.destroy();
+              message.success(`AI analysis complete: ${data.analyzedCount} functions analyzed`);
+              refetchLatestScan();
+            },
+            onError: (error) => {
+              message.destroy();
+              message.error(`Analysis failed: ${error.message}`);
+            },
+          }
+        );
+      }
     }
     if (triggerScanMutation.isError) {
       message.error(`Scan failed: ${triggerScanMutation.error?.message || 'Unknown error'}`);
     }
-  }, [triggerScanMutation.isSuccess, triggerScanMutation.isError, triggerScanMutation.error]);
+  }, [triggerScanMutation.isSuccess, triggerScanMutation.isError, triggerScanMutation.error, aiAnalysisEnabled, analyzeStatus?.available, latestScan?.id, triggerAnalysisMutation, refetchLatestScan]);
 
   // Loading state - no project selected
   if (!projectId) {
@@ -218,34 +263,95 @@ const Surveyor: React.FC = () => {
             Codebase analysis and visualization for {currentProject?.name || 'current project'}
           </Paragraph>
         </div>
-        <motion.button
-          onClick={handleTriggerScan}
-          disabled={triggerScanMutation.isPending}
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            padding: '10px 20px',
-            background: COLORS.accent.primary,
-            color: '#fff',
-            border: 'none',
-            borderRadius: 8,
-            fontSize: 14,
-            fontWeight: 500,
-            cursor: triggerScanMutation.isPending ? 'not-allowed' : 'pointer',
-            opacity: triggerScanMutation.isPending ? 0.7 : 1,
-          }}
-        >
-          <RefreshCw
-            size={16}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          {/* AI Analysis Toggle */}
+          {analyzeStatus?.available && (
+            <Tooltip title={aiAnalysisEnabled ? 'AI analysis will run after scan' : 'AI analysis disabled'}>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                padding: '8px 12px',
+                background: COLORS.surface[1],
+                borderRadius: 8,
+                border: `1px solid ${COLORS.surface[3]}`,
+              }}>
+                <Brain size={16} color={aiAnalysisEnabled ? COLORS.accent.secondary : COLORS.text.muted} />
+                <span style={{ color: COLORS.text.secondary, fontSize: 13 }}>AI Analysis</span>
+                <Switch
+                  size="small"
+                  checked={aiAnalysisEnabled}
+                  onChange={setAiAnalysisEnabled}
+                  style={{ marginLeft: 4 }}
+                />
+              </div>
+            </Tooltip>
+          )}
+
+          {/* Manual Analyze Button - show if scan exists but has pending analysis */}
+          {latestScan && analyzeStatus?.available && (latestScan.stats?.pendingAnalysis ?? 0) > 0 && (
+            <Tooltip title={`${latestScan.stats?.pendingAnalysis || 0} functions pending analysis`}>
+              <motion.button
+                onClick={handleTriggerAnalysis}
+                disabled={triggerAnalysisMutation.isPending}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '10px 16px',
+                  background: COLORS.accent.secondary,
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 8,
+                  fontSize: 14,
+                  fontWeight: 500,
+                  cursor: triggerAnalysisMutation.isPending ? 'not-allowed' : 'pointer',
+                  opacity: triggerAnalysisMutation.isPending ? 0.7 : 1,
+                }}
+              >
+                <Sparkles
+                  size={16}
+                  style={{
+                    animation: triggerAnalysisMutation.isPending ? 'pulse 1s ease-in-out infinite' : 'none',
+                  }}
+                />
+                {triggerAnalysisMutation.isPending ? 'Analyzing...' : 'Run AI Analysis'}
+              </motion.button>
+            </Tooltip>
+          )}
+
+          {/* Scan Button */}
+          <motion.button
+            onClick={handleTriggerScan}
+            disabled={triggerScanMutation.isPending}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
             style={{
-              animation: triggerScanMutation.isPending ? 'spin 1s linear infinite' : 'none',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: '10px 20px',
+              background: COLORS.accent.primary,
+              color: '#fff',
+              border: 'none',
+              borderRadius: 8,
+              fontSize: 14,
+              fontWeight: 500,
+              cursor: triggerScanMutation.isPending ? 'not-allowed' : 'pointer',
+              opacity: triggerScanMutation.isPending ? 0.7 : 1,
             }}
-          />
-          {latestScan ? 'Re-scan' : 'Start Scan'}
-        </motion.button>
+          >
+            <RefreshCw
+              size={16}
+              style={{
+                animation: triggerScanMutation.isPending ? 'spin 1s linear infinite' : 'none',
+              }}
+            />
+            {latestScan ? 'Re-scan' : 'Start Scan'}
+          </motion.button>
+        </div>
       </div>
 
       {/* Health Score & Stats Row */}

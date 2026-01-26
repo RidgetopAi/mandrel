@@ -17,6 +17,7 @@ export const COLORS = {
   },
   accent: {
     primary: '#60a5fa',
+    secondary: '#a78bfa', // Purple for AI/analysis features
   },
   status: {
     healthy: '#4ade80',

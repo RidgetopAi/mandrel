@@ -223,4 +223,34 @@ export const surveyorClient = {
   async getProjectStats(projectId: string): Promise<ProjectStats> {
     return fetchApi(`/stats/${projectId}`);
   },
+
+  /**
+   * Check if AI behavioral analysis is available
+   */
+  async getAnalyzeStatus(): Promise<{
+    available: boolean;
+    endpoint: string | null;
+    model: string | null;
+    message: string;
+  }> {
+    return fetchApi('/analyze/status');
+  },
+
+  /**
+   * Trigger AI behavioral analysis on a scan
+   */
+  async triggerAnalysis(
+    scanId: string,
+    options?: { skipAnalyzed?: boolean; maxFunctions?: number }
+  ): Promise<{
+    scanId: string;
+    analyzedCount: number;
+    pendingAnalysis: number;
+    message: string;
+  }> {
+    return fetchApi(`/analyze/${scanId}`, {
+      method: 'POST',
+      body: JSON.stringify(options || {}),
+    });
+  },
 };

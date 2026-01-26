@@ -184,3 +184,42 @@ export function useLatestScan(projectId: string | undefined) {
     data: scansQuery.data?.scans?.[0] ?? null,
   };
 }
+
+/**
+ * Hook to check if AI analysis is available
+ */
+export function useAnalyzeStatus() {
+  return useQuery({
+    queryKey: [...surveyorKeys.all, 'analyzeStatus'],
+    queryFn: () => surveyorClient.getAnalyzeStatus(),
+    staleTime: 300000, // 5 minutes - status doesn't change often
+    retry: false, // Don't retry if API key not configured
+  });
+}
+
+/**
+ * Hook to trigger AI behavioral analysis on a scan
+ */
+export function useTriggerAnalysis() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      scanId,
+      options,
+    }: {
+      scanId: string;
+      options?: { skipAnalyzed?: boolean; maxFunctions?: number };
+    }) => surveyorClient.triggerAnalysis(scanId, options),
+    onSuccess: (data, variables) => {
+      // Invalidate the scan with nodes to refresh behavioral data
+      queryClient.invalidateQueries({
+        queryKey: surveyorKeys.scanWithNodes(variables.scanId),
+      });
+      // Also invalidate the scan without nodes
+      queryClient.invalidateQueries({
+        queryKey: surveyorKeys.scan(variables.scanId),
+      });
+    },
+  });
+}
