@@ -73,7 +73,14 @@ export class SurveyorRouter {
     // GET /stats/:projectId - Get project statistics
     this.router.get('/stats/:projectId', this.controller.getProjectStats.bind(this.controller));
 
-    logger.info('Surveyor routes initialized: 9 endpoints');
+    // AI Analysis
+    // GET /analyze/status - Check if AI analysis is available
+    this.router.get('/analyze/status', this.controller.getAnalyzeStatus.bind(this.controller));
+
+    // POST /analyze/:scanId - Trigger AI behavioral analysis on a scan
+    this.router.post('/analyze/:scanId', this.controller.analyzeScan.bind(this.controller));
+
+    logger.info('Surveyor routes initialized: 11 endpoints');
   }
 
   /**

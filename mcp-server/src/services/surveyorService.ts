@@ -470,6 +470,28 @@ export class SurveyorService {
   }
 
   /**
+   * Update scan nodes after behavioral analysis
+   */
+  async updateScanNodes(
+    scanId: string,
+    nodes: Record<string, any>,
+    stats: { analyzedCount: number; pendingAnalysis: number }
+  ): Promise<void> {
+    await db.query(
+      `UPDATE surveyor_scans
+       SET nodes = $1, analyzed_count = $2, pending_analysis = $3, updated_at = CURRENT_TIMESTAMP
+       WHERE id = $4`,
+      [JSON.stringify(nodes), stats.analyzedCount, stats.pendingAnalysis, scanId]
+    );
+
+    logger.info('Surveyor scan nodes updated', {
+      component: 'SurveyorService',
+      operation: 'updateScanNodes',
+      metadata: { scanId, analyzedCount: stats.analyzedCount, pendingAnalysis: stats.pendingAnalysis },
+    });
+  }
+
+  /**
    * Get scan statistics across all scans for a project
    */
   async getProjectStats(projectId: string): Promise<{

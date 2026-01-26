@@ -7,7 +7,9 @@
 import { Request, Response } from 'express';
 import { surveyorService, ScanResult } from '../../services/surveyorService.js';
 import { logger } from '../../utils/logger.js';
-import { scanProject } from '../../services/surveyor/index.js';
+import { scanProject, analyzeBehavior, type AnalyzeOptions } from '../../services/surveyor/index.js';
+import { createLLMClientFromEnv } from '../../services/surveyor/analyzer/llm-client.js';
+import { join } from 'node:path';
 
 /**
  * Surveyor Controller - handles all HTTP endpoints for Surveyor integration
@@ -472,6 +474,140 @@ export class SurveyorController {
     } catch (error) {
       const err = error as Error;
       logger.error('Failed to get project stats', err);
+      res.status(500).json({
+        success: false,
+        error: err.message || 'Unknown error',
+      });
+    }
+  }
+
+  /**
+   * Check if AI analysis is available (API key configured)
+   * GET /api/v2/surveyor/analyze/status
+   */
+  async getAnalyzeStatus(_req: Request, res: Response): Promise<void> {
+    const hasApiKey = !!process.env.SURVEYOR_LLM_API_KEY;
+    const endpoint = process.env.SURVEYOR_LLM_ENDPOINT || 'https://api.x.ai/v1/chat/completions';
+    const model = process.env.SURVEYOR_LLM_MODEL || 'grok-4-1-fast-reasoning';
+
+    res.json({
+      success: true,
+      data: {
+        available: hasApiKey,
+        endpoint: hasApiKey ? endpoint : null,
+        model: hasApiKey ? model : null,
+        message: hasApiKey
+          ? 'AI analysis is available'
+          : 'SURVEYOR_LLM_API_KEY not configured - AI analysis disabled',
+      },
+    });
+  }
+
+  /**
+   * Trigger AI behavioral analysis on an existing scan
+   * POST /api/v2/surveyor/analyze/:scanId
+   * Body: { skipAnalyzed?: boolean, maxFunctions?: number }
+   */
+  async analyzeScan(req: Request, res: Response): Promise<void> {
+    try {
+      const { scanId } = req.params;
+      const { skipAnalyzed = true, maxFunctions } = req.body;
+
+      // Check if API key is configured
+      if (!process.env.SURVEYOR_LLM_API_KEY) {
+        res.status(400).json({
+          success: false,
+          error: 'SURVEYOR_LLM_API_KEY not configured - AI analysis is not available',
+        });
+        return;
+      }
+
+      // Get the scan with nodes
+      const scan = await surveyorService.getScan(scanId, true);
+      if (!scan) {
+        res.status(404).json({
+          success: false,
+          error: 'Scan not found',
+        });
+        return;
+      }
+
+      // Build scan result for analyzer
+      const scanResult = {
+        projectPath: scan.project_path,
+        nodes: scan.nodes || {},
+        connections: scan.connections || [],
+        warnings: [],
+        clusters: scan.clusters || [],
+        stats: {
+          totalFiles: scan.total_files,
+          totalFunctions: scan.total_functions,
+          totalClasses: scan.total_classes,
+          totalConnections: scan.total_connections,
+          totalWarnings: scan.total_warnings,
+          analyzedCount: scan.analyzed_count || 0,
+          pendingAnalysis: scan.pending_analysis || 0,
+        },
+      };
+
+      logger.info('Starting behavioral analysis', {
+        component: 'SurveyorController',
+        operation: 'analyzeScan',
+        metadata: { scanId, totalFunctions: scan.total_functions },
+      });
+
+      // Create LLM client
+      const client = createLLMClientFromEnv();
+
+      // Cache directory is .surveyor in the project path
+      const cacheDir = join(scan.project_path, '.surveyor');
+
+      const options: AnalyzeOptions = {
+        skipAnalyzed,
+        maxFunctions,
+        cacheDir,
+        model: process.env.SURVEYOR_LLM_MODEL || 'grok-4-1-fast-reasoning',
+        onProgress: (progress) => {
+          // Log progress (could stream via SSE in future)
+          logger.debug(`Analyzing ${progress.functionName} (${progress.current}/${progress.total})${progress.fromCache ? ' [cached]' : ''}`);
+        },
+      };
+
+      // Run behavioral analysis
+      const analyzedResult = await analyzeBehavior(
+        scanResult as any,
+        client,
+        options
+      );
+
+      // Update scan in database with new nodes
+      await surveyorService.updateScanNodes(scanId, analyzedResult.nodes, {
+        analyzedCount: analyzedResult.stats.analyzedCount,
+        pendingAnalysis: analyzedResult.stats.pendingAnalysis,
+      });
+
+      logger.info('Behavioral analysis completed', {
+        component: 'SurveyorController',
+        operation: 'analyzeScan',
+        metadata: {
+          scanId,
+          analyzedCount: analyzedResult.stats.analyzedCount,
+          pendingAnalysis: analyzedResult.stats.pendingAnalysis,
+        },
+      });
+
+      res.json({
+        success: true,
+        data: {
+          scanId,
+          analyzedCount: analyzedResult.stats.analyzedCount,
+          pendingAnalysis: analyzedResult.stats.pendingAnalysis,
+          message: `Analyzed ${analyzedResult.stats.analyzedCount} functions`,
+        },
+      });
+    } catch (error) {
+      const err = error as Error;
+      logger.error('Failed to analyze scan', err);
       res.status(500).json({
         success: false,
         error: err.message || 'Unknown error',
