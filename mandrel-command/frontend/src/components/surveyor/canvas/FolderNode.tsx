@@ -5,10 +5,8 @@
 
 import { memo } from 'react';
 import { Handle, Position } from 'reactflow';
-import { motion } from 'framer-motion';
 import { Folder } from 'lucide-react';
 import { COLORS } from '../utils/colors';
-import { nodeVariants } from '../utils/animations';
 
 export interface FolderNodeDataProps {
   label: string;
@@ -55,10 +53,7 @@ function FolderNodeComponent({ data }: { data: FolderNodeDataProps }) {
   };
 
   return (
-    <motion.div
-      initial="hidden"
-      animate={isHighlighted ? 'selected' : 'visible'}
-      variants={nodeVariants}
+    <div
       style={{
         position: 'relative',
         background: getBackground(),
@@ -73,18 +68,11 @@ function FolderNodeComponent({ data }: { data: FolderNodeDataProps }) {
         transition: 'all 0.2s ease',
         zIndex: isHighlighted ? 100 : 1,
       }}
-      whileHover={{
-        borderColor: COLORS.accent.primary,
-        background: COLORS.surface[2],
-      }}
     >
       {/* Warning badge - clickable to show files with warnings */}
       {warningCount > 0 && (
-        <motion.button
+        <button
           onClick={handleBadgeClick}
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          whileHover={{ scale: 1.1 }}
           style={{
             position: 'absolute',
             top: -8,
@@ -102,11 +90,14 @@ function FolderNodeComponent({ data }: { data: FolderNodeDataProps }) {
             fontWeight: 600,
             border: 'none',
             cursor: 'pointer',
+            transition: 'transform 0.15s ease',
           }}
           title="Click to show files with warnings"
+          onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.1)'}
+          onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
         >
           {warningCount}
-        </motion.button>
+        </button>
       )}
 
       <Handle
@@ -152,7 +143,7 @@ function FolderNodeComponent({ data }: { data: FolderNodeDataProps }) {
           border: 'none',
         }}
       />
-    </motion.div>
+    </div>
   );
 }
 

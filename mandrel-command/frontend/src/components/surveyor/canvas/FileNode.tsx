@@ -5,9 +5,7 @@
 
 import { memo } from 'react';
 import { Handle, Position } from 'reactflow';
-import { motion } from 'framer-motion';
 import { COLORS } from '../utils/colors';
-import { nodeVariants } from '../utils/animations';
 
 export interface FileNodeDataProps {
   label: string;
@@ -52,10 +50,7 @@ function FileNodeComponent({ data }: { data: FileNodeDataProps }) {
   };
 
   return (
-    <motion.div
-      initial="hidden"
-      animate={isHighlighted ? 'selected' : 'visible'}
-      variants={nodeVariants}
+    <div
       style={{
         background: getBackground(),
         border: getBorder(),
@@ -67,6 +62,7 @@ function FileNodeComponent({ data }: { data: FileNodeDataProps }) {
         transform: isHighlighted ? 'scale(1.05)' : 'scale(1)',
         transition: 'all 0.2s ease',
         zIndex: isHighlighted ? 100 : 1,
+        position: 'relative',
       }}
     >
       <Handle
@@ -118,7 +114,7 @@ function FileNodeComponent({ data }: { data: FileNodeDataProps }) {
           border: 'none',
         }}
       />
-    </motion.div>
+    </div>
   );
 }
 
