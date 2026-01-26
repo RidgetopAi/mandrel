@@ -87,7 +87,8 @@ export const useLogout = () => {
   });
 };
 
-const useProfile = (enabled = true) => {
+// Hook to check and verify authentication on app start
+export const useAuthCheck = () => {
   // Use a ref to track token state without causing re-renders
   const [tokenState, setTokenState] = React.useState(() => !!localStorage.getItem('aidis_token'));
 
@@ -108,9 +109,9 @@ const useProfile = (enabled = true) => {
     return () => window.removeEventListener('storage', checkToken);
   }, [tokenState]);
 
-  const isEnabled = React.useMemo(() => enabled && tokenState, [enabled, tokenState]);
+  const isEnabled = React.useMemo(() => tokenState, [tokenState]);
 
-  return useQuery({
+  const { data: profile, isLoading, error } = useQuery({
     queryKey: ['auth', 'profile'],
     queryFn: async () => {
       try {
@@ -144,11 +145,6 @@ const useProfile = (enabled = true) => {
     refetchOnWindowFocus: false, // Prevent unnecessary refetches
     refetchOnReconnect: false,
   });
-};
-
-// Hook to check and verify authentication on app start
-export const useAuthCheck = () => {
-  const { data: profile, isLoading, error } = useProfile();
 
   return {
     user: profile,

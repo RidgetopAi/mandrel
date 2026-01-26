@@ -183,33 +183,3 @@ const requireRole = (requiredRoles: string | string[]) => {
 };
 
 export const requireAdmin = requireRole('admin');
-
-const requireActiveUser = (req: AuthenticatedRequest, res: Response, next: NextFunction): void => {
-  if (!req.user) {
-    res.status(401).json({
-      success: false,
-      error: 'Authentication required',
-      message: 'Please log in first'
-    });
-    return;
-  }
-
-  if (!req.user.is_active) {
-    console.warn('Inactive user access attempt:', {
-      userId: req.user.id,
-      username: req.user.username,
-      path: req.path,
-      method: req.method,
-      timestamp: new Date().toISOString()
-    });
-
-    res.status(403).json({
-      success: false,
-      error: 'Account disabled',
-      message: 'Your account has been deactivated. Contact administrator.'
-    });
-    return;
-  }
-
-  next();
-};

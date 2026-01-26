@@ -667,7 +667,4 @@ export class GitHandler {
   }
 }
 
-/**
- * Export the main handler
- */
-export default GitHandler;
+// GitHandler class already exported as named export above

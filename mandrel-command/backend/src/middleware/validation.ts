@@ -159,36 +159,12 @@ export const validateQuery = (schema: z.ZodSchema<any>, options?: { required?: b
   });
 };
 
-/**
- * Validate route parameters against a schema
- */
-const validateParams = (schema: z.ZodSchema<any>, options?: { required?: boolean; customErrorMessage?: string }) => {
-  return createValidationMiddleware({
-    schema,
-    source: 'params',
-    required: options?.required ?? true,
-    customErrorMessage: options?.customErrorMessage
-  });
-};
-
 // ================================
 // COMMON PARAMETER SCHEMAS
 // ================================
 
 const UUIDParamSchema = z.object({
   id: z.string().uuid('Invalid UUID format')
-});
-
-const ProjectParamSchema = z.object({
-  projectId: z.string().uuid('Invalid project ID format')
-});
-
-const TaskParamSchema = z.object({
-  taskId: z.string().uuid('Invalid task ID format')
-});
-
-const SessionParamSchema = z.object({
-  sessionId: z.string().uuid('Invalid session ID format')
 });
 
 const PaginationQuerySchema = z.object({
@@ -205,22 +181,14 @@ const PaginationQuerySchema = z.object({
 /**
  * Validate UUID parameter
  */
-export const validateUUIDParam = () => validateParams(UUIDParamSchema);
-
-/**
- * Validate project ID parameter
- */
-const validateProjectParam = () => validateParams(ProjectParamSchema);
-
-/**
- * Validate task ID parameter
- */
-const validateTaskParam = () => validateParams(TaskParamSchema);
-
-/**
- * Validate session ID parameter
- */
-const validateSessionParam = () => validateParams(SessionParamSchema);
+export const validateUUIDParam = () => {
+  return createValidationMiddleware({
+    schema: UUIDParamSchema,
+    source: 'params',
+    required: true,
+    customErrorMessage: undefined
+  });
+};
 
 /**
  * Validate pagination query parameters
@@ -252,35 +220,6 @@ export const contractEnforcementMiddleware = (req: Request, _res: Response, next
   // Contract enforcement is handled by individual route validators
   // This middleware provides centralized logging and monitoring
   next();
-};
-
-// ================================
-// VALIDATION ERROR FORMATTER
-// ================================
-
-const formatValidationResponse = (
-  success: boolean,
-  data?: any,
-  errors?: ValidationError[],
-  correlationId?: string
-) => {
-  if (success) {
-    return {
-      success: true,
-      data,
-      correlationId
-    };
-  }
-
-  return {
-    success: false,
-    error: {
-      type: 'validation',
-      message: 'Validation failed',
-      details: errors
-    },
-    correlationId
-  };
 };
 
 // ================================
