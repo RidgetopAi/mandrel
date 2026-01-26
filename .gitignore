@@ -186,3 +186,6 @@ Assets/
 spindles-proxy/
 # Test 1768445603
 # Test 1768445968
+
+# Surveyor cache
+.surveyor/
