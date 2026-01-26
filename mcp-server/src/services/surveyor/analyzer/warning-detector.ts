@@ -102,6 +102,69 @@ function isFrameworkConvention(exportName: string, filePath: string): boolean {
 }
 
 /**
+ * Check if a file is generated code (codegen output)
+ * Generated files are excluded from unused export/orphaned code detection
+ * because they're consumed at runtime or by external tools, not via static imports
+ */
+function isGeneratedCode(filePath: string): boolean {
+  // Directory patterns - files in these dirs are typically generated
+  const generatedDirPatterns = [
+    /\/generated\//,
+    /\/__generated__\//,
+    /\/swagger\//,
+    /\/openapi\//,
+    /\/.prisma\//,
+    /\/graphql\//,
+    /\/__mocks__\//,
+  ];
+
+  if (generatedDirPatterns.some(p => p.test(filePath))) {
+    return true;
+  }
+
+  // File patterns
+  const fileName = filePath.split('/').pop() || '';
+  const generatedFilePatterns = [
+    /\.generated\.tsx?$/,
+    /\.g\.tsx?$/,
+    /^openapi-types\.ts$/,
+    /^swagger\.ts$/,
+  ];
+
+  return generatedFilePatterns.some(p => p.test(fileName));
+}
+
+/**
+ * Check if a file is an entry point (script, CLI, server)
+ * Entry point files are excluded from unused export detection
+ * because their exports are consumed at runtime, not via imports
+ */
+function isEntryPointFile(filePath: string): boolean {
+  // Directory patterns - files in these dirs are likely entry points
+  const entryPointDirPatterns = [
+    /\/bin\//,
+    /\/scripts\//,
+    /\/cli\//,
+  ];
+
+  if (entryPointDirPatterns.some(p => p.test(filePath))) {
+    return true;
+  }
+
+  // File patterns
+  const fileName = filePath.split('/').pop() || '';
+  const entryPointFilePatterns = [
+    /^cli\.tsx?$/,
+    /^server\.tsx?$/,
+    /-adapter\.tsx?$/,
+    /-cli\.tsx?$/,
+    /\.bin\.tsx?$/,
+  ];
+
+  return entryPointFilePatterns.some(p => p.test(fileName));
+}
+
+/**
  * Resolve a path alias to its actual path
  * e.g., "@/components/Foo" with paths {"@/*": ["./src/*"]} -> "src/components/Foo"
  */
@@ -304,6 +367,9 @@ function detectOrphanedCode(
   ];
 
   for (const func of functionNodes) {
+    // Skip functions in generated code files
+    if (isGeneratedCode(func.filePath)) continue;
+
     // Skip if exported
     if (func.isExported) continue;
 
@@ -559,6 +625,9 @@ async function detectUnusedExports(
 
   // Check each file's exports
   for (const file of fileNodes) {
+    // Skip generated code and entry point files - they're consumed at runtime
+    if (isGeneratedCode(file.filePath) || isEntryPointFile(file.filePath)) continue;
+
     // Skip index files - they're often re-export hubs
     if (file.name === 'index.ts' || file.name === 'index.js') continue;
 
