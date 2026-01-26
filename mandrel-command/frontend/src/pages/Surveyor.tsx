@@ -4,7 +4,7 @@
  * Dark theme UI matching original Surveyor
  */
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
   Typography,
   Space,
@@ -126,6 +126,10 @@ const Surveyor: React.FC = () => {
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [activeTab, setActiveTab] = useState('canvas');
   const [aiAnalysisEnabled, setAiAnalysisEnabled] = useState(true); // Default ON
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+
+  // Ref to prevent duplicate analysis triggers
+  const analysisTriggeredRef = useRef<string | null>(null);
 
   // Handlers
   const handleNodeClick = useCallback((nodeId: string, nodeData: any, nodes: Record<string, any>) => {
@@ -149,53 +153,85 @@ const Surveyor: React.FC = () => {
     });
   }, [projectId, currentProject, triggerScanMutation]);
 
-  // Handler for triggering AI analysis
+  // Handler for triggering AI analysis manually
   const handleTriggerAnalysis = useCallback(() => {
     if (!latestScan?.id) {
       message.warning('No scan available to analyze');
       return;
     }
+    if (isAnalyzing) {
+      message.info('Analysis already in progress');
+      return;
+    }
+    setIsAnalyzing(true);
+    analysisTriggeredRef.current = latestScan.id;
+    message.loading('Running AI analysis...', 0);
+
     triggerAnalysisMutation.mutate(
       { scanId: latestScan.id, options: { skipAnalyzed: true } },
       {
         onSuccess: (data) => {
+          message.destroy();
           message.success(`AI analysis complete: ${data.analyzedCount} functions analyzed`);
+          setIsAnalyzing(false);
           refetchLatestScan();
         },
         onError: (error) => {
+          message.destroy();
           message.error(`Analysis failed: ${error.message}`);
+          setIsAnalyzing(false);
+          analysisTriggeredRef.current = null;
         },
       }
     );
-  }, [latestScan?.id, triggerAnalysisMutation, refetchLatestScan]);
+  }, [latestScan?.id, isAnalyzing, triggerAnalysisMutation, refetchLatestScan]);
 
-  // Show feedback when scan mutation completes and optionally trigger analysis
+  // Show feedback when scan mutation completes
   useEffect(() => {
     if (triggerScanMutation.isSuccess) {
       message.success('Scan completed successfully');
-      // Auto-trigger analysis if enabled and API is available
-      if (aiAnalysisEnabled && analyzeStatus?.available && latestScan?.id) {
-        message.loading('Running AI analysis...', 0);
-        triggerAnalysisMutation.mutate(
-          { scanId: latestScan.id, options: { skipAnalyzed: true } },
-          {
-            onSuccess: (data) => {
-              message.destroy();
-              message.success(`AI analysis complete: ${data.analyzedCount} functions analyzed`);
-              refetchLatestScan();
-            },
-            onError: (error) => {
-              message.destroy();
-              message.error(`Analysis failed: ${error.message}`);
-            },
-          }
-        );
-      }
     }
     if (triggerScanMutation.isError) {
       message.error(`Scan failed: ${triggerScanMutation.error?.message || 'Unknown error'}`);
     }
-  }, [triggerScanMutation.isSuccess, triggerScanMutation.isError, triggerScanMutation.error, aiAnalysisEnabled, analyzeStatus?.available, latestScan?.id, triggerAnalysisMutation, refetchLatestScan]);
+  }, [triggerScanMutation.isSuccess, triggerScanMutation.isError, triggerScanMutation.error]);
+
+  // Auto-trigger analysis after successful scan (separate effect to avoid loops)
+  useEffect(() => {
+    // Only trigger if: scan succeeded, analysis enabled, API available, scan ID exists, not already triggered for this scan
+    if (
+      triggerScanMutation.isSuccess &&
+      aiAnalysisEnabled &&
+      analyzeStatus?.available &&
+      latestScan?.id &&
+      analysisTriggeredRef.current !== latestScan.id &&
+      !isAnalyzing
+    ) {
+      // Mark as triggered to prevent duplicates
+      analysisTriggeredRef.current = latestScan.id;
+      setIsAnalyzing(true);
+      message.loading('Running AI analysis...', 0);
+
+      triggerAnalysisMutation.mutate(
+        { scanId: latestScan.id, options: { skipAnalyzed: true } },
+        {
+          onSuccess: (data) => {
+            message.destroy();
+            message.success(`AI analysis complete: ${data.analyzedCount} functions analyzed`);
+            setIsAnalyzing(false);
+            refetchLatestScan();
+          },
+          onError: (error) => {
+            message.destroy();
+            message.error(`Analysis failed: ${error.message}`);
+            setIsAnalyzing(false);
+            // Reset ref so user can retry manually
+            analysisTriggeredRef.current = null;
+          },
+        }
+      );
+    }
+  }, [triggerScanMutation.isSuccess, aiAnalysisEnabled, analyzeStatus?.available, latestScan?.id, isAnalyzing, triggerAnalysisMutation, refetchLatestScan]);
 
   // Loading state - no project selected
   if (!projectId) {
@@ -293,7 +329,7 @@ const Surveyor: React.FC = () => {
             <Tooltip title={`${latestScan.stats?.pendingAnalysis || 0} functions pending analysis`}>
               <motion.button
                 onClick={handleTriggerAnalysis}
-                disabled={triggerAnalysisMutation.isPending}
+                disabled={isAnalyzing}
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 style={{
@@ -307,17 +343,17 @@ const Surveyor: React.FC = () => {
                   borderRadius: 8,
                   fontSize: 14,
                   fontWeight: 500,
-                  cursor: triggerAnalysisMutation.isPending ? 'not-allowed' : 'pointer',
-                  opacity: triggerAnalysisMutation.isPending ? 0.7 : 1,
+                  cursor: isAnalyzing ? 'not-allowed' : 'pointer',
+                  opacity: isAnalyzing ? 0.7 : 1,
                 }}
               >
                 <Sparkles
                   size={16}
                   style={{
-                    animation: triggerAnalysisMutation.isPending ? 'pulse 1s ease-in-out infinite' : 'none',
+                    animation: isAnalyzing ? 'pulse 1s ease-in-out infinite' : 'none',
                   }}
                 />
-                {triggerAnalysisMutation.isPending ? 'Analyzing...' : 'Run AI Analysis'}
+                {isAnalyzing ? 'Analyzing...' : 'Run AI Analysis'}
               </motion.button>
             </Tooltip>
           )}
@@ -355,14 +391,38 @@ const Surveyor: React.FC = () => {
       </div>
 
       {/* Health Score & Stats Row */}
-      {isLoading ? (
+      {isLoading || triggerScanMutation.isPending || isAnalyzing ? (
         <Card style={{
           background: COLORS.surface[1],
           border: `1px solid ${COLORS.surface[3]}`,
           marginBottom: 24,
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 40 }}>
-            <Spin size="large" tip="Loading scan data..." />
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 48,
+            gap: 16,
+          }}>
+            <Spin size="large" />
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ color: COLORS.text.primary, fontSize: 16, fontWeight: 500, marginBottom: 8 }}>
+                {triggerScanMutation.isPending ? 'Scanning Codebase...' :
+                 isAnalyzing ? 'Running AI Analysis...' :
+                 'Loading Scan Data...'}
+              </div>
+              <div style={{ color: COLORS.text.secondary, fontSize: 13 }}>
+                {triggerScanMutation.isPending ? 'Parsing files, analyzing structure, detecting warnings' :
+                 isAnalyzing ? 'AI is analyzing functions to generate behavioral summaries' :
+                 'Fetching latest scan results from server'}
+              </div>
+              {isAnalyzing && (
+                <div style={{ color: COLORS.text.muted, fontSize: 12, marginTop: 8 }}>
+                  This may take a few minutes for large codebases
+                </div>
+              )}
+            </div>
           </div>
         </Card>
       ) : latestScan ? (
