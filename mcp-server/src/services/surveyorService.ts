@@ -479,7 +479,7 @@ export class SurveyorService {
   ): Promise<void> {
     await db.query(
       `UPDATE surveyor_scans
-       SET nodes = $1, analyzed_count = $2, pending_analysis = $3, updated_at = CURRENT_TIMESTAMP
+       SET nodes = $1, analyzed_count = $2, pending_analysis = $3
        WHERE id = $4`,
       [JSON.stringify(nodes), stats.analyzedCount, stats.pendingAnalysis, scanId]
     );
