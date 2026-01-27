@@ -1637,9 +1637,9 @@
       "model": "grok-4-1-fast-reasoning"
     },
     "file:mandrel-command/frontend/src/App.tsx:fn:AppContent:59": {
-      "contentHash": "b19150a68178d65f",
+      "contentHash": "3e5d73ca0261ab90",
       "result": {
-        "summary": "Renders main app UI with providers, error boundaries, routing, and routes.",
+        "summary": "Renders main app structure with providers, error boundaries, and routes.",
         "flags": {
           "databaseRead": false,
           "databaseWrite": false,
@@ -1650,9 +1650,9 @@
           "modifiesGlobalState": false,
           "hasSideEffects": false
         },
-        "rawResponse": "{\"summary\":\"Renders main app UI with providers, error boundaries, routing, and routes.\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":false}}"
+        "rawResponse": "{\"summary\":\"Renders main app structure with providers, error boundaries, and routes.\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":false}}"
       },
-      "analyzedAt": "2026-01-25T08:05:54.211Z",
+      "analyzedAt": "2026-01-26T14:12:23.247Z",
       "model": "grok-4-1-fast-reasoning"
     },
     "file:mcp-server/tools/validate-schema-diff.ts:fn:analyzeSchemas:71": {
@@ -7698,12 +7698,12 @@
       "model": "grok-4-1-fast-reasoning"
     },
     "file:mandrel-command/frontend/src/components/contexts/ContextDetail.tsx:fn:ContextDetail:42": {
-      "contentHash": "01ab68c15546ccd2",
+      "contentHash": "0a73b41b1fac43bc",
       "result": {
-        "summary": "React component for displaying, editing, and managing context details with queries and mutations",
+        "summary": "React component for displaying and editing context details with related contexts query.",
         "flags": {
-          "databaseRead": true,
-          "databaseWrite": true,
+          "databaseRead": false,
+          "databaseWrite": false,
           "httpCall": true,
           "fileRead": false,
           "fileWrite": false,
@@ -7711,9 +7711,9 @@
           "modifiesGlobalState": true,
           "hasSideEffects": true
         },
-        "rawResponse": "{\n  \"summary\": \"React component for displaying, editing, and managing context details with queries and mutations\",\n  \"flags\": {\n    \"databaseRead\": true,\n    \"databaseWrite\": true,\n    \"httpCall\": true,\n    \"fileRead\": false,\n    \"fileWrite\": false,\n    \"sendsNotification\": false,\n    \"modifiesGlobalState\": true,\n    \"hasSideEffects\": true\n  }\n}"
+        "rawResponse": "{\n  \"summary\": \"React component for displaying and editing context details with related contexts query.\",\n  \"flags\": {\n    \"databaseRead\": false,\n    \"databaseWrite\": false,\n    \"httpCall\": true,\n    \"fileRead\": false,\n    \"fileWrite\": false,\n    \"sendsNotification\": false,\n    \"modifiesGlobalState\": true,\n    \"hasSideEffects\": true\n  }\n}"
       },
-      "analyzedAt": "2026-01-25T08:07:06.383Z",
+      "analyzedAt": "2026-01-26T14:12:33.237Z",
       "model": "grok-4-1-fast-reasoning"
     },
     "file:mandrel-command/frontend/src/components/decisions/DecisionCard.tsx:fn:DecisionCard:33": {
@@ -7983,12 +7983,12 @@
       "model": "grok-4-1-fast-reasoning"
     },
     "file:mandrel-command/frontend/src/components/contexts/BulkActions.tsx:fn:BulkActions:27": {
-      "contentHash": "a074382e8bd2c001",
+      "contentHash": "eb530ac6d778d5e9",
       "result": {
-        "summary": "React component for bulk actions on contexts: select, delete, move, export, create",
+        "summary": "React component for bulk actions on contexts: select, delete, move, export, add.",
         "flags": {
           "databaseRead": false,
-          "databaseWrite": true,
+          "databaseWrite": false,
           "httpCall": true,
           "fileRead": false,
           "fileWrite": false,
@@ -7996,9 +7996,9 @@
           "modifiesGlobalState": true,
           "hasSideEffects": true
         },
-        "rawResponse": "{\n  \"summary\": \"React component for bulk actions on contexts: select, delete, move, export, create\",\n  \"flags\": {\n    \"databaseRead\": false,\n    \"databaseWrite\": true,\n    \"httpCall\": true,\n    \"fileRead\": false,\n    \"fileWrite\": false,\n    \"sendsNotification\": false,\n    \"modifiesGlobalState\": true,\n    \"hasSideEffects\": true\n  }\n}"
+        "rawResponse": "{\"summary\":\"React component for bulk actions on contexts: select, delete, move, export, add.\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":true,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":true,\"hasSideEffects\":true}}"
       },
-      "analyzedAt": "2026-01-25T08:07:10.365Z",
+      "analyzedAt": "2026-01-26T14:12:34.480Z",
       "model": "grok-4-1-fast-reasoning"
     },
     "file:mandrel-command/frontend/src/components/error/FallbackComponents.tsx:fn:PartialFallback:252": {
@@ -8040,9 +8040,9 @@
       "model": "grok-4-1-fast-reasoning"
     },
     "file:mandrel-command/frontend/src/components/embedding/UsagePatterns.tsx:fn:UsagePatterns:10": {
-      "contentHash": "c23b9bc694bade94",
+      "contentHash": "aaf2df229601dc8e",
       "result": {
-        "summary": "React component rendering embedding usage patterns charts (daily, hourly, type)",
+        "summary": "Renders usage patterns charts for project embeddings using query data with loading states.",
         "flags": {
           "databaseRead": false,
           "databaseWrite": false,
@@ -8053,9 +8053,9 @@
           "modifiesGlobalState": false,
           "hasSideEffects": true
         },
-        "rawResponse": "{\n  \"summary\": \"React component rendering embedding usage patterns charts (daily, hourly, type)\",\n  \"flags\": {\n    \"databaseRead\": false,\n    \"databaseWrite\": false,\n    \"httpCall\": true,\n    \"fileRead\": false,\n    \"fileWrite\": false,\n    \"sendsNotification\": false,\n    \"modifiesGlobalState\": false,\n    \"hasSideEffects\": true\n  }\n}"
+        "rawResponse": "{\n  \"summary\": \"Renders usage patterns charts for project embeddings using query data with loading states.\",\n  \"flags\": {\n    \"databaseRead\": false,\n    \"databaseWrite\": false,\n    \"httpCall\": true,\n    \"fileRead\": false,\n    \"fileWrite\": false,\n    \"sendsNotification\": false,\n    \"modifiesGlobalState\": false,\n    \"hasSideEffects\": true\n  }\n}"
       },
-      "analyzedAt": "2026-01-25T08:07:10.908Z",
+      "analyzedAt": "2026-01-26T14:12:33.121Z",
       "model": "grok-4-1-fast-reasoning"
     },
     "file:mandrel-command/frontend/src/components/decisions/DecisionFilters.tsx:fn:DecisionFilters:34": {
@@ -8990,9 +8990,9 @@
       "model": "grok-4-1-fast-reasoning"
     },
     "file:mandrel-command/frontend/src/components/AppLayout.tsx:fn:AppLayout:41": {
-      "contentHash": "ab19683c8fade787",
+      "contentHash": "188fbb1e7926c949",
       "result": {
-        "summary": "Renders app layout with sidebar nav, user menu, breadcrumbs using React hooks.",
+        "summary": "React component rendering app layout with sidebar menu, user dropdown, and breadcrumbs",
         "flags": {
           "databaseRead": false,
           "databaseWrite": false,
@@ -9003,9 +9003,9 @@
           "modifiesGlobalState": false,
           "hasSideEffects": false
         },
-        "rawResponse": "{\"summary\":\"Renders app layout with sidebar nav, user menu, breadcrumbs using React hooks.\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":false}}"
+        "rawResponse": "{\n  \"summary\": \"React component rendering app layout with sidebar menu, user dropdown, and breadcrumbs\",\n  \"flags\": {\n    \"databaseRead\": false,\n    \"databaseWrite\": false,\n    \"httpCall\": false,\n    \"fileRead\": false,\n    \"fileWrite\": false,\n    \"sendsNotification\": false,\n    \"modifiesGlobalState\": false,\n    \"hasSideEffects\": false\n  }\n}"
       },
-      "analyzedAt": "2026-01-25T08:53:40.213Z",
+      "analyzedAt": "2026-01-26T14:12:23.464Z",
       "model": "grok-4-1-fast-reasoning"
     },
     "file:mcp-server/src/utils/mcpFormatter.ts:fn:formatValue:85": {
@@ -9541,9 +9541,9 @@
       "model": "grok-4-1-fast-reasoning"
     },
     "file:mandrel-command/frontend/src/hooks/useDecisions.ts:fn:useDecisionSearchQuery:18": {
-      "contentHash": "26a36660cd2d4bca",
+      "contentHash": "c57470043c08d550",
       "result": {
-        "summary": "React Query hook for searching decisions via decisionsClient.search(params)",
+        "summary": "React Query hook for searching decisions via decisionsClient.search.",
         "flags": {
           "databaseRead": false,
           "databaseWrite": false,
@@ -9554,9 +9554,9 @@
           "modifiesGlobalState": true,
           "hasSideEffects": true
         },
-        "rawResponse": "{\"summary\":\"React Query hook for searching decisions via decisionsClient.search(params)\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":true,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":true,\"hasSideEffects\":true}}"
+        "rawResponse": "{\"summary\":\"React Query hook for searching decisions via decisionsClient.search.\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":true,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":true,\"hasSideEffects\":true}}"
       },
-      "analyzedAt": "2026-01-25T17:28:20.862Z",
+      "analyzedAt": "2026-01-26T14:12:31.098Z",
       "model": "grok-4-1-fast-reasoning"
     },
     "file:mandrel-command/frontend/src/hooks/useContexts.ts:fn:useBulkDeleteContexts:97": {
@@ -9598,9 +9598,9 @@
       "model": "grok-4-1-fast-reasoning"
     },
     "file:mandrel-command/frontend/src/hooks/useDecisions.ts:fn:useDecisionStatsQuery:31": {
-      "contentHash": "e1278b96ef6f8c98",
+      "contentHash": "0d7e178326f0578b",
       "result": {
-        "summary": "React Query hook to fetch decision stats for a project ID",
+        "summary": "Custom React Query hook fetching decision stats for a project via API client.",
         "flags": {
           "databaseRead": false,
           "databaseWrite": false,
@@ -9611,9 +9611,9 @@
           "modifiesGlobalState": false,
           "hasSideEffects": true
         },
-        "rawResponse": "{\"summary\":\"React Query hook to fetch decision stats for a project ID\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":true,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":true}}"
+        "rawResponse": "{\"summary\":\"Custom React Query hook fetching decision stats for a project via API client.\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":true,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":true}}"
       },
-      "analyzedAt": "2026-01-25T17:28:23.298Z",
+      "analyzedAt": "2026-01-26T14:12:36.218Z",
       "model": "grok-4-1-fast-reasoning"
     },
     "file:mcp-server/src/services/embedding/localModel.ts:fn:getLocalModelName:47": {
@@ -10945,7 +10945,2078 @@
       },
       "analyzedAt": "2026-01-25T19:49:17.377Z",
       "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mandrel-command/backend/src/middleware/validation.ts:fn:validateUUIDParam:184": {
+      "contentHash": "a4452605d6f3133d",
+      "result": {
+        "summary": "Creates validation middleware for UUID param in request params.",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\"summary\":\"Creates validation middleware for UUID param in request params.\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":false}}"
+      },
+      "analyzedAt": "2026-01-26T14:12:20.441Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/server/MandrelMcpServer.ts:fn:getEnvVar:55": {
+      "contentHash": "7850f8cf0ec5e4f7",
+      "result": {
+        "summary": "Retrieves env var by aidisKey or legacyKey, falling back to defaultValue",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\"summary\":\"Retrieves env var by aidisKey or legacyKey, falling back to defaultValue\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":false}}"
+      },
+      "analyzedAt": "2026-01-26T14:12:20.451Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mandrel-command/frontend/src/hooks/useAuth.ts:fn:useAuthCheck:91": {
+      "contentHash": "4d97a8298cff7e7a",
+      "result": {
+        "summary": "React hook checks localStorage token, listens for changes, fetches user profile via API if authenticated",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": true,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": true,
+          "hasSideEffects": true
+        },
+        "rawResponse": "{\n  \"summary\": \"React hook checks localStorage token, listens for changes, fetches user profile via API if authenticated\",\n  \"flags\": {\n    \"databaseRead\": false,\n    \"databaseWrite\": false,\n    \"httpCall\": true,\n    \"fileRead\": false,\n    \"fileWrite\": false,\n    \"sendsNotification\": false,\n    \"modifiesGlobalState\": true,\n    \"hasSideEffects\": true\n  }\n}"
+      },
+      "analyzedAt": "2026-01-26T14:12:22.680Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mandrel-command/frontend/src/api/surveyorClient.ts:fn:fetchApi:76": {
+      "contentHash": "0afcab4cce0d9a67",
+      "result": {
+        "summary": "Authenticated HTTP API fetch wrapper with error handling and token from localStorage",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": true,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": true
+        },
+        "rawResponse": "{\"summary\":\"Authenticated HTTP API fetch wrapper with error handling and token from localStorage\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":true,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":true}}"
+      },
+      "analyzedAt": "2026-01-26T14:12:22.838Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mandrel-command/frontend/src/api/embeddingsClient.ts:fn:readStoredProjectId:15": {
+      "contentHash": "fc6d51e8cd2b3338",
+      "result": {
+        "summary": "Reads project ID from localStorage using multiple fallback keys",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\"summary\":\"Reads project ID from localStorage using multiple fallback keys\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":false}}"
+      },
+      "analyzedAt": "2026-01-26T14:12:22.891Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mandrel-command/backend/src/middleware/validation.ts:fn:validatePagination:196": {
+      "contentHash": "2db15baa295905ef",
+      "result": {
+        "summary": "Returns optional pagination query validator using PaginationQuerySchema.",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\"summary\":\"Returns optional pagination query validator using PaginationQuerySchema.\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":false}}"
+      },
+      "analyzedAt": "2026-01-26T14:12:23.352Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mandrel-command/frontend/src/hooks/useEmbeddings.ts:fn:useSimilarityMatrixQuery:51": {
+      "contentHash": "07e8d0c925645a9e",
+      "result": {
+        "summary": "React Query hook fetching embedding similarity matrix via client.",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": true,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": true
+        },
+        "rawResponse": "{\"summary\":\"React Query hook fetching embedding similarity matrix via client.\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":true,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":true}}"
+      },
+      "analyzedAt": "2026-01-26T14:12:23.449Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mandrel-command/frontend/src/hooks/useEmbeddings.ts:fn:useEmbeddingKnowledgeGapsQuery:173": {
+      "contentHash": "b4ab030be528e332",
+      "result": {
+        "summary": "React Query hook fetching embedding knowledge gaps for a project ID",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": true,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": true
+        },
+        "rawResponse": "{\"summary\":\"React Query hook fetching embedding knowledge gaps for a project ID\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":true,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":true}}"
+      },
+      "analyzedAt": "2026-01-26T14:12:23.745Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mandrel-command/frontend/src/api/embeddingsClient.ts:fn:requireProjectId:44": {
+      "contentHash": "436763c0adb89fa0",
+      "result": {
+        "summary": "Returns requested project ID or stored one from readStoredProjectId(), errors if missing.",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\"summary\":\"Returns requested project ID or stored one from readStoredProjectId(), errors if missing.\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":false}}"
+      },
+      "analyzedAt": "2026-01-26T14:12:23.801Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mandrel-command/frontend/src/hooks/useEmbeddings.ts:fn:useEmbeddingClustersQuery:107": {
+      "contentHash": "4ab593dc531f8a37",
+      "result": {
+        "summary": "React Query hook to fetch embedding clusters for a dataset and project.",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": true,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": true
+        },
+        "rawResponse": "{\"summary\":\"React Query hook to fetch embedding clusters for a dataset and project.\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":true,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":true}}"
+      },
+      "analyzedAt": "2026-01-26T14:12:23.854Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mandrel-command/frontend/src/hooks/useEmbeddings.ts:fn:useEmbeddingUsagePatternsQuery:193": {
+      "contentHash": "5b6def4b1b6b48be",
+      "result": {
+        "summary": "React Query hook fetching embedding usage patterns for a project via API client.",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": true,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": true
+        },
+        "rawResponse": "{\n  \"summary\": \"React Query hook fetching embedding usage patterns for a project via API client.\",\n  \"flags\": {\n    \"databaseRead\": false,\n    \"databaseWrite\": false,\n    \"httpCall\": true,\n    \"fileRead\": false,\n    \"fileWrite\": false,\n    \"sendsNotification\": false,\n    \"modifiesGlobalState\": false,\n    \"hasSideEffects\": true\n  }\n}"
+      },
+      "analyzedAt": "2026-01-26T14:12:24.139Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mandrel-command/frontend/src/hooks/useEmbeddings.ts:fn:useEmbeddingDatasets:36": {
+      "contentHash": "1d904066c4c11272",
+      "result": {
+        "summary": "React Query hook to fetch embedding datasets for a project ID",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": true,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": true
+        },
+        "rawResponse": "{\"summary\":\"React Query hook to fetch embedding datasets for a project ID\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":true,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":true}}"
+      },
+      "analyzedAt": "2026-01-26T14:12:24.714Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mandrel-command/frontend/src/hooks/useEmbeddings.ts:fn:useEmbeddingProjectionQuery:79": {
+      "contentHash": "e66838f27e84e7cf",
+      "result": {
+        "summary": "React Query hook fetching embedding projection via embeddingsClient.",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": true,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": true,
+          "hasSideEffects": true
+        },
+        "rawResponse": "{\"summary\":\"React Query hook fetching embedding projection via embeddingsClient.\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":true,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":true,\"hasSideEffects\":true}}"
+      },
+      "analyzedAt": "2026-01-26T14:12:25.119Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mandrel-command/frontend/src/pages/Surveyor.tsx:fn:getHealthColor:45": {
+      "contentHash": "2ba3e06428816542",
+      "result": {
+        "summary": "Returns a color string based on health score value.",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\"summary\":\"Returns a color string based on health score value.\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":false}}"
+      },
+      "analyzedAt": "2026-01-26T14:12:25.335Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mandrel-command/frontend/src/hooks/useSurveyorData.ts:fn:useDeleteScan:164": {
+      "contentHash": "cbf0fbf747a53dd8",
+      "result": {
+        "summary": "React Query mutation hook to delete a scan via API and invalidate surveyor queries",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": true,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": true,
+          "hasSideEffects": true
+        },
+        "rawResponse": "{\n  \"summary\": \"React Query mutation hook to delete a scan via API and invalidate surveyor queries\",\n  \"flags\": {\n    \"databaseRead\": false,\n    \"databaseWrite\": false,\n    \"httpCall\": true,\n    \"fileRead\": false,\n    \"fileWrite\": false,\n    \"sendsNotification\": false,\n    \"modifiesGlobalState\": true,\n    \"hasSideEffects\": true\n  }\n}"
+      },
+      "analyzedAt": "2026-01-26T14:12:25.650Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mandrel-command/frontend/src/pages/Surveyor.tsx:fn:getHealthLabel:54": {
+      "contentHash": "168ea1e71ff12a62",
+      "result": {
+        "summary": "Returns health label string based on score value or 'Unknown' if null.",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\"summary\":\"Returns health label string based on score value or 'Unknown' if null.\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":false}}"
+      },
+      "analyzedAt": "2026-01-26T14:12:26.398Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mandrel-command/frontend/src/hooks/useSurveyorData.ts:fn:useNodes:79": {
+      "contentHash": "e17dddaff84ba120",
+      "result": {
+        "summary": "React Query hook to fetch nodes data for a scan with optional filters.",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": true,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": true
+        },
+        "rawResponse": "{\"summary\":\"React Query hook to fetch nodes data for a scan with optional filters.\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":true,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":true}}"
+      },
+      "analyzedAt": "2026-01-26T14:12:26.512Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mandrel-command/frontend/src/validation/schemas.ts:fn:validateData:226": {
+      "contentHash": "d8e3a7fc50947a93",
+      "result": {
+        "summary": "Validates data using Zod schema, returns success, parsed data or formatted errors.",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\"summary\":\"Validates data using Zod schema, returns success, parsed data or formatted errors.\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":false}}"
+      },
+      "analyzedAt": "2026-01-26T14:12:26.891Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mandrel-command/frontend/src/hooks/useSurveyorData.ts:fn:useScan:47": {
+      "contentHash": "abb7f242804413c5",
+      "result": {
+        "summary": "React Query hook to fetch scan data by ID, optionally including nodes.",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": true,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": true,
+          "hasSideEffects": true
+        },
+        "rawResponse": "{\"summary\":\"React Query hook to fetch scan data by ID, optionally including nodes.\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":true,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":true,\"hasSideEffects\":true}}"
+      },
+      "analyzedAt": "2026-01-26T14:12:27.289Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mandrel-command/frontend/src/hooks/useSurveyorData.ts:fn:useWarnings:59": {
+      "contentHash": "3690405d2b8ba55a",
+      "result": {
+        "summary": "React Query hook to fetch warnings for a scan ID with optional filters.",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": true,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": true,
+          "hasSideEffects": true
+        },
+        "rawResponse": "{\"summary\":\"React Query hook to fetch warnings for a scan ID with optional filters.\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":true,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":true,\"hasSideEffects\":true}}"
+      },
+      "analyzedAt": "2026-01-26T14:12:27.585Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mandrel-command/frontend/src/hooks/useSurveyorData.ts:fn:useSummary:99": {
+      "contentHash": "7ab66f0d6521a0b4",
+      "result": {
+        "summary": "React Query hook fetching surveyor summary data for scanId and level",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": true,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": true,
+          "hasSideEffects": true
+        },
+        "rawResponse": "{\"summary\":\"React Query hook fetching surveyor summary data for scanId and level\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":true,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":true,\"hasSideEffects\":true}}"
+      },
+      "analyzedAt": "2026-01-26T14:12:27.803Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mandrel-command/frontend/src/validation/schemas.ts:fn:validatePartial:245": {
+      "contentHash": "84fa0d0c91351c90",
+      "result": {
+        "summary": "Partially validates data with Zod schema, succeeding if only missing required fields.",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\"summary\":\"Partially validates data with Zod schema, succeeding if only missing required fields.\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":false}}"
+      },
+      "analyzedAt": "2026-01-26T14:12:28.166Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/api/v2/surveyorRoutes.ts:fn:createSurveyorRouter:90": {
+      "contentHash": "3dab021f1934caf6",
+      "result": {
+        "summary": "Creates and returns a new SurveyorRouter instance's router.",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\"summary\":\"Creates and returns a new SurveyorRouter instance's router.\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":false}}"
+      },
+      "analyzedAt": "2026-01-26T14:12:28.300Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mandrel-command/frontend/src/hooks/useSurveyorData.ts:fn:useScans:32": {
+      "contentHash": "cf6b16e69f762512",
+      "result": {
+        "summary": "React Query hook to fetch scans for a project via surveyorClient.",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": true,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": true
+        },
+        "rawResponse": "{\"summary\":\"React Query hook to fetch scans for a project via surveyorClient.\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":true,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":true}}"
+      },
+      "analyzedAt": "2026-01-26T14:12:28.769Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mandrel-command/frontend/src/pages/Embedding.tsx:fn:Embedding:25": {
+      "contentHash": "493a6211fa7d34d9",
+      "result": {
+        "summary": "Renders tabbed interface for embedding visualizations using global store for active tab",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": true,
+          "hasSideEffects": true
+        },
+        "rawResponse": "{\n  \"summary\": \"Renders tabbed interface for embedding visualizations using global store for active tab\",\n  \"flags\": {\n    \"databaseRead\": false,\n    \"databaseWrite\": false,\n    \"httpCall\": false,\n    \"fileRead\": false,\n    \"fileWrite\": false,\n    \"sendsNotification\": false,\n    \"modifiesGlobalState\": true,\n    \"hasSideEffects\": true\n  }\n}"
+      },
+      "analyzedAt": "2026-01-26T14:12:29.762Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mandrel-command/frontend/src/hooks/useSurveyorData.ts:fn:useLatestScan:179": {
+      "contentHash": "aee47423cf5609fc",
+      "result": {
+        "summary": "Fetches the latest scan for a project by wrapping useScans query with limit 1",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": true,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": true
+        },
+        "rawResponse": "{\n  \"summary\": \"Fetches the latest scan for a project by wrapping useScans query with limit 1\",\n  \"flags\": {\n    \"databaseRead\": false,\n    \"databaseWrite\": false,\n    \"httpCall\": true,\n    \"fileRead\": false,\n    \"fileWrite\": false,\n    \"sendsNotification\": false,\n    \"modifiesGlobalState\": false,\n    \"hasSideEffects\": true\n  }\n}"
+      },
+      "analyzedAt": "2026-01-26T14:12:30.421Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mandrel-command/backend/src/middleware/validation.ts:fn:contractEnforcementMiddleware:206": {
+      "contentHash": "e8d8ada191fd9aa9",
+      "result": {
+        "summary": "Middleware that logs request details for contract enforcement monitoring and calls next()",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": true
+        },
+        "rawResponse": "{\"summary\":\"Middleware that logs request details for contract enforcement monitoring and calls next()\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":true}}"
+      },
+      "analyzedAt": "2026-01-26T14:12:30.849Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mandrel-command/frontend/src/hooks/useEmbeddings.ts:fn:useEmbeddingRelationshipsQuery:153": {
+      "contentHash": "142b54a1182bc3c5",
+      "result": {
+        "summary": "React Query hook to fetch embedding project relationships by project ID",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": true,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": true
+        },
+        "rawResponse": "{\"summary\":\"React Query hook to fetch embedding project relationships by project ID\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":true,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":true}}"
+      },
+      "analyzedAt": "2026-01-26T14:12:31.232Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/services/surveyor/analyzer/analysis-cache.ts:fn:hashFunctionContent:21": {
+      "contentHash": "fd9460396f3dd1d9",
+      "result": {
+        "summary": "Generates a 16-char SHA256 hash of the input code string",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\"summary\":\"Generates a 16-char SHA256 hash of the input code string\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":false}}"
+      },
+      "analyzedAt": "2026-01-26T14:12:31.597Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mandrel-command/frontend/src/components/tasks/TaskCardList.tsx:fn:TaskCardList:64": {
+      "contentHash": "33cb1234a35660cb",
+      "result": {
+        "summary": "React component for rendering and filtering a list of task cards",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\"summary\":\"React component for rendering and filtering a list of task cards\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":false}}"
+      },
+      "analyzedAt": "2026-01-26T14:12:31.728Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/services/surveyor/analyzer/analysis-cache.ts:fn:getCacheFilePath:28": {
+      "contentHash": "aaab647075d7cb8a",
+      "result": {
+        "summary": "Returns cache file path by joining outputDir with CACHE_FILENAME.",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\"summary\":\"Returns cache file path by joining outputDir with CACHE_FILENAME.\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":false}}"
+      },
+      "analyzedAt": "2026-01-26T14:12:32.168Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mandrel-command/frontend/src/components/surveyor/SurveyorWarningList.tsx:fn:SurveyorWarningList:58": {
+      "contentHash": "871ed6a1739599b2",
+      "result": {
+        "summary": "Renders a filtered list of scan warnings with level/category filters and click handlers.",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": true,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": true
+        },
+        "rawResponse": "{\"summary\":\"Renders a filtered list of scan warnings with level/category filters and click handlers.\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":true,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":true}}"
+      },
+      "analyzedAt": "2026-01-26T14:12:32.448Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mandrel-command/frontend/src/hooks/useSurveyorData.ts:fn:useFileDetails:111": {
+      "contentHash": "520ab1348d1b86ed",
+      "result": {
+        "summary": "React Query hook to fetch file details for a scanId and filePath via surveyorClient.",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": true,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": true
+        },
+        "rawResponse": "{\n  \"summary\": \"React Query hook to fetch file details for a scanId and filePath via surveyorClient.\",\n  \"flags\": {\n    \"databaseRead\": false,\n    \"databaseWrite\": false,\n    \"httpCall\": true,\n    \"fileRead\": false,\n    \"fileWrite\": false,\n    \"sendsNotification\": false,\n    \"modifiesGlobalState\": false,\n    \"hasSideEffects\": true\n  }\n}"
+      },
+      "analyzedAt": "2026-01-26T14:12:32.722Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mandrel-command/frontend/src/components/surveyor/SurveyorCanvas.tsx:fn:transformToFlowNodes:50": {
+      "contentHash": "ea54d7a874aaf177",
+      "result": {
+        "summary": "Transforms input nodes into flow graph nodes/edges, positioning files in grid and functions relative to files",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\"summary\":\"Transforms input nodes into flow graph nodes/edges, positioning files in grid and functions relative to files\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":false}}"
+      },
+      "analyzedAt": "2026-01-26T14:12:32.944Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mandrel-command/frontend/src/components/tasks/TaskKanbanBoard.tsx:fn:TaskKanbanBoard:73": {
+      "contentHash": "6be6e81e8323dca6",
+      "result": {
+        "summary": "React Kanban board component for displaying, searching, and managing tasks by status columns.",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": true
+        },
+        "rawResponse": "{\"summary\":\"React Kanban board component for displaying, searching, and managing tasks by status columns.\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":true}}"
+      },
+      "analyzedAt": "2026-01-26T14:12:33.026Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/services/surveyor/analyzer/analysis-cache.ts:fn:createCache:77": {
+      "contentHash": "f6115a0660ba5718",
+      "result": {
+        "summary": "Creates AnalysisCache object with projectPath, version, empty entries, and current timestamp",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\"summary\":\"Creates AnalysisCache object with projectPath, version, empty entries, and current timestamp\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":false}}"
+      },
+      "analyzedAt": "2026-01-26T14:12:33.151Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/services/surveyor/analyzer/analysis-cache.ts:fn:getCachedResult:89": {
+      "contentHash": "c011e41f7fb23ed0",
+      "result": {
+        "summary": "Retrieves cached analysis result for function if content hash matches.",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\"summary\":\"Retrieves cached analysis result for function if content hash matches.\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":false}}"
+      },
+      "analyzedAt": "2026-01-26T14:12:33.275Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mandrel-command/frontend/src/hooks/useSurveyorData.ts:fn:useTriggerScan:135": {
+      "contentHash": "fbdcf1c62883852c",
+      "result": {
+        "summary": "React Query hook to trigger scan via surveyorClient and invalidate project scans/stats queries.",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": true,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": true,
+          "hasSideEffects": true
+        },
+        "rawResponse": "{\"summary\":\"React Query hook to trigger scan via surveyorClient and invalidate project scans/stats queries.\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":true,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":true,\"hasSideEffects\":true}}"
+      },
+      "analyzedAt": "2026-01-26T14:12:33.409Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mandrel-command/frontend/src/components/surveyor/SurveyorCanvas.tsx:fn:SurveyorCanvas:204": {
+      "contentHash": "e74fce2cbcf341e4",
+      "result": {
+        "summary": "Renders interactive codebase structure visualization using scan data with nodes/edges graph.",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": true,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": true
+        },
+        "rawResponse": "{\"summary\":\"Renders interactive codebase structure visualization using scan data with nodes/edges graph.\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":true,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":true}}"
+      },
+      "analyzedAt": "2026-01-26T14:12:33.970Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/services/surveyor/analyzer/analysis-cache.ts:fn:getCacheStats:155": {
+      "contentHash": "9013f217cd73aa73",
+      "result": {
+        "summary": "Computes cache stats: total entries, oldest and newest analyzed dates",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\"summary\":\"Computes cache stats: total entries, oldest and newest analyzed dates\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":false}}"
+      },
+      "analyzedAt": "2026-01-26T14:12:34.112Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/services/surveyor/analyzer/analysis-cache.ts:fn:saveCache:61": {
+      "contentHash": "c9914dc07bdd07ce",
+      "result": {
+        "summary": "Saves analysis cache to a JSON file in the specified output directory.",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": true,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": true
+        },
+        "rawResponse": "{\"summary\":\"Saves analysis cache to a JSON file in the specified output directory.\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":true,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":true}}"
+      },
+      "analyzedAt": "2026-01-26T14:12:34.335Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/services/surveyor/analyzer/analysis-cache.ts:fn:setCachedResult:111": {
+      "contentHash": "f8dda0961cc333d0",
+      "result": {
+        "summary": "Sets cached analysis result for a function ID in the provided cache object.",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": true
+        },
+        "rawResponse": "{\"summary\":\"Sets cached analysis result for a function ID in the provided cache object.\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":true}}"
+      },
+      "analyzedAt": "2026-01-26T14:12:34.739Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mandrel-command/frontend/src/pages/Dashboard.tsx:fn:Dashboard:31": {
+      "contentHash": "e84d973acbe2a1db",
+      "result": {
+        "summary": "React component rendering dashboard UI with greeting, loading skeleton, and stats hook.",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\n  \"summary\": \"React component rendering dashboard UI with greeting, loading skeleton, and stats hook.\",\n  \"flags\": {\n    \"databaseRead\": false,\n    \"databaseWrite\": false,\n    \"httpCall\": false,\n    \"fileRead\": false,\n    \"fileWrite\": false,\n    \"sendsNotification\": false,\n    \"modifiesGlobalState\": false,\n    \"hasSideEffects\": false\n  }\n}"
+      },
+      "analyzedAt": "2026-01-26T14:12:34.819Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/services/surveyor/analyzer/scan-non-ts-imports.ts:fn:parseImportsFromContent:45": {
+      "contentHash": "4dd36eeca9f70e70",
+      "result": {
+        "summary": "Parses non-type import statements from content string into ParsedImport array",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\"summary\":\"Parses non-type import statements from content string into ParsedImport array\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":false}}"
+      },
+      "analyzedAt": "2026-01-26T14:12:34.842Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/services/surveyor/analyzer/behavioral-analyzer.ts:fn:extractFunctionCode:68": {
+      "contentHash": "f0758ca9924edc28",
+      "result": {
+        "summary": "Extracts code lines from a file between start and end line numbers.",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": true,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": true
+        },
+        "rawResponse": "{\"summary\":\"Extracts code lines from a file between start and end line numbers.\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":true,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":true}}"
+      },
+      "analyzedAt": "2026-01-26T14:12:35.201Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/services/surveyor/analyzer/analysis-cache.ts:fn:pruneCache:132": {
+      "contentHash": "d2841e6d029a8796",
+      "result": {
+        "summary": "Removes invalid function entries from cache.entries and updates timestamp if changed",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": true,
+          "hasSideEffects": true
+        },
+        "rawResponse": "{\n  \"summary\": \"Removes invalid function entries from cache.entries and updates timestamp if changed\",\n  \"flags\": {\n    \"databaseRead\": false,\n    \"databaseWrite\": false,\n    \"httpCall\": false,\n    \"fileRead\": false,\n    \"fileWrite\": false,\n    \"sendsNotification\": false,\n    \"modifiesGlobalState\": true,\n    \"hasSideEffects\": true\n  }\n}"
+      },
+      "analyzedAt": "2026-01-26T14:12:35.627Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/services/surveyor/analyzer/scan-non-ts-imports.ts:fn:parseImportStatement:116": {
+      "contentHash": "35462682bca901b2",
+      "result": {
+        "summary": "Parses JS/TS import statement to extract source module and imported names.",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\"summary\":\"Parses JS/TS import statement to extract source module and imported names.\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":false}}"
+      },
+      "analyzedAt": "2026-01-26T14:12:35.805Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mandrel-command/frontend/src/hooks/useSurveyorData.ts:fn:useProjectStats:123": {
+      "contentHash": "a7b496af63079035",
+      "result": {
+        "summary": "React Query hook fetching project stats for given project ID",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": true,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": true,
+          "hasSideEffects": true
+        },
+        "rawResponse": "{\n  \"summary\": \"React Query hook fetching project stats for given project ID\",\n  \"flags\": {\n    \"databaseRead\": false,\n    \"databaseWrite\": false,\n    \"httpCall\": true,\n    \"fileRead\": false,\n    \"fileWrite\": false,\n    \"sendsNotification\": false,\n    \"modifiesGlobalState\": true,\n    \"hasSideEffects\": true\n  }\n}"
+      },
+      "analyzedAt": "2026-01-26T14:12:36.083Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/services/surveyor/analyzer/scan-non-ts-imports.ts:fn:resolvePathAlias:174": {
+      "contentHash": "161bbba30a8e2950",
+      "result": {
+        "summary": "Resolves path aliases in source string using regex matching and target substitution.",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\"summary\":\"Resolves path aliases in source string using regex matching and target substitution.\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":false}}"
+      },
+      "analyzedAt": "2026-01-26T14:12:36.084Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/services/surveyor/analyzer/browser-analyzer.ts:fn:createBrowserLLMClient:36": {
+      "contentHash": "3e60d4e0a6ccdc84",
+      "result": {
+        "summary": "Factory function creating BrowserLLMClient for LLM-based TypeScript function analysis",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\"summary\":\"Factory function creating BrowserLLMClient for LLM-based TypeScript function analysis\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":false}}"
+      },
+      "analyzedAt": "2026-01-26T14:12:36.163Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/services/surveyor/analyzer/scan-non-ts-imports.ts:fn:normalizeImportSource:199": {
+      "contentHash": "367484e846ac0afc",
+      "result": {
+        "summary": "Normalizes import source by resolving relative paths from importing file dir and stripping TS/JS extensions",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\"summary\":\"Normalizes import source by resolving relative paths from importing file dir and stripping TS/JS extensions\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":false}}"
+      },
+      "analyzedAt": "2026-01-26T14:12:36.512Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/services/surveyor/analyzer/warning-detector.ts:fn:isFrameworkConvention:87": {
+      "contentHash": "9b9865f2f65cfea1",
+      "result": {
+        "summary": "Checks if exportName and filePath match framework conventions (Next.js or config files).",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\"summary\":\"Checks if exportName and filePath match framework conventions (Next.js or config files).\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":false}}"
+      },
+      "analyzedAt": "2026-01-26T14:12:36.898Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/services/surveyor/analyzer/warning-detector.ts:fn:resolvePathAlias:107": {
+      "contentHash": "82a3f6a59f4ded71",
+      "result": {
+        "summary": "Resolves path aliases in source string using regex matching and target substitution.",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\"summary\":\"Resolves path aliases in source string using regex matching and target substitution.\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":false}}"
+      },
+      "analyzedAt": "2026-01-26T14:12:36.955Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/services/surveyor/analyzer/scan-non-ts-imports.ts:fn:mergeImportMaps:293": {
+      "contentHash": "6c009fac4fa817ad",
+      "result": {
+        "summary": "Merges nonTsImports into tsImports by adding sources and unioning import names.",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": true
+        },
+        "rawResponse": "{\"summary\":\"Merges nonTsImports into tsImports by adding sources and unioning import names.\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":true}}"
+      },
+      "analyzedAt": "2026-01-26T14:12:37.087Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/services/surveyor/analyzer/warning-detector.ts:fn:detectFileCircularDependencies:175": {
+      "contentHash": "2fb7ccc1c395093f",
+      "result": {
+        "summary": "Detects circular file dependencies from import graph and returns warnings",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\"summary\":\"Detects circular file dependencies from import graph and returns warnings\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":false}}"
+      },
+      "analyzedAt": "2026-01-26T14:12:37.504Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/services/surveyor/analyzer/warning-detector.ts:fn:detectFunctionCircularDependencies:232": {
+      "contentHash": "76114edddb573841",
+      "result": {
+        "summary": "Placeholder for detecting circular dependencies in functions; returns empty array",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\"summary\":\"Placeholder for detecting circular dependencies in functions; returns empty array\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":false}}"
+      },
+      "analyzedAt": "2026-01-26T14:12:37.921Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/services/surveyor/analyzer/behavioral-analyzer.ts:fn:processWithConcurrency:40": {
+      "contentHash": "ed49551432b3214b",
+      "result": {
+        "summary": "Processes array items concurrently up to a concurrency limit using a worker pattern.",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\"summary\":\"Processes array items concurrently up to a concurrency limit using a worker pattern.\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":false}}"
+      },
+      "analyzedAt": "2026-01-26T14:12:38.036Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/services/surveyor/analyzer/warning-detector.ts:fn:findCycles:648": {
+      "contentHash": "8c91e9583b07ea8c",
+      "result": {
+        "summary": "Detects and returns unique cycles in a directed graph using DFS",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\"summary\":\"Detects and returns unique cycles in a directed graph using DFS\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":false}}"
+      },
+      "analyzedAt": "2026-01-26T14:12:38.334Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/services/surveyor/analyzer/warning-detector.ts:fn:buildReexportMap:385": {
+      "contentHash": "7645fed101a44db9",
+      "result": {
+        "summary": "Builds reexport map from file nodes using path aliases and normalization",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\"summary\":\"Builds reexport map from file nodes using path aliases and normalization\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":false}}"
+      },
+      "analyzedAt": "2026-01-26T14:12:38.337Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/services/surveyor/analyzer/browser-analyzer.ts:fn:analyzeBehaviorBrowser:131": {
+      "contentHash": "0808154149623c17",
+      "result": {
+        "summary": "Analyzes function nodes in scanResult using LLM client, updates behavioral data sequentially",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": true,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": true
+        },
+        "rawResponse": "{\n  \"summary\": \"Analyzes function nodes in scanResult using LLM client, updates behavioral data sequentially\",\n  \"flags\": {\n    \"databaseRead\": false,\n    \"databaseWrite\": false,\n    \"httpCall\": true,\n    \"fileRead\": false,\n    \"fileWrite\": false,\n    \"sendsNotification\": false,\n    \"modifiesGlobalState\": false,\n    \"hasSideEffects\": true\n  }\n}"
+      },
+      "analyzedAt": "2026-01-26T14:12:38.537Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/services/surveyor/analyzer/warning-detector.ts:fn:detectOrphanedCode:249": {
+      "contentHash": "e236164dd133563c",
+      "result": {
+        "summary": "Detects orphaned (unused) functions by checking exports, imports, and naming conventions.",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\"summary\":\"Detects orphaned (unused) functions by checking exports, imports, and naming conventions.\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":false}}"
+      },
+      "analyzedAt": "2026-01-26T14:12:38.720Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/services/surveyor/analyzer/behavioral-analyzer.ts:fn:analyzeSingleFunction:231": {
+      "contentHash": "7af6139720a6256a",
+      "result": {
+        "summary": "Extracts function code from file, analyzes with LLM client, updates funcNode.behavioral and returns it.",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": true,
+          "fileRead": true,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": true
+        },
+        "rawResponse": "{\"summary\": \"Extracts function code from file, analyzes with LLM client, updates funcNode.behavioral and returns it.\", \"flags\": {\"databaseRead\": false, \"databaseWrite\": false, \"httpCall\": true, \"fileRead\": true, \"fileWrite\": false, \"sendsNotification\": false, \"modifiesGlobalState\": false, \"hasSideEffects\": true}}"
+      },
+      "analyzedAt": "2026-01-26T14:12:38.774Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/services/surveyor/analyzer/scan-non-ts-imports.ts:fn:extractImportStatements:71": {
+      "contentHash": "d38184853ebb9ec6",
+      "result": {
+        "summary": "Extracts import statements from source code string, handling multi-line imports.",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\"summary\":\"Extracts import statements from source code string, handling multi-line imports.\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":false}}"
+      },
+      "analyzedAt": "2026-01-26T14:12:38.892Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/services/surveyor/analyzer/warning-detector.ts:fn:resolveImportToFileId:694": {
+      "contentHash": "76a46aad5bcabeb2",
+      "result": {
+        "summary": "Resolves import path to file ID using path aliases and normalization in node map.",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\"summary\":\"Resolves import path to file ID using path aliases and normalization in node map.\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":false}}"
+      },
+      "analyzedAt": "2026-01-26T14:12:38.998Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/services/surveyor/analyzer/warning-detector.ts:fn:detectWarnings:136": {
+      "contentHash": "9ac1c432daf5821a",
+      "result": {
+        "summary": "Detects code warnings like circular deps, orphaned code, unused exports, large files from scan result",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\n  \"summary\": \"Detects code warnings like circular deps, orphaned code, unused exports, large files from scan result\",\n  \"flags\": {\n    \"databaseRead\": false,\n    \"databaseWrite\": false,\n    \"httpCall\": false,\n    \"fileRead\": false,\n    \"fileWrite\": false,\n    \"sendsNotification\": false,\n    \"modifiesGlobalState\": false,\n    \"hasSideEffects\": false\n  }\n}"
+      },
+      "analyzedAt": "2026-01-26T14:12:39.081Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/services/surveyor/analyzer/warning-detector.ts:fn:normalizeFilePath:760": {
+      "contentHash": "a6d1ab861f4f97d5",
+      "result": {
+        "summary": "Removes .ts, .tsx, .js, .jsx extensions from a file path string.",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\"summary\":\"Removes .ts, .tsx, .js, .jsx extensions from a file path string.\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":false}}"
+      },
+      "analyzedAt": "2026-01-26T14:12:39.143Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/services/surveyor/analyzer/warning-detector.ts:fn:normalizeImportSource:729": {
+      "contentHash": "990c18d7d996a1c2",
+      "result": {
+        "summary": "Normalizes relative import paths by resolving '.'/'..' and stripping TypeScript/JS extensions",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\"summary\":\"Normalizes relative import paths by resolving '.'/'..' and stripping TypeScript/JS extensions\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":false}}"
+      },
+      "analyzedAt": "2026-01-26T14:12:39.288Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/services/surveyor/analyzer/warning-detector.ts:fn:detectLargeFiles:605": {
+      "contentHash": "577ef8c00b911d12",
+      "result": {
+        "summary": "Detects large files exceeding line threshold in NodeMap and generates warnings",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\"summary\":\"Detects large files exceeding line threshold in NodeMap and generates warnings\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":false}}"
+      },
+      "analyzedAt": "2026-01-26T14:12:39.434Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/services/surveyor/parser/parse-classes.ts:fn:generateClassId:26": {
+      "contentHash": "cf4c339951c1f5c2",
+      "result": {
+        "summary": "Generates a unique class ID string from fileId, name, and line number.",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\"summary\":\"Generates a unique class ID string from fileId, name, and line number.\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":false}}"
+      },
+      "analyzedAt": "2026-01-26T14:12:39.557Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/services/surveyor/analyzer/scan-non-ts-imports.ts:fn:scanNonTsImports:230": {
+      "contentHash": "2204d2dd8cec031d",
+      "result": {
+        "summary": "Scans non-TS files in project, parses/resolves/normalizes imports, returns Map<source, Set<names>>",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": true,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": true
+        },
+        "rawResponse": "{\n  \"summary\": \"Scans non-TS files in project, parses/resolves/normalizes imports, returns Map<source, Set<names>>\",\n  \"flags\": {\n    \"databaseRead\": false,\n    \"databaseWrite\": false,\n    \"httpCall\": false,\n    \"fileRead\": true,\n    \"fileWrite\": false,\n    \"sendsNotification\": false,\n    \"modifiesGlobalState\": false,\n    \"hasSideEffects\": true\n  }\n}"
+      },
+      "analyzedAt": "2026-01-26T14:12:39.674Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mandrel-command/frontend/src/pages/Surveyor.tsx:fn:Surveyor:62": {
+      "contentHash": "dfebb34ae6891ef1",
+      "result": {
+        "summary": "React component for surveyor UI: displays scans/stats, handles node clicks, triggers scans",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": true,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": true
+        },
+        "rawResponse": "{\n  \"summary\": \"React component for surveyor UI: displays scans/stats, handles node clicks, triggers scans\",\n  \"flags\": {\n    \"databaseRead\": false,\n    \"databaseWrite\": false,\n    \"httpCall\": true,\n    \"fileRead\": false,\n    \"fileWrite\": false,\n    \"sendsNotification\": false,\n    \"modifiesGlobalState\": false,\n    \"hasSideEffects\": true\n  }\n}"
+      },
+      "analyzedAt": "2026-01-26T14:12:39.746Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/services/surveyor/analyzer/behavioral-analyzer.ts:fn:analyzeBehavior:86": {
+      "contentHash": "523837ab66321166",
+      "result": {
+        "summary": "Analyzes function behaviors in ScanResult using LLM with caching, concurrency, and code extraction",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": true,
+          "fileRead": true,
+          "fileWrite": true,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": true
+        },
+        "rawResponse": "{\n  \"summary\": \"Analyzes function behaviors in ScanResult using LLM with caching, concurrency, and code extraction\",\n  \"flags\": {\n    \"databaseRead\": false,\n    \"databaseWrite\": false,\n    \"httpCall\": true,\n    \"fileRead\": true,\n    \"fileWrite\": true,\n    \"sendsNotification\": false,\n    \"modifiesGlobalState\": false,\n    \"hasSideEffects\": true\n  }\n}"
+      },
+      "analyzedAt": "2026-01-26T14:12:39.980Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/services/surveyor/analyzer/warning-detector.ts:fn:getNormalizedPaths:769": {
+      "contentHash": "0eed5b55e4652701",
+      "result": {
+        "summary": "Normalizes file path; returns path and dir if ends with '/index', else path and null",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\"summary\":\"Normalizes file path; returns path and dir if ends with '/index', else path and null\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":false}}"
+      },
+      "analyzedAt": "2026-01-26T14:12:40.084Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/services/surveyor/analyzer/warning-detector.ts:fn:updateWarningStats:784": {
+      "contentHash": "03bee0c697b9896b",
+      "result": {
+        "summary": "Updates scanResult stats with total warnings count and by-level breakdowns",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": true
+        },
+        "rawResponse": "{\"summary\":\"Updates scanResult stats with total warnings count and by-level breakdowns\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":true}}"
+      },
+      "analyzedAt": "2026-01-26T14:12:40.086Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/services/surveyor/parser/parse-classes.ts:fn:getVisibility:40": {
+      "contentHash": "05269a5f4f50b7bf",
+      "result": {
+        "summary": "Maps Scope enum to visibility string ('private', 'protected', 'public').",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\"summary\":\"Maps Scope enum to visibility string ('private', 'protected', 'public').\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":false}}"
+      },
+      "analyzedAt": "2026-01-26T14:12:40.118Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/services/surveyor/parser/parse-classes.ts:fn:parseProperties:54": {
+      "contentHash": "6ea3d68c2119ec1a",
+      "result": {
+        "summary": "Parses properties from ClassDeclaration into PropertyInfo array",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\"summary\":\"Parses properties from ClassDeclaration into PropertyInfo array\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":false}}"
+      },
+      "analyzedAt": "2026-01-26T14:12:40.418Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/services/surveyor/parser/parse-exports.ts:fn:getExportKind:80": {
+      "contentHash": "1f911b582587dbb6",
+      "result": {
+        "summary": "Maps TypeScript SyntaxKind to export kind string (function, class, variable, etc.).",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\"summary\":\"Maps TypeScript SyntaxKind to export kind string (function, class, variable, etc.).\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":false}}"
+      },
+      "analyzedAt": "2026-01-26T14:12:40.919Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/services/surveyor/parser/parse-functions.ts:fn:generateFunctionId:25": {
+      "contentHash": "b003a14a31e4c81f",
+      "result": {
+        "summary": "Generates a unique function ID from fileId, name, and line number.",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\"summary\":\"Generates a unique function ID from fileId, name, and line number.\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":false}}"
+      },
+      "analyzedAt": "2026-01-26T14:12:40.984Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/services/surveyor/parser/parse-exports.ts:fn:parseExports:17": {
+      "contentHash": "ebaed3652f8f8260",
+      "result": {
+        "summary": "Parses exported declarations and re-exports from a TypeScript SourceFile into ExportInfo array.",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\"summary\":\"Parses exported declarations and re-exports from a TypeScript SourceFile into ExportInfo array.\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":false}}"
+      },
+      "analyzedAt": "2026-01-26T14:12:41.180Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/services/surveyor/parser/parse-functions.ts:fn:parseParameters:32": {
+      "contentHash": "e6fb60eb2b3e8f23",
+      "result": {
+        "summary": "Parses function parameters into ParameterInfo objects extracting name, type, optional status, and default value.",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\"summary\":\"Parses function parameters into ParameterInfo objects extracting name, type, optional status, and default value.\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":false}}"
+      },
+      "analyzedAt": "2026-01-26T14:12:41.412Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/services/surveyor/parser/parse-classes.ts:fn:generateMethodId:33": {
+      "contentHash": "bd0338cc35919812",
+      "result": {
+        "summary": "Generates a unique method ID from class ID, method name, and line number.",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\"summary\":\"Generates a unique method ID from class ID, method name, and line number.\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":false}}"
+      },
+      "analyzedAt": "2026-01-26T14:12:41.421Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/services/surveyor/parser/parse-exports.ts:fn:getDefaultExportName:103": {
+      "contentHash": "91f536b0973bb523",
+      "result": {
+        "summary": "Returns name from exported declaration's getName() or 'default' if unavailable.",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\"summary\": \"Returns name from exported declaration's getName() or 'default' if unavailable.\", \"flags\": {\"databaseRead\": false, \"databaseWrite\": false, \"httpCall\": false, \"fileRead\": false, \"fileWrite\": false, \"sendsNotification\": false, \"modifiesGlobalState\": false, \"hasSideEffects\": false}}"
+      },
+      "analyzedAt": "2026-01-26T14:12:41.465Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/services/surveyor/analyzer/warning-detector.ts:fn:buildStarReexportMap:443": {
+      "contentHash": "3873cf085214814e",
+      "result": {
+        "summary": "Builds map of normalized file/dir paths to star re-export sources",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\"summary\":\"Builds map of normalized file/dir paths to star re-export sources\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":false}}"
+      },
+      "analyzedAt": "2026-01-26T14:12:41.467Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/services/surveyor/analyzer/warning-detector.ts:fn:detectUnusedExports:478": {
+      "contentHash": "af376f7f4a0c3fe6",
+      "result": {
+        "summary": "Detects unused exports by scanning imports in TS and non-TS files, handling re-exports.",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": true,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": true
+        },
+        "rawResponse": "{\n  \"summary\": \"Detects unused exports by scanning imports in TS and non-TS files, handling re-exports.\",\n  \"flags\": {\n    \"databaseRead\": false,\n    \"databaseWrite\": false,\n    \"httpCall\": false,\n    \"fileRead\": true,\n    \"fileWrite\": false,\n    \"sendsNotification\": false,\n    \"modifiesGlobalState\": false,\n    \"hasSideEffects\": true\n  }\n}"
+      },
+      "analyzedAt": "2026-01-26T14:12:41.759Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/services/surveyor/parser/parse-functions.ts:fn:parseFunctions:44": {
+      "contentHash": "3977064b36b4181c",
+      "result": {
+        "summary": "Parses regular and arrow functions from TypeScript SourceFile into FunctionNode array",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\n  \"summary\": \"Parses regular and arrow functions from TypeScript SourceFile into FunctionNode array\",\n  \"flags\": {\n    \"databaseRead\": false,\n    \"databaseWrite\": false,\n    \"httpCall\": false,\n    \"fileRead\": false,\n    \"fileWrite\": false,\n    \"sendsNotification\": false,\n    \"modifiesGlobalState\": false,\n    \"hasSideEffects\": false\n  }\n}"
+      },
+      "analyzedAt": "2026-01-26T14:12:41.832Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/services/surveyor/parser/parse-classes.ts:fn:parseClasses:168": {
+      "contentHash": "5950a350425e4156",
+      "result": {
+        "summary": "Parses class declarations from a TypeScript source file into ClassNode structures with methods and properties.",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\"summary\":\"Parses class declarations from a TypeScript source file into ClassNode structures with methods and properties.\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":false}}"
+      },
+      "analyzedAt": "2026-01-26T14:12:41.915Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/services/surveyor/parser/parse-references.ts:fn:isPropertyName:188": {
+      "contentHash": "044ca3845772e5b3",
+      "result": {
+        "summary": "Checks if a node is the name part (right side) of a PropertyAccessExpression.",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\"summary\":\"Checks if a node is the name part (right side) of a PropertyAccessExpression.\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":false}}"
+      },
+      "analyzedAt": "2026-01-26T14:12:42.341Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/services/surveyor/parser/parse-references.ts:fn:isDeclaration:123": {
+      "contentHash": "5780bb6eacec4369",
+      "result": {
+        "summary": "Checks if a TypeScript AST node is a declaration by examining its parent node.",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\"summary\":\"Checks if a TypeScript AST node is a declaration by examining its parent node.\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":false}}"
+      },
+      "analyzedAt": "2026-01-26T14:12:42.445Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/services/surveyor/parser/typescript-parser.ts:fn:stripJsonComments:47": {
+      "contentHash": "9dad5f3441f6d532",
+      "result": {
+        "summary": "Removes // line and /* */ block comments from JSON-like string, preserving strings.",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\"summary\":\"Removes // line and /* */ block comments from JSON-like string, preserving strings.\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":false}}"
+      },
+      "analyzedAt": "2026-01-26T14:12:42.915Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/services/surveyor/parser/parse-references.ts:fn:isCommonGlobal:353": {
+      "contentHash": "72518db4e12a7e39",
+      "result": {
+        "summary": "Checks if the given name exists in the COMMON_GLOBALS set.",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\"summary\":\"Checks if the given name exists in the COMMON_GLOBALS set.\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":false}}"
+      },
+      "analyzedAt": "2026-01-26T14:12:43.053Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/services/surveyor/parser/parse-references.ts:fn:extractTopLevelReferences:259": {
+      "contentHash": "7294085a1f017ca9",
+      "result": {
+        "summary": "Extracts top-level references from TypeScript SourceFile, excluding local defs and imports",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\"summary\":\"Extracts top-level references from TypeScript SourceFile, excluding local defs and imports\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":false}}"
+      },
+      "analyzedAt": "2026-01-26T14:12:43.115Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/services/surveyor/parser/parse-references.ts:fn:isInTypePosition:57": {
+      "contentHash": "9ffc84a12ee5541e",
+      "result": {
+        "summary": "Checks if TypeScript AST node is in a type position by traversing ancestors.",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\"summary\":\"Checks if TypeScript AST node is in a type position by traversing ancestors.\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":false}}"
+      },
+      "analyzedAt": "2026-01-26T14:12:43.287Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/services/surveyor/parser/parse-references.ts:fn:extractFunctionReferences:243": {
+      "contentHash": "d0b3ccb8a28b5049",
+      "result": {
+        "summary": "Extracts references from function body excluding parameter names.",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\"summary\":\"Extracts references from function body excluding parameter names.\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":false}}"
+      },
+      "analyzedAt": "2026-01-26T14:12:43.490Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/services/surveyor/parser/typescript-parser.ts:fn:getProjectName:223": {
+      "contentHash": "30493235626868e2",
+      "result": {
+        "summary": "Returns the basename of the resolved project path.",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\"summary\":\"Returns the basename of the resolved project path.\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":false}}"
+      },
+      "analyzedAt": "2026-01-26T14:12:43.720Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mandrel-command/frontend/src/hooks/useEmbeddings.ts:fn:useEmbeddingMetricsQuery:130": {
+      "contentHash": "6fb10cf8fe9330d7",
+      "result": {
+        "summary": "React Query hook to fetch embedding quality metrics for a dataset.",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": true,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": true
+        },
+        "rawResponse": "{\"summary\":\"React Query hook to fetch embedding quality metrics for a dataset.\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":true,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":true}}"
+      },
+      "analyzedAt": "2026-01-26T14:12:44.066Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/services/surveyor/parser/typescript-parser.ts:fn:calculateStats:324": {
+      "contentHash": "346eed78edc248d9",
+      "result": {
+        "summary": "Calculates stats on NodeMap: totals for files/functions/classes and nodes by type",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\"summary\":\"Calculates stats on NodeMap: totals for files/functions/classes and nodes by type\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":false}}"
+      },
+      "analyzedAt": "2026-01-26T14:12:44.135Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/services/surveyor/parser/typescript-parser.ts:fn:generateFileId:215": {
+      "contentHash": "d7bb2d6dff3359c3",
+      "result": {
+        "summary": "Generates file ID by prefixing relative path from projectPath to filePath with 'file:'",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\"summary\":\"Generates file ID by prefixing relative path from projectPath to filePath with 'file:'\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":false}}"
+      },
+      "analyzedAt": "2026-01-26T14:12:44.209Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/services/surveyor/parser/typescript-parser.ts:fn:findTsconfigFiles:146": {
+      "contentHash": "17a3f68b0fd82536",
+      "result": {
+        "summary": "Recursively scans project directory to find all tsconfig.json files, ignoring node_modules etc.",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": true,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": true
+        },
+        "rawResponse": "{\"summary\":\"Recursively scans project directory to find all tsconfig.json files, ignoring node_modules etc.\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":true,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":true}}"
+      },
+      "analyzedAt": "2026-01-26T14:12:44.477Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/services/surveyor/parser/parse-classes.ts:fn:parseMethods:73": {
+      "contentHash": "79bef6310b2f4ea7",
+      "result": {
+        "summary": "Parses constructors and methods from TypeScript class into FunctionNode objects and IDs",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\"summary\":\"Parses constructors and methods from TypeScript class into FunctionNode objects and IDs\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":false}}"
+      },
+      "analyzedAt": "2026-01-26T14:12:45.052Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/services/surveyor/parser/parse-imports.ts:fn:parseImports:19": {
+      "contentHash": "15666d85e6b7703a",
+      "result": {
+        "summary": "Parses static and dynamic imports from TypeScript SourceFile into ImportInfo[]",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\"summary\":\"Parses static and dynamic imports from TypeScript SourceFile into ImportInfo[]\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":false}}"
+      },
+      "analyzedAt": "2026-01-26T14:12:45.070Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/services/surveyor/parser/parse-references.ts:fn:extractReferences:206": {
+      "contentHash": "09788e7c0b9dc254",
+      "result": {
+        "summary": "Extracts unique non-declaration identifier names from TypeScript AST node, excluding keywords, types, and property names",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\"summary\":\"Extracts unique non-declaration identifier names from TypeScript AST node, excluding keywords, types, and property names\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":false}}"
+      },
+      "analyzedAt": "2026-01-26T14:12:45.202Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/services/surveyor/parser/typescript-parser.ts:fn:scanProject:379": {
+      "contentHash": "1ed68c7ed0e5c0a5",
+      "result": {
+        "summary": "Scans TS/JS project files with ts-morph, extracts nodes, collects errors.",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": true,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": true
+        },
+        "rawResponse": "{\"summary\":\"Scans TS/JS project files with ts-morph, extracts nodes, collects errors.\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":true,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":true}}"
+      },
+      "analyzedAt": "2026-01-26T14:12:45.245Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/services/surveyor/parser/typescript-parser.ts:fn:findSourceFiles:230": {
+      "contentHash": "39cd8f6d1d8e29cf",
+      "result": {
+        "summary": "Finds unique sorted paths to TS/JS/TSX/JSX files in project dir, ignoring node_modules/tests/etc.",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": true
+        },
+        "rawResponse": "{\n  \"summary\": \"Finds unique sorted paths to TS/JS/TSX/JSX files in project dir, ignoring node_modules/tests/etc.\",\n  \"flags\": {\n    \"databaseRead\": false,\n    \"databaseWrite\": false,\n    \"httpCall\": false,\n    \"fileRead\": false,\n    \"fileWrite\": false,\n    \"sendsNotification\": false,\n    \"modifiesGlobalState\": false,\n    \"hasSideEffects\": true\n  }\n}"
+      },
+      "analyzedAt": "2026-01-26T14:12:45.371Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/services/surveyor/parser/typescript-parser.ts:fn:readTsconfigPaths:121": {
+      "contentHash": "d72b70e71bb1767a",
+      "result": {
+        "summary": "Reads tsconfig.json file synchronously and extracts compilerOptions.paths or returns null.",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": true,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": true
+        },
+        "rawResponse": "{\"summary\": \"Reads tsconfig.json file synchronously and extracts compilerOptions.paths or returns null.\", \"flags\": {\"databaseRead\": false, \"databaseWrite\": false, \"httpCall\": false, \"fileRead\": true, \"fileWrite\": false, \"sendsNotification\": false, \"modifiesGlobalState\": false, \"hasSideEffects\": true}}"
+      },
+      "analyzedAt": "2026-01-26T14:12:45.715Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/services/surveyor/analyzer/llm-client.ts:fn:createLLMClientFromEnv:237": {
+      "contentHash": "40e49b60bad79f20",
+      "result": {
+        "summary": "Creates LLMClient from env vars, throws if no API key",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": true
+        },
+        "rawResponse": "{\"summary\":\"Creates LLMClient from env vars, throws if no API key\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":true}}"
+      },
+      "analyzedAt": "2026-01-26T14:12:46.671Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/services/surveyor/parser/typescript-parser.ts:fn:parseFile:544": {
+      "contentHash": "06d6d9361bd73b30",
+      "result": {
+        "summary": "Parses TypeScript file into FileNode using ts-morph by reading from filesystem",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": true,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": true
+        },
+        "rawResponse": "{\n  \"summary\": \"Parses TypeScript file into FileNode using ts-morph by reading from filesystem\",\n  \"flags\": {\n    \"databaseRead\": false,\n    \"databaseWrite\": false,\n    \"httpCall\": false,\n    \"fileRead\": true,\n    \"fileWrite\": false,\n    \"sendsNotification\": false,\n    \"modifiesGlobalState\": false,\n    \"hasSideEffects\": true\n  }\n}"
+      },
+      "analyzedAt": "2026-01-26T14:12:47.691Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/services/surveyor/parser/typescript-parser.ts:fn:readPathAliases:179": {
+      "contentHash": "1b7e86d1069d8da2",
+      "result": {
+        "summary": "Reads and merges path aliases from tsconfig files in project, adjusting targets relative to root.",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": true,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": true
+        },
+        "rawResponse": "{\"summary\":\"Reads and merges path aliases from tsconfig files in project, adjusting targets relative to root.\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":true,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":true}}"
+      },
+      "analyzedAt": "2026-01-26T14:12:48.094Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/services/surveyor/analyzer/analysis-cache.ts:fn:loadCache:35": {
+      "contentHash": "86c875cf32127b9b",
+      "result": {
+        "summary": "Loads and validates AnalysisCache from cache file in outputDir or returns null if missing/invalid.",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": true,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": true
+        },
+        "rawResponse": "{\n  \"summary\": \"Loads and validates AnalysisCache from cache file in outputDir or returns null if missing/invalid.\",\n  \"flags\": {\n    \"databaseRead\": false,\n    \"databaseWrite\": false,\n    \"httpCall\": false,\n    \"fileRead\": true,\n    \"fileWrite\": false,\n    \"sendsNotification\": false,\n    \"modifiesGlobalState\": false,\n    \"hasSideEffects\": false\n  }\n}"
+      },
+      "analyzedAt": "2026-01-26T14:12:49.048Z",
+      "model": "grok-4-1-fast-reasoning"
+    },
+    "file:mcp-server/src/services/surveyor/parser/typescript-parser.ts:fn:parseSourceFile:268": {
+      "contentHash": "c8eeee5f883bca42",
+      "result": {
+        "summary": "Parses TypeScript source file into FileNode, functions, and classes",
+        "flags": {
+          "databaseRead": false,
+          "databaseWrite": false,
+          "httpCall": false,
+          "fileRead": false,
+          "fileWrite": false,
+          "sendsNotification": false,
+          "modifiesGlobalState": false,
+          "hasSideEffects": false
+        },
+        "rawResponse": "{\"summary\":\"Parses TypeScript source file into FileNode, functions, and classes\",\"flags\":{\"databaseRead\":false,\"databaseWrite\":false,\"httpCall\":false,\"fileRead\":false,\"fileWrite\":false,\"sendsNotification\":false,\"modifiesGlobalState\":false,\"hasSideEffects\":false}}"
+      },
+      "analyzedAt": "2026-01-26T14:12:49.693Z",
+      "model": "grok-4-1-fast-reasoning"
     }
   },
-  "updatedAt": "2026-01-25T19:49:17.377Z"
+  "updatedAt": "2026-01-26T14:12:49.693Z"
 }

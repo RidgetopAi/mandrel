@@ -122,6 +122,23 @@ export function getFilesWithWarningsInFolder(
 }
 
 /**
+ * Build a map of file ID -> warning count
+ */
+export function buildFileWarningCounts(
+  warnings: Warning[]
+): Map<string, number> {
+  const counts = new Map<string, number>();
+
+  for (const warning of warnings) {
+    for (const nodeId of warning.affectedNodes) {
+      counts.set(nodeId, (counts.get(nodeId) || 0) + 1);
+    }
+  }
+
+  return counts;
+}
+
+/**
  * Build a map of folder path -> warning count
  */
 export function buildFolderWarningCounts(

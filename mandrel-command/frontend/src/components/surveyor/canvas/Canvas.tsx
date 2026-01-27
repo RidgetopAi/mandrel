@@ -32,6 +32,7 @@ import { generateImportEdges } from '../utils/connections';
 import {
   useScanStore,
   buildFolderWarningCounts,
+  buildFileWarningCounts,
   getFilesWithWarningsInFolder,
 } from '../stores/scan-store';
 import type { ScanDetail, Warning } from '../../../api/surveyorClient';
@@ -186,12 +187,18 @@ function CanvasInner({ scanData, warnings, onNodeClick }: CanvasProps) {
       filteredNodes[file.id] = file;
     });
 
+    // Build file warning counts
+    const fileWarningCounts = buildFileWarningCounts(warnings);
+
     const layoutNodes = calculateFolderLayout(filteredNodes);
     const nodes: Node[] = layoutNodes.map(ln => ({
       id: ln.id,
       type: 'file',
       position: ln.position,
-      data: ln.data,
+      data: {
+        ...ln.data,
+        warningCount: fileWarningCounts.get(ln.id) || 0,
+      },
     }));
 
     // Generate edges only between files in current folder

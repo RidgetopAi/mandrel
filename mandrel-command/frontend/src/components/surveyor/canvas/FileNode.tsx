@@ -15,6 +15,7 @@ export interface FileNodeDataProps {
     exports: any[];
     [key: string]: any;
   };
+  warningCount?: number;
   isFaded?: boolean;
   isHighlighted?: boolean;
   [key: string]: unknown;
@@ -28,7 +29,7 @@ export interface FileNodeDataProps {
 function FileNodeComponent({ data }: { data: FileNodeDataProps }) {
   const functionCount = data.fileData?.functions?.length || 0;
   const exportCount = data.fileData?.exports?.length || 0;
-  const { isFaded, isHighlighted } = data;
+  const { isFaded, isHighlighted, warningCount = 0 } = data;
 
   // Determine visual state
   const getBackground = () => {
@@ -65,6 +66,30 @@ function FileNodeComponent({ data }: { data: FileNodeDataProps }) {
         position: 'relative',
       }}
     >
+      {/* Warning badge */}
+      {warningCount > 0 && (
+        <div
+          style={{
+            position: 'absolute',
+            top: -8,
+            right: -8,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            minWidth: 18,
+            height: 18,
+            padding: '0 5px',
+            borderRadius: 9,
+            background: COLORS.status.warning,
+            color: COLORS.surface[0],
+            fontSize: 11,
+            fontWeight: 600,
+          }}
+        >
+          {warningCount}
+        </div>
+      )}
+
       <Handle
         type="target"
         position={Position.Left}
