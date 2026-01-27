@@ -25,7 +25,8 @@ interface SurveyorCanvasProps {
  */
 export const SurveyorCanvas: React.FC<SurveyorCanvasProps> = ({ scanId, onNodeClick }) => {
   const { data: scan, isLoading, error } = useScan(scanId, true);
-  const { data: warningsData } = useWarnings(scanId);
+  // Fetch all warnings for accurate folder badge counts (backend defaults to 100)
+  const { data: warningsData } = useWarnings(scanId, { limit: 1000 });
   const setSearchQuery = useScanStore((state) => state.setSearchQuery);
   const reset = useScanStore((state) => state.reset);
 
