@@ -4,9 +4,9 @@
  * Now using the ported dark theme Canvas component
  */
 
-import React, { useEffect, useCallback } from 'react';
-import { Card, Spin, Empty, Space, Tag, Input } from 'antd';
-import { Search } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Card, Spin, Empty, Space, Tag, Input, Tooltip } from 'antd';
+import { AlertTriangle, EyeOff } from 'lucide-react';
 import { useScan, useWarnings } from '../../hooks/useSurveyorData';
 import { Canvas, Breadcrumb } from './canvas';
 import { useScanStore } from './stores/scan-store';
@@ -29,6 +29,7 @@ export const SurveyorCanvas: React.FC<SurveyorCanvasProps> = ({ scanId, onNodeCl
   const { data: warningsData } = useWarnings(scanId, { limit: 1000 });
   const setSearchQuery = useScanStore((state) => state.setSearchQuery);
   const reset = useScanStore((state) => state.reset);
+  const [showWarnings, setShowWarnings] = useState(true);
 
   // Reset store when scanId changes
   useEffect(() => {
@@ -146,15 +147,44 @@ export const SurveyorCanvas: React.FC<SurveyorCanvasProps> = ({ scanId, onNodeCl
         padding: '0 16px',
         borderBottom: `1px solid ${COLORS.surface[3]}`,
         background: COLORS.surface[1],
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
       }}>
         <Breadcrumb projectName={scan.projectName} />
+        <Tooltip title={showWarnings ? 'Hide warning badges' : 'Show warning badges'}>
+          <button
+            onClick={() => setShowWarnings(!showWarnings)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '4px 10px',
+              borderRadius: 6,
+              border: 'none',
+              background: showWarnings ? COLORS.status.warning + '20' : COLORS.surface[2],
+              color: showWarnings ? COLORS.status.warning : COLORS.text.secondary,
+              cursor: 'pointer',
+              fontSize: 12,
+              fontWeight: 500,
+              transition: 'all 0.2s ease',
+            }}
+          >
+            {showWarnings ? (
+              <AlertTriangle size={14} />
+            ) : (
+              <EyeOff size={14} />
+            )}
+            {warnings.length}
+          </button>
+        </Tooltip>
       </div>
 
       {/* Canvas */}
       <div style={{ flex: 1, minHeight: 0 }}>
         <Canvas
           scanData={scan}
-          warnings={warnings}
+          warnings={showWarnings ? warnings : []}
           onNodeClick={handleNodeClick}
         />
       </div>
