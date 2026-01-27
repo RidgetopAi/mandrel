@@ -43,6 +43,7 @@ import { SurveyorWarningList } from '../components/surveyor/SurveyorWarningList'
 import { COLORS } from '../components/surveyor/utils/colors';
 import { fadeInVariants, slideUpVariants } from '../components/surveyor/utils/animations';
 import type { Warning } from '../api/surveyorClient';
+import { apiClient } from '../services/api';
 
 const { Title, Paragraph, Text } = Typography;
 
@@ -141,6 +142,23 @@ const Surveyor: React.FC = () => {
   const handleWarningClick = useCallback((warning: Warning) => {
     console.log('Warning clicked:', warning);
   }, []);
+
+  // Open file in nvim
+  const handleOpenInEditor = useCallback(async (filePath: string, line?: number) => {
+    try {
+      // Use project path from current scan or current project
+      const projectPath = latestScan?.projectPath || currentProject?.name;
+      const result = await apiClient.openFileInEditor(filePath, { projectPath, line });
+      if (result.success) {
+        message.success('Opened in nvim');
+      } else {
+        message.error(result.error || 'Failed to open file');
+      }
+    } catch (err) {
+      message.error('Failed to open file in editor');
+      console.error('Editor open error:', err);
+    }
+  }, [latestScan?.projectPath, currentProject?.name]);
 
   const handleTriggerScan = useCallback(() => {
     if (!projectId) {
@@ -579,12 +597,27 @@ const Surveyor: React.FC = () => {
       >
         {selectedNode && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-            {/* File Path */}
+            {/* File Path - Click to open in nvim */}
             <section>
               <div style={{ color: COLORS.text.secondary, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
-                Path
+                Path <span style={{ opacity: 0.6, fontWeight: 400 }}>(click to open)</span>
               </div>
-              <Text code style={{ fontSize: '12px', color: COLORS.accent.primary, wordBreak: 'break-all' }}>
+              <Text
+                code
+                style={{
+                  fontSize: '12px',
+                  color: COLORS.accent.primary,
+                  wordBreak: 'break-all',
+                  cursor: 'pointer',
+                  display: 'inline-block',
+                  padding: '4px 8px',
+                  borderRadius: 4,
+                  transition: 'background 0.2s ease',
+                }}
+                onClick={() => handleOpenInEditor(selectedNode.filePath)}
+                onMouseEnter={(e) => e.currentTarget.style.background = COLORS.surface[3]}
+                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+              >
                 {selectedNode.filePath}
               </Text>
             </section>

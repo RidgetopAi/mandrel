@@ -122,6 +122,18 @@ class ApiClient {
     const response = await this._instance.get<{ message: string; timestamp: string }>('/health');
     return response.data;
   }
+
+  // Open file in editor (nvim)
+  async openFileInEditor(
+    filePath: string,
+    options?: { projectPath?: string; line?: number }
+  ): Promise<{ success: boolean; file?: string; error?: string }> {
+    const response = await this._instance.post<{ success: boolean; file?: string; error?: string }>(
+      '/editor/open-file',
+      { filePath, ...options }
+    );
+    return response.data;
+  }
 }
 
 // Export singleton instance
