@@ -66,7 +66,8 @@ export function useWarnings(
   }
 ) {
   return useQuery({
-    queryKey: surveyorKeys.warnings(scanId || ''),
+    // Include options in query key so filters trigger refetch
+    queryKey: [...surveyorKeys.warnings(scanId || ''), options],
     queryFn: () => surveyorClient.getWarnings(scanId!, options),
     enabled: !!scanId,
     staleTime: 60000,

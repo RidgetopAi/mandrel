@@ -37,11 +37,12 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { useProjectContext } from '../contexts/ProjectContext';
-import { useLatestScan, useProjectStats, useTriggerScan, useAnalyzeStatus, useTriggerAnalysis, useScans } from '../hooks/useSurveyorData';
+import { useLatestScan, useProjectStats, useTriggerScan, useAnalyzeStatus, useTriggerAnalysis, useScans, useScan } from '../hooks/useSurveyorData';
 import { SurveyorCanvas } from '../components/surveyor/SurveyorCanvas';
 import { SurveyorWarningList } from '../components/surveyor/SurveyorWarningList';
 import { COLORS } from '../components/surveyor/utils/colors';
 import { fadeInVariants, slideUpVariants } from '../components/surveyor/utils/animations';
+import { useScanStore } from '../components/surveyor/stores/scan-store';
 import type { Warning } from '../api/surveyorClient';
 import { apiClient } from '../services/api';
 
@@ -116,10 +117,15 @@ const Surveyor: React.FC = () => {
 
   // Data hooks
   const { data: latestScan, isLoading: scanLoading, refetch: refetchLatestScan } = useLatestScan(projectId);
+  const { data: scanWithNodes } = useScan(latestScan?.id, true); // Fetch with nodes for warning navigation
   const { data: statsData, isLoading: statsLoading } = useProjectStats(projectId);
   const { data: analyzeStatus } = useAnalyzeStatus();
   const triggerScanMutation = useTriggerScan();
   const triggerAnalysisMutation = useTriggerAnalysis();
+
+  // Scan store for canvas navigation
+  const drillInto = useScanStore((state) => state.drillInto);
+  const reset = useScanStore((state) => state.reset);
 
   // UI state
   const [selectedNode, setSelectedNode] = useState<any | null>(null);
@@ -140,8 +146,73 @@ const Surveyor: React.FC = () => {
   }, []);
 
   const handleWarningClick = useCallback((warning: Warning) => {
-    console.log('Warning clicked:', warning);
-  }, []);
+    // Navigate to the file in the canvas view
+    if (!warning.filePath || !scanWithNodes?.nodes) {
+      console.log('Warning clicked but no filePath or nodes:', warning);
+      return;
+    }
+
+    // Extract folder path from file path (e.g., "mcp-server/src/main.ts" -> "mcp-server/src")
+    const parts = warning.filePath.split('/');
+    const folderPath = parts.length > 1 ? parts.slice(0, -1).join('/') : '.';
+
+    // Find the file node - look through affected nodes first, then fall back to matching by filePath
+    let fileNode: any = null;
+    let fileNodeId: string | null = null;
+
+    // Try affected nodes first
+    for (const nodeId of warning.affectedNodes) {
+      const node = scanWithNodes.nodes[nodeId];
+      if (node && node.type === 'file') {
+        fileNode = node;
+        fileNodeId = nodeId;
+        break;
+      }
+    }
+
+    // Fall back: find any file node matching the filePath
+    if (!fileNode) {
+      for (const [nodeId, node] of Object.entries(scanWithNodes.nodes)) {
+        if (node.type === 'file' && node.filePath === warning.filePath) {
+          fileNode = node;
+          fileNodeId = nodeId;
+          break;
+        }
+      }
+    }
+
+    // Reset navigation first, then drill into the folder
+    reset();
+
+    // Navigate through the folder hierarchy
+    const folderParts = folderPath.split('/');
+    let currentPath = '';
+    for (const part of folderParts) {
+      currentPath = currentPath ? `${currentPath}/${part}` : part;
+      drillInto(currentPath);
+    }
+
+    // Switch to canvas tab
+    setActiveTab('canvas');
+
+    // If we found the file node, open the detail drawer
+    if (fileNode && fileNodeId) {
+      // Build node data for drawer (mimic what handleNodeClick does)
+      const nodeData = {
+        id: fileNodeId,
+        label: fileNode.name || warning.filePath.split('/').pop(),
+        filePath: warning.filePath,
+        fileData: {
+          functions: fileNode.functions || [],
+          exports: fileNode.exports || [],
+          imports: fileNode.imports || [],
+        },
+      };
+      setSelectedNode(nodeData);
+      setScanNodes(scanWithNodes.nodes);
+      setDrawerVisible(true);
+    }
+  }, [scanWithNodes?.nodes, drillInto, reset]);
 
   // Open file in nvim via local surveyor server
   // Calls localhost:4000 directly - surveyor server handles path mapping
