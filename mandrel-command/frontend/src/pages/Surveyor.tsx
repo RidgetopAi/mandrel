@@ -126,6 +126,7 @@ const Surveyor: React.FC = () => {
   // Scan store for canvas navigation
   const drillInto = useScanStore((state) => state.drillInto);
   const reset = useScanStore((state) => state.reset);
+  const setHighlightedNodes = useScanStore((state) => state.setHighlightedNodes);
 
   // UI state
   const [selectedNode, setSelectedNode] = useState<any | null>(null);
@@ -195,8 +196,11 @@ const Surveyor: React.FC = () => {
     // Switch to canvas tab
     setActiveTab('canvas');
 
-    // If we found the file node, open the detail drawer
+    // If we found the file node, highlight it and open the detail drawer
     if (fileNode && fileNodeId) {
+      // Highlight the file node - Canvas will auto-zoom to it
+      setHighlightedNodes([fileNodeId]);
+
       // Build node data for drawer (mimic what handleNodeClick does)
       const nodeData = {
         id: fileNodeId,
@@ -212,7 +216,7 @@ const Surveyor: React.FC = () => {
       setScanNodes(scanWithNodes.nodes);
       setDrawerVisible(true);
     }
-  }, [scanWithNodes?.nodes, drillInto, reset]);
+  }, [scanWithNodes?.nodes, drillInto, reset, setHighlightedNodes]);
 
   // Open file in nvim via local surveyor server
   // Calls localhost:4000 directly - surveyor server handles path mapping
