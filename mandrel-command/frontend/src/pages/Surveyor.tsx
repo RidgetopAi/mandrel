@@ -709,21 +709,14 @@ const Surveyor: React.FC = () => {
 
             {/* Summary Stats */}
             <section>
-              {(() => {
-                // Get full file node from scanNodes to access endLine for LOC
-                const fileNode = scanNodes?.[selectedNode.id];
-                const loc = fileNode?.endLine || 0;
-                return (
-                  <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-                    <Tag style={{ margin: 0, background: COLORS.surface[2], color: COLORS.text.primary, border: `1px solid ${COLORS.surface[3]}` }}>
-                      {loc} lines
-                    </Tag>
-                    <Tag color="blue" style={{ margin: 0 }}>{selectedNode.fileData?.functions?.length || 0} functions</Tag>
-                    <Tag color="green" style={{ margin: 0 }}>{selectedNode.fileData?.exports?.length || 0} exports</Tag>
-                    <Tag color="purple" style={{ margin: 0 }}>{selectedNode.fileData?.imports?.length || 0} imports</Tag>
-                  </div>
-                );
-              })()}
+              <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                <Tag style={{ margin: 0, background: COLORS.surface[2], color: COLORS.text.primary, border: `1px solid ${COLORS.surface[3]}` }}>
+                  {selectedNode.fileData?.endLine || 0} lines
+                </Tag>
+                <Tag color="blue" style={{ margin: 0 }}>{selectedNode.fileData?.functions?.length || 0} functions</Tag>
+                <Tag color="green" style={{ margin: 0 }}>{selectedNode.fileData?.exports?.length || 0} exports</Tag>
+                <Tag color="purple" style={{ margin: 0 }}>{selectedNode.fileData?.imports?.length || 0} imports</Tag>
+              </div>
             </section>
 
             {/* Functions with AI Analysis */}
