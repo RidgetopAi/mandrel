@@ -89,10 +89,11 @@ export class SurveyorService {
       await client.query('BEGIN');
 
       // Calculate health score (simple formula: 100 - (warnings * impact))
+      // Info reduced from 0.5 to 0.1 - too many info-level warnings were tanking scores
       const warningImpact = {
         error: 10,
         warning: 3,
-        info: 0.5,
+        info: 0.1,
       };
       const healthDeduction = Object.entries(scanResult.stats.warningsByLevel).reduce(
         (total, [level, count]) =>
