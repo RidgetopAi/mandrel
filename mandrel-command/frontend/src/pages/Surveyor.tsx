@@ -488,8 +488,8 @@ const Surveyor: React.FC = () => {
         </div>
       </div>
 
-      {/* Health Score & Stats Row */}
-      {isLoading || triggerScanMutation.isPending || isAnalyzing ? (
+      {/* Loading State */}
+      {(isLoading || triggerScanMutation.isPending || isAnalyzing) && (
         <Card style={{
           background: COLORS.surface[1],
           border: `1px solid ${COLORS.surface[3]}`,
@@ -523,8 +523,76 @@ const Surveyor: React.FC = () => {
             </div>
           </div>
         </Card>
-      ) : latestScan ? (
-        <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+      )}
+
+      {/* No scan alert */}
+      {!isLoading && !triggerScanMutation.isPending && !latestScan && (
+        <Alert
+          message={<span style={{ color: COLORS.text.primary }}>No scan available</span>}
+          description={
+            <span style={{ color: COLORS.text.secondary }}>
+              Click 'Start Scan' to analyze your codebase structure and detect potential issues.
+            </span>
+          }
+          type="info"
+          showIcon
+          icon={<Clock size={20} style={{ color: COLORS.accent.primary }} />}
+          style={{
+            background: COLORS.surface[1],
+            border: `1px solid ${COLORS.surface[3]}`,
+            marginBottom: 24,
+          }}
+        />
+      )}
+
+      {/* Main Content Tabs - Canvas/Warnings (moved above stats for better centering) */}
+      <AnimatePresence>
+        {latestScan && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.1 }}
+          >
+            <Tabs
+              activeKey={activeTab}
+              onChange={setActiveTab}
+              style={{
+                color: COLORS.text.primary,
+              }}
+              items={[
+                {
+                  key: 'canvas',
+                  label: (
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <Radar size={16} />
+                      Visualization
+                    </span>
+                  ),
+                  children: (
+                    <SurveyorCanvas scanId={latestScan.id} onNodeClick={handleNodeClick} />
+                  ),
+                },
+                {
+                  key: 'warnings',
+                  label: (
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <AlertTriangle size={16} />
+                      Warnings ({stats?.totalWarnings || 0})
+                    </span>
+                  ),
+                  children: (
+                    <SurveyorWarningList scanId={latestScan.id} onWarningClick={handleWarningClick} />
+                  ),
+                },
+              ]}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Health Score & Stats Row - moved below canvas */}
+      {latestScan && !isLoading && !triggerScanMutation.isPending && !isAnalyzing && (
+        <Row gutter={[16, 16]} style={{ marginTop: 24 }}>
           <Col xs={24} sm={12} md={6}>
             <StatCard
               title="Health Score"
@@ -592,69 +660,7 @@ const Surveyor: React.FC = () => {
             />
           </Col>
         </Row>
-      ) : (
-        <Alert
-          message={<span style={{ color: COLORS.text.primary }}>No scan available</span>}
-          description={
-            <span style={{ color: COLORS.text.secondary }}>
-              Click 'Start Scan' to analyze your codebase structure and detect potential issues.
-            </span>
-          }
-          type="info"
-          showIcon
-          icon={<Clock size={20} style={{ color: COLORS.accent.primary }} />}
-          style={{
-            background: COLORS.surface[1],
-            border: `1px solid ${COLORS.surface[3]}`,
-            marginBottom: 24,
-          }}
-        />
       )}
-
-      {/* Main Content Tabs */}
-      <AnimatePresence>
-        {latestScan && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, delay: 0.1 }}
-          >
-            <Tabs
-              activeKey={activeTab}
-              onChange={setActiveTab}
-              style={{
-                color: COLORS.text.primary,
-              }}
-              items={[
-                {
-                  key: 'canvas',
-                  label: (
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <Radar size={16} />
-                      Visualization
-                    </span>
-                  ),
-                  children: (
-                    <SurveyorCanvas scanId={latestScan.id} onNodeClick={handleNodeClick} />
-                  ),
-                },
-                {
-                  key: 'warnings',
-                  label: (
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <AlertTriangle size={16} />
-                      Warnings ({stats?.totalWarnings || 0})
-                    </span>
-                  ),
-                  children: (
-                    <SurveyorWarningList scanId={latestScan.id} onWarningClick={handleWarningClick} />
-                  ),
-                },
-              ]}
-            />
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {/* Node Detail Drawer */}
       <Drawer
