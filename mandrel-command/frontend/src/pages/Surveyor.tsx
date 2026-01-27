@@ -143,22 +143,26 @@ const Surveyor: React.FC = () => {
     console.log('Warning clicked:', warning);
   }, []);
 
-  // Open file in nvim
+  // Open file in nvim via local surveyor server
+  // Calls localhost:4000 directly - surveyor server handles path mapping
   const handleOpenInEditor = useCallback(async (filePath: string, line?: number) => {
     try {
-      // Use project path from current scan or current project
-      const projectPath = latestScan?.projectPath || currentProject?.name;
-      const result = await apiClient.openFileInEditor(filePath, { projectPath, line });
+      const response = await fetch('http://localhost:4000/api/v1/open-file', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filePath, line }),
+      });
+      const result = await response.json();
       if (result.success) {
         message.success('Opened in nvim');
       } else {
         message.error(result.error || 'Failed to open file');
       }
     } catch (err) {
-      message.error('Failed to open file in editor');
+      message.error('Local editor service not running. Start: cd ~/projects/surveyor && npm run dev');
       console.error('Editor open error:', err);
     }
-  }, [latestScan?.projectPath, currentProject?.name]);
+  }, []);
 
   const handleTriggerScan = useCallback(() => {
     if (!projectId) {
