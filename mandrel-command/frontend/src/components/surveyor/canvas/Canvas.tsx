@@ -269,20 +269,21 @@ function CanvasInner({ scanData, warnings, onNodeClick }: CanvasProps) {
       return; // Already focused on these
     }
 
-    // Wait for nodes to render after folder navigation
+    // Wait for drawer animation to complete (~300ms) before centering
+    // This ensures fitView accounts for the reduced canvas width
     setTimeout(() => {
       const nodesToFocus = displayNodes.filter(n => highlightedNodeIds.includes(n.id));
       if (nodesToFocus.length > 0) {
         lastFocusedHighlights.current = highlightKey;
         fitView({
           nodes: nodesToFocus,
-          padding: 0.5,
+          padding: 0.8, // Larger padding for better centering with drawer open
           duration: 300,
-          maxZoom: 1.2,
-          minZoom: 1.0,
+          maxZoom: 1.5,
+          minZoom: 0.8,
         });
       }
-    }, 100);
+    }, 400);
   }, [highlightedNodeIds, displayNodes, fitView]);
 
   // Get connected node IDs for highlighting
