@@ -433,6 +433,7 @@ function CanvasInner({ scanData, warnings, onNodeClick }: CanvasProps) {
         type: 'smoothstep',
       }}
       style={{ background: COLORS.surface[0] }}
+      proOptions={{ hideAttribution: true }}
     >
       <Background
         variant={BackgroundVariant.Dots}
@@ -442,12 +443,38 @@ function CanvasInner({ scanData, warnings, onNodeClick }: CanvasProps) {
       />
       <Controls
         showInteractive={false}
-        style={{
-          background: COLORS.surface[2],
-          border: `1px solid ${COLORS.surface[3]}`,
-          borderRadius: 8,
-        }}
+        className="dark-controls"
       />
+      {/* Dark theme styles for controls */}
+      <style>{`
+        .dark-controls {
+          background: ${COLORS.surface[2]} !important;
+          border: 1px solid ${COLORS.surface[3]} !important;
+          border-radius: 8px !important;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
+        }
+        .dark-controls button {
+          background: ${COLORS.surface[2]} !important;
+          border: none !important;
+          border-bottom: 1px solid ${COLORS.surface[3]} !important;
+          color: ${COLORS.text.secondary} !important;
+          width: 28px !important;
+          height: 28px !important;
+        }
+        .dark-controls button:last-child {
+          border-bottom: none !important;
+        }
+        .dark-controls button:hover {
+          background: ${COLORS.surface[3]} !important;
+          color: ${COLORS.text.primary} !important;
+        }
+        .dark-controls button svg {
+          fill: currentColor !important;
+        }
+        .dark-controls button path {
+          fill: currentColor !important;
+        }
+      `}</style>
     </ReactFlow>
   );
 }
