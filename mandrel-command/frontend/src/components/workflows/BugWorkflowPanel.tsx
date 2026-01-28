@@ -165,34 +165,43 @@ const BugWorkflowPanel: React.FC = () => {
     return unsubscribe;
   }, [addInvestigationEvent, updateWorkflowState, setAnalysis, setImplementation, setError, setStreaming]);
 
-  // Cleanup SSE on unmount
+  // Cleanup SSE only on unmount or terminal states
   useEffect(() => {
+    // Only cleanup on terminal states (completed, failed) or unmount
+    const isTerminal = state === 'completed' || state === 'failed';
+
+    if (isTerminal && sseUnsubscribeRef.current) {
+      console.log('[SSE] Closing connection - terminal state:', state);
+      sseUnsubscribeRef.current();
+      sseUnsubscribeRef.current = null;
+      setStreaming(false);
+    }
+
+    // Cleanup on unmount
     return () => {
       if (sseUnsubscribeRef.current) {
+        console.log('[SSE] Closing connection - unmount');
         sseUnsubscribeRef.current();
+        sseUnsubscribeRef.current = null;
       }
     };
-  }, []);
+  }, [state, setStreaming]);
 
   // Re-subscribe when state changes to implementing/verifying (for review flow)
+  // Using a separate effect with minimal dependencies to avoid premature cleanup
   useEffect(() => {
     if (!activeWorkflow?.id) return;
 
-    const shouldStream =
+    const needsStream =
       state === 'implementing' ||
       state === 'verifying';
 
-    if (shouldStream && !sseUnsubscribeRef.current) {
+    if (needsStream && !sseUnsubscribeRef.current) {
+      console.log('[SSE] Re-subscribing for implementation phase');
       subscribeToSSE(activeWorkflow.id);
-    } else if (!shouldStream && state !== 'analyzing') {
-      // Clean up if no longer in streaming state
-      if (sseUnsubscribeRef.current) {
-        sseUnsubscribeRef.current();
-        sseUnsubscribeRef.current = null;
-        setStreaming(false);
-      }
     }
-  }, [activeWorkflow?.id, state, subscribeToSSE, setStreaming]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeWorkflow?.id, state]); // Intentionally exclude subscribeToSSE to prevent re-renders from closing SSE
 
   // Handle form submission
   const handleSubmit = useCallback(
