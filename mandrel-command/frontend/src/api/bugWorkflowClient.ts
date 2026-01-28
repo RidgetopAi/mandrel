@@ -164,41 +164,52 @@ export function subscribeToWorkflowEvents(
     handlers.onConnectionError?.(event);
   };
 
-  eventSource.onmessage = (event) => {
+  // Listen for named SSE events (backend sends: event: <type>\ndata: <json>)
+  const handleEvent = (eventType: string) => (event: MessageEvent) => {
     try {
-      const sseEvent: SSEEvent = JSON.parse(event.data);
+      const data = JSON.parse(event.data);
 
-      switch (sseEvent.type) {
+      switch (eventType) {
+        case 'connected':
+          // Connection confirmed, onOpen already handles this
+          break;
+
         case 'investigation':
-          handlers.onInvestigation?.(
-            deserializeInvestigationEvent(sseEvent.data)
-          );
+          handlers.onInvestigation?.(deserializeInvestigationEvent(data));
           break;
 
         case 'state_change':
           handlers.onStateChange?.(
-            sseEvent.data.from,
-            sseEvent.data.to,
-            new Date(sseEvent.data.timestamp)
+            data.from,
+            data.to,
+            new Date(data.timestamp)
           );
           break;
 
         case 'analysis_complete':
-          handlers.onAnalysisComplete?.(sseEvent.data);
+          handlers.onAnalysisComplete?.(data);
           break;
 
         case 'implementation_complete':
-          handlers.onImplementationComplete?.(sseEvent.data);
+          handlers.onImplementationComplete?.(data);
           break;
 
         case 'error':
-          handlers.onError?.(sseEvent.data.message, sseEvent.data.stage);
+          handlers.onError?.(data.message, data.stage);
           break;
       }
     } catch (err) {
-      console.error('Failed to parse SSE event:', err);
+      console.error(`Failed to parse SSE event (${eventType}):`, err);
     }
   };
+
+  // Register listeners for each named event type
+  eventSource.addEventListener('connected', handleEvent('connected'));
+  eventSource.addEventListener('investigation', handleEvent('investigation'));
+  eventSource.addEventListener('state_change', handleEvent('state_change'));
+  eventSource.addEventListener('analysis_complete', handleEvent('analysis_complete'));
+  eventSource.addEventListener('implementation_complete', handleEvent('implementation_complete'));
+  eventSource.addEventListener('error', handleEvent('error'));
 
   return () => {
     eventSource.close();
