@@ -188,16 +188,28 @@ const BugWorkflowPanel: React.FC = () => {
         setActiveWorkflow(workflowResponse.workflow);
         setExpandedPanels(['investigation']);
 
-        // Submit for analysis (triggers AI processing)
-        await submitWorkflow(response.workflowId);
-
-        // Update local state to 'analyzing' so SSE subscription activates
+        // Update local state to 'analyzing' FIRST so SSE subscription activates
+        // before we trigger the backend analysis
         updateWorkflowState('analyzing');
+
+        // Submit for analysis - don't await, let SSE handle progress/completion
+        // The backend is synchronous and takes a long time, so we fire-and-forget
+        submitWorkflow(response.workflowId).catch((err) => {
+          // SSE should handle errors, but catch here as fallback
+          const currentState = useBugWorkflowStore.getState().activeWorkflow?.state;
+          if (currentState !== 'failed' && currentState !== 'proposed') {
+            setError(err instanceof Error ? err.message : 'Analysis failed');
+            updateWorkflowState('failed');
+          }
+        });
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to create workflow');
-      } finally {
         setSubmitting(false);
+        return;
       }
+
+      // Clear submitting now - SSE will track analysis progress
+      setSubmitting(false);
     },
     []
   );
