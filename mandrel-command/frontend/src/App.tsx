@@ -28,6 +28,7 @@ const Sessions = lazy(() => import('./pages/Sessions'));
 const SessionDetail = lazy(() => import('./pages/SessionDetail'));
 const Analytics = lazy(() => import('./pages/Analytics'));
 const Surveyor = lazy(() => import('./pages/Surveyor'));
+const Workflow = lazy(() => import('./pages/Workflow'));
 const Settings = lazy(() => import('./pages/Settings'));
 const Profile = lazy(() => import('./pages/Profile'));
 
@@ -101,6 +102,7 @@ const AppContent: React.FC = () => {
                       <Route path="sessions/:id" element={<SectionErrorBoundary section="Session Detail"><SessionDetail /></SectionErrorBoundary>} />
                       <Route path="analytics" element={<SectionErrorBoundary section="Analytics"><Analytics /></SectionErrorBoundary>} />
                       <Route path="surveyor" element={<SectionErrorBoundary section="Surveyor"><Surveyor /></SectionErrorBoundary>} />
+                      <Route path="workflow" element={<SectionErrorBoundary section="Workflow"><Workflow /></SectionErrorBoundary>} />
                       <Route path="settings" element={<SectionErrorBoundary section="Settings"><Settings /></SectionErrorBoundary>} />
                       <Route path="profile" element={<SectionErrorBoundary section="Profile"><Profile /></SectionErrorBoundary>} />
 

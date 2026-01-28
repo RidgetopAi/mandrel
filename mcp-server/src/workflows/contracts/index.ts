@@ -56,6 +56,30 @@ export {
   type InvestigationEvent,
 } from './hooks.js';
 
+// Investigation Events (Phase 3 - Visibility)
+export {
+  // Schemas
+  InvestigationActionSchema,
+  InvestigationDetailsSchema,
+  InvestigationEventSchema,
+  SerializedInvestigationEventSchema,
+  // Types
+  type InvestigationAction,
+  type InvestigationDetails,
+  type SerializedInvestigationEvent,
+  // Serialization
+  serializeEvent,
+  deserializeEvent,
+  // Factory functions
+  createFileReadEvent,
+  createSearchEvent,
+  createHypothesisEvent,
+  createEvidenceEvent,
+  createRejectionEvent,
+  createTestCheckEvent,
+  createFixProposedEvent,
+} from './events.js';
+
 // API Contracts
 export {
   // Request/Response Schemas

@@ -22,8 +22,18 @@ import {
 import * as repository from './repository.js';
 import { runBugAnalysis, runImplementation } from './runner.js';
 import { bugWorkflowHooks, getContextForBugAnalysis } from './mandrel.js';
+import {
+  registerStreamRoute,
+  notifyStateChange,
+  notifyAnalysisComplete,
+  notifyImplementationComplete,
+  notifyError,
+} from './stream.js';
 
 export const bugWorkflowRouter = Router();
+
+// Register SSE stream route (Phase 3 - Visibility)
+registerStreamRoute(bugWorkflowRouter);
 
 /**
  * POST /api/workflows/bug
@@ -131,9 +141,11 @@ bugWorkflowRouter.post('/:id/submit', async (req: Request, res: Response) => {
 
     // Transition to submitted
     await repository.transitionState(workflowId, 'submitted');
+    notifyStateChange(workflowId, 'draft', 'submitted');
 
     // Transition to analyzing
     await repository.transitionState(workflowId, 'analyzing');
+    notifyStateChange(workflowId, 'submitted', 'analyzing');
 
     // Get Mandrel context
     const mandrelContext = await getContextForBugAnalysis(workflow.bugReport);
@@ -153,6 +165,7 @@ bugWorkflowRouter.post('/:id/submit', async (req: Request, res: Response) => {
         new Error(result.error || 'Analysis failed'),
         'analyzing'
       );
+      notifyError(workflowId, result.error || 'Analysis failed', 'analyzing');
 
       return res.status(500).json({
         success: false,
@@ -166,12 +179,17 @@ bugWorkflowRouter.post('/:id/submit', async (req: Request, res: Response) => {
 
     // Transition to proposed
     await repository.transitionState(workflowId, 'proposed');
+    notifyStateChange(workflowId, 'analyzing', 'proposed');
 
     // Call Mandrel hook
     await bugWorkflowHooks.onProposalGenerated(workflowId, result.data);
 
+    // Notify SSE clients that analysis is complete
+    notifyAnalysisComplete(workflowId, result.data);
+
     // Transition to reviewing (waiting for human input)
     const updatedWorkflow = await repository.transitionState(workflowId, 'reviewing');
+    notifyStateChange(workflowId, 'proposed', 'reviewing');
 
     return res.json({
       success: true,
@@ -349,6 +367,7 @@ bugWorkflowRouter.post('/:id/implement', async (req: Request, res: Response) => 
 
     // Transition to implementing
     await repository.transitionState(workflowId, 'implementing');
+    notifyStateChange(workflowId, 'approved', 'implementing');
 
     // Run implementation
     const result = await runImplementation(
@@ -364,6 +383,7 @@ bugWorkflowRouter.post('/:id/implement', async (req: Request, res: Response) => 
         new Error(result.error || 'Implementation failed'),
         'implementing'
       );
+      notifyError(workflowId, result.error || 'Implementation failed', 'implementing');
 
       return res.status(500).json({
         success: false,
@@ -377,11 +397,14 @@ bugWorkflowRouter.post('/:id/implement', async (req: Request, res: Response) => 
 
     // Transition to verifying
     await repository.transitionState(workflowId, 'verifying');
+    notifyStateChange(workflowId, 'implementing', 'verifying');
 
     // If build/tests passed, transition to completed
     if (result.data.success) {
       await repository.transitionState(workflowId, 'completed');
+      notifyStateChange(workflowId, 'verifying', 'completed');
       await bugWorkflowHooks.onImplementationComplete(workflowId, result.data);
+      notifyImplementationComplete(workflowId, result.data);
     } else {
       // Build/tests failed
       await repository.failWorkflow(
@@ -389,6 +412,7 @@ bugWorkflowRouter.post('/:id/implement', async (req: Request, res: Response) => 
         result.data.errors.join('; ') || 'Build/tests failed',
         'verifying'
       );
+      notifyError(workflowId, result.data.errors.join('; ') || 'Build/tests failed', 'verifying');
     }
 
     const updatedWorkflow = await repository.getWorkflow(workflowId);
