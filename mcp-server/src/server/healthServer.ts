@@ -12,6 +12,7 @@ import { AIDIS_TOOL_DEFINITIONS } from '../config/toolDefinitions.js';
 import { ProjectController } from '../api/controllers/projectController.js';
 import createSessionRouter from '../api/v2/sessionRoutes.js';
 import createSurveyorRouter from '../api/v2/surveyorRoutes.js';
+import { bugWorkflowRouter } from '../workflows/bug/api.js';
 
 /**
  * HTTP Health Check Server
@@ -82,6 +83,10 @@ export class HealthServer {
     const surveyorRouter = createSurveyorRouter();
     this.app.use('/api/v2/surveyor', surveyorRouter);
     logger.info('🔭 Surveyor API mounted: /api/v2/surveyor/* (9 endpoints)');
+
+    // Mount bug workflow REST API routes
+    this.app.use('/api/workflows/bug', bugWorkflowRouter);
+    logger.info('🐛 Bug Workflow API mounted: /api/workflows/bug/*');
 
     // Health check endpoints (existing)
     this.app.get('/healthz', this.handleHealthCheckExpress.bind(this));
