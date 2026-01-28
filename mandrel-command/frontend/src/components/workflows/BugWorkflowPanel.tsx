@@ -5,7 +5,7 @@
  * Uses Ant Design Collapse for expandable sections.
  */
 
-import React, { useEffect, useCallback } from 'react';
+import React, { useEffect, useCallback, useRef } from 'react';
 import {
   Collapse,
   Steps,
@@ -121,23 +121,19 @@ const BugWorkflowPanel: React.FC = () => {
 
   const state = activeWorkflow?.state;
 
-  // Subscribe to SSE events when in analyzing/implementing states
-  useEffect(() => {
-    if (!activeWorkflow?.id) return;
+  // Ref to hold SSE unsubscribe function
+  const sseUnsubscribeRef = useRef<(() => void) | null>(null);
 
-    const shouldStream =
-      state === 'analyzing' ||
-      state === 'implementing' ||
-      state === 'verifying';
-
-    if (!shouldStream) {
-      setStreaming(false);
-      return;
+  // Helper to subscribe to SSE for a workflow
+  const subscribeToSSE = useCallback((workflowId: string) => {
+    // Clean up existing subscription
+    if (sseUnsubscribeRef.current) {
+      sseUnsubscribeRef.current();
     }
 
     setStreaming(true);
 
-    const unsubscribe = subscribeToWorkflowEvents(activeWorkflow.id, {
+    const unsubscribe = subscribeToWorkflowEvents(workflowId, {
       onInvestigation: (event) => {
         addInvestigationEvent(event);
       },
@@ -158,19 +154,45 @@ const BugWorkflowPanel: React.FC = () => {
       },
       onConnectionError: () => {
         setStreaming(false);
-        // Try to refetch the workflow state
-        handleRefresh();
       },
       onOpen: () => {
+        console.log('[SSE] Connected to workflow stream:', workflowId);
         setStreaming(true);
       },
     });
 
+    sseUnsubscribeRef.current = unsubscribe;
+    return unsubscribe;
+  }, [addInvestigationEvent, updateWorkflowState, setAnalysis, setImplementation, setError, setStreaming]);
+
+  // Cleanup SSE on unmount
+  useEffect(() => {
     return () => {
-      unsubscribe();
-      setStreaming(false);
+      if (sseUnsubscribeRef.current) {
+        sseUnsubscribeRef.current();
+      }
     };
-  }, [activeWorkflow?.id, state]);
+  }, []);
+
+  // Re-subscribe when state changes to implementing/verifying (for review flow)
+  useEffect(() => {
+    if (!activeWorkflow?.id) return;
+
+    const shouldStream =
+      state === 'implementing' ||
+      state === 'verifying';
+
+    if (shouldStream && !sseUnsubscribeRef.current) {
+      subscribeToSSE(activeWorkflow.id);
+    } else if (!shouldStream && state !== 'analyzing') {
+      // Clean up if no longer in streaming state
+      if (sseUnsubscribeRef.current) {
+        sseUnsubscribeRef.current();
+        sseUnsubscribeRef.current = null;
+        setStreaming(false);
+      }
+    }
+  }, [activeWorkflow?.id, state, subscribeToSSE, setStreaming]);
 
   // Handle form submission
   const handleSubmit = useCallback(
@@ -182,22 +204,33 @@ const BugWorkflowPanel: React.FC = () => {
       try {
         // Create the workflow
         const response = await createBugWorkflow({ bugReport: report, projectPath });
+        const workflowId = response.workflowId;
 
         // Get the full workflow object
-        const workflowResponse = await getWorkflow(response.workflowId);
+        const workflowResponse = await getWorkflow(workflowId);
         setActiveWorkflow(workflowResponse.workflow);
         setExpandedPanels(['investigation']);
 
-        // Update local state to 'analyzing' FIRST so SSE subscription activates
-        // before we trigger the backend analysis
+        // CRITICAL: Subscribe to SSE BEFORE triggering analysis
+        // This ensures we don't miss any events
+        console.log('[BugWorkflow] Subscribing to SSE before submit...');
+        subscribeToSSE(workflowId);
+
+        // Update local state to 'analyzing'
         updateWorkflowState('analyzing');
+
+        // Clear submitting now - SSE will track analysis progress
+        setSubmitting(false);
 
         // Submit for analysis - don't await, let SSE handle progress/completion
         // The backend is synchronous and takes a long time, so we fire-and-forget
-        submitWorkflow(response.workflowId).catch((err) => {
+        console.log('[BugWorkflow] Triggering submitWorkflow (fire-and-forget)...');
+        submitWorkflow(workflowId).catch((err) => {
           // SSE should handle errors, but catch here as fallback
+          // Check if we already got a state update from SSE
           const currentState = useBugWorkflowStore.getState().activeWorkflow?.state;
-          if (currentState !== 'failed' && currentState !== 'proposed') {
+          console.log('[BugWorkflow] submitWorkflow error, current state:', currentState, err);
+          if (currentState !== 'failed' && currentState !== 'proposed' && currentState !== 'reviewing') {
             setError(err instanceof Error ? err.message : 'Analysis failed');
             updateWorkflowState('failed');
           }
@@ -205,13 +238,9 @@ const BugWorkflowPanel: React.FC = () => {
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to create workflow');
         setSubmitting(false);
-        return;
       }
-
-      // Clear submitting now - SSE will track analysis progress
-      setSubmitting(false);
     },
-    []
+    [subscribeToSSE, clearError, clearInvestigationEvents, setActiveWorkflow, setExpandedPanels, updateWorkflowState, setSubmitting, setError]
   );
 
   // Handle review decision
