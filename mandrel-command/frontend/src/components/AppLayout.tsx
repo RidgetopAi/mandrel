@@ -19,7 +19,7 @@ import {
   FolderOutlined,
   BulbOutlined,
   DotChartOutlined,
-
+  BugOutlined,
   SettingOutlined,
   UserOutlined,
   LogoutOutlined,
@@ -92,6 +92,11 @@ const AppLayout: React.FC = () => {
       key: '/surveyor',
       icon: <RadarChartOutlined />,
       label: 'Surveyor',
+    },
+    {
+      key: '/workflow',
+      icon: <BugOutlined />,
+      label: 'Workflow',
     },
     {
       key: '/settings',
