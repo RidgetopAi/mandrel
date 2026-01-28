@@ -66,6 +66,22 @@ export async function getWorkflow(workflowId: string): Promise<GetWorkflowRespon
 }
 
 /**
+ * Submit workflow for analysis
+ * Transitions from draft -> analyzing and triggers AI analysis
+ */
+export async function submitWorkflow(workflowId: string): Promise<GetWorkflowResponse> {
+  const response = await fetch(`${API_BASE}/${workflowId}/submit`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    credentials: 'include',
+  });
+
+  return handleResponse<GetWorkflowResponse>(response);
+}
+
+/**
  * Submit a review decision
  */
 export async function submitReview(

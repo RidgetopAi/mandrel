@@ -36,6 +36,7 @@ import { useBugWorkflowStore } from '../../stores/bugWorkflowStore';
 import {
   createBugWorkflow,
   getWorkflow,
+  submitWorkflow,
   submitReview,
   triggerImplementation,
   subscribeToWorkflowEvents,
@@ -179,13 +180,16 @@ const BugWorkflowPanel: React.FC = () => {
       clearInvestigationEvents();
 
       try {
+        // Create the workflow
         const response = await createBugWorkflow({ bugReport: report, projectPath });
 
         // Get the full workflow object
         const workflowResponse = await getWorkflow(response.workflowId);
-
         setActiveWorkflow(workflowResponse.workflow);
         setExpandedPanels(['investigation']);
+
+        // Submit for analysis (triggers AI processing)
+        await submitWorkflow(response.workflowId);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to create workflow');
       } finally {
