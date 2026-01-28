@@ -2,6 +2,9 @@
  * Bug Workflow Store
  *
  * Zustand store for managing bug workflow UI state.
+ *
+ * NOTE: SSE is managed by the workflowSSE singleton service, not here.
+ * The service updates this store directly when events arrive.
  */
 
 import { create } from 'zustand';
@@ -12,6 +15,16 @@ import type {
   BugAnalysis,
   ImplementationResult,
 } from '../types/workflow';
+
+// Import for cleanup - lazy to avoid circular deps
+let workflowSSECleanup: (() => void) | null = null;
+
+/**
+ * Register the SSE cleanup function (called by workflowSSE service)
+ */
+export function registerSSECleanup(cleanup: () => void) {
+  workflowSSECleanup = cleanup;
+}
 
 interface BugWorkflowUIState {
   // Workflow data
@@ -128,8 +141,14 @@ export const useBugWorkflowStore = create<BugWorkflowUIState>((set, get) => ({
 
   setExpandedPanels: (keys) => set({ expandedPanels: keys }),
 
-  // Reset
-  reset: () => set(initialState),
+  // Reset - also cleanup SSE connections
+  reset: () => {
+    // Cleanup SSE connections if registered
+    if (workflowSSECleanup) {
+      workflowSSECleanup();
+    }
+    set(initialState);
+  },
 }));
 
 // Selector hooks for common computed values
