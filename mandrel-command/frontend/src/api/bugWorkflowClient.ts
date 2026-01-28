@@ -154,24 +154,28 @@ export function subscribeToWorkflowEvents(
   handlers: SSEHandlers
 ): () => void {
   const url = `${API_BASE}/${workflowId}/stream`;
+  console.log('[SSE] Creating EventSource for:', url);
   const eventSource = new EventSource(url, { withCredentials: true });
 
   eventSource.onopen = () => {
+    console.log('[SSE] Connection opened');
     handlers.onOpen?.();
   };
 
   eventSource.onerror = (event) => {
+    console.error('[SSE] Connection error:', event);
     handlers.onConnectionError?.(event);
   };
 
   // Listen for named SSE events (backend sends: event: <type>\ndata: <json>)
   const handleEvent = (eventType: string) => (event: MessageEvent) => {
+    console.log(`[SSE] Received event: ${eventType}`, event.data);
     try {
       const data = JSON.parse(event.data);
 
       switch (eventType) {
         case 'connected':
-          // Connection confirmed, onOpen already handles this
+          console.log('[SSE] Server confirmed connection');
           break;
 
         case 'investigation':
@@ -179,6 +183,7 @@ export function subscribeToWorkflowEvents(
           break;
 
         case 'state_change':
+          console.log('[SSE] State change:', data.from, '->', data.to);
           handlers.onStateChange?.(
             data.from,
             data.to,
@@ -187,31 +192,37 @@ export function subscribeToWorkflowEvents(
           break;
 
         case 'analysis_complete':
+          console.log('[SSE] Analysis complete');
           handlers.onAnalysisComplete?.(data);
           break;
 
         case 'implementation_complete':
+          console.log('[SSE] Implementation complete');
           handlers.onImplementationComplete?.(data);
           break;
 
-        case 'error':
+        case 'workflow_error':
+          // Note: 'error' is reserved by EventSource, so we use 'workflow_error'
+          console.log('[SSE] Workflow error:', data.message, data.stage);
           handlers.onError?.(data.message, data.stage);
           break;
       }
     } catch (err) {
-      console.error(`Failed to parse SSE event (${eventType}):`, err);
+      console.error(`[SSE] Failed to parse event (${eventType}):`, err, event.data);
     }
   };
 
   // Register listeners for each named event type
+  // Note: 'error' is a reserved EventSource event, so backend sends 'workflow_error'
   eventSource.addEventListener('connected', handleEvent('connected'));
   eventSource.addEventListener('investigation', handleEvent('investigation'));
   eventSource.addEventListener('state_change', handleEvent('state_change'));
   eventSource.addEventListener('analysis_complete', handleEvent('analysis_complete'));
   eventSource.addEventListener('implementation_complete', handleEvent('implementation_complete'));
-  eventSource.addEventListener('error', handleEvent('error'));
+  eventSource.addEventListener('workflow_error', handleEvent('workflow_error'));
 
   return () => {
+    console.log('[SSE] Closing connection');
     eventSource.close();
   };
 }

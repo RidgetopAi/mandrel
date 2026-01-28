@@ -182,7 +182,7 @@ export function getTotalConnectionCount(): number {
  * - event: state_change, data: { from, to, timestamp }
  * - event: analysis_complete, data: BugAnalysis
  * - event: implementation_complete, data: ImplementationResult
- * - event: error, data: { message, stage }
+ * - event: workflow_error, data: { message, stage } (NOT 'error' - reserved by EventSource)
  * - event: heartbeat, data: { timestamp }
  */
 export function handleSSEStream(req: Request, res: Response): void {
@@ -231,7 +231,8 @@ export function handleSSEStream(req: Request, res: Response): void {
       writeSSEEvent(res, 'implementation_complete', result);
     },
     onError: (data) => {
-      writeSSEEvent(res, 'error', data);
+      // Use 'workflow_error' instead of 'error' - 'error' is reserved by EventSource
+      writeSSEEvent(res, 'workflow_error', data);
     },
   });
 
