@@ -190,6 +190,9 @@ const BugWorkflowPanel: React.FC = () => {
 
         // Submit for analysis (triggers AI processing)
         await submitWorkflow(response.workflowId);
+
+        // Update local state to 'analyzing' so SSE subscription activates
+        updateWorkflowState('analyzing');
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to create workflow');
       } finally {
