@@ -6,6 +6,7 @@
  */
 
 import { spawn, type ChildProcess } from 'child_process';
+import { existsSync } from 'fs';
 import type {
   BugReport,
   BugAnalysis,
@@ -210,6 +211,17 @@ export async function runBugAnalysis(
     console.log(`[BugRunner] Starting bug analysis for: ${bugReport.title}`);
     console.log(`[BugRunner] Project path: ${projectPath}`);
     console.log(`[BugRunner] Timeout: ${timeoutMs}ms`);
+
+    // Validate projectPath exists before spawning
+    if (!existsSync(projectPath)) {
+      console.error(`[BugRunner] Project path does not exist: ${projectPath}`);
+      resolve({
+        success: false,
+        error: `Project path does not exist: ${projectPath}`,
+        durationMs: Date.now() - startTime,
+      });
+      return;
+    }
 
     const child: ChildProcess = spawnClaude(prompt, projectPath, process.env);
 
@@ -433,6 +445,17 @@ export async function runImplementation(
     console.log(`[BugRunner] Starting implementation: ${changes.length} changes`);
     console.log(`[BugRunner] Project path: ${projectPath}`);
     console.log(`[BugRunner] Run tests: ${runTests}`);
+
+    // Validate projectPath exists before spawning
+    if (!existsSync(projectPath)) {
+      console.error(`[BugRunner] Project path does not exist: ${projectPath}`);
+      resolve({
+        success: false,
+        error: `Project path does not exist: ${projectPath}`,
+        durationMs: Date.now() - startTime,
+      });
+      return;
+    }
 
     const child: ChildProcess = spawnClaude(prompt, projectPath, process.env);
 
