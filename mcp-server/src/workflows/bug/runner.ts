@@ -485,6 +485,11 @@ export async function runImplementation(
 
       console.log(`[BugRunner] Implementation CLI exited with code ${code}`);
       console.log(`[BugRunner] Implementation completed in ${durationMs}ms`);
+      console.log(`[BugRunner] Implementation stdout length: ${stdout.length}`);
+      console.log(`[BugRunner] Implementation stdout (first 2000 chars): ${stdout.substring(0, 2000)}`);
+      if (stderr) {
+        console.log(`[BugRunner] Implementation stderr: ${stderr}`);
+      }
 
       if (code !== 0) {
         resolve({
@@ -496,6 +501,7 @@ export async function runImplementation(
       }
 
       const result = parseImplementationOutput(stdout);
+      console.log(`[BugRunner] Parsed implementation result:`, JSON.stringify(result, null, 2));
 
       resolve({
         success: result.success,
