@@ -38,6 +38,9 @@ const REMOTE_PORT = process.env.REMOTE_PORT || '2222';
 const REMOTE_HOST = process.env.REMOTE_HOST || 'localhost';
 const USE_REMOTE = process.env.USE_REMOTE_EXECUTION === 'true';
 
+// Spindles proxy configuration for activity streaming
+const SPINDLES_PROXY_URL = process.env.SPINDLES_PROXY_URL || 'http://localhost:8082';
+
 /**
  * Spawn Claude CLI either locally or remotely via SSH tunnel
  */
@@ -73,12 +76,16 @@ function spawnClaude(
     return child;
   } else {
     console.log(`[BugRunner] Local execution at: ${projectPath}`);
+    console.log(`[BugRunner] Routing through spindles-proxy: ${SPINDLES_PROXY_URL}`);
     return spawn('claude', [
       '--print',
       '--dangerously-skip-permissions',
       prompt,
     ], {
-      env,
+      env: {
+        ...env,
+        ANTHROPIC_BASE_URL: SPINDLES_PROXY_URL,
+      },
       stdio: ['ignore', 'pipe', 'pipe'],
       cwd: projectPath,
     });
