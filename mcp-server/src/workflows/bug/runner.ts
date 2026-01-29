@@ -77,22 +77,17 @@ function spawnClaude(
   } else {
     console.log(`[BugRunner] Local execution at: ${projectPath}`);
     console.log(`[BugRunner] Routing through spindles-proxy: ${SPINDLES_PROXY_URL}`);
-    
-    // Write prompt to temp file to avoid shell escaping issues
-    const tempFile = `/tmp/claude-prompt-${Date.now()}.txt`;
-    const { writeFileSync } = require('fs');
-    writeFileSync(tempFile, prompt);
-    
-    // Use bash login shell to ensure proper environment setup
-    // This fixes OAuth token refresh issues when running as ridgetop user
-    const claudeCommand = `cd "${projectPath}" && ANTHROPIC_BASE_URL="${SPINDLES_PROXY_URL}" claude --print --dangerously-skip-permissions "$(cat ${tempFile})" ; rm -f ${tempFile}`;
-    
-    return spawn('bash', ['-l', '-c', claudeCommand], {
+    return spawn('claude', [
+      '--print',
+      '--dangerously-skip-permissions',
+      prompt,
+    ], {
       env: {
         ...env,
-        HOME: process.env.HOME || '/home/ridgetop',
+        ANTHROPIC_BASE_URL: SPINDLES_PROXY_URL,
       },
       stdio: ['ignore', 'pipe', 'pipe'],
+      cwd: projectPath,
     });
   }
 }
