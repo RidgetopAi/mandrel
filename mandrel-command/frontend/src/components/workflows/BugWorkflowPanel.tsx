@@ -236,6 +236,15 @@ const BugWorkflowPanel: React.FC = () => {
     reset();
   }, [reset]);
 
+  // Handle stop workflow (resets UI, backend process will timeout)
+  const handleStop = useCallback(() => {
+    if (activeWorkflow?.id) {
+      workflowSSE.unsubscribe(activeWorkflow.id);
+      spindlesWS.disconnect();
+    }
+    reset();
+  }, [activeWorkflow?.id, reset]);
+
   // Determine which panels to show
   const showBugReport = !state || state === 'draft' || state === 'rejected';
   const showInvestigation =
@@ -276,6 +285,11 @@ const BugWorkflowPanel: React.FC = () => {
               size="small"
             >
               Refresh
+            </Button>
+          )}
+          {state && (state === 'analyzing' || state === 'implementing') && (
+            <Button size="small" danger onClick={handleStop}>
+              Stop
             </Button>
           )}
           {state && (
