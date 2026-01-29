@@ -35,8 +35,10 @@ import {
 import BugReportForm from './BugReportForm';
 import InvestigationLog from './InvestigationLog';
 import ReviewGate from './ReviewGate';
+import ActivityStream from './ActivityStream';
 import { useBugWorkflowStore } from '../../stores/bugWorkflowStore';
 import { workflowSSE } from '../../services/workflowSSE';
+import { spindlesWS, useSpindlesStore } from '../../services/spindlesWS';
 import {
   createBugWorkflow,
   getWorkflow,
@@ -141,6 +143,10 @@ const BugWorkflowPanel: React.FC = () => {
         console.log('[BugWorkflow] Subscribing to SSE via service...');
         workflowSSE.subscribe(workflowId);
 
+        // Connect to spindles WebSocket for activity streaming
+        spindlesWS.connect();
+        useSpindlesStore.getState().clearActivities();
+
         // Update local state to 'analyzing'
         updateWorkflowState('analyzing');
 
@@ -226,6 +232,7 @@ const BugWorkflowPanel: React.FC = () => {
 
   // Handle start new workflow (reset also cleans up SSE via store)
   const handleStartNew = useCallback(() => {
+    spindlesWS.disconnect();
     reset();
   }, [reset]);
 
@@ -353,10 +360,13 @@ const BugWorkflowPanel: React.FC = () => {
               </Space>
             ),
             children: (
-              <InvestigationLog
-                events={investigationEvents}
-                isStreaming={state === 'analyzing' && isStreaming}
-              />
+              <Space direction="vertical" style={{ width: '100%' }} size="middle">
+                <ActivityStream maxHeight={300} />
+                <InvestigationLog
+                  events={investigationEvents}
+                  isStreaming={state === 'analyzing' && isStreaming}
+                />
+              </Space>
             ),
           },
 
