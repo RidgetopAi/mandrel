@@ -80,6 +80,47 @@ app.get('/', (_req, res) => {
   });
 });
 
+// ============================================
+// MCP PROXY ROUTES (at root level for mandrelApiClient)
+// These proxy calls from frontend directly to MCP server
+// ============================================
+const MCP_BASE = `http://localhost:${process.env.MANDREL_MCP_PORT || process.env.AIDIS_MCP_PORT || '8080'}`;
+
+app.get('/v2/mcp/health', async (_req, res) => {
+  try {
+    const response = await fetch(`${MCP_BASE}/mcp/health`);
+    const data = await response.json();
+    res.status(response.status).json(data);
+  } catch (error) {
+    res.status(503).json({ success: false, error: 'MCP service unavailable' });
+  }
+});
+
+app.get('/v2/mcp/tools', async (_req, res) => {
+  try {
+    const response = await fetch(`${MCP_BASE}/mcp/tools`);
+    const data = await response.json();
+    res.status(response.status).json(data);
+  } catch (error) {
+    res.status(503).json({ success: false, error: 'MCP service unavailable' });
+  }
+});
+
+app.post('/v2/mcp/tools/:toolName', async (req, res) => {
+  try {
+    const { toolName } = req.params;
+    const response = await fetch(`${MCP_BASE}/mcp/tools/${toolName}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ arguments: req.body }),
+    });
+    const data = await response.json();
+    res.status(response.status).json(data);
+  } catch (error) {
+    res.status(503).json({ success: false, error: 'MCP service unavailable' });
+  }
+});
+
 // 404 handler (must be before error handler)
 app.use(notFoundHandler);
 
