@@ -30,6 +30,7 @@ import { BugWorkflowStates } from './states.js';
 export const CreateBugWorkflowRequestSchema = z.object({
   bugReport: BugReportSchema,
   projectPath: z.string().min(1),
+  branchName: z.string().optional(),
 });
 
 export const CreateBugWorkflowResponseSchema = z.object({

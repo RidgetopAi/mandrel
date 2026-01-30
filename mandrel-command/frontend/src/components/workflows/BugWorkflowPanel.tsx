@@ -124,14 +124,14 @@ const BugWorkflowPanel: React.FC = () => {
 
   // Handle form submission
   const handleSubmit = useCallback(
-    async (report: BugReport, projectPath: string) => {
+    async (report: BugReport, projectPath: string, branchName?: string) => {
       setSubmitting(true);
       clearError();
       clearInvestigationEvents();
 
       try {
         // Create the workflow
-        const response = await createBugWorkflow({ bugReport: report, projectPath });
+        const response = await createBugWorkflow({ bugReport: report, projectPath, branchName });
         const workflowId = response.workflowId;
 
         // Get the full workflow object
@@ -354,6 +354,7 @@ const BugWorkflowPanel: React.FC = () => {
                     ? {
                         ...activeWorkflow.bugReport,
                         projectPath: activeWorkflow.projectPath,
+                        branchName: activeWorkflow.branchName,
                       }
                     : undefined
                 }
@@ -478,20 +479,58 @@ const BugWorkflowPanel: React.FC = () => {
               </Space>
             ),
             children: (
-              <Result
-                status={state === 'completed' ? 'success' : 'error'}
-                title={state === 'completed' ? 'Bug Fixed!' : 'Workflow Failed'}
-                subTitle={
-                  state === 'failed'
-                    ? activeWorkflow?.failureReason || 'An error occurred during the workflow'
-                    : 'The bug has been analyzed, reviewed, and fixed.'
-                }
-                extra={
-                  <Button type="primary" onClick={handleStartNew}>
-                    Start New Workflow
-                  </Button>
-                }
-              />
+              <Space direction="vertical" style={{ width: '100%' }}>
+                <Result
+                  status={state === 'completed' ? 'success' : 'error'}
+                  title={state === 'completed' ? 'Bug Fixed!' : 'Workflow Failed'}
+                  subTitle={
+                    state === 'failed'
+                      ? activeWorkflow?.failureReason || 'An error occurred during the workflow'
+                      : 'The bug has been analyzed, reviewed, and fixed.'
+                  }
+                  extra={
+                    <Button type="primary" onClick={handleStartNew}>
+                      Start New Workflow
+                    </Button>
+                  }
+                />
+                {state === 'completed' && activeWorkflow?.implementation?.gitResult && (
+                  <Alert
+                    type="info"
+                    message="Sync Changes Locally"
+                    description={
+                      <Space direction="vertical" style={{ width: '100%' }}>
+                        <Text>
+                          Changes have been committed to branch{' '}
+                          <Text code>{activeWorkflow.implementation.gitResult.branchName}</Text>
+                        </Text>
+                        <Text type="secondary">Run these commands locally to sync:</Text>
+                        <pre style={{
+                          background: '#1f1f1f',
+                          color: '#e0e0e0',
+                          padding: 12,
+                          borderRadius: 4,
+                          fontSize: 12,
+                          overflow: 'auto',
+                        }}>
+{`cd ${activeWorkflow.projectPath}
+git fetch origin
+git checkout ${activeWorkflow.implementation.gitResult.branchName}
+# or merge into your current branch:
+git merge origin/${activeWorkflow.implementation.gitResult.branchName}`}
+                        </pre>
+                        {activeWorkflow.implementation.gitResult.commitHash && (
+                          <Text type="secondary" style={{ fontSize: 11 }}>
+                            Commit: {activeWorkflow.implementation.gitResult.commitHash.slice(0, 8)} - {activeWorkflow.implementation.gitResult.commitMessage}
+                          </Text>
+                        )}
+                      </Space>
+                    }
+                    showIcon
+                    style={{ marginTop: 16 }}
+                  />
+                )}
+              </Space>
             ),
           },
         ].filter(Boolean) as any}

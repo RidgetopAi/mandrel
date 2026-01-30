@@ -12,12 +12,14 @@ import type {
   BugAnalysis,
   CodeChange,
   ImplementationResult,
+  GitResult,
   Confidence,
 } from '../contracts/index.js';
 
 export interface RunnerConfig {
   timeoutMs: number;
   projectPath: string;
+  branchName?: string;
 }
 
 export interface RunnerResult<T> {
@@ -321,7 +323,8 @@ export async function runBugAnalysis(
 function buildImplementationPrompt(
   changes: CodeChange[],
   runTests: boolean,
-  projectPath: string
+  projectPath: string,
+  branchName?: string
 ): string {
   const changesDescription = changes.map((change, index) => `
 ### Change ${index + 1}: ${change.file}
@@ -339,6 +342,27 @@ ${change.proposed}
 ${change.explanation ? `**Rationale:** ${change.explanation}` : ''}
 `).join('\n');
 
+  const gitInstructions = branchName ? `
+## Git Operations
+
+After applying the changes successfully:
+1. Create and checkout the branch: \`git checkout -b ${branchName}\` (if it doesn't exist) or \`git checkout ${branchName}\`
+2. Stage the changed files: \`git add <changed files>\`
+3. Commit with a descriptive message: \`git commit -m "fix: <bug description>"\`
+4. Push to remote: \`git push -u origin ${branchName}\`
+
+Include the git result in your response.
+` : '';
+
+  const gitOutputFormat = branchName ? `
+  "gitResult": {
+    "branchName": "${branchName}",
+    "commitHash": "the full commit hash",
+    "commitMessage": "the commit message used",
+    "pushed": true | false,
+    "remote": "origin"
+  },` : '';
+
   return `You are implementing approved code changes for a codebase at: ${projectPath}
 
 ## Approved Changes
@@ -346,14 +370,14 @@ ${change.explanation ? `**Rationale:** ${change.explanation}` : ''}
 The user has reviewed and approved the following changes. Apply them EXACTLY as specified.
 
 ${changesDescription}
-
+${gitInstructions}
 ## Your Task
 
 1. Apply each change to the specified file
 2. Make ONLY the approved changes - do not modify anything else
 3. Run the build to verify the code compiles cleanly
 4. ${runTests ? 'Run the test suite to verify changes work correctly' : 'Skip test verification'}
-5. Report what was done
+${branchName ? '5. Commit changes to the specified branch and push to remote\n6. Report what was done' : '5. Report what was done'}
 
 ## Output Format
 
@@ -374,7 +398,7 @@ You MUST respond with a JSON object in this exact format (and nothing else):
     "skipped": <number>,
     "duration": <milliseconds>,
     "output": "summary of test output"
-  },` : ''}
+  },` : ''}${gitOutputFormat}
   "warnings": ["any warnings encountered"],
   "errors": ["any errors encountered - empty array if success is true"]
 }
@@ -384,7 +408,7 @@ Important:
 - Apply changes EXACTLY as specified - match whitespace and formatting
 - Do not add extra changes or "improvements"
 - If a file cannot be found, report it in errors
-- If the build fails, report success: false with the build errors`;
+- If the build fails, report success: false with the build errors${branchName ? '\n- If git operations fail, report them in errors but still include partial gitResult' : ''}`;
 }
 
 /**
@@ -401,6 +425,7 @@ function parseImplementationOutput(output: string): ImplementationResult {
         changedFiles: parsed.changedFiles || [],
         buildResult: parsed.buildResult,
         testResults: parsed.testResults,
+        gitResult: parsed.gitResult,
         warnings: parsed.warnings || [],
         errors: parsed.errors || [],
       };
@@ -417,6 +442,7 @@ function parseImplementationOutput(output: string): ImplementationResult {
       changedFiles: parsed.changedFiles || [],
       buildResult: parsed.buildResult,
       testResults: parsed.testResults,
+      gitResult: parsed.gitResult,
       warnings: parsed.warnings || [],
       errors: parsed.errors || [],
     };
@@ -438,10 +464,10 @@ export async function runImplementation(
   config: Partial<RunnerConfig> = {},
   runTests: boolean = true
 ): Promise<RunnerResult<ImplementationResult>> {
-  const { timeoutMs, projectPath } = { ...DEFAULT_CONFIG, ...config };
+  const { timeoutMs, projectPath, branchName } = { ...DEFAULT_CONFIG, ...config };
   const startTime = Date.now();
 
-  const prompt = buildImplementationPrompt(changes, runTests, projectPath);
+  const prompt = buildImplementationPrompt(changes, runTests, projectPath, branchName);
 
   return new Promise((resolve) => {
     let stdout = '';

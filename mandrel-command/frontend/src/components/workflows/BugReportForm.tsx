@@ -6,16 +6,16 @@
 
 import React from 'react';
 import { Form, Input, Select, Button, Space, Typography } from 'antd';
-import { BugOutlined, SendOutlined } from '@ant-design/icons';
+import { BugOutlined, SendOutlined, BranchesOutlined } from '@ant-design/icons';
 import type { BugReport, Severity } from '../../types/workflow';
 
 const { TextArea } = Input;
 const { Text } = Typography;
 
 interface BugReportFormProps {
-  onSubmit: (report: BugReport, projectPath: string) => void;
+  onSubmit: (report: BugReport, projectPath: string, branchName?: string) => void;
   isSubmitting?: boolean;
-  initialValues?: Partial<BugReport & { projectPath: string }>;
+  initialValues?: Partial<BugReport & { projectPath: string; branchName?: string }>;
 }
 
 const severityOptions: { value: Severity; label: string; description: string }[] = [
@@ -31,9 +31,9 @@ const BugReportForm: React.FC<BugReportFormProps> = ({
 }) => {
   const [form] = Form.useForm();
 
-  const handleFinish = (values: BugReport & { projectPath: string }) => {
-    const { projectPath, ...bugReport } = values;
-    onSubmit(bugReport, projectPath);
+  const handleFinish = (values: BugReport & { projectPath: string; branchName?: string }) => {
+    const { projectPath, branchName, ...bugReport } = values;
+    onSubmit(bugReport, projectPath, branchName);
   };
 
   return (
@@ -56,6 +56,17 @@ const BugReportForm: React.FC<BugReportFormProps> = ({
         <Input
           placeholder="/home/user/projects/my-app"
           prefix={<Text type="secondary">~</Text>}
+        />
+      </Form.Item>
+
+      <Form.Item
+        name="branchName"
+        label="Branch Name"
+        tooltip="Git branch for the fix (optional). If provided, changes will be committed to this branch."
+      >
+        <Input
+          placeholder="fix/bug-description"
+          prefix={<Text type="secondary">git:</Text>}
         />
       </Form.Item>
 

@@ -53,10 +53,10 @@ bugWorkflowRouter.post('/', async (req: Request, res: Response) => {
       return res.status(400).json(error);
     }
 
-    const { bugReport, projectPath } = parseResult.data;
+    const { bugReport, projectPath, branchName } = parseResult.data;
 
     // Create workflow in database
-    const workflow = await repository.createWorkflow(bugReport, projectPath);
+    const workflow = await repository.createWorkflow(bugReport, projectPath, branchName);
 
     // Call Mandrel hook
     await bugWorkflowHooks.onWorkflowStart(workflow);
@@ -372,7 +372,7 @@ bugWorkflowRouter.post('/:id/implement', async (req: Request, res: Response) => 
     // Run implementation
     const result = await runImplementation(
       approvedChanges,
-      { projectPath: workflow.projectPath },
+      { projectPath: workflow.projectPath, branchName: workflow.branchName },
       runTests
     );
 

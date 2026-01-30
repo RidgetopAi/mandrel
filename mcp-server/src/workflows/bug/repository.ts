@@ -23,6 +23,7 @@ import {
 interface BugWorkflowRow {
   id: string;
   project_path: string;
+  branch_name: string | null;
   state: BugWorkflowState;
   bug_report: BugReport;
   analysis: BugAnalysis | null;
@@ -42,6 +43,7 @@ function rowToWorkflow(row: BugWorkflowRow): BugWorkflow {
   return {
     id: row.id,
     projectPath: row.project_path,
+    branchName: row.branch_name ?? undefined,
     state: row.state,
     bugReport: row.bug_report,
     analysis: row.analysis ?? undefined,
@@ -60,13 +62,14 @@ function rowToWorkflow(row: BugWorkflowRow): BugWorkflow {
  */
 export async function createWorkflow(
   bugReport: BugReport,
-  projectPath: string
+  projectPath: string,
+  branchName?: string
 ): Promise<BugWorkflow> {
   const result = await db.query<BugWorkflowRow>(
-    `INSERT INTO bug_workflows (project_path, state, bug_report)
-     VALUES ($1, 'draft', $2)
+    `INSERT INTO bug_workflows (project_path, branch_name, state, bug_report)
+     VALUES ($1, $2, 'draft', $3)
      RETURNING *`,
-    [projectPath, JSON.stringify(bugReport)]
+    [projectPath, branchName ?? null, JSON.stringify(bugReport)]
   );
 
   return rowToWorkflow(result.rows[0]);

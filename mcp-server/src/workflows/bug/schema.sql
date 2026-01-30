@@ -4,6 +4,7 @@
 CREATE TABLE IF NOT EXISTS bug_workflows (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   project_path TEXT NOT NULL,
+  branch_name TEXT,
   state VARCHAR(50) NOT NULL DEFAULT 'draft',
 
   -- Workflow data as JSONB (validated by Zod at API boundary)

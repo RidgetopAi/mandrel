@@ -106,11 +106,20 @@ export interface TestResult {
   output?: string;
 }
 
+export interface GitResult {
+  branchName: string;
+  commitHash: string;
+  commitMessage: string;
+  pushed: boolean;
+  remote?: string;
+}
+
 export interface ImplementationResult {
   success: boolean;
   changedFiles: string[];
   buildResult?: BuildResult;
   testResults?: TestResult;
+  gitResult?: GitResult;
   warnings: string[];
   errors: string[];
 }
@@ -118,6 +127,7 @@ export interface ImplementationResult {
 export interface BugWorkflow {
   id: string;
   projectPath: string;
+  branchName?: string;
   state: BugWorkflowState;
   bugReport: BugReport;
   analysis?: BugAnalysis;
@@ -181,6 +191,7 @@ export interface SerializedInvestigationEvent {
 export interface CreateBugWorkflowRequest {
   bugReport: BugReport;
   projectPath: string;
+  branchName?: string;
 }
 
 export interface CreateBugWorkflowResponse {

@@ -32,6 +32,7 @@ export {
   ReviewSchema,
   BuildResultSchema,
   TestResultSchema,
+  GitResultSchema,
   ImplementationResultSchema,
   BugWorkflowSchema,
   // Types
@@ -44,6 +45,7 @@ export {
   type Review,
   type BuildResult,
   type TestResult,
+  type GitResult,
   type ImplementationResult,
   type BugWorkflow,
 } from './types.js';

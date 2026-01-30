@@ -88,11 +88,20 @@ export const TestResultSchema = z.object({
   output: z.string().optional(),
 });
 
+export const GitResultSchema = z.object({
+  branchName: z.string(),
+  commitHash: z.string(),
+  commitMessage: z.string(),
+  pushed: z.boolean(),
+  remote: z.string().optional(),
+});
+
 export const ImplementationResultSchema = z.object({
   success: z.boolean(),
   changedFiles: z.array(z.string()),
   buildResult: BuildResultSchema.optional(),
   testResults: TestResultSchema.optional(),
+  gitResult: GitResultSchema.optional(),
   warnings: z.array(z.string()),
   errors: z.array(z.string()),
 });
@@ -104,6 +113,7 @@ export const ImplementationResultSchema = z.object({
 export const BugWorkflowSchema = z.object({
   id: z.string().uuid(),
   projectPath: z.string(),
+  branchName: z.string().optional(),
   state: z.enum(BugWorkflowStates),
   bugReport: BugReportSchema,
   analysis: BugAnalysisSchema.optional(),
@@ -129,6 +139,7 @@ export type ReviewDecision = z.infer<typeof ReviewDecisionSchema>;
 export type Review = z.infer<typeof ReviewSchema>;
 export type BuildResult = z.infer<typeof BuildResultSchema>;
 export type TestResult = z.infer<typeof TestResultSchema>;
+export type GitResult = z.infer<typeof GitResultSchema>;
 export type ImplementationResult = z.infer<typeof ImplementationResultSchema>;
 export type BugWorkflow = z.infer<typeof BugWorkflowSchema>;
 
