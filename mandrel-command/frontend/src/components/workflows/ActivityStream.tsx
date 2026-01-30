@@ -293,7 +293,8 @@ const renderActivity = (activity: ActivityMessage, index: number) => {
                           fontSize: 11,
                           maxHeight: 150,
                           overflow: "auto",
-                          background: "#f5f5f5",
+                          background: "#1f1f1f",
+                          color: "#e0e0e0",
                           padding: 8,
                           borderRadius: 4,
                         }}
@@ -351,7 +352,8 @@ const renderActivity = (activity: ActivityMessage, index: number) => {
                           fontSize: 11,
                           maxHeight: 200,
                           overflow: "auto",
-                          background: "#f5f5f5",
+                          background: "#1f1f1f",
+                          color: "#e0e0e0",
                           padding: 8,
                           borderRadius: 4,
                         }}
