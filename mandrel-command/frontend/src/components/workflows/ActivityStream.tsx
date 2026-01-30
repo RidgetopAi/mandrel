@@ -14,6 +14,14 @@ import {
   CloseCircleOutlined,
   MessageOutlined,
   BulbOutlined,
+  FileTextOutlined,
+  EditOutlined,
+  CodeOutlined,
+  SearchOutlined,
+  FolderOpenOutlined,
+  GlobalOutlined,
+  RobotOutlined,
+  ExperimentOutlined,
 } from "@ant-design/icons";
 import {
   useSpindlesStore,
@@ -39,12 +47,157 @@ const truncate = (str: string, max: number): string => {
   return str.slice(0, max) + "...";
 };
 
+// Get tool-specific icon
+const getToolIcon = (toolName: string) => {
+  switch (toolName) {
+    case "Read":
+    case "file_read":
+      return <FileTextOutlined style={{ color: "#1890ff" }} />;
+    case "Edit":
+    case "edit_file":
+    case "file_edit":
+      return <EditOutlined style={{ color: "#faad14" }} />;
+    case "Write":
+    case "file_write":
+      return <EditOutlined style={{ color: "#52c41a" }} />;
+    case "Bash":
+    case "bash":
+      return <CodeOutlined style={{ color: "#722ed1" }} />;
+    case "Grep":
+    case "grep":
+      return <SearchOutlined style={{ color: "#13c2c2" }} />;
+    case "Glob":
+    case "glob":
+      return <FolderOpenOutlined style={{ color: "#eb2f96" }} />;
+    case "Task":
+      return <RobotOutlined style={{ color: "#fa8c16" }} />;
+    case "WebFetch":
+    case "WebSearch":
+      return <GlobalOutlined style={{ color: "#2f54eb" }} />;
+    default:
+      if (toolName.startsWith("mcp__") || toolName.includes("context_") ||
+          toolName.includes("project_") || toolName.includes("mandrel_")) {
+        return <ExperimentOutlined style={{ color: "#9254de" }} />;
+      }
+      return <ToolOutlined style={{ color: "#1890ff" }} />;
+  }
+};
+
+// Truncate file path, showing end (filename + parent)
+const truncatePath = (path: string, max: number): string => {
+  if (path.length <= max) return path;
+  const parts = path.split("/");
+  if (parts.length >= 2) {
+    const suffix = parts.slice(-2).join("/");
+    if (suffix.length + 4 <= max) {
+      return ".../" + suffix;
+    }
+  }
+  return "..." + path.slice(-(max - 3));
+};
+
+// Extract readable summary from tool input
+const extractToolSummary = (toolName: string, input: any): string | null => {
+  if (!input || typeof input !== "object") return null;
+
+  switch (toolName) {
+    case "Read":
+    case "file_read":
+      if (input.file_path || input.path) {
+        return truncatePath(input.file_path || input.path, 50);
+      }
+      break;
+    case "Edit":
+    case "edit_file":
+    case "file_edit":
+      if (input.file_path || input.path) {
+        const path = truncatePath(input.file_path || input.path, 40);
+        if (input.old_string && input.new_string) {
+          const oldLines = (input.old_string as string).split("\n").length;
+          const newLines = (input.new_string as string).split("\n").length;
+          const added = Math.max(0, newLines - oldLines);
+          const removed = Math.max(0, oldLines - newLines);
+          if (added > 0 || removed > 0) {
+            return `${path} [+${added} -${removed}]`;
+          }
+          return `${path} [~${oldLines} lines]`;
+        }
+        return path;
+      }
+      break;
+    case "Write":
+    case "file_write":
+      if (input.file_path || input.path) {
+        const path = truncatePath(input.file_path || input.path, 40);
+        if (input.content) {
+          const lines = (input.content as string).split("\n").length;
+          return `${path} [${lines} lines]`;
+        }
+        return path;
+      }
+      break;
+    case "Bash":
+    case "bash":
+      if (input.command) {
+        const firstLine = (input.command as string).split("\n")[0];
+        return truncate(firstLine, 60);
+      }
+      break;
+    case "Grep":
+    case "grep":
+      const parts: string[] = [];
+      if (input.pattern) {
+        parts.push(`/${truncate(input.pattern, 25)}/`);
+      }
+      if (input.path) {
+        parts.push(truncatePath(input.path, 25));
+      }
+      return parts.length > 0 ? parts.join(" ") : null;
+    case "Glob":
+    case "glob":
+      if (input.pattern) {
+        return `"${truncate(input.pattern, 45)}"`;
+      }
+      break;
+    case "Task":
+      if (input.description) {
+        return truncate(input.description, 50);
+      }
+      break;
+    case "WebFetch":
+      if (input.url) {
+        return truncate(input.url, 50);
+      }
+      break;
+    case "WebSearch":
+      if (input.query) {
+        return `"${truncate(input.query, 45)}"`;
+      }
+      break;
+    default:
+      // Mandrel MCP tools
+      if (toolName.startsWith("mcp__") || toolName.includes("context_") ||
+          toolName.includes("project_") || toolName.includes("mandrel_")) {
+        if (input.content) return truncate(input.content, 40);
+        if (input.query) return `"${truncate(input.query, 35)}"`;
+        if (input.project) return `→ ${input.project}`;
+        if (input.title) return truncate(input.title, 40);
+        if (input.name) return input.name;
+      }
+  }
+  return null;
+};
+
 // Render a single activity
 const renderActivity = (activity: ActivityMessage, index: number) => {
   const key = `${activity.type}-${activity.timestamp}-${index}`;
 
   switch (activity.type) {
-    case "thinking":
+    case "thinking": {
+      // Show first line truncated for compact view
+      const firstLine = activity.content.split("\n")[0].trim();
+      const preview = truncate(firstLine, 80);
+      const hasMore = activity.content.length > preview.length;
       return (
         <div key={key} className="activity-item thinking">
           <Space align="start" style={{ width: "100%" }}>
@@ -56,31 +209,73 @@ const renderActivity = (activity: ActivityMessage, index: number) => {
                   {formatTime(activity.timestamp)}
                 </Text>
               </Space>
-              <Paragraph
-                style={{
-                  margin: 0,
-                  fontSize: 13,
-                  color: "#8b8b8b",
-                  fontStyle: "italic",
-                  whiteSpace: "pre-wrap",
-                }}
-                ellipsis={{ rows: 3, expandable: true, symbol: "more" }}
-              >
-                {activity.content}
-              </Paragraph>
+              {hasMore ? (
+                <Collapse
+                  size="small"
+                  items={[
+                    {
+                      key: "thinking",
+                      label: (
+                        <Text
+                          style={{
+                            fontSize: 12,
+                            color: "#8b8b8b",
+                            fontStyle: "italic",
+                          }}
+                        >
+                          {preview}
+                        </Text>
+                      ),
+                      children: (
+                        <Paragraph
+                          style={{
+                            margin: 0,
+                            fontSize: 12,
+                            color: "#8b8b8b",
+                            fontStyle: "italic",
+                            whiteSpace: "pre-wrap",
+                            maxHeight: 200,
+                            overflow: "auto",
+                          }}
+                        >
+                          {activity.content}
+                        </Paragraph>
+                      ),
+                    },
+                  ]}
+                />
+              ) : (
+                <Text
+                  style={{
+                    fontSize: 12,
+                    color: "#8b8b8b",
+                    fontStyle: "italic",
+                  }}
+                >
+                  {preview}
+                </Text>
+              )}
             </div>
           </Space>
         </div>
       );
+    }
 
-    case "tool_call":
+    case "tool_call": {
+      const toolIcon = getToolIcon(activity.toolName);
+      const summary = extractToolSummary(activity.toolName, activity.input);
       return (
         <div key={key} className="activity-item tool-call">
           <Space align="start" style={{ width: "100%" }}>
-            <ToolOutlined style={{ color: "#1890ff", marginTop: 4 }} />
+            <span style={{ marginTop: 4 }}>{toolIcon}</span>
             <div style={{ flex: 1 }}>
-              <Space style={{ marginBottom: 4 }}>
+              <Space style={{ marginBottom: 4 }} wrap>
                 <Tag color="blue">{activity.toolName}</Tag>
+                {summary && (
+                  <Text code style={{ fontSize: 11, maxWidth: 400 }}>
+                    {summary}
+                  </Text>
+                )}
                 <Text type="secondary" style={{ fontSize: 11 }}>
                   {formatTime(activity.timestamp)}
                 </Text>
@@ -90,7 +285,7 @@ const renderActivity = (activity: ActivityMessage, index: number) => {
                 items={[
                   {
                     key: "input",
-                    label: <Text type="secondary">Input</Text>,
+                    label: <Text type="secondary">Full Input</Text>,
                     children: (
                       <pre
                         style={{
@@ -113,6 +308,7 @@ const renderActivity = (activity: ActivityMessage, index: number) => {
           </Space>
         </div>
       );
+    }
 
     case "tool_result": {
       const isError = activity.isError;
