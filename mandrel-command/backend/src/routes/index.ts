@@ -107,6 +107,90 @@ router.post('/v2/sessions/:sessionId/sync-files', async (req: Request, res: Resp
 });
 
 // ============================================
+// MCP TOOLS PROXY ROUTES
+// ============================================
+
+/**
+ * Proxy GET /v2/mcp/health to MCP server
+ */
+router.get('/v2/mcp/health', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const url = `${MCP_BASE}/mcp/health`;
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    const data = await response.json();
+    res.status(response.status).json(data);
+  } catch (error) {
+    console.error('MCP proxy error (GET mcp/health):', error);
+    res.status(503).json({
+      success: false,
+      error: 'MCP service unavailable',
+      message: error instanceof Error ? error.message : 'Failed to proxy request to MCP server'
+    });
+  }
+});
+
+/**
+ * Proxy GET /v2/mcp/tools to MCP server (list tools)
+ */
+router.get('/v2/mcp/tools', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const url = `${MCP_BASE}/mcp/tools`;
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    const data = await response.json();
+    res.status(response.status).json(data);
+  } catch (error) {
+    console.error('MCP proxy error (GET mcp/tools):', error);
+    res.status(503).json({
+      success: false,
+      error: 'MCP service unavailable',
+      message: error instanceof Error ? error.message : 'Failed to proxy request to MCP server'
+    });
+  }
+});
+
+/**
+ * Proxy POST /v2/mcp/tools/:toolName to MCP server (call tool)
+ */
+router.post('/v2/mcp/tools/:toolName', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { toolName } = req.params;
+    const url = `${MCP_BASE}/mcp/tools/${toolName}`;
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ arguments: req.body }),
+    });
+
+    const data = await response.json();
+    res.status(response.status).json(data);
+  } catch (error) {
+    console.error(`MCP proxy error (POST mcp/tools/${req.params.toolName}):`, error);
+    res.status(503).json({
+      success: false,
+      error: 'MCP service unavailable',
+      message: error instanceof Error ? error.message : 'Failed to proxy request to MCP server'
+    });
+  }
+});
+
+// ============================================
 // SURVEYOR PROXY ROUTES
 // ============================================
 
@@ -348,6 +432,60 @@ router.get('/v2/surveyor/stats/:projectId', async (req: Request, res: Response):
     res.status(response.status).json(data);
   } catch (error) {
     console.error('MCP proxy error (GET surveyor/stats/:projectId):', error);
+    res.status(503).json({
+      success: false,
+      error: 'MCP service unavailable',
+      message: error instanceof Error ? error.message : 'Failed to proxy request to MCP server'
+    });
+  }
+});
+
+/**
+ * Proxy GET /api/v2/surveyor/analyze/status to MCP server
+ */
+router.get('/v2/surveyor/analyze/status', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const url = `${MCP_BASE}/api/v2/surveyor/analyze/status`;
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    const data = await response.json();
+    res.status(response.status).json(data);
+  } catch (error) {
+    console.error('MCP proxy error (GET surveyor/analyze/status):', error);
+    res.status(503).json({
+      success: false,
+      error: 'MCP service unavailable',
+      message: error instanceof Error ? error.message : 'Failed to proxy request to MCP server'
+    });
+  }
+});
+
+/**
+ * Proxy POST /api/v2/surveyor/analyze/:scanId to MCP server
+ */
+router.post('/v2/surveyor/analyze/:scanId', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { scanId } = req.params;
+    const url = `${MCP_BASE}/api/v2/surveyor/analyze/${scanId}`;
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(req.body),
+    });
+
+    const data = await response.json();
+    res.status(response.status).json(data);
+  } catch (error) {
+    console.error('MCP proxy error (POST surveyor/analyze/:scanId):', error);
     res.status(503).json({
       success: false,
       error: 'MCP service unavailable',

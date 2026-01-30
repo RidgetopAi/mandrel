@@ -233,7 +233,21 @@ export const ProjectProvider: React.FC<ProjectProviderProps> = ({ children }) =>
           if (projectNameMatch) {
             const projectName = projectNameMatch[1].trim();
             if (projectName && projectName !== 'None' && projectName !== 'unassigned') {
-              // Create project object from AIDIS data
+              // Look up full project from allProjects to get root_directory and other fields
+              const projectList = projectsFromRefresh && projectsFromRefresh.length > 0
+                ? projectsFromRefresh
+                : allProjects;
+              const fullProject = projectList.find(
+                (p: Project) => p.name === projectName || p.name.toLowerCase() === projectName.toLowerCase()
+              );
+
+              if (fullProject) {
+                setCurrentProject(fullProject);
+                DEBUG && console.log('✅ Loaded full project from allProjects (via AIDIS):', fullProject.name, 'root_directory:', fullProject.root_directory);
+                return;
+              }
+
+              // Fallback: Create minimal project object if not found in list
               const aidisProject: Project = {
                 id: `aidis-${projectName.toLowerCase().replace(/\s+/g, '-')}`,
                 name: projectName,
@@ -243,7 +257,7 @@ export const ProjectProvider: React.FC<ProjectProviderProps> = ({ children }) =>
                 description: `Project from AIDIS V2 API: ${projectName}`
               };
               setCurrentProject(aidisProject);
-              DEBUG && console.log('✅ Loaded project from AIDIS V2 API (fallback):', aidisProject.name);
+              DEBUG && console.log('⚠️ Created minimal project (no root_directory):', aidisProject.name);
               return;
             }
           }
@@ -255,7 +269,19 @@ export const ProjectProvider: React.FC<ProjectProviderProps> = ({ children }) =>
       // Fallback: try to get current project from backend MCP session
       const currentSession = allSessions.find((session: Session) => session.id && session.project_id);
       if (currentSession?.project_name && currentSession?.project_id && currentSession.project_id !== UNASSIGNED_PROJECT_ID) {
-        // Find the project in our projects list
+        // Look up full project from allProjects to get root_directory and other fields
+        const projectList = projectsFromRefresh && projectsFromRefresh.length > 0
+          ? projectsFromRefresh
+          : allProjects;
+        const fullProject = projectList.find((p: Project) => p.id === currentSession.project_id);
+
+        if (fullProject) {
+          setCurrentProject(fullProject);
+          DEBUG && console.log('✅ Loaded full project from allProjects (via session):', fullProject.name, 'root_directory:', fullProject.root_directory);
+          return;
+        }
+
+        // Fallback: Create minimal project object if not found in list
         const sessionProject: Project = {
           id: currentSession.project_id,
           name: currentSession.project_name,
@@ -265,7 +291,7 @@ export const ProjectProvider: React.FC<ProjectProviderProps> = ({ children }) =>
           description: `Project from MCP session: ${currentSession.title || currentSession.project_name}`
         };
         setCurrentProject(sessionProject);
-        DEBUG && console.log('✅ Loaded project from backend session:', sessionProject.name);
+        DEBUG && console.log('⚠️ Created minimal session project (no root_directory):', sessionProject.name);
         return;
       }
 
@@ -359,7 +385,18 @@ export const ProjectProvider: React.FC<ProjectProviderProps> = ({ children }) =>
     const operation = async () => {
       const response = await mandrelApi.switchProject(projectName);
       if (response?.content?.[0]?.text) {
-        // Create project object from successful switch
+        // Look up full project from allProjects to get root_directory and other fields
+        const fullProject = allProjects.find(
+          (p: Project) => p.name === projectName || p.name.toLowerCase() === projectName.toLowerCase()
+        );
+
+        if (fullProject) {
+          setCurrentProject(fullProject);
+          DEBUG && console.log('✅ Switched to full project from allProjects:', fullProject.name, 'root_directory:', fullProject.root_directory);
+          return true;
+        }
+
+        // Fallback: Create minimal project object if not found in list
         const switchedProject: Project = {
           id: `aidis-${projectName.toLowerCase().replace(/\s+/g, '-')}`,
           name: projectName,
@@ -369,7 +406,7 @@ export const ProjectProvider: React.FC<ProjectProviderProps> = ({ children }) =>
           description: `Project switched via AIDIS V2: ${projectName}`
         };
         setCurrentProject(switchedProject);
-        DEBUG && console.log('✅ Successfully switched to project via AIDIS V2:', projectName);
+        DEBUG && console.log('⚠️ Switched to minimal project (no root_directory):', projectName);
         return true;
       }
       throw new Error('Project switch response was empty or invalid');
@@ -377,7 +414,7 @@ export const ProjectProvider: React.FC<ProjectProviderProps> = ({ children }) =>
 
     const result = await errorHandler.withErrorHandling(operation)();
     return result ?? false;
-  }, [errorHandler]);
+  }, [errorHandler, allProjects]);
 
   // Load projects only when authenticated AND settings are loaded
   useEffect(() => {
