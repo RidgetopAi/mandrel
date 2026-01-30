@@ -12,7 +12,6 @@ import type {
   BugAnalysis,
   CodeChange,
   ImplementationResult,
-  GitResult,
   Confidence,
 } from '../contracts/index.js';
 
