@@ -18,18 +18,22 @@ import { bugWorkflowRouter } from '../workflows/bug/api.js';
  * HTTP Health Check Server
  * Provides health endpoints and MCP tool HTTP bridge
  */
+export interface McpExecutorContext {
+  connectionId?: string;
+}
+
 export class HealthServer {
   private server: http.Server | null = null;
   private app: express.Application;
   private port: number = 8080;
   private dbHealthy: boolean = false;
   private circuitBreakerState: string = 'closed';
-  private mcpToolExecutor?: (toolName: string, args: any) => Promise<any>;
+  private mcpToolExecutor?: (toolName: string, args: any, context?: McpExecutorContext) => Promise<any>;
   private parameterDeserializer?: (args: any) => any;
   private projectController: ProjectController;
 
   constructor(
-    mcpToolExecutor?: (toolName: string, args: any) => Promise<any>,
+    mcpToolExecutor?: (toolName: string, args: any, context?: McpExecutorContext) => Promise<any>,
     parameterDeserializer?: (args: any) => any
   ) {
     this.app = express();
@@ -297,7 +301,16 @@ export class HealthServer {
       const rawArgs = req.body.arguments || req.body.args || {};
       const args = this.parameterDeserializer ? this.parameterDeserializer(rawArgs) : rawArgs;
 
-      const result = await this.mcpToolExecutor(toolName, args);
+      // Extract connection ID from header for session isolation
+      // Each client should send a unique X-Connection-ID to get isolated session context
+      const connectionId = req.header('X-Connection-ID') || 'http-default';
+      
+      // Log if using default (shared state) - helps debugging isolation issues
+      if (!req.header('X-Connection-ID')) {
+        logger.debug('MCP tool request without X-Connection-ID header, using shared session state');
+      }
+
+      const result = await this.mcpToolExecutor(toolName, args, { connectionId });
       res.json({ success: true, result });
     } catch (error: any) {
       res.status(500).json({

@@ -127,11 +127,14 @@ export default class MandrelMcpServer {
 
   /**
    * Execute MCP Tool (shared logic for both MCP and HTTP)
+   * @param context - Optional execution context with connectionId for session isolation
    */
-  private async executeMcpTool(toolName: string, args: any): Promise<any> {
+  private async executeMcpTool(toolName: string, args: any, context?: { connectionId?: string }): Promise<any> {
     // Generate correlation ID for request tracing
     const correlationId = CorrelationIdManager.generate();
-    const sessionId = this.getCurrentSessionId();
+    // Use connectionId from context for session isolation, default for stdio
+    const connectionId = context?.connectionId ?? 'stdio';
+    const sessionId = this.getCurrentSessionId(connectionId);
 
     // TS006-2: Estimate input tokens
     const inputTokens = this.estimateTokenUsage(JSON.stringify(args || {}));
@@ -323,10 +326,11 @@ export default class MandrelMcpServer {
   // All routing logic centralized in routes/index.ts via routeExecutor()
 
   /**
-   * Get current session ID from active session store
+   * Get current session ID from active session store for a specific connection
+   * @param connectionId - Connection identifier for session isolation
    */
-  private getCurrentSessionId(): string | null {
-    return ActiveSessionStore.get();
+  private getCurrentSessionId(connectionId?: string): string | null {
+    return ActiveSessionStore.get(connectionId);
   }
 
   /**
@@ -423,15 +427,17 @@ export default class MandrelMcpServer {
           console.log(`🤖 AI Model detected: ${aiModel}`);
 
           // Use ensureActiveSession to reuse existing active session or create new one
+          // Using 'stdio' as connection ID for the main MCP stdio transport
           const sessionId = await ensureActiveSession(
             currentProject?.id,
             undefined, // title
             undefined, // description
             undefined, // sessionGoal
             undefined, // tags
-            aiModel    // AI model
+            aiModel,   // AI model
+            'stdio'    // connectionId - isolates stdio from HTTP connections
           );
-          console.log(`✅ Session tracking initialized: ${sessionId.substring(0, 8)}...`);
+          console.log(`✅ Session tracking initialized: ${sessionId.substring(0, 8)}... (connection: stdio)`);
         } catch (error) {
           console.warn('⚠️  Failed to initialize session tracking:', error);
           console.warn('   Contexts will be stored without session association');
