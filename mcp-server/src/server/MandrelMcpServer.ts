@@ -154,7 +154,7 @@ export default class MandrelMcpServer {
 
         const validatedArgs = validation.data;
 
-        return this.executeToolOperation(toolName, validatedArgs);
+        return this.executeToolOperation(toolName, validatedArgs, connectionId);
       },
       {
         correlationId,
@@ -182,10 +182,10 @@ export default class MandrelMcpServer {
    * Phase 6.3: Execute the actual tool operation via route dispatcher
    * All tool routing logic moved to routes/index.ts
    */
-  private async executeToolOperation(toolName: string, validatedArgs: any): Promise<any> {
-    // Delegate to centralized route executor
+  private async executeToolOperation(toolName: string, validatedArgs: any, connectionId?: string): Promise<any> {
+    // Delegate to centralized route executor with connection context for session isolation
     // All 38 MCP tools now handled by domain-based route modules
-    return await routeExecutor(toolName, validatedArgs);
+    return await routeExecutor(toolName, validatedArgs, { connectionId });
   }
 
   /**

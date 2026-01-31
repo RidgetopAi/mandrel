@@ -15,10 +15,17 @@ import { tasksRoutes } from './tasks.routes.js';
 import { searchRoutes } from './search.routes.js';
 
 /**
+ * Execution context passed through route handlers
+ */
+export interface RouteContext {
+  connectionId?: string;
+}
+
+/**
  * Execute MCP Tool via Route Dispatcher
  * Central entry point for all 36 active MCP tools
  */
-export async function routeExecutor(toolName: string, args: any): Promise<McpResponse> {
+export async function routeExecutor(toolName: string, args: any, context?: RouteContext): Promise<McpResponse> {
   try {
     // Log deprecation warning for old tool names
     const deprecatedTools = ['aidis_ping', 'aidis_status', 'aidis_help', 'aidis_explain', 'aidis_examples'];
@@ -55,15 +62,15 @@ export async function routeExecutor(toolName: string, args: any): Promise<McpRes
       case 'context_stats':
         return await contextRoutes.handleStats(args);
 
-      // Project Management (6 tools)
+      // Project Management (6 tools) - pass context for session isolation
       case 'project_list':
-        return await projectRoutes.handleList(args);
+        return await projectRoutes.handleList(args, context);
       case 'project_create':
         return await projectRoutes.handleCreate(args);
       case 'project_switch':
-        return await projectRoutes.handleSwitch(args);
+        return await projectRoutes.handleSwitch(args, context);
       case 'project_current':
-        return await projectRoutes.handleCurrent(args);
+        return await projectRoutes.handleCurrent(args, context);
       case 'project_info':
         return await projectRoutes.handleInfo(args);
 
