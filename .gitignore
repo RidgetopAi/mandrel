@@ -147,7 +147,6 @@ sample.py
 
 # AIDIS specific - development scripts
 aidis-stdio-mock*.js
-claude-http-mcp-bridge*.js
 compare-mcp-servers.js
 debug-mcp-protocol.js
 emergency-rollback.sh
