@@ -1,7 +1,9 @@
 import { contextHandler } from '../handlers/context.js';
+import { projectHandler } from '../handlers/project.js';
 import { SessionTrackingMiddleware } from '../api/middleware/sessionTracking.js';
 import { formatMcpError } from '../utils/mcpFormatter.js';
 import type { McpResponse } from '../utils/mcpFormatter.js';
+import type { RouteContext } from './index.js';
 import { db } from '../config/database.js';
 
 /**
@@ -9,6 +11,26 @@ import { db } from '../config/database.js';
  * Handles: context_store, context_search, context_get_recent, context_stats
  */
 class ContextRoutes {
+  /**
+   * Get session ID from context for connection-scoped isolation
+   * Uses connectionId if available, otherwise falls back to default
+   */
+  private getSessionId(context?: RouteContext): string {
+    return context?.connectionId || 'default-session';
+  }
+
+  /**
+   * Resolve the project ID using connection-scoped session state
+   * If args.projectId is explicit, use that. Otherwise resolve from switched project.
+   */
+  private async resolveProjectId(argsProjectId: string | undefined, context?: RouteContext): Promise<string | undefined> {
+    if (argsProjectId) return argsProjectId;
+
+    const sessionId = this.getSessionId(context);
+    await projectHandler.initializeSession(sessionId);
+    const projectId = await projectHandler.getCurrentProjectId(sessionId);
+    return projectId || undefined;
+  }
   /**
    * Helper to format relative time
    */
@@ -28,9 +50,11 @@ class ContextRoutes {
   /**
    * Handle context storage requests
    */
-  async handleStore(args: any): Promise<McpResponse> {
+  async handleStore(args: any, context?: RouteContext): Promise<McpResponse> {
     try {
-      console.log('📝 Context store request received');
+      const sessionId = this.getSessionId(context);
+      const projectId = await this.resolveProjectId(args.projectId, context);
+      console.log(`📝 Context store request received (session: ${sessionId}, project: ${projectId?.substring(0, 8)}...)`);
 
       const result = await contextHandler.storeContext({
         content: args.content,
@@ -38,7 +62,7 @@ class ContextRoutes {
         tags: args.tags,
         relevanceScore: args.relevanceScore,
         metadata: args.metadata,
-        projectId: args.projectId,
+        projectId: projectId,
         sessionId: args.sessionId
       });
 
@@ -71,7 +95,7 @@ class ContextRoutes {
    * Handle context search requests
    * Supports both semantic search (query) and direct ID lookup (id)
    */
-  async handleSearch(args: any): Promise<McpResponse> {
+  async handleSearch(args: any, context?: RouteContext): Promise<McpResponse> {
     try {
       // Direct lookup by ID - bypasses semantic search entirely
       if (args.id) {
@@ -111,13 +135,14 @@ class ContextRoutes {
 
       console.log(`🔍 Context search request: "${args.query}"`);
 
+      const projectId = await this.resolveProjectId(args.projectId, context);
       const results = await contextHandler.searchContext({
         query: args.query,
         type: args.type,
         tags: args.tags,
         limit: args.limit,
         minSimilarity: args.minSimilarity,
-        projectId: args.projectId
+        projectId: projectId
       });
 
       if (results.length === 0) {
@@ -158,11 +183,12 @@ class ContextRoutes {
   /**
    * Handle context get recent requests
    */
-  async handleGetRecent(args: any): Promise<McpResponse> {
+  async handleGetRecent(args: any, context?: RouteContext): Promise<McpResponse> {
     try {
-      console.log(`📋 Context get recent request (limit: ${args.limit || 5})`);
+      const projectId = await this.resolveProjectId(args.projectId, context);
+      console.log(`📋 Context get recent request (limit: ${args.limit || 5}, project: ${projectId?.substring(0, 8)}...)`);
 
-      const results = await contextHandler.getRecentContext(args.projectId, args.limit);
+      const results = await contextHandler.getRecentContext(projectId, args.limit);
 
       if (results.length === 0) {
         return {
@@ -201,11 +227,12 @@ class ContextRoutes {
   /**
    * Handle context statistics requests
    */
-  async handleStats(args: any): Promise<McpResponse> {
+  async handleStats(args: any, context?: RouteContext): Promise<McpResponse> {
     try {
-      console.log('📊 Context stats request received');
+      const projectId = await this.resolveProjectId(args.projectId, context);
+      console.log(`📊 Context stats request received (project: ${projectId?.substring(0, 8)}...)`);
 
-      const stats = await contextHandler.getContextStats(args.projectId);
+      const stats = await contextHandler.getContextStats(projectId);
 
       const typeBreakdown = Object.entries(stats.contextsByType)
         .map(([type, count]) => `   ${type}: ${count}`)

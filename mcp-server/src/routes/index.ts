@@ -52,15 +52,15 @@ export async function routeExecutor(toolName: string, args: any, context?: Route
       case 'aidis_examples': // DEPRECATED - use mandrel_examples
         return await systemRoutes.handleExamples(args);
 
-      // Context Management (4 tools)
+      // Context Management (4 tools) - pass context for session isolation
       case 'context_store':
-        return await contextRoutes.handleStore(args);
+        return await contextRoutes.handleStore(args, context);
       case 'context_search':
-        return await contextRoutes.handleSearch(args);
+        return await contextRoutes.handleSearch(args, context);
       case 'context_get_recent':
-        return await contextRoutes.handleGetRecent(args);
+        return await contextRoutes.handleGetRecent(args, context);
       case 'context_stats':
-        return await contextRoutes.handleStats(args);
+        return await contextRoutes.handleStats(args, context);
 
       // Project Management (6 tools) - pass context for session isolation
       case 'project_list':
