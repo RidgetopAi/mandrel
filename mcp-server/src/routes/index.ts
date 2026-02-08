@@ -74,41 +74,41 @@ export async function routeExecutor(toolName: string, args: any, context?: Route
       case 'project_info':
         return await projectRoutes.handleInfo(args);
 
-      // Technical Decisions (4 tools)
+      // Technical Decisions (4 tools) - pass context for session isolation
       case 'decision_record':
-        return await decisionsRoutes.handleRecord(args);
+        return await decisionsRoutes.handleRecord(args, context);
       case 'decision_search':
-        return await decisionsRoutes.handleSearch(args);
+        return await decisionsRoutes.handleSearch(args, context);
       case 'decision_update':
         return await decisionsRoutes.handleUpdate(args);
       case 'decision_stats':
-        return await decisionsRoutes.handleStats(args);
+        return await decisionsRoutes.handleStats(args, context);
 
-      // Task Management (6 tools)
+      // Task Management (6 tools) - pass context for session isolation
       case 'task_create':
-        return await tasksRoutes.handleCreate(args);
+        return await tasksRoutes.handleCreate(args, context);
       case 'task_list':
-        return await tasksRoutes.handleList(args);
+        return await tasksRoutes.handleList(args, context);
       case 'task_update':
         return await tasksRoutes.handleUpdate(args);
       case 'task_details':
-        return await tasksRoutes.handleDetails(args);
+        return await tasksRoutes.handleDetails(args, context);
       case 'task_bulk_update':
-        return await tasksRoutes.handleBulkUpdate(args);
+        return await tasksRoutes.handleBulkUpdate(args, context);
       case 'task_progress_summary':
-        return await tasksRoutes.handleProgressSummary(args);
+        return await tasksRoutes.handleProgressSummary(args, context);
 
       // Session Management (5 tools) - DELETED (2025-10-24)
       // Sessions auto-manage via SessionTracker service
       // REST API endpoints at /api/v2/sessions/* handle UI analytics
 
-      // Smart Search & AI (3 tools)
+      // Smart Search & AI (3 tools) - pass context for session isolation
       case 'smart_search':
-        return await searchRoutes.handleSmartSearch(args);
+        return await searchRoutes.handleSmartSearch(args, context);
       case 'get_recommendations':
-        return await searchRoutes.handleRecommendations(args);
+        return await searchRoutes.handleRecommendations(args, context);
       case 'project_insights':
-        return await searchRoutes.handleProjectInsights(args);
+        return await searchRoutes.handleProjectInsights(args, context);
 
       // Unknown tool
       default:
