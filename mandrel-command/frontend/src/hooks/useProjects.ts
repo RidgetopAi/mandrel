@@ -163,11 +163,6 @@ export const useCreateProject = () => {
       // Invalidate and refetch projects list
       queryClient.invalidateQueries({ queryKey: projectQueryKeys.lists() });
 
-      // Optionally add the new project to the cache
-      queryClient.setQueryData(
-        projectQueryKeys.detail(newProject.data?.project?.id || ''),
-        newProject.data?.project as Project
-      );
 
       // Invalidate stats since we have a new project
       queryClient.invalidateQueries({ queryKey: projectQueryKeys.stats() });
@@ -187,12 +182,9 @@ export const useUpdateProject = () => {
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: UpdateProjectRequest }) =>
       ProjectsService.putProjects({ id, requestBody: data }),
-    onSuccess: (updatedProject, variables) => {
-      // Update the specific project in cache
-      queryClient.setQueryData(
-        projectQueryKeys.detail(variables.id),
-        updatedProject.data?.project as Project
-      );
+    onSuccess: (_updatedProject, variables) => {
+      // Invalidate detail cache so it refetches full API response shape
+      queryClient.invalidateQueries({ queryKey: projectQueryKeys.detail(variables.id) });
 
       // Invalidate projects list to ensure it's fresh
       queryClient.invalidateQueries({ queryKey: projectQueryKeys.lists() });
@@ -296,11 +288,8 @@ export const useUpdateSession = () => {
     mutationFn: ({ sessionId, updates }: { sessionId: string; updates: UpdateSessionRequest }) =>
       sessionsClient.updateSession(sessionId, updates),
     onSuccess: (updatedSession, variables) => {
-      // Update the specific session in cache
-      queryClient.setQueryData(
-        sessionQueryKeys.detail(variables.sessionId),
-        updatedSession
-      );
+      // Invalidate the specific session cache
+      queryClient.invalidateQueries({ queryKey: sessionQueryKeys.detail(variables.sessionId) });
 
       // Invalidate session lists to ensure they're fresh
       queryClient.invalidateQueries({ queryKey: sessionQueryKeys.lists() });
