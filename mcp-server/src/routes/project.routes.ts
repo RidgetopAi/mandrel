@@ -2,6 +2,7 @@ import { projectHandler } from '../handlers/project.js';
 import { switchProjectWithValidation } from '../services/projectSwitchValidator.js';
 import { formatMcpError } from '../utils/mcpFormatter.js';
 import type { McpResponse } from '../utils/mcpFormatter.js';
+import type { RouteContext } from './index.js';
 
 /**
  * Project Management Routes
@@ -9,22 +10,23 @@ import type { McpResponse } from '../utils/mcpFormatter.js';
  */
 class ProjectRoutes {
   /**
-   * Get current session ID (placeholder for future session tracking enhancement)
+   * Get session ID from context for connection-scoped isolation
+   * Uses connectionId if available, otherwise falls back to default
    */
-  private getCurrentSessionId(): string {
-    // In future versions, this would come from proper session tracking
-    // For now, use a default session ID that integrates with existing ProjectHandler
-    return 'default-session';
+  private getSessionId(context?: RouteContext): string {
+    // Use connectionId for session isolation, or fall back to default
+    return context?.connectionId || 'default-session';
   }
 
   /**
    * Handle project listing requests
    */
-  async handleList(args: any): Promise<McpResponse> {
+  async handleList(args: any, context?: RouteContext): Promise<McpResponse> {
     try {
       console.log('📋 Project list request received');
+      const sessionId = this.getSessionId(context);
 
-      await projectHandler.initializeSession(); // Ensure session is initialized
+      await projectHandler.initializeSession(sessionId); // Ensure session is initialized
       const projects = await projectHandler.listProjects(args.includeStats !== false);
 
       if (projects.length === 0) {
@@ -96,15 +98,13 @@ class ProjectRoutes {
   /**
    * Handle project switching requests with TS012 validation framework
    */
-  async handleSwitch(args: any): Promise<McpResponse> {
+  async handleSwitch(args: any, context?: RouteContext): Promise<McpResponse> {
     try {
-      console.log(`🔄 [TS012] Project switch request: "${args.project}"`);
-
-      // Get current session ID (in future this could come from session tracking)
-      const sessionId = this.getCurrentSessionId();
+      const sessionId = this.getSessionId(context);
+      console.log(`🔄 [TS012] Project switch request: "${args.project}" (session: ${sessionId})`);
 
       // Use enhanced validation switching (now from projectSwitchValidator to avoid circular dependency)
-      const project = await switchProjectWithValidation(args.project, sessionId || 'default-session');
+      const project = await switchProjectWithValidation(args.project, sessionId);
 
       // Log successful switch for metrics and monitoring
       const switchMetrics = {
@@ -134,7 +134,7 @@ class ProjectRoutes {
 
       // Log failed switch for metrics and monitoring
       const errorMetrics = {
-        sessionId: this.getCurrentSessionId(),
+        sessionId: this.getSessionId(context),
         targetProject: args.project,
         switchSuccessful: false,
         timestamp: new Date(),
@@ -178,15 +178,16 @@ class ProjectRoutes {
   /**
    * Handle current project requests
    */
-  async handleCurrent(_args: any): Promise<McpResponse> {
+  async handleCurrent(_args: any, context?: RouteContext): Promise<McpResponse> {
     try {
-      console.log('🔍 Current project request received');
+      const sessionId = this.getSessionId(context);
+      console.log(`🔍 Current project request received (session: ${sessionId})`);
 
-      const project = await projectHandler.getCurrentProject();
+      const project = await projectHandler.getCurrentProject(sessionId);
 
       if (!project) {
-        await projectHandler.initializeSession();
-        const initializedProject = await projectHandler.getCurrentProject();
+        await projectHandler.initializeSession(sessionId);
+        const initializedProject = await projectHandler.getCurrentProject(sessionId);
 
         if (!initializedProject) {
           return {

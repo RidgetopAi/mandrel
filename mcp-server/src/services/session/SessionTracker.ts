@@ -9,6 +9,7 @@ import { SessionLifecycleService } from './domain/lifecycle/index.js';
 import { TokenTracker, OperationTracker } from './domain/tracking/index.js';
 import { SessionStatsService } from './domain/stats/index.js';
 import { SessionRepo, ActivityRepo, FileRepo } from './infra/db/index.js';
+import { ActiveSessionStore } from './state/index.js';
 import { GitFileSync } from './infra/git/index.js';
 import type { SessionData, SessionStats, SessionActivity, SessionFile } from './types.js';
 
@@ -22,7 +23,20 @@ export type { ProductivityConfig } from '../../types/session.js';
  */
 export class SessionTracker {
   /**
+   * Backward-compatible default active session accessor.
+   * Prefer getActiveSession/setActiveSession for new code.
+   */
+  static get activeSessionId(): string | null {
+    return ActiveSessionStore.get();
+  }
+
+  static set activeSessionId(sessionId: string | null) {
+    ActiveSessionStore.set(sessionId);
+  }
+
+  /**
    * Start a new session with smart project inheritance
+   * @param connectionId - Optional connection identifier for session isolation
    */
   static async startSession(
     projectId?: string,
@@ -31,7 +45,8 @@ export class SessionTracker {
     sessionGoal?: string,
     tags?: string[],
     aiModel?: string,
-    sessionType?: 'mcp-server' | 'AI Model'
+    sessionType?: 'mcp-server' | 'AI Model',
+    connectionId?: string
   ): Promise<string> {
     return SessionLifecycleService.startSession({
       projectId,
@@ -40,7 +55,8 @@ export class SessionTracker {
       sessionGoal,
       tags,
       aiModel,
-      sessionType
+      sessionType,
+      connectionId
     });
   }
 
@@ -52,24 +68,27 @@ export class SessionTracker {
   }
 
   /**
-   * Get currently active session ID
+   * Get currently active session ID for a connection
+   * @param connectionId - Optional connection identifier for session isolation
    */
-  static async getActiveSession(): Promise<string | null> {
-    return SessionLifecycleService.getActiveSession();
+  static async getActiveSession(connectionId?: string): Promise<string | null> {
+    return SessionLifecycleService.getActiveSession(connectionId);
   }
 
   /**
-   * Clear active session from memory
+   * Clear active session from memory for a connection
+   * @param connectionId - Optional connection identifier for session isolation
    */
-  static clearActiveSession(): void {
-    SessionLifecycleService.clearActiveSession();
+  static clearActiveSession(connectionId?: string): void {
+    SessionLifecycleService.clearActiveSession(connectionId);
   }
 
   /**
-   * Set active session explicitly
+   * Set active session explicitly for a connection
+   * @param connectionId - Optional connection identifier for session isolation
    */
-  static setActiveSession(sessionId: string | null): void {
-    SessionLifecycleService.setActiveSession(sessionId);
+  static setActiveSession(sessionId: string | null, connectionId?: string): void {
+    SessionLifecycleService.setActiveSession(sessionId, connectionId);
   }
 
   /**
@@ -314,7 +333,8 @@ export class SessionTracker {
  */
 
 /**
- * Auto-start session if none exists
+ * Auto-start session if none exists for this connection
+ * @param connectionId - Optional connection identifier for session isolation
  */
 export async function ensureActiveSession(
   projectId?: string,
@@ -322,12 +342,15 @@ export async function ensureActiveSession(
   description?: string,
   sessionGoal?: string,
   tags?: string[],
-  aiModel?: string
+  aiModel?: string,
+  connectionId?: string
 ): Promise<string> {
-  let sessionId = await SessionTracker.getActiveSession();
+  let sessionId = await SessionTracker.getActiveSession(connectionId);
 
   if (!sessionId) {
-    sessionId = await SessionTracker.startSession(projectId, title, description, sessionGoal, tags, aiModel);
+    sessionId = await SessionTracker.startSession(
+      projectId, title, description, sessionGoal, tags, aiModel, undefined, connectionId
+    );
   }
 
   return sessionId;

@@ -1,7 +1,9 @@
 import { decisionsHandler } from '../handlers/decisions.js';
+import { projectHandler } from '../handlers/project.js';
 import { SessionTrackingMiddleware } from '../api/middleware/sessionTracking.js';
 import { formatMcpError } from '../utils/mcpFormatter.js';
 import type { McpResponse } from '../utils/mcpFormatter.js';
+import type { RouteContext } from './index.js';
 
 /**
  * Technical Decisions Routes
@@ -9,11 +11,22 @@ import type { McpResponse } from '../utils/mcpFormatter.js';
  */
 class DecisionsRoutes {
   /**
+   * Resolve project ID using connection-scoped session state
+   */
+  private async resolveProjectId(argsProjectId: string | undefined, context?: RouteContext): Promise<string | undefined> {
+    if (argsProjectId) return argsProjectId;
+    const sessionId = context?.connectionId || 'default-session';
+    await projectHandler.initializeSession(sessionId);
+    const projectId = await projectHandler.getCurrentProjectId(sessionId);
+    return projectId || undefined;
+  }
+  /**
    * Handle decision record requests
    */
-  async handleRecord(args: any): Promise<McpResponse> {
+  async handleRecord(args: any, context?: RouteContext): Promise<McpResponse> {
     try {
-      console.log(`📝 Decision record request: ${args.decisionType}`);
+      const projectId = await this.resolveProjectId(args.projectId, context);
+      console.log(`📝 Decision record request: ${args.decisionType} (project: ${projectId?.substring(0, 8)}...)`);
 
       const decision = await decisionsHandler.recordDecision({
         decisionType: args.decisionType,
@@ -25,7 +38,7 @@ class DecisionsRoutes {
         problemStatement: args.problemStatement,
         affectedComponents: args.affectedComponents,
         tags: args.tags,
-        projectId: args.projectId
+        projectId: projectId
       });
 
       // Auto-track decision_recorded activity in session
@@ -64,9 +77,10 @@ class DecisionsRoutes {
   /**
    * Handle decision search requests
    */
-  async handleSearch(args: any): Promise<McpResponse> {
+  async handleSearch(args: any, context?: RouteContext): Promise<McpResponse> {
     try {
-      console.log(`🔍 Decision search request`);
+      const projectId = await this.resolveProjectId(args.projectId, context);
+      console.log(`🔍 Decision search request (project: ${projectId?.substring(0, 8)}...)`);
 
       const decisions = await decisionsHandler.searchDecisions({
         query: args.query,
@@ -75,7 +89,7 @@ class DecisionsRoutes {
         component: args.component,
         tags: args.tags,
         limit: args.limit,
-        projectId: args.projectId
+        projectId: projectId
       });
 
       if (decisions.length === 0) {
@@ -189,11 +203,12 @@ class DecisionsRoutes {
   /**
    * Handle decision stats requests
    */
-  async handleStats(args: any): Promise<McpResponse> {
+  async handleStats(args: any, context?: RouteContext): Promise<McpResponse> {
     try {
-      console.log('📊 Decision stats request received');
+      const projectId = await this.resolveProjectId(args.projectId, context);
+      console.log(`📊 Decision stats request received (project: ${projectId?.substring(0, 8)}...)`);
 
-      const stats = await decisionsHandler.getDecisionStats(args.projectId);
+      const stats = await decisionsHandler.getDecisionStats(projectId);
 
       const typeBreakdown = Object.entries(stats.decisionsByType)
         .map(([type, count]) => `   ${type}: ${count}`)

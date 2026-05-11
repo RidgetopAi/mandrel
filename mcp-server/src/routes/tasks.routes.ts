@@ -2,6 +2,7 @@ import { tasksHandler } from '../handlers/tasks.js';
 import { projectHandler } from '../handlers/project.js';
 import { formatMcpError } from '../utils/mcpFormatter.js';
 import type { McpResponse } from '../utils/mcpFormatter.js';
+import type { RouteContext } from './index.js';
 
 /**
  * Task Management Routes
@@ -9,13 +10,22 @@ import type { McpResponse } from '../utils/mcpFormatter.js';
  */
 class TasksRoutes {
   /**
+   * Resolve project ID using connection-scoped session state
+   */
+  private async resolveProjectId(argsProjectId: string | undefined, context?: RouteContext): Promise<string> {
+    if (argsProjectId) return argsProjectId;
+    const sessionId = context?.connectionId || 'default-session';
+    await projectHandler.initializeSession(sessionId);
+    const projectId = await projectHandler.getCurrentProjectId(sessionId);
+    if (!projectId) throw new Error('No current project set. Use project_switch to set an active project.');
+    return projectId;
+  }
+  /**
    * Handle task creation requests
    */
-  async handleCreate(args: any): Promise<McpResponse> {
+  async handleCreate(args: any, context?: RouteContext): Promise<McpResponse> {
     try {
-      // Ensure session is initialized before getting project ID
-      await projectHandler.initializeSession('default-session');
-      const projectId = args.projectId || await projectHandler.getCurrentProjectId('default-session');
+      const projectId = await this.resolveProjectId(args.projectId, context);
 
       const task = await tasksHandler.createTask(
         projectId,
@@ -58,9 +68,9 @@ class TasksRoutes {
   /**
    * Handle task list requests
    */
-  async handleList(args: any): Promise<McpResponse> {
+  async handleList(args: any, context?: RouteContext): Promise<McpResponse> {
     try {
-      const projectId = args.projectId || await projectHandler.getCurrentProjectId('default-session');
+      const projectId = await this.resolveProjectId(args.projectId, context);
       const tasks = await tasksHandler.listTasks(
         projectId,
         args.assignedTo,
@@ -158,9 +168,9 @@ class TasksRoutes {
   /**
    * Handle bulk task update requests
    */
-  async handleBulkUpdate(args: any): Promise<McpResponse> {
+  async handleBulkUpdate(args: any, context?: RouteContext): Promise<McpResponse> {
     try {
-      const projectId = args.projectId || await projectHandler.getCurrentProjectId('default-session');
+      const projectId = await this.resolveProjectId(args.projectId, context);
 
       const result = await tasksHandler.bulkUpdateTasks(args.task_ids, {
         status: args.status,
@@ -224,9 +234,9 @@ class TasksRoutes {
   /**
    * Handle task progress summary requests
    */
-  async handleProgressSummary(args: any): Promise<McpResponse> {
+  async handleProgressSummary(args: any, context?: RouteContext): Promise<McpResponse> {
     try {
-      const projectId = args.projectId || await projectHandler.getCurrentProjectId('default-session');
+      const projectId = await this.resolveProjectId(args.projectId, context);
       const groupBy = args.groupBy || 'phase';
 
       const summary = await tasksHandler.getTaskProgressSummary(projectId, groupBy);
@@ -289,9 +299,9 @@ class TasksRoutes {
   /**
    * Handle task details requests
    */
-  async handleDetails(args: any): Promise<McpResponse> {
+  async handleDetails(args: any, context?: RouteContext): Promise<McpResponse> {
     try {
-      const projectId = args.projectId || await projectHandler.getCurrentProjectId('default-session');
+      const projectId = await this.resolveProjectId(args.projectId, context);
 
       // Get single task with full details
       const tasks = await tasksHandler.listTasks(projectId);
