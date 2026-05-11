@@ -19,6 +19,7 @@ export interface StartSessionOptions {
   tags?: string[];
   aiModel?: string;
   sessionType?: 'mcp-server' | 'AI Model';
+  connectionId?: string;
 }
 
 export const SessionLifecycleService = {
@@ -81,10 +82,10 @@ export const SessionLifecycleService = {
         start_time: startTime.toISOString()
       });
 
-      // Set as active session
-      ActiveSessionStore.set(sessionId);
+      // Set as active session for this connection
+      ActiveSessionStore.set(sessionId, options.connectionId);
 
-      console.log(`✅ Session started: ${sessionId.substring(0, 8)}...`);
+      console.log(`✅ Session started: ${sessionId.substring(0, 8)}...${options.connectionId ? ` (connection: ${options.connectionId})` : ''}`);
       return sessionId;
 
     } catch (error) {
@@ -183,21 +184,24 @@ export const SessionLifecycleService = {
   },
 
   /**
-   * Get currently active session ID
+   * Get currently active session ID for a connection
+   * @param connectionId - Optional connection identifier for isolation
    */
-  async getActiveSession(): Promise<string | null> {
+  async getActiveSession(connectionId?: string): Promise<string | null> {
     try {
       // Check in-memory first
-      const memorySession = ActiveSessionStore.get();
+      const memorySession = ActiveSessionStore.get(connectionId);
       if (memorySession) {
         return memorySession;
       }
 
-      // Fall back to database
-      const dbSession = await SessionRepo.getLastActive();
-      if (dbSession) {
-        ActiveSessionStore.set(dbSession);
-        return dbSession;
+      // Fall back to database only for default connection (backwards compatibility)
+      if (!connectionId) {
+        const dbSession = await SessionRepo.getLastActive();
+        if (dbSession) {
+          ActiveSessionStore.set(dbSession, connectionId);
+          return dbSession;
+        }
       }
 
       return null;
@@ -209,26 +213,28 @@ export const SessionLifecycleService = {
   },
 
   /**
-   * Clear active session from memory
+   * Clear active session from memory for a connection
+   * @param connectionId - Optional connection identifier for isolation
    */
-  clearActiveSession(): void {
-    const currentId = ActiveSessionStore.get();
+  clearActiveSession(connectionId?: string): void {
+    const currentId = ActiveSessionStore.get(connectionId);
     if (currentId) {
-      console.log(`🧹 Clearing active session: ${currentId.substring(0, 8)}...`);
-      ActiveSessionStore.clear();
+      console.log(`🧹 Clearing active session: ${currentId.substring(0, 8)}...${connectionId ? ` (connection: ${connectionId})` : ''}`);
+      ActiveSessionStore.clear(connectionId);
     }
   },
 
   /**
-   * Set active session explicitly
+   * Set active session explicitly for a connection
+   * @param connectionId - Optional connection identifier for isolation
    */
-  setActiveSession(sessionId: string | null): void {
+  setActiveSession(sessionId: string | null, connectionId?: string): void {
     if (sessionId) {
-      console.log(`📌 Setting active session: ${sessionId.substring(0, 8)}...`);
+      console.log(`📌 Setting active session: ${sessionId.substring(0, 8)}...${connectionId ? ` (connection: ${connectionId})` : ''}`);
     } else {
-      console.log(`🧹 Clearing active session explicitly`);
+      console.log(`🧹 Clearing active session explicitly${connectionId ? ` (connection: ${connectionId})` : ''}`);
     }
-    ActiveSessionStore.set(sessionId);
+    ActiveSessionStore.set(sessionId, connectionId);
   },
 
   /**

@@ -2,6 +2,7 @@ import { smartSearchHandler } from '../handlers/smartSearch.js';
 import { projectHandler } from '../handlers/project.js';
 import { formatMcpError } from '../utils/mcpFormatter.js';
 import type { McpResponse } from '../utils/mcpFormatter.js';
+import type { RouteContext } from './index.js';
 
 /**
  * Smart Search & AI Routes
@@ -9,25 +10,34 @@ import type { McpResponse } from '../utils/mcpFormatter.js';
  */
 class SearchRoutes {
   /**
+   * Resolve project ID using connection-scoped session state
+   */
+  private async resolveProjectId(argsProjectId: string | undefined, context?: RouteContext): Promise<string | null> {
+    if (argsProjectId) {
+      const project = await projectHandler.getProject(argsProjectId);
+      if (!project) return null;
+      return project.id;
+    }
+    const sessionId = context?.connectionId || 'default-session';
+    await projectHandler.initializeSession(sessionId);
+    return await projectHandler.getCurrentProjectId(sessionId);
+  }
+
+  /**
    * Handle smart search requests
    */
-  async handleSmartSearch(args: any): Promise<McpResponse> {
+  async handleSmartSearch(args: any, context?: RouteContext): Promise<McpResponse> {
     try {
-      // Resolve project identifier (name or UUID) to UUID
-      let projectId = args.projectId;
-      if (projectId) {
-        const project = await projectHandler.getProject(projectId);
-        if (!project) {
-          return {
-            content: [{
-              type: 'text',
-              text: `❌ Project "${projectId}" not found\n\n💡 Use project_list to see available projects`
-            }]
-          };
-        }
-        projectId = project.id;
-      } else {
-        projectId = await projectHandler.getCurrentProjectId('default-session');
+      const projectId = await this.resolveProjectId(args.projectId, context);
+      if (!projectId) {
+        return {
+          content: [{
+            type: 'text',
+            text: args.projectId
+              ? `❌ Project "${args.projectId}" not found\n\n💡 Use project_list to see available projects`
+              : `❌ No current project set\n\n💡 Use project_switch to set an active project`
+          }]
+        };
       }
 
       const results = await smartSearchHandler.smartSearch(
@@ -82,23 +92,18 @@ class SearchRoutes {
   /**
    * Handle recommendations requests
    */
-  async handleRecommendations(args: any): Promise<McpResponse> {
+  async handleRecommendations(args: any, context?: RouteContext): Promise<McpResponse> {
     try {
-      // Resolve project identifier (name or UUID) to UUID
-      let projectId = args.projectId;
-      if (projectId) {
-        const project = await projectHandler.getProject(projectId);
-        if (!project) {
-          return {
-            content: [{
-              type: 'text',
-              text: `❌ Project "${projectId}" not found\n\n💡 Use project_list to see available projects`
-            }]
-          };
-        }
-        projectId = project.id;
-      } else {
-        projectId = await projectHandler.getCurrentProjectId('default-session');
+      const projectId = await this.resolveProjectId(args.projectId, context);
+      if (!projectId) {
+        return {
+          content: [{
+            type: 'text',
+            text: args.projectId
+              ? `❌ Project "${args.projectId}" not found\n\n💡 Use project_list to see available projects`
+              : `❌ No current project set\n\n💡 Use project_switch to set an active project`
+          }]
+        };
       }
 
       const recommendations = await smartSearchHandler.getRecommendations(
@@ -151,23 +156,18 @@ class SearchRoutes {
   /**
    * Handle project insights requests
    */
-  async handleProjectInsights(args: any): Promise<McpResponse> {
+  async handleProjectInsights(args: any, context?: RouteContext): Promise<McpResponse> {
     try {
-      // Resolve project identifier (name or UUID) to UUID
-      let projectId = args.projectId;
-      if (projectId) {
-        const project = await projectHandler.getProject(projectId);
-        if (!project) {
-          return {
-            content: [{
-              type: 'text',
-              text: `❌ Project "${projectId}" not found\n\n💡 Use project_list to see available projects`
-            }]
-          };
-        }
-        projectId = project.id;
-      } else {
-        projectId = await projectHandler.getCurrentProjectId('default-session');
+      const projectId = await this.resolveProjectId(args.projectId, context);
+      if (!projectId) {
+        return {
+          content: [{
+            type: 'text',
+            text: args.projectId
+              ? `❌ Project "${args.projectId}" not found\n\n💡 Use project_list to see available projects`
+              : `❌ No current project set\n\n💡 Use project_switch to set an active project`
+          }]
+        };
       }
 
       const insights = await smartSearchHandler.getProjectInsights(projectId);

@@ -15,10 +15,17 @@ import { tasksRoutes } from './tasks.routes.js';
 import { searchRoutes } from './search.routes.js';
 
 /**
+ * Execution context passed through route handlers
+ */
+export interface RouteContext {
+  connectionId?: string;
+}
+
+/**
  * Execute MCP Tool via Route Dispatcher
  * Central entry point for all 36 active MCP tools
  */
-export async function routeExecutor(toolName: string, args: any): Promise<McpResponse> {
+export async function routeExecutor(toolName: string, args: any, context?: RouteContext): Promise<McpResponse> {
   try {
     // Log deprecation warning for old tool names
     const deprecatedTools = ['aidis_ping', 'aidis_status', 'aidis_help', 'aidis_explain', 'aidis_examples'];
@@ -45,63 +52,63 @@ export async function routeExecutor(toolName: string, args: any): Promise<McpRes
       case 'aidis_examples': // DEPRECATED - use mandrel_examples
         return await systemRoutes.handleExamples(args);
 
-      // Context Management (4 tools)
+      // Context Management (4 tools) - pass context for session isolation
       case 'context_store':
-        return await contextRoutes.handleStore(args);
+        return await contextRoutes.handleStore(args, context);
       case 'context_search':
-        return await contextRoutes.handleSearch(args);
+        return await contextRoutes.handleSearch(args, context);
       case 'context_get_recent':
-        return await contextRoutes.handleGetRecent(args);
+        return await contextRoutes.handleGetRecent(args, context);
       case 'context_stats':
-        return await contextRoutes.handleStats(args);
+        return await contextRoutes.handleStats(args, context);
 
-      // Project Management (6 tools)
+      // Project Management (6 tools) - pass context for session isolation
       case 'project_list':
-        return await projectRoutes.handleList(args);
+        return await projectRoutes.handleList(args, context);
       case 'project_create':
         return await projectRoutes.handleCreate(args);
       case 'project_switch':
-        return await projectRoutes.handleSwitch(args);
+        return await projectRoutes.handleSwitch(args, context);
       case 'project_current':
-        return await projectRoutes.handleCurrent(args);
+        return await projectRoutes.handleCurrent(args, context);
       case 'project_info':
         return await projectRoutes.handleInfo(args);
 
-      // Technical Decisions (4 tools)
+      // Technical Decisions (4 tools) - pass context for session isolation
       case 'decision_record':
-        return await decisionsRoutes.handleRecord(args);
+        return await decisionsRoutes.handleRecord(args, context);
       case 'decision_search':
-        return await decisionsRoutes.handleSearch(args);
+        return await decisionsRoutes.handleSearch(args, context);
       case 'decision_update':
         return await decisionsRoutes.handleUpdate(args);
       case 'decision_stats':
-        return await decisionsRoutes.handleStats(args);
+        return await decisionsRoutes.handleStats(args, context);
 
-      // Task Management (6 tools)
+      // Task Management (6 tools) - pass context for session isolation
       case 'task_create':
-        return await tasksRoutes.handleCreate(args);
+        return await tasksRoutes.handleCreate(args, context);
       case 'task_list':
-        return await tasksRoutes.handleList(args);
+        return await tasksRoutes.handleList(args, context);
       case 'task_update':
         return await tasksRoutes.handleUpdate(args);
       case 'task_details':
-        return await tasksRoutes.handleDetails(args);
+        return await tasksRoutes.handleDetails(args, context);
       case 'task_bulk_update':
-        return await tasksRoutes.handleBulkUpdate(args);
+        return await tasksRoutes.handleBulkUpdate(args, context);
       case 'task_progress_summary':
-        return await tasksRoutes.handleProgressSummary(args);
+        return await tasksRoutes.handleProgressSummary(args, context);
 
       // Session Management (5 tools) - DELETED (2025-10-24)
       // Sessions auto-manage via SessionTracker service
       // REST API endpoints at /api/v2/sessions/* handle UI analytics
 
-      // Smart Search & AI (3 tools)
+      // Smart Search & AI (3 tools) - pass context for session isolation
       case 'smart_search':
-        return await searchRoutes.handleSmartSearch(args);
+        return await searchRoutes.handleSmartSearch(args, context);
       case 'get_recommendations':
-        return await searchRoutes.handleRecommendations(args);
+        return await searchRoutes.handleRecommendations(args, context);
       case 'project_insights':
-        return await searchRoutes.handleProjectInsights(args);
+        return await searchRoutes.handleProjectInsights(args, context);
 
       // Unknown tool
       default:

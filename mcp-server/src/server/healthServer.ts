@@ -16,18 +16,22 @@ import createSessionRouter from '../api/v2/sessionRoutes.js';
  * HTTP Health Check Server
  * Provides health endpoints and MCP tool HTTP bridge
  */
+export interface McpExecutorContext {
+  connectionId?: string;
+}
+
 export class HealthServer {
   private server: http.Server | null = null;
   private app: express.Application;
   private port: number = 8080;
   private dbHealthy: boolean = false;
   private circuitBreakerState: string = 'closed';
-  private mcpToolExecutor?: (toolName: string, args: any) => Promise<any>;
+  private mcpToolExecutor?: (toolName: string, args: any, context?: McpExecutorContext) => Promise<any>;
   private parameterDeserializer?: (args: any) => any;
   private projectController: ProjectController;
 
   constructor(
-    mcpToolExecutor?: (toolName: string, args: any) => Promise<any>,
+    mcpToolExecutor?: (toolName: string, args: any, context?: McpExecutorContext) => Promise<any>,
     parameterDeserializer?: (args: any) => any
   ) {
     this.app = express();
@@ -166,6 +170,10 @@ export class HealthServer {
     }
   }
 
+  address(): ReturnType<http.Server['address']> {
+    return this.server?.address() ?? null;
+  }
+
   /**
    * Express handler wrappers
    */
@@ -286,7 +294,12 @@ export class HealthServer {
       const rawArgs = req.body.arguments || req.body.args || {};
       const args = this.parameterDeserializer ? this.parameterDeserializer(rawArgs) : rawArgs;
 
-      const result = await this.mcpToolExecutor(toolName, args);
+      const connectionId = req.header('X-Connection-ID') || 'http-default';
+      if (!req.header('X-Connection-ID')) {
+        logger.debug('MCP tool request without X-Connection-ID header, using shared session state');
+      }
+
+      const result = await this.mcpToolExecutor(toolName, args, { connectionId });
       res.json({ success: true, result });
     } catch (error: any) {
       res.status(500).json({

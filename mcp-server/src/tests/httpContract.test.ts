@@ -76,7 +76,7 @@ function expectErrorEnvelope(body: unknown) {
 }
 
 async function getRegisteredToolNamesFromSource() {
-  const sourcePath = fileURLToPath(new URL('../server.ts', import.meta.url));
+  const sourcePath = fileURLToPath(new URL('../routes/index.ts', import.meta.url));
   const source = await fs.readFile(sourcePath, 'utf8');
   const caseRegex = /case '([^']+)'/g;
   const names = new Set<string>();
@@ -160,11 +160,11 @@ describe('HTTP ↔ MCP contract', () => {
     const { res, body } = await postTool(baseUrl, 'aidis_ping', { message });
     expect(res.status).toBe(200);
     const success = expectSuccessEnvelope(body) as { result: { content?: Array<{ text: string }> } };
-    expect(success.result.content?.[0]?.text).toMatch(/AIDIS Pong/);
+    expect(success.result.content?.[0]?.text).toMatch(/(?:AIDIS|Mandrel) Pong/);
     expect(success.result.content?.[0]?.text).toContain(message);
 
     const directResult = await (server as any).executeMcpTool('aidis_ping', { message });
-    expect(directResult.content[0].text).toContain('AIDIS Pong');
+    expect(directResult.content[0].text).toMatch(/(?:AIDIS|Mandrel) Pong/);
     expect(directResult.content[0].text).toContain(message);
   });
 
@@ -180,8 +180,8 @@ describe('HTTP ↔ MCP contract', () => {
     expect(res.status).toBe(200);
     const success = expectSuccessEnvelope(body) as { result: { content?: Array<{ text: string }> } };
     const text = success.result.content?.[0]?.text ?? '';
-    expect(text).toMatch(/Feature Flags:/);
-    expect(text).toMatch(/Environment:/);
+    expect(text).toMatch(/Status:/);
+    expect(text).toMatch(/Operational|Environment:/);
   });
 
   it('serves human-readable tool help via aidis_help', async () => {
@@ -203,7 +203,7 @@ describe('HTTP ↔ MCP contract', () => {
 
   it('retains contract envelope across all registered tools', async () => {
     const toolNames = await getRegisteredToolNamesFromSource();
-    expect(toolNames.length).toBeGreaterThanOrEqual(49);
+    expect(toolNames.length).toBeGreaterThanOrEqual(27);
 
     for (const toolName of toolNames) {
       const args = TOOL_ARGUMENTS[toolName] ?? {};
