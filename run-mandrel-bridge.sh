@@ -56,4 +56,5 @@ mkdir -p "$LOG_DIR"
   echo "cwd: $ROOT_DIR"
 } >> "$LOG_DIR/bridge-spawn.log" 2>&1
 
-exec "$NODE_BIN" "$BRIDGE_JS" >> "$LOG_DIR/bridge-stdio.log" 2>> "$LOG_DIR/bridge-stdio.log"
+# Keep stdout attached: stdio MCP uses stdout as the protocol channel.
+exec "$NODE_BIN" "$BRIDGE_JS" 2>> "$LOG_DIR/bridge-stdio.log"

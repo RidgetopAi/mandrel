@@ -20,8 +20,12 @@ const http = require('http');
 // Resolve base URL for Mandrel HTTP service
 const BASE_URL = process.env.MANDREL_HTTP_URL || process.env.AIDIS_HTTP_URL || process.env.AIDIS_URL || 'http://localhost:8080';
 
-// Generate unique connection ID for this bridge instance (session isolation)
-const CONNECTION_ID = `bridge-${process.pid}-${Date.now().toString(36)}`;
+// Generate unique connection ID for this bridge instance (session isolation).
+// Allow an explicit override for supervised launchers, but keep per-process
+// isolation as the default so concurrent Codex sessions do not share project
+// state accidentally.
+const CONNECTION_ID = process.env.MANDREL_CONNECTION_ID || `bridge-${process.pid}-${Date.now().toString(36)}`;
+const DEFAULT_PROJECT = process.env.MANDREL_DEFAULT_PROJECT || '';
 
 // Create MCP server
 const server = new Server(
@@ -162,6 +166,19 @@ async function loadToolSchemas() {
   return false;
 }
 
+async function switchDefaultProject() {
+  if (!DEFAULT_PROJECT) {
+    return;
+  }
+
+  try {
+    await callAidisHttp('project_switch', { project: DEFAULT_PROJECT });
+    console.error(`🎯 Default Mandrel project set to ${DEFAULT_PROJECT}`);
+  } catch (error) {
+    throw new Error(`Failed to switch Mandrel default project to ${DEFAULT_PROJECT}: ${error.message}`);
+  }
+}
+
 // Call AIDIS HTTP bridge
 function callAidisHttp(toolName, args) {
   return new Promise((resolve, reject) => {
@@ -258,6 +275,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 async function main() {
   // Best-effort load of schemas before connecting
   await loadToolSchemas();
+  await switchDefaultProject();
   const transport = new StdioServerTransport();
   await server.connect(transport);
   const toolCount = (CACHED_TOOL_SCHEMAS && CACHED_TOOL_SCHEMAS.length) || MANDREL_TOOLS.length;
