@@ -192,3 +192,6 @@ spindles-proxy/
 # Secret hardening (added by inspection 2026-06-07) — leaked file removed from tracking
 .env.logging
 *.env.logging
+
+# Concrete dev env holds a dev DB password — recreate from .env.example
+config/environments/.env.development
