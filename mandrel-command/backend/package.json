@@ -7,6 +7,7 @@
     "start": "node dist/server.js",
     "dev": "nodemon src/server.ts",
     "build": "tsc",
+    "type-check": "tsc --noEmit",
     "build:watch": "tsc --watch",
     "clean": "rm -rf dist",
     "lint": "eslint src --ext .ts",

@@ -49,6 +49,7 @@
     "test": "react-scripts test",
     "eject": "react-scripts eject",
     "generate:openapi": "npm --prefix ../backend run openapi:export && npx openapi-typescript-codegen --input ./.openapi/openapi.json --output src/api/generated --client fetch --useOptions --useUnionTypes",
+    "type-check": "tsc --noEmit",
     "lint": "eslint src --ext .ts,.tsx",
     "lint:fix": "eslint src --ext .ts,.tsx --fix",
     "format": "prettier --write src/**/*.{ts,tsx}"
