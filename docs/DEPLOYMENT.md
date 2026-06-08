@@ -273,11 +273,12 @@ npm run build
 ```bash
 # Mandrel MCP Server - Production Configuration
 
-# Database
+# Database (non-secret fields only)
+# DATABASE_PASSWORD is NOT set here — it comes from /opt/mandrel/.env.secrets
+# via systemd EnvironmentFile (single source of truth). See Secrets Management.
 DATABASE_USER=ridgetop
 DATABASE_HOST=localhost
 DATABASE_NAME=mandrel
-DATABASE_PASSWORD=your_secure_password
 DATABASE_PORT=5432
 
 # Environment
@@ -304,19 +305,20 @@ NODE_ENV=production
 FRONTEND_URL=https://command.yourdomain.com
 
 # Database Configuration (PostgreSQL)
+# Secrets are NOT stored here. DATABASE_PASSWORD comes from
+# /opt/mandrel/.env.secrets via systemd EnvironmentFile.
 DB_HOST=localhost
 DB_PORT=5432
 DB_NAME=mandrel
 DB_USER=ridgetop
-DB_PASSWORD=your_secure_password
 DB_SSL=false
 
 # MCP Server Configuration
-AIDIS_MCP_HOST=localhost
-AIDIS_MCP_PORT=8080
+MANDREL_MCP_PORT=8080
 
 # Security
-JWT_SECRET=generate_a_secure_random_string_here
+# JWT secret lives in /opt/mandrel/.env.secrets as MANDREL_JWT_SECRET
+# (the canonical key). Do NOT add JWT_SECRET here.
 BCRYPT_ROUNDS=12
 
 # Logging
