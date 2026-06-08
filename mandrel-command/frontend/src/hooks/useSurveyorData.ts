@@ -5,13 +5,7 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import {
-  surveyorClient,
-  type ScanSummary,
-  type ScanDetail,
-  type Warning,
-  type ProjectStats,
-} from '../api/surveyorClient';
+import { surveyorClient } from '../api/surveyorClient';
 
 // Query keys for cache management
 export const surveyorKeys = {
@@ -20,9 +14,6 @@ export const surveyorKeys = {
   scan: (scanId: string) => [...surveyorKeys.all, 'scan', scanId] as const,
   scanWithNodes: (scanId: string) => [...surveyorKeys.all, 'scan', scanId, 'nodes'] as const,
   warnings: (scanId: string) => [...surveyorKeys.all, 'warnings', scanId] as const,
-  nodes: (scanId: string, filters: any) => [...surveyorKeys.all, 'nodes', scanId, filters] as const,
-  summary: (scanId: string, level: number) => [...surveyorKeys.all, 'summary', scanId, level] as const,
-  fileDetails: (scanId: string, filePath: string) => [...surveyorKeys.all, 'file', scanId, filePath] as const,
   projectStats: (projectId: string) => [...surveyorKeys.all, 'stats', projectId] as const,
 };
 
@@ -75,50 +66,6 @@ export function useWarnings(
 }
 
 /**
- * Hook to query nodes in a scan
- */
-export function useNodes(
-  scanId: string | undefined,
-  filters?: {
-    type?: string;
-    filePath?: string;
-    search?: string;
-    hasFlag?: string;
-  }
-) {
-  return useQuery({
-    queryKey: surveyorKeys.nodes(scanId || '', filters),
-    queryFn: () => surveyorClient.queryNodes(scanId!, filters),
-    enabled: !!scanId,
-    staleTime: 60000,
-  });
-}
-
-/**
- * Hook to get AI summary
- */
-export function useSummary(scanId: string | undefined, level: 0 | 1 | 2 = 0) {
-  return useQuery({
-    queryKey: surveyorKeys.summary(scanId || '', level),
-    queryFn: () => surveyorClient.getSummary(scanId!, level),
-    enabled: !!scanId,
-    staleTime: 300000, // 5 minutes - summaries don't change
-  });
-}
-
-/**
- * Hook to get file details
- */
-export function useFileDetails(scanId: string | undefined, filePath: string | undefined) {
-  return useQuery({
-    queryKey: surveyorKeys.fileDetails(scanId || '', filePath || ''),
-    queryFn: () => surveyorClient.getFileDetails(scanId!, filePath!),
-    enabled: !!scanId && !!filePath,
-    staleTime: 60000,
-  });
-}
-
-/**
  * Hook to get project statistics
  */
 export function useProjectStats(projectId: string | undefined) {
@@ -155,21 +102,6 @@ export function useTriggerScan() {
       queryClient.invalidateQueries({
         queryKey: surveyorKeys.projectStats(variables.projectId),
       });
-    },
-  });
-}
-
-/**
- * Hook to delete a scan
- */
-export function useDeleteScan() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (scanId: string) => surveyorClient.deleteScan(scanId),
-    onSuccess: () => {
-      // Invalidate all surveyor queries
-      queryClient.invalidateQueries({ queryKey: surveyorKeys.all });
     },
   });
 }
