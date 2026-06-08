@@ -99,4 +99,29 @@ it flagged ~9 mcp-server files as dead (monitoring.ts, mcpFormatter.ts, sessionF
 
 ---
 
+## Toolchain note (B3) — TypeScript compiler resolution
+
+Always use `npm run type-check` / `npm run build` (resolve the package-local
+tsc via node_modules/.bin), NEVER bare `npx tsc`. In this environment `npx tsc`
+from mandrel-command/backend picks up a GLOBAL typescript 4.9.5 (pulled in by
+the globally-linked `forge` package) which can't parse zod 3.25's modern
+.d.cts and reports spurious errors. The local compiler is 5.9.2 and typechecks
+cleanly. `type-check` scripts now exist in all three packages.
+
+---
+
 ## Phase 4 — Synthesis → see refactor plan stored in Mandrel (project: mandrel-stab) + tasks.
+
+---
+
+## EXECUTION LOG (2026-06-07 night, branch mandrel-v2)
+- A1 secret untrack + gitignore (`5c5d6d9`); **rotation pending (user, morning)**.
+- A2 hardcoded creds removed from reset-password.js / create-admin.js (`f749237`). DONE.
+- A3 untrack .env.development + complete .env.example (`207d073`). DONE.
+- B2 (partial) backend jest unblocked: test-setup.ts + coverage gate (`2a0f7a4`, `32b846f`). jest now runs; infra tests still need a DB. IN PROGRESS.
+- B3 type-check scripts in all packages + npx gotcha documented. DONE.
+- C1 mcp-server 1,435 LOC dead code deleted, tsc clean, tests unchanged (`1d4cf79`). DONE.
+- C2 backend 285 LOC dead scripts deleted, tsc clean (`81fb4b5`). DONE.
+- C3 frontend dead files + useSurveyorData trims, tsc clean (`0afe2d3`). DONE.
+- D3 (partial) untracked 47MB .surveyor caches (`66978ae`). .md consolidation deferred.
+- Remaining: A1(user), B1 eslint, B2 full green (needs DB), B4 tsconfig, C4 git decision, D1 console, D2 todos, D3 docs.
