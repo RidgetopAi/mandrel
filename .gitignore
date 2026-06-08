@@ -188,3 +188,7 @@ spindles-proxy/
 
 # Surveyor cache
 .surveyor/
+
+# Secret hardening (added by inspection 2026-06-07) — leaked file removed from tracking
+.env.logging
+*.env.logging
