@@ -58,8 +58,9 @@ export const config = {
   nodeEnv: process.env.NODE_ENV || 'development',
 
   // Database configuration
+  // Connections are built from discrete fields below (see database/connection.ts);
+  // there is no DATABASE_URL consumer, so secrets are never embedded in a URL.
   database: {
-    url: process.env.DATABASE_URL,
     user: process.env.DATABASE_USER || 'mandrel',
     host: process.env.DATABASE_HOST || 'localhost',
     database: process.env.DATABASE_NAME || 'mandrel',
@@ -74,12 +75,14 @@ export const config = {
   },
 
   // Authentication configuration
+  // Canonical key is MANDREL_JWT_SECRET (the value AuthService actually signs with,
+  // see services/auth.ts). JWT_SECRET is accepted as a transitional fallback only.
   auth: {
-    jwtSecret: process.env.JWT_SECRET || (() => {
+    jwtSecret: process.env.MANDREL_JWT_SECRET || process.env.JWT_SECRET || (() => {
       if (process.env.NODE_ENV === 'production') {
-        throw new Error('JWT_SECRET environment variable is required in production');
+        throw new Error('MANDREL_JWT_SECRET environment variable is required in production');
       }
-      console.warn('⚠️  Using default JWT secret - set JWT_SECRET environment variable');
+      console.warn('⚠️  Using default JWT secret - set MANDREL_JWT_SECRET environment variable');
       return 'dev-only-' + Math.random().toString(36).substring(7);
     })(),
     jwtExpiresIn: process.env.JWT_EXPIRES_IN || '24h',
