@@ -373,13 +373,14 @@ export function toolCallsToEvents(
         }
         break;
 
-      case 'Bash':
+      case 'Bash': {
         // Check if it's a test command
         const cmd = String(call.parameters.command || '');
         if (/test|pytest|jest|mocha|vitest|npm run test|cargo test/.test(cmd)) {
           events.push(createTestCheckEvent(workflowId, ++sequence, cmd));
         }
         break;
+      }
     }
   }
 
