@@ -3,6 +3,7 @@ import { AuthenticatedRequest } from '../types/auth';
 import { ContextService, ContextSearchParams } from '../services/context';
 import { McpService } from '../services/mcp';
 import type { UpdateContextData } from '../validation/schemas';
+import { logger } from '../config/logger';
 
 export class ContextController {
   /**
@@ -38,7 +39,7 @@ export class ContextController {
         message: `Found ${result.total} contexts`
       });
     } catch (error) {
-      console.error('Search contexts error:', error);
+      logger.error('Search contexts error', { error });
       res.status(500).json({
         success: false,
         message: 'Failed to search contexts',
@@ -68,7 +69,7 @@ export class ContextController {
         data: context
       });
     } catch (error) {
-      console.error('Get context error:', error);
+      logger.error('Get context error', { error });
       res.status(500).json({
         success: false,
         message: 'Failed to get context',
@@ -172,7 +173,7 @@ export class ContextController {
         message: 'Context updated successfully'
       });
     } catch (error) {
-      console.error('Update context error:', error);
+      logger.error('Update context error', { error });
       res.status(500).json({
         success: false,
         message: 'Failed to update context',
@@ -202,7 +203,7 @@ export class ContextController {
         message: 'Context deleted successfully'
       });
     } catch (error) {
-      console.error('Delete context error:', error);
+      logger.error('Delete context error', { error });
       res.status(500).json({
         success: false,
         message: 'Failed to delete context',
@@ -234,7 +235,7 @@ export class ContextController {
         message: `${result.deleted} contexts deleted successfully`
       });
     } catch (error) {
-      console.error('Bulk delete contexts error:', error);
+      logger.error('Bulk delete contexts error', { error });
       res.status(500).json({
         success: false,
         message: 'Failed to bulk delete contexts',
@@ -274,7 +275,7 @@ export class ContextController {
         message: `${result.updated} contexts updated successfully`
       });
     } catch (error) {
-      console.error('Bulk update contexts error:', error);
+      logger.error('Bulk update contexts error', { error });
       res.status(500).json({
         success: false,
         message: 'Failed to bulk update contexts',
@@ -296,7 +297,7 @@ export class ContextController {
         data: stats
       });
     } catch (error) {
-      console.error('Get context stats error:', error);
+      logger.error('Get context stats error', { error });
       res.status(500).json({
         success: false,
         message: 'Failed to get context statistics',
@@ -319,7 +320,7 @@ export class ContextController {
         data: { weeklyVelocity }
       });
     } catch (error) {
-      console.error('Get weekly velocity error:', error);
+      logger.error('Get weekly velocity error', { error });
       res.status(500).json({
         success: false,
         message: 'Failed to get weekly velocity',
@@ -356,7 +357,7 @@ export class ContextController {
       res.setHeader('Content-Type', exportData.contentType);
       res.send(exportData.data);
     } catch (error) {
-      console.error('Export contexts error:', error);
+      logger.error('Export contexts error', { error });
       res.status(500).json({
         success: false,
         message: 'Failed to export contexts',
@@ -381,7 +382,7 @@ export class ContextController {
         message: `Found ${relatedContexts.length} related contexts`
       });
     } catch (error) {
-      console.error('Get related contexts error:', error);
+      logger.error('Get related contexts error', { error });
       res.status(500).json({
         success: false,
         message: 'Failed to get related contexts',
@@ -415,7 +416,7 @@ export class ContextController {
         message: `Found ${result.total} contexts matching your search`
       });
     } catch (error) {
-      console.error('Semantic search error:', error);
+      logger.error('Semantic search error', { error });
       res.status(500).json({
         success: false,
         message: 'Failed to perform semantic search',
@@ -465,7 +466,7 @@ export class ContextController {
         message: 'Context created successfully'
       });
     } catch (error) {
-      console.error('Create context error:', error);
+      logger.error('Create context error', { error });
       res.status(500).json({
         success: false,
         message: 'Failed to create context',

@@ -8,6 +8,7 @@ import { db } from '../../database/connection.js';
 import { PCA } from 'ml-pca';
 import { resolveProjectId, cosineSimilarity } from './core.js';
 import type { EmbeddingScope, SimilarityMatrix, Projection, ClusterResult } from './types.js';
+import { logger } from '../../config/logger';
 
 /**
  * Get similarity matrix for embeddings
@@ -81,7 +82,7 @@ export async function getSimilarityMatrix(
       }
     };
   } catch (error) {
-    console.error('Error getting similarity matrix:', error);
+    logger.error('Error getting similarity matrix', { error });
     throw new Error('Failed to get similarity matrix');
   }
 }
@@ -158,7 +159,7 @@ export async function getProjection(
       throw new Error(`Algorithm ${algorithm} not yet implemented`);
     }
   } catch (error) {
-    console.error('Error getting projection:', error);
+    logger.error('Error getting projection', { error });
     throw new Error('Failed to get projection: ' + (error instanceof Error ? error.message : 'Unknown error'));
   }
 }
@@ -195,7 +196,7 @@ export async function getClusters(
       inertia: Math.random() * 100
     };
   } catch (error) {
-    console.error('Error getting clusters:', error);
+    logger.error('Error getting clusters', { error });
     throw new Error('Failed to get clusters');
   }
 }

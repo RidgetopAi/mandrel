@@ -12,6 +12,7 @@ import { GitClient } from '../../infra/git/GitClient';
 import { BranchRepo } from '../../infra/db/BranchRepo';
 import { classifyBranchType, findDefaultBranch } from '../../utils/branchAnalysis';
 import { createServiceError } from '../../utils/errors';
+import { logger } from '../../../../config/logger';
 
 export class BranchService {
   /**
@@ -21,7 +22,7 @@ export class BranchService {
     const { project_id, include_remote = false, include_stats = true } = request;
     
     try {
-      console.log(`🌿 BranchService.getBranchInfo - Project: ${project_id}`);
+      logger.info(`🌿 BranchService.getBranchInfo - Project: ${project_id}`);
       
       const git = await GitClient.getGitInstance(project_id);
       
@@ -64,7 +65,7 @@ export class BranchService {
               };
             }
           } catch (error) {
-            console.warn(`Could not get last commit for branch ${branchName}:`, error);
+            logger.warn(`Could not get last commit for branch ${branchName}`, { error });
           }
         }
         

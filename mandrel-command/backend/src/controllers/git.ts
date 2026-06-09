@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import { AuthenticatedRequest } from '../types/auth';
 import { db as pool } from '../database/connection';
+import { logger } from '../config/logger';
 
 /**
  * Git Controller
@@ -73,7 +74,7 @@ export class GitController {
       for (const commit of commits) {
         // Validate commit sha format (40 hex chars)
         if (!commit.sha || !/^[a-f0-9]{40}$/i.test(commit.sha)) {
-          console.warn('Skipping invalid commit sha:', commit.sha);
+          logger.warn('Skipping invalid commit sha', { sha: commit.sha });
           commitsSkipped++;
           continue;
         }
@@ -206,7 +207,7 @@ export class GitController {
 
     } catch (error) {
       await client.query('ROLLBACK');
-      console.error('Git push-stats error:', error);
+      logger.error('Git push-stats error', { error });
       res.status(500).json({
         success: false,
         error: error instanceof Error ? error.message : 'Failed to process git stats'
@@ -267,7 +268,7 @@ export class GitController {
       });
 
     } catch (error) {
-      console.error('Get session git stats error:', error);
+      logger.error('Get session git stats error', { error });
       res.status(500).json({
         success: false,
         error: error instanceof Error ? error.message : 'Failed to get git stats'

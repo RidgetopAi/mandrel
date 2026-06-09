@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { ProjectService } from '../services/project';
 import { McpService } from '../services/mcp';
 import { ProjectInsightsService } from '../services/projectInsights';
+import { logger } from '../config/logger';
 
 export class ProjectController {
   /**
@@ -20,7 +21,7 @@ export class ProjectController {
         }
       });
     } catch (error) {
-      console.error('Get watchable projects error:', error);
+      logger.error('Get watchable projects error', { error });
       res.status(500).json({
         success: false,
         error: error instanceof Error ? error.message : 'Failed to get watchable projects'
@@ -43,7 +44,7 @@ export class ProjectController {
         }
       });
     } catch (error) {
-      console.error('Get all projects error:', error);
+      logger.error('Get all projects error', { error });
       res.status(500).json({
         success: false,
         error: error instanceof Error ? error.message : 'Failed to get projects'
@@ -72,7 +73,7 @@ export class ProjectController {
         data: { project }
       });
     } catch (error) {
-      console.error('Get project error:', error);
+      logger.error('Get project error', { error });
       res.status(500).json({
         success: false,
         error: error instanceof Error ? error.message : 'Failed to get project'
@@ -103,7 +104,7 @@ export class ProjectController {
         data: { project }
       });
     } catch (error) {
-      console.error('Create project error:', error);
+      logger.error('Create project error', { error });
       
       if (error instanceof Error && error.message === 'Project name already exists') {
         res.status(409).json({
@@ -143,7 +144,7 @@ export class ProjectController {
         data: { project }
       });
     } catch (error) {
-      console.error('Update project error:', error);
+      logger.error('Update project error', { error });
       
       if (error instanceof Error && error.message === 'Project name already exists') {
         res.status(409).json({
@@ -181,7 +182,7 @@ export class ProjectController {
         data: { message: 'Project deleted successfully' }
       });
     } catch (error) {
-      console.error('Delete project error:', error);
+      logger.error('Delete project error', { error });
       res.status(500).json({
         success: false,
         error: error instanceof Error ? error.message : 'Failed to delete project'
@@ -205,7 +206,7 @@ export class ProjectController {
         }
       });
     } catch (error) {
-      console.error('Get project sessions error:', error);
+      logger.error('Get project sessions error', { error });
       res.status(500).json({
         success: false,
         error: error instanceof Error ? error.message : 'Failed to get project sessions'
@@ -228,7 +229,7 @@ export class ProjectController {
         }
       });
     } catch (error) {
-      console.error('Get all sessions error:', error);
+      logger.error('Get all sessions error', { error });
       res.status(500).json({
         success: false,
         error: error instanceof Error ? error.message : 'Failed to get sessions'
@@ -248,7 +249,7 @@ export class ProjectController {
         data: stats
       });
     } catch (error) {
-      console.error('Get project stats error:', error);
+      logger.error('Get project stats error', { error });
       res.status(500).json({
         success: false,
         error: error instanceof Error ? error.message : 'Failed to get project statistics'
@@ -263,19 +264,19 @@ export class ProjectController {
     try {
       const { id } = req.params;
 
-      console.log(`[Project Insights] Getting insights for project ${id}`);
+      logger.info(`[Project Insights] Getting insights for project ${id}`);
 
       // Get insights directly from database
       const insights = await ProjectInsightsService.getProjectInsights(id);
 
-      console.log('[Project Insights] Database result:', insights);
+      logger.info('[Project Insights] Database result', { insights });
 
       res.json({
         success: true,
         data: insights
       });
     } catch (error) {
-      console.error('Get project insights error:', error);
+      logger.error('Get project insights error', { error });
       res.status(500).json({
         success: false,
         error: error instanceof Error ? error.message : 'Failed to get project insights'
@@ -291,7 +292,7 @@ export class ProjectController {
     try {
       const { id } = req.params;
 
-      console.log(`[Set Primary] Setting project ${id} as primary`);
+      logger.info(`[Set Primary] Setting project ${id} as primary`);
 
       // Call MCP server's set-primary endpoint
       const mcpResponse = await McpService.callMcpEndpoint(
@@ -299,11 +300,11 @@ export class ProjectController {
         'POST'
       );
 
-      console.log('[Set Primary] MCP response:', mcpResponse);
+      logger.info('[Set Primary] MCP response', { mcpResponse });
 
       res.json(mcpResponse);
     } catch (error) {
-      console.error('Set primary project error:', error);
+      logger.error('Set primary project error', { error });
       res.status(500).json({
         success: false,
         error: error instanceof Error ? error.message : 'Failed to set primary project'

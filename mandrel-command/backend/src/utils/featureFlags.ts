@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { logger } from '../config/logger';
 
 export interface FeatureFlagConfig {
   version: number;
@@ -14,7 +15,7 @@ function getEnvVar(mandrelKey: string, aidisKey: string, defaultValue: string = 
   
   // Log deprecation warning if old var is used
   if (process.env[aidisKey] && !process.env[mandrelKey]) {
-    console.warn(`⚠️  ${aidisKey} is deprecated. Use ${mandrelKey} instead.`);
+    logger.warn(`⚠️  ${aidisKey} is deprecated. Use ${mandrelKey} instead.`);
   }
   
   return value;
@@ -38,7 +39,7 @@ function loadOverridesFromEnv(): Record<string, boolean> {
       return acc;
     }, {});
   } catch (error) {
-    console.warn('[FeatureFlags] Failed to parse MANDREL_FEATURE_FLAG_OVERRIDES env var:', error);
+    logger.warn('[FeatureFlags] Failed to parse MANDREL_FEATURE_FLAG_OVERRIDES env var', { error });
     return {};
   }
 }
@@ -50,7 +51,7 @@ async function readConfig(configPath: string): Promise<FeatureFlagConfig | null>
     parsed.flags = parsed.flags || {};
     return parsed;
   } catch (error) {
-    console.warn(`[FeatureFlags] Unable to read config at ${configPath}:`, error);
+    logger.warn(`[FeatureFlags] Unable to read config at ${configPath}`, { error });
     return null;
   }
 }

@@ -6,6 +6,7 @@
  */
 
 import http from 'http';
+import { logger } from '../config/logger';
 
 export interface McpResult {
   success: boolean;
@@ -20,17 +21,17 @@ export class McpService {
    * Call an AIDIS MCP tool via HTTP endpoint
    */
   static async callTool(toolName: string, params: any): Promise<McpResult> {
-    console.log(`[MCP] Calling ${toolName} with params:`, params);
-    
+    logger.info(`[MCP] Calling ${toolName} with params`, { params });
+
     try {
       const result = await this.makeRequest(toolName, params);
-      console.log(`[MCP] ${toolName} result:`, result);
+      logger.info(`[MCP] ${toolName} result`, { result });
       return {
         success: true,
         data: result
       };
     } catch (error) {
-      console.error(`[MCP] ${toolName} failed:`, error);
+      logger.error(`[MCP] ${toolName} failed`, { error });
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error'
@@ -50,7 +51,7 @@ export class McpService {
 
       // Log deprecation warning if old var is used
       if (process.env.AIDIS_MCP_PORT && !process.env.MANDREL_MCP_PORT) {
-        console.warn('⚠️  AIDIS_MCP_PORT is deprecated. Use MANDREL_MCP_PORT instead.');
+        logger.warn('⚠️  AIDIS_MCP_PORT is deprecated. Use MANDREL_MCP_PORT instead.');
       }
       
       const options = {
@@ -126,7 +127,7 @@ export class McpService {
 
       req.on('error', (error: NodeJS.ErrnoException) => {
         const errorDetails = error.code ? `${error.code}: ${error.message}` : error.message || 'Unknown socket error';
-        console.error(`[MCP] Tool call connection error to localhost:${mcpPort}/mcp/tools/${toolName}:`, {
+        logger.error(`[MCP] Tool call connection error to localhost:${mcpPort}/mcp/tools/${toolName}`, {
           code: error.code,
           message: error.message,
           syscall: error.syscall,
@@ -296,7 +297,7 @@ export class McpService {
         decision: title // Use title as the decision
       };
     } catch (error) {
-      console.error('Error parsing decision block:', error);
+      logger.error('Error parsing decision block', { error });
       return null;
     }
   }
@@ -479,7 +480,7 @@ export class McpService {
 
       req.on('error', (error: NodeJS.ErrnoException) => {
         const errorDetails = error.code ? `${error.code}: ${error.message}` : error.message || 'Unknown socket error';
-        console.error(`[MCP] REST API connection error to localhost:${mcpPort}${path}:`, {
+        logger.error(`[MCP] REST API connection error to localhost:${mcpPort}${path}`, {
           code: error.code,
           message: error.message,
           syscall: error.syscall,
@@ -511,7 +512,7 @@ export class McpService {
       await this.callTool('aidis_ping', { message: 'Connection test' });
       return true;
     } catch (error) {
-      console.error('[MCP] Connection test failed:', error);
+      logger.error('[MCP] Connection test failed', { error });
       return false;
     }
   }

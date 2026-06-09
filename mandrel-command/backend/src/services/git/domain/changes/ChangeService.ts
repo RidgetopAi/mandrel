@@ -15,6 +15,7 @@ import { CommitRepo } from '../../infra/db/CommitRepo';
 import { ChangeRepo } from '../../infra/db/ChangeRepo';
 import { analyzeFileChange, isGeneratedFile } from '../../utils/fileAnalysis';
 import { createServiceError } from '../../utils/errors';
+import { logger } from '../../../../config/logger';
 
 export class FileChangeService {
   /**
@@ -25,7 +26,7 @@ export class FileChangeService {
     const startTime = Date.now();
     
     try {
-      console.log(`📁 FileChangeService.trackFileChanges - Commit: ${commit_sha.substring(0, 12)}`);
+      logger.info(`📁 FileChangeService.trackFileChanges - Commit: ${commit_sha.substring(0, 12)}`);
       
       const git = await GitClient.getGitInstance(project_id);
       

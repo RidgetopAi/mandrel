@@ -6,6 +6,7 @@
 
 import { db } from '../../database/connection.js';
 import type { EmbeddingScope, UsagePatternMetrics } from './types.js';
+import { logger } from '../../config/logger';
 
 /**
  * Get usage pattern metrics for a project
@@ -136,7 +137,7 @@ export async function getUsagePatterns(
       summary,
     };
   } catch (error) {
-    console.error('Error getting usage pattern metrics:', error);
+    logger.error('Error getting usage pattern metrics', { error });
     throw new Error('Failed to get usage pattern metrics');
   }
 }

@@ -6,6 +6,7 @@
 
 import { db } from '../../database/connection.js';
 import { resolveProjectId } from './core.js';
+import { logger } from '../../config/logger';
 import type { EmbeddingScope, EmbeddingDataset } from './types.js';
 
 /**
@@ -46,7 +47,7 @@ export async function getAvailableDatasets(
 
     return result.rows as EmbeddingDataset[];
   } catch (error) {
-    console.error('Error getting embedding datasets:', error);
+    logger.error('Error getting embedding datasets', { error });
     throw new Error('Failed to get embedding datasets');
   }
 }

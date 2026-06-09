@@ -3,6 +3,7 @@ import { AuthenticatedRequest } from '../types/auth';
 import { ContextService } from '../services/context';
 import { TaskService } from '../services/task';
 import { ProjectService } from '../services/project';
+import { logger } from '../config/logger';
 
 export interface DashboardStats {
   contexts: number;
@@ -24,7 +25,7 @@ class DashboardController {
     try {
       const projectId = req.projectId;
       
-      console.log('🚀 Oracle Phase 2 Dashboard - Starting aggregation for project:', projectId);
+      logger.info('🚀 Oracle Phase 2 Dashboard - Starting aggregation for project', { projectId });
 
       // Oracle Phase 2: Use dedicated count methods for maximum efficiency
       const [
@@ -51,7 +52,7 @@ class DashboardController {
         }
       };
 
-      console.log('📊 Oracle Phase 2 Dashboard - Final aggregation:', {
+      logger.info('📊 Oracle Phase 2 Dashboard - Final aggregation', {
         projectId: projectId || 'ALL',
         contextCount,
         activeTaskCount,
@@ -66,7 +67,7 @@ class DashboardController {
       });
 
     } catch (error) {
-      console.error('❌ Oracle Phase 2 Dashboard aggregation error:', error);
+      logger.error('❌ Oracle Phase 2 Dashboard aggregation error', { error });
       res.status(500).json({
         success: false,
         error: 'Failed to get dashboard statistics',

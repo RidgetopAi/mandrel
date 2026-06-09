@@ -1,4 +1,5 @@
 import { db as pool } from '../database/connection';
+import { logger } from '../config/logger';
 
 // Define Task interface locally since shared types are not in rootDir
 interface Task {
@@ -90,10 +91,10 @@ export class TaskService {
       const result = await pool.query(query, params);
       const count = parseInt(result.rows[0].count);
       
-      console.log(`📊 TaskService.countActive - Project: ${projectId || 'ALL'}, Count: ${count}`);
+      logger.info(`📊 TaskService.countActive - Project: ${projectId || 'ALL'}, Count: ${count}`);
       return count;
     } catch (error) {
-      console.error('Task count active error:', error);
+      logger.error('Task count active error', { error });
       throw new Error('Failed to get active task count');
     }
   }
@@ -192,7 +193,7 @@ export class TaskService {
         updated_at: row.updated_at
       }));
     } catch (error) {
-      console.error('Get tasks error:', error);
+      logger.error('Get tasks error', { error });
       throw new Error('Failed to get tasks');
     }
   }
@@ -235,7 +236,7 @@ export class TaskService {
         updated_at: row.updated_at
       };
     } catch (error) {
-      console.error('Get task by ID error:', error);
+      logger.error('Get task by ID error', { error });
       throw new Error('Failed to get task');
     }
   }
@@ -251,8 +252,8 @@ export class TaskService {
     } = taskData;
 
     try {
-      console.log('TaskService.createTask called with:', {
-        project_id, title, description, type, priority, 
+      logger.info('TaskService.createTask called with', {
+        project_id, title, description, type, priority,
         assigned_to, dependencies, tags, metadata
       });
       
@@ -285,7 +286,7 @@ export class TaskService {
         updated_at: row.updated_at
       };
     } catch (error) {
-      console.error('Create task error:', error);
+      logger.error('Create task error', { error });
       throw new Error('Failed to create task');
     }
   }
@@ -379,7 +380,7 @@ export class TaskService {
         updated_at: row.updated_at
       };
     } catch (error) {
-      console.error('Update task error:', error);
+      logger.error('Update task error', { error });
       throw new Error('Failed to update task');
     }
   }
@@ -392,7 +393,7 @@ export class TaskService {
       const result = await pool.query('DELETE FROM tasks WHERE id = $1', [id]);
       return (result.rowCount || 0) > 0;
     } catch (error) {
-      console.error('Delete task error:', error);
+      logger.error('Delete task error', { error });
       throw new Error('Failed to delete task');
     }
   }
@@ -445,7 +446,7 @@ export class TaskService {
         completion_rate: Math.round(completion_rate * 100) / 100
       };
     } catch (error) {
-      console.error('Get task stats error:', error);
+      logger.error('Get task stats error', { error });
       throw new Error('Failed to get task statistics');
     }
   }
@@ -530,7 +531,7 @@ export class TaskService {
         }
       };
     } catch (error) {
-      console.error('Get lead time distribution error:', error);
+      logger.error('Get lead time distribution error', { error });
       throw new Error('Failed to get lead time distribution');
     }
   }
@@ -575,7 +576,7 @@ export class TaskService {
 
       return { dependencies, dependents };
     } catch (error) {
-      console.error('Get task dependencies error:', error);
+      logger.error('Get task dependencies error', { error });
       throw new Error('Failed to get task dependencies');
     }
   }
@@ -608,7 +609,7 @@ export class TaskService {
       return updatedTasks;
     } catch (error) {
       await client.query('ROLLBACK');
-      console.error('Bulk update status error:', error);
+      logger.error('Bulk update status error', { error });
       throw new Error('Failed to bulk update task statuses');
     } finally {
       client.release();
@@ -643,7 +644,7 @@ export class TaskService {
 
       return { updated: result.rowCount || 0 };
     } catch (error) {
-      console.error('Bulk move tasks error:', error);
+      logger.error('Bulk move tasks error', { error });
       throw new Error('Failed to bulk move tasks');
     }
   }

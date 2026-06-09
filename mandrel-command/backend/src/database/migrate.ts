@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { db as pool } from './connection';
+import { logger } from '../config/logger';
 
 async function runMigration(migrationFile: string): Promise<void> {
   const migrationPath = path.join(__dirname, 'migrations', migrationFile);
@@ -12,11 +13,11 @@ async function runMigration(migrationFile: string): Promise<void> {
   const sql = fs.readFileSync(migrationPath, 'utf8');
   
   try {
-    console.log(`Running migration: ${migrationFile}`);
+    logger.info(`Running migration: ${migrationFile}`);
     await pool.query(sql);
-    console.log(`✅ Migration completed: ${migrationFile}`);
+    logger.info(`✅ Migration completed: ${migrationFile}`);
   } catch (error) {
-    console.error(`❌ Migration failed: ${migrationFile}`, error);
+    logger.error(`❌ Migration failed: ${migrationFile}`, { error });
     throw error;
   }
 }
@@ -37,8 +38,8 @@ if (require.main === module) {
   const migrationFile = process.argv[2];
   
   if (migrationFile) {
-    runMigration(migrationFile).catch(console.error);
+    runMigration(migrationFile).catch((error) => logger.error('Migration failed', { error }));
   } else {
-    runAllMigrations().catch(console.error);
+    runAllMigrations().catch((error) => logger.error('Migration failed', { error }));
   }
 }

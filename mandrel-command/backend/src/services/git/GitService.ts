@@ -8,6 +8,7 @@
 
 import { simpleGit, SimpleGit } from 'simple-git';
 import { db as pool } from '../../database/connection';
+import { logger } from '../../config/logger';
 import path from 'path';
 import fs from 'fs';
 
@@ -79,7 +80,7 @@ export class GitService {
     const startTime = Date.now();
     
     try {
-      console.log(`🔧 GitService.initializeRepository - Project: ${project_id}, Path: ${repo_path}`);
+      logger.info(`🔧 GitService.initializeRepository - Project: ${project_id}, Path: ${repo_path}`);
       
       const project = await GitClient.validateProject(project_id);
       if (!project) throw new Error(`Project ${project_id} not found`);

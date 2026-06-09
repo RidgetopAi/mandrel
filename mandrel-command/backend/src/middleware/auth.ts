@@ -1,6 +1,7 @@
 import { Response, NextFunction } from 'express';
 import { AuthService } from '../services/auth';
 import { AuthenticatedRequest } from '../types/auth';
+import { logger } from '../config/logger';
 
 export const authenticateToken = async (
   req: AuthenticatedRequest,
@@ -120,7 +121,7 @@ export const authenticateToken = async (
 
     next();
   } catch (error) {
-    console.error('Authentication error:', {
+    logger.error('Authentication error', {
       error: error instanceof Error ? error.message : error,
       stack: error instanceof Error ? error.stack : undefined,
       timestamp: new Date().toISOString(),
@@ -161,7 +162,7 @@ const requireRole = (requiredRoles: string | string[]) => {
     }
 
     if (!roles.includes(req.user.role)) {
-      console.warn('Role access denied:', {
+      logger.warn('Role access denied', {
         userId: req.user.id,
         userRole: req.user.role,
         requiredRoles: roles,

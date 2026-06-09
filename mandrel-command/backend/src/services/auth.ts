@@ -3,6 +3,7 @@ import { sign, verify } from 'jsonwebtoken';
 import { v4 as uuidv4 } from 'uuid';
 import { db as pool } from '../database/connection';
 import { User, JWTPayload, LoginRequest, RegisterRequest } from '../types/auth';
+import { logger } from '../config/logger';
 
 // Helper function to get environment variable with MANDREL_ prefix and AIDIS_ fallback
 function getEnvVar(mandrelKey: string, aidisKey: string, defaultValue: string = ''): string {
@@ -10,7 +11,7 @@ function getEnvVar(mandrelKey: string, aidisKey: string, defaultValue: string = 
   
   // Log deprecation warning if old var is used
   if (process.env[aidisKey] && !process.env[mandrelKey]) {
-    console.warn(`⚠️  ${aidisKey} is deprecated. Use ${mandrelKey} instead.`);
+    logger.warn(`⚠️  ${aidisKey} is deprecated. Use ${mandrelKey} instead.`);
   }
   
   return value;

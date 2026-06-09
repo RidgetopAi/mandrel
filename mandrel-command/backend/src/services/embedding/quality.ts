@@ -6,6 +6,7 @@
 
 import { db } from '../../database/connection.js';
 import { resolveProjectId } from './core.js';
+import { logger } from '../../config/logger';
 import type { EmbeddingScope, QualityMetrics } from './types.js';
 
 /**
@@ -67,7 +68,7 @@ export async function getQualityMetrics(
       }
     };
   } catch (error) {
-    console.error('Error getting quality metrics:', error);
+    logger.error('Error getting quality metrics', { error });
     throw new Error('Failed to get quality metrics');
   }
 }

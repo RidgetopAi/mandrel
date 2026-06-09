@@ -1,5 +1,6 @@
 import { Response, NextFunction } from 'express';
 import { AuthenticatedRequest } from '../types/auth';
+import { logger } from '../config/logger';
 
 /**
  * Project Context Middleware
@@ -47,7 +48,7 @@ export const projectContextMiddleware = async (
 
     next();
   } catch (error) {
-    console.error('Project context middleware error:', {
+    logger.error('Project context middleware error', {
       error: error instanceof Error ? error.message : error,
       stack: error instanceof Error ? error.stack : undefined,
       timestamp: new Date().toISOString(),

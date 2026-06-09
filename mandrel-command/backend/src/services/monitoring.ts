@@ -7,6 +7,7 @@
 import { db } from '../database/connection';
 import os from 'os';
 import axios from 'axios';
+import { logger } from '../config/logger';
 
 interface SystemMetrics {
   timestamp: number;
@@ -463,7 +464,7 @@ class MonitoringService {
       this.uiErrors.pop();
     }
 
-    console.error('🔴 UI Error Reported', normalized);
+    logger.error('🔴 UI Error Reported', { normalized });
   }
 
   // TR015-4: Service-specific health checking
@@ -597,7 +598,7 @@ class MonitoringService {
     };
 
     // Log alert
-    console.log(`🚨 ALERT [${rule.severity.toUpperCase()}]: ${alert.message}`);
+    logger.info(`🚨 ALERT [${rule.severity.toUpperCase()}]: ${alert.message}`);
 
     // Store in history
     this.alertHistory.push({ rule, timestamp: new Date(), value });
@@ -668,11 +669,11 @@ class MonitoringService {
 
   startServiceMonitoring(intervalMs = 30000) {
     if (this.isServiceMonitoringActive) {
-      console.log('Service monitoring already running');
+      logger.info('Service monitoring already running');
       return;
     }
 
-    console.log('🔍 Starting service monitoring...');
+    logger.info('🔍 Starting service monitoring...');
     this.isServiceMonitoringActive = true;
 
     // Initial check
@@ -690,7 +691,7 @@ class MonitoringService {
       this.monitoringInterval = null;
     }
     this.isServiceMonitoringActive = false;
-    console.log('Service monitoring stopped');
+    logger.info('Service monitoring stopped');
   }
 
   private async runServiceMonitoringCycle() {
@@ -701,7 +702,7 @@ class MonitoringService {
       const stats = this.getServiceMonitoringStats();
 
     } catch (error) {
-      console.error('Service monitoring cycle error:', error);
+      logger.error('Service monitoring cycle error', { error });
     }
   }
 

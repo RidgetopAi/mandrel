@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { McpService } from '../services/mcp';
 import { db } from '../database/connection';
+import { logger } from '../config/logger';
 
 export class DecisionController {
   /**
@@ -29,7 +30,7 @@ export class DecisionController {
       });
       
       if (!result.success) {
-        console.error('AIDIS decision_record failed:', result.error);
+        logger.error('AIDIS decision_record failed', { error: result.error });
         res.status(500).json({
           success: false,
           message: 'Failed to record decision',
@@ -45,7 +46,7 @@ export class DecisionController {
       });
 
     } catch (error) {
-      console.error('Record decision error:', error);
+      logger.error('Record decision error', { error });
       res.status(500).json({
         success: false,
         message: 'Failed to record decision',
@@ -70,16 +71,16 @@ export class DecisionController {
       offset = 0
       } = req.query;
 
-      console.log('[Decision Search] Request params:', {
+      logger.info('[Decision Search] Request params', {
         query, project_id, status, created_by, date_from, date_to, limit, offset
       });
 
       // Switch to the correct project context if project_id is provided
       if (project_id) {
-        console.log(`[Decision Search] Switching to project: ${project_id}`);
+        logger.info(`[Decision Search] Switching to project: ${project_id}`);
         const switchResult = await McpService.callTool('project_switch', { project: project_id as string });
         if (!switchResult.success) {
-          console.error('Failed to switch project:', switchResult.error);
+          logger.error('Failed to switch project', { error: switchResult.error });
           res.status(500).json({
             success: false,
             message: 'Failed to switch project context',
@@ -87,7 +88,7 @@ export class DecisionController {
           });
           return;
         }
-        console.log('[Decision Search] Project switch successful');
+        logger.info('[Decision Search] Project switch successful');
       }
 
       // Build search parameters for AIDIS MCP  
@@ -102,18 +103,18 @@ export class DecisionController {
       if (date_from) searchParams.date_from = date_from;
       if (date_to) searchParams.date_to = date_to;
 
-      console.log('[Decision Search] MCP search params:', searchParams);
+      logger.info('[Decision Search] MCP search params', { searchParams });
 
       // Call AIDIS MCP decision_search
       const result = await McpService.callTool('decision_search', searchParams);
       
-      console.log('[Decision Search] MCP result success:', result.success);
+      logger.info('[Decision Search] MCP result success', { success: result.success });
       if (result.success) {
-        console.log('[Decision Search] MCP data keys:', Object.keys(result.data || {}));
+        logger.info('[Decision Search] MCP data keys', { keys: Object.keys(result.data || {}) });
       }
 
       if (!result.success) {
-        console.error('AIDIS decision_search failed:', result.error);
+        logger.error('AIDIS decision_search failed', { error: result.error });
         res.status(500).json({
           success: false,
           message: 'Failed to search decisions',
@@ -132,7 +133,7 @@ export class DecisionController {
         limit: parseInt(limit as string)
       };
 
-      console.log('[Decision Search] Transformed result:', {
+      logger.info('[Decision Search] Transformed result', {
         totalDecisions: transformedResult.decisions.length,
         totalFound: transformedResult.total,
         page: transformedResult.page
@@ -145,7 +146,7 @@ export class DecisionController {
       });
 
     } catch (error) {
-      console.error('Decision search error:', error);
+      logger.error('Decision search error', { error });
       res.status(500).json({
         success: false,
         message: 'Failed to search decisions',
@@ -167,7 +168,7 @@ export class DecisionController {
       });
       
       if (!result.success) {
-        console.error('AIDIS decision_stats failed:', result.error);
+        logger.error('AIDIS decision_stats failed', { error: result.error });
         res.status(500).json({
           success: false,
           message: 'Failed to get decision statistics',
@@ -183,7 +184,7 @@ export class DecisionController {
       });
 
     } catch (error) {
-      console.error('Decision stats error:', error);
+      logger.error('Decision stats error', { error });
       res.status(500).json({
         success: false,
         message: 'Failed to get decision statistics',
@@ -206,7 +207,7 @@ export class DecisionController {
       });
       
       if (!result.success) {
-        console.error('AIDIS decision lookup failed:', result.error);
+        logger.error('AIDIS decision lookup failed', { error: result.error });
         res.status(500).json({
           success: false,
           message: 'Failed to get decision',
@@ -233,7 +234,7 @@ export class DecisionController {
       });
 
     } catch (error) {
-      console.error('Get decision error:', error);
+      logger.error('Get decision error', { error });
       res.status(500).json({
         success: false,
         message: 'Failed to get decision',
@@ -278,7 +279,7 @@ export class DecisionController {
       });
 
       if (!result.success) {
-        console.error('AIDIS decision_update failed:', result.error);
+        logger.error('AIDIS decision_update failed', { error: result.error });
         res.status(500).json({
           success: false,
           message: 'Failed to update decision',
@@ -294,7 +295,7 @@ export class DecisionController {
       });
 
     } catch (error) {
-      console.error('Update decision error:', error);
+      logger.error('Update decision error', { error });
       res.status(500).json({
         success: false,
         message: 'Failed to update decision',
@@ -343,7 +344,7 @@ export class DecisionController {
       });
 
     } catch (error) {
-      console.error('Delete decision error:', error);
+      logger.error('Delete decision error', { error });
       res.status(500).json({
         success: false,
         message: 'Failed to delete decision',

@@ -3,6 +3,7 @@ import { AuthenticatedRequest } from '../types/auth';
 import { TaskService, CreateTaskRequest, UpdateTaskRequest, TaskFilter } from '../services/task';
 import { sseService } from '../services/sse';
 import { AidisDbEvent } from '../types/events';
+import { logger } from '../config/logger';
 
 /**
  * Task Controller
@@ -50,7 +51,7 @@ export class TaskController {
         }
       });
     } catch (error) {
-      console.error('Get tasks error:', error);
+      logger.error('Get tasks error', { error });
       res.status(500).json({
         success: false,
         error: error instanceof Error ? error.message : 'Failed to get tasks'
@@ -79,7 +80,7 @@ export class TaskController {
         data: { task }
       });
     } catch (error) {
-      console.error('Get task error:', error);
+      logger.error('Get task error', { error });
       res.status(500).json({
         success: false,
         error: error instanceof Error ? error.message : 'Failed to get task'
@@ -128,7 +129,7 @@ export class TaskController {
         data: { task }
       });
     } catch (error) {
-      console.error('Create task error:', error);
+      logger.error('Create task error', { error });
       res.status(500).json({
         success: false,
         error: error instanceof Error ? error.message : 'Failed to create task'
@@ -169,7 +170,7 @@ export class TaskController {
         data: { task }
       });
     } catch (error) {
-      console.error('Update task error:', error);
+      logger.error('Update task error', { error });
       res.status(500).json({
         success: false,
         error: error instanceof Error ? error.message : 'Failed to update task'
@@ -208,7 +209,7 @@ export class TaskController {
         data: { message: 'Task deleted successfully' }
       });
     } catch (error) {
-      console.error('Delete task error:', error);
+      logger.error('Delete task error', { error });
       res.status(500).json({
         success: false,
         error: error instanceof Error ? error.message : 'Failed to delete task'
@@ -230,7 +231,7 @@ export class TaskController {
         data: { stats }
       });
     } catch (error) {
-      console.error('Get task stats error:', error);
+      logger.error('Get task stats error', { error });
       res.status(500).json({
         success: false,
         error: error instanceof Error ? error.message : 'Failed to get task statistics'
@@ -252,7 +253,7 @@ export class TaskController {
         data: { leadTimeData }
       });
     } catch (error) {
-      console.error('Get lead time distribution error:', error);
+      logger.error('Get lead time distribution error', { error });
       res.status(500).json({
         success: false,
         error: error instanceof Error ? error.message : 'Failed to get lead time distribution'
@@ -273,7 +274,7 @@ export class TaskController {
         data: { dependencies }
       });
     } catch (error) {
-      console.error('Get task dependencies error:', error);
+      logger.error('Get task dependencies error', { error });
       res.status(500).json({
         success: false,
         error: error instanceof Error ? error.message : 'Failed to get task dependencies'
@@ -329,7 +330,7 @@ export class TaskController {
         }
       });
     } catch (error) {
-      console.error('Bulk update tasks error:', error);
+      logger.error('Bulk update tasks error', { error });
       res.status(500).json({
         success: false,
         error: error instanceof Error ? error.message : 'Failed to bulk update tasks'
@@ -378,7 +379,7 @@ export class TaskController {
         data: { task }
       });
     } catch (error) {
-      console.error('Assign task error:', error);
+      logger.error('Assign task error', { error });
       res.status(500).json({
         success: false,
         error: error instanceof Error ? error.message : 'Failed to assign task'
@@ -453,7 +454,7 @@ export class TaskController {
         data: { task }
       });
     } catch (error) {
-      console.error('Update task status error:', error);
+      logger.error('Update task status error', { error });
       res.status(500).json({
         success: false,
         error: error instanceof Error ? error.message : 'Failed to update task status'
@@ -504,7 +505,7 @@ export class TaskController {
         message: `${result.updated} tasks moved successfully`
       });
     } catch (error) {
-      console.error('Bulk move tasks error:', error);
+      logger.error('Bulk move tasks error', { error });
       res.status(500).json({
         success: false,
         error: error instanceof Error ? error.message : 'Failed to bulk move tasks'

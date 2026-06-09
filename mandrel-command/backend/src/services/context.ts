@@ -1,4 +1,5 @@
 import { db as pool } from '../database/connection';
+import { logger } from '../config/logger';
 
 export interface Context {
   id: string;
@@ -58,10 +59,10 @@ export class ContextService {
       const result = await pool.query(query, params);
       const count = parseInt(result.rows[0].count);
       
-      console.log(`📊 ContextService.count - Project: ${projectId || 'ALL'}, Count: ${count}`);
+      logger.info(`📊 ContextService.count - Project: ${projectId || 'ALL'}, Count: ${count}`);
       return count;
     } catch (error) {
-      console.error('Context count error:', error);
+      logger.error('Context count error', { error });
       throw new Error('Failed to get context count');
     }
   }
@@ -185,7 +186,7 @@ export class ContextService {
         limit
       };
     } catch (error) {
-      console.error('Context search error:', error);
+      logger.error('Context search error', { error });
       throw new Error('Failed to search contexts');
     }
   }
@@ -224,7 +225,7 @@ export class ContextService {
         updated_at: row.updated_at
       };
     } catch (error) {
-      console.error('Get context error:', error);
+      logger.error('Get context error', { error });
       throw new Error('Failed to get context');
     }
   }
@@ -291,7 +292,7 @@ export class ContextService {
 
       return result.rows[0];
     } catch (error) {
-      console.error('Update context error:', error);
+      logger.error('Update context error', { error });
       throw new Error('Failed to update context');
     }
   }
@@ -304,7 +305,7 @@ export class ContextService {
       const result = await pool.query('DELETE FROM contexts WHERE id = $1', [id]);
       return result.rowCount! > 0;
     } catch (error) {
-      console.error('Delete context error:', error);
+      logger.error('Delete context error', { error });
       throw new Error('Failed to delete context');
     }
   }
@@ -325,7 +326,7 @@ export class ContextService {
 
       return { deleted: result.rowCount || 0 };
     } catch (error) {
-      console.error('Bulk delete contexts error:', error);
+      logger.error('Bulk delete contexts error', { error });
       throw new Error('Failed to bulk delete contexts');
     }
   }
@@ -383,7 +384,7 @@ export class ContextService {
 
       return { updated: result.rowCount || 0 };
     } catch (error) {
-      console.error('Bulk update contexts error:', error);
+      logger.error('Bulk update contexts error', { error });
       throw new Error('Failed to bulk update contexts');
     }
   }
@@ -451,7 +452,7 @@ export class ContextService {
         by_project
       };
     } catch (error) {
-      console.error('Get context stats error:', error);
+      logger.error('Get context stats error', { error });
       throw new Error('Failed to get context statistics');
     }
   }
@@ -486,7 +487,7 @@ export class ContextService {
         weekStart: row.week
       })).reverse(); // Reverse to show oldest first for chart display
     } catch (error) {
-      console.error('Get weekly velocity error:', error);
+      logger.error('Get weekly velocity error', { error });
       throw new Error('Failed to get weekly context velocity');
     }
   }
@@ -614,7 +615,7 @@ ${metadata}
         updated_at: row.updated_at
       }));
     } catch (error) {
-      console.error('Get related contexts error:', error);
+      logger.error('Get related contexts error', { error });
       return [];
     }
   }

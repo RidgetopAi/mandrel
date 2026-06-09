@@ -140,11 +140,11 @@ async function startServer(): Promise<void> {
         ]
       });
 
-      console.log('🚀 AIDIS Command Backend started');
-      console.log(`📍 Service: ${serviceName}`);
-      console.log(`📍 Server running on http://localhost:${actualPort}`);
-      console.log(`🌍 Environment: ${config.nodeEnv}`);
-      console.log(`📊 Logging: ${config.logging.level} (DB: ${config.logging.dbLogLevel})`);
+      logger.info('🚀 AIDIS Command Backend started');
+      logger.info(`📍 Service: ${serviceName}`);
+      logger.info(`📍 Server running on http://localhost:${actualPort}`);
+      logger.info(`🌍 Environment: ${config.nodeEnv}`);
+      logger.info(`📊 Logging: ${config.logging.level} (DB: ${config.logging.dbLogLevel})`);
     });
 
     // Graceful shutdown handling
@@ -179,7 +179,7 @@ async function startServer(): Promise<void> {
       error: error instanceof Error ? error.message : 'Unknown error',
       stack: error instanceof Error ? error.stack : undefined
     });
-    console.error('❌ Failed to start server:', error);
+    logger.error('❌ Failed to start server', { error });
     process.exit(1);
   }
 }

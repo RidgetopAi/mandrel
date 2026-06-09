@@ -2,6 +2,7 @@ import { Router, Response } from 'express';
 import { authenticateToken } from '../middleware/auth';
 import { AuthenticatedRequest } from '../types/auth';
 import { EmbeddingService } from '../services/EmbeddingService';
+import { logger } from '../config/logger';
 
 const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -67,7 +68,7 @@ router.get('/list', async (req: AuthenticatedRequest, res: Response) => {
     );
     return res.json(datasets);
   } catch (error) {
-    console.error('Error getting embedding datasets:', error);
+    logger.error('Error getting embedding datasets', { error });
     return res.status(500).json({ 
       error: 'Failed to get embedding datasets',
       details: error instanceof Error ? error.message : 'Unknown error'
@@ -143,7 +144,7 @@ router.get('/similarity', async (req: AuthenticatedRequest, res: Response) => {
     
     return res.json(similarity);
   } catch (error) {
-    console.error('Error getting similarity matrix:', error);
+    logger.error('Error getting similarity matrix', { error });
     return res.status(500).json({ 
       error: 'Failed to get similarity matrix',
       details: error instanceof Error ? error.message : 'Unknown error'
@@ -219,7 +220,7 @@ router.get('/projection', async (req: AuthenticatedRequest, res: Response) => {
     
     return res.json(projection);
   } catch (error) {
-    console.error('Error getting projection:', error);
+    logger.error('Error getting projection', { error });
     return res.status(500).json({ 
       error: 'Failed to get projection',
       details: error instanceof Error ? error.message : 'Unknown error'
@@ -289,7 +290,7 @@ router.get('/cluster', async (req: AuthenticatedRequest, res: Response) => {
     
     return res.json(clusters);
   } catch (error) {
-    console.error('Error getting clusters:', error);
+    logger.error('Error getting clusters', { error });
     return res.status(500).json({ 
       error: 'Failed to get clusters',
       details: error instanceof Error ? error.message : 'Unknown error'
@@ -353,7 +354,7 @@ router.get('/metrics', async (req: AuthenticatedRequest, res: Response) => {
     
     return res.json(metrics);
   } catch (error) {
-    console.error('Error getting metrics:', error);
+    logger.error('Error getting metrics', { error });
     return res.status(500).json({ 
       error: 'Failed to get metrics',
       details: error instanceof Error ? error.message : 'Unknown error'
@@ -405,7 +406,7 @@ router.get('/relationships', async (req: AuthenticatedRequest, res: Response) =>
 
     return res.json(relationships);
   } catch (error) {
-    console.error('Error getting project relationships:', error);
+    logger.error('Error getting project relationships', { error });
     return res.status(500).json({
       error: 'Failed to get project relationships',
       details: error instanceof Error ? error.message : 'Unknown error',
@@ -457,7 +458,7 @@ router.get('/knowledge-gaps', async (req: AuthenticatedRequest, res: Response) =
 
     return res.json(gaps);
   } catch (error) {
-    console.error('Error getting knowledge gap metrics:', error);
+    logger.error('Error getting knowledge gap metrics', { error });
     return res.status(500).json({
       error: 'Failed to get knowledge gap metrics',
       details: error instanceof Error ? error.message : 'Unknown error',
@@ -509,7 +510,7 @@ router.get('/usage', async (req: AuthenticatedRequest, res: Response) => {
 
     return res.json(usage);
   } catch (error) {
-    console.error('Error getting usage patterns:', error);
+    logger.error('Error getting usage patterns', { error });
     return res.status(500).json({
       error: 'Failed to get usage patterns',
       details: error instanceof Error ? error.message : 'Unknown error',

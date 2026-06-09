@@ -3,6 +3,7 @@ import { UserService } from '../services/user';
 import { authenticateToken } from '../middleware/auth';
 import { AuthenticatedRequest } from '../types/auth';
 import { db as pool } from '../database/connection';
+import { logger } from '../config/logger';
 
 const router = Router();
 
@@ -87,7 +88,7 @@ router.put('/profile', authenticateToken, async (req: AuthenticatedRequest, res:
       data: { user: updatedUser }
     });
   } catch (error) {
-    console.error('Error updating profile:', error);
+    logger.error('Error updating profile', { error });
     res.status(500).json({
       success: false,
       error: 'Internal Server Error',
@@ -157,7 +158,7 @@ router.post('/change-password', authenticateToken, async (req: AuthenticatedRequ
       message: 'Password changed successfully'
     });
   } catch (error) {
-    console.error('Error changing password:', error);
+    logger.error('Error changing password', { error });
     res.status(500).json({
       success: false,
       error: 'Internal Server Error',
@@ -216,7 +217,7 @@ router.patch('/preferences', authenticateToken, async (req: AuthenticatedRequest
       data: { user: result.rows[0] }
     });
   } catch (error) {
-    console.error('Error updating preferences:', error);
+    logger.error('Error updating preferences', { error });
     res.status(500).json({
       success: false,
       error: 'Internal Server Error',
@@ -255,7 +256,7 @@ router.post('/revoke-sessions', authenticateToken, async (req: AuthenticatedRequ
       message: 'All sessions revoked successfully. Please log in again.'
     });
   } catch (error) {
-    console.error('Error revoking sessions:', error);
+    logger.error('Error revoking sessions', { error });
     res.status(500).json({
       success: false,
       error: 'Internal Server Error',

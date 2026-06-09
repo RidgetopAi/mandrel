@@ -3,6 +3,7 @@ import { authenticateToken } from '../middleware/auth';
 import { SessionDetailService } from '../services/sessionDetail';
 import { GitService } from '../services/gitService';
 import { db as pool } from '../database/connection';
+import { logger } from '../config/logger';
 
 const router = Router();
 
@@ -86,7 +87,7 @@ router.get('/current', async (_req: Request, res: Response): Promise<void> => {
     });
 
   } catch (error) {
-    console.error('Get current session code activity error:', error);
+    logger.error('Get current session code activity error', { error });
     res.status(500).json({
       success: false,
       error: 'Failed to get current session code activity',
@@ -196,7 +197,7 @@ router.get('/session/:sessionId', async (req: Request, res: Response): Promise<v
     return;
 
   } catch (error) {
-    console.error('Get session code activity error:', error);
+    logger.error('Get session code activity error', { error });
     res.status(500).json({
       success: false,
       error: 'Failed to get session code activity',
@@ -261,7 +262,7 @@ router.post('/analyze', async (req: Request, res: Response): Promise<void> => {
           working_directory: process.cwd() // Would get from project config in real implementation
         };
       } catch (error) {
-        console.warn('Could not get git context:', error);
+        logger.warn('Could not get git context', { error });
       }
     }
 
@@ -338,7 +339,7 @@ router.post('/analyze', async (req: Request, res: Response): Promise<void> => {
     return;
 
   } catch (error) {
-    console.error('Trigger code analysis error:', error);
+    logger.error('Trigger code analysis error', { error });
     res.status(500).json({
       success: false,
       error: 'Failed to trigger code analysis',
@@ -448,7 +449,7 @@ router.get('/commits/:sessionId', async (req: Request, res: Response): Promise<v
     return;
 
   } catch (error) {
-    console.error('Get session commits error:', error);
+    logger.error('Get session commits error', { error });
     res.status(500).json({
       success: false,
       error: 'Failed to get session commits',
@@ -499,7 +500,7 @@ router.post('/correlate', async (req: Request, res: Response): Promise<void> => 
           limit: 100
         });
       } catch (error) {
-        console.warn('Failed to refresh git data during correlation:', error);
+        logger.warn('Failed to refresh git data during correlation', { error });
       }
     }
 
@@ -518,7 +519,7 @@ router.post('/correlate', async (req: Request, res: Response): Promise<void> => 
     return;
 
   } catch (error) {
-    console.error('Manual session correlation error:', error);
+    logger.error('Manual session correlation error', { error });
     res.status(500).json({
       success: false,
       error: 'Failed to correlate session with code',
@@ -681,7 +682,7 @@ router.get('/metrics/:sessionId', async (req: Request, res: Response): Promise<v
     return;
 
   } catch (error) {
-    console.error('Get session code metrics error:', error);
+    logger.error('Get session code metrics error', { error });
     res.status(500).json({
       success: false,
       error: 'Failed to get session code metrics',

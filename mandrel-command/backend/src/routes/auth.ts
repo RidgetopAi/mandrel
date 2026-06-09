@@ -3,6 +3,7 @@ import rateLimit from 'express-rate-limit';
 import { AuthService } from '../services/auth';
 import { authenticateToken, requireAdmin } from '../middleware/auth';
 import { LoginRequest, RegisterRequest, AuthenticatedRequest } from '../types/auth';
+import { logger } from '../config/logger';
 
 /**
  * @swagger
@@ -167,7 +168,7 @@ const authLimiter = rateLimit({
   // Remove custom keyGenerator to use default IPv6-safe implementation
   // Enhanced rate limit handler with better logging
   handler: (req: any, res: any) => {
-    console.warn('Authentication rate limit reached:', {
+    logger.warn('Authentication rate limit reached', {
       ip: req.ip,
       userAgent: req.get('User-Agent'),
       timestamp: new Date().toISOString(),
@@ -284,7 +285,7 @@ router.post('/login', authLimiter, async (req: Request, res: Response): Promise<
       expires: result.expiresAt.toISOString()
     });
   } catch (error) {
-    console.error('Login error:', error);
+    logger.error('Login error', { error });
     res.status(500).json({
       error: 'Server error',
       message: 'An error occurred during login'
@@ -338,7 +339,7 @@ router.post('/logout', generalLimiter, authenticateToken, async (req: Authentica
       message: 'Logout successful'
     });
   } catch (error) {
-    console.error('Logout error:', error);
+    logger.error('Logout error', { error });
     res.status(500).json({
       error: 'Server error',
       message: 'An error occurred during logout'
@@ -393,7 +394,7 @@ router.get('/profile', generalLimiter, authenticateToken, async (req: Authentica
       data: { user: userProfile }
     });
   } catch (error) {
-    console.error('Profile error:', error);
+    logger.error('Profile error', { error });
     res.status(500).json({
       error: 'Server error',
       message: 'Could not retrieve user profile'
@@ -460,7 +461,7 @@ router.post('/refresh', generalLimiter, authenticateToken, async (req: Authentic
       }
     });
   } catch (error) {
-    console.error('Token refresh error:', error);
+    logger.error('Token refresh error', { error });
     res.status(500).json({
       error: 'Server error',
       message: 'An error occurred during token refresh'
@@ -570,7 +571,7 @@ router.post('/register', authLimiter, authenticateToken, requireAdmin, async (re
       data: { user: userResponse }
     });
   } catch (error: any) {
-    console.error('Registration error:', error);
+    logger.error('Registration error', { error });
     
     if (error.code === '23505') { // PostgreSQL unique violation
       res.status(409).json({

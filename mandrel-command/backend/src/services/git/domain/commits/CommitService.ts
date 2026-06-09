@@ -18,6 +18,7 @@ import {
 import { analyzeFileChange, isGeneratedFile } from '../../utils/fileAnalysis';
 import { createServiceError } from '../../utils/errors';
 import { FileChangeService } from '../changes/ChangeService';
+import { logger } from '../../../../config/logger';
 
 export class CommitService {
   private static config: GitServiceConfig = DEFAULT_GIT_SERVICE_CONFIG;
@@ -45,7 +46,7 @@ export class CommitService {
     const errors: string[] = [];
     
     try {
-      console.log(`📊 CommitService.collectCommitData - Project: ${project_id}, Limit: ${limit}`);
+      logger.info(`📊 CommitService.collectCommitData - Project: ${project_id}, Limit: ${limit}`);
       
       const git = await GitClient.getGitInstance(project_id);
       
@@ -73,7 +74,7 @@ export class CommitService {
       if (branch) logOptions.from = branch;
 
       const log = await git.log(logOptions);
-      console.log(`📈 Found ${log.all.length} commits to process`);
+      logger.info(`📈 Found ${log.all.length} commits to process`);
 
       let commitsCollected = 0;
       let branchesUpdated = 0;
@@ -90,12 +91,12 @@ export class CommitService {
           fileChangesTracked += batchResult.fileChangesTracked;
         } catch (error) {
           errors.push(`Batch ${i}-${i + batchSize}: ${error}`);
-          console.error(`❌ Error processing batch ${i}-${i + batchSize}:`, error);
+          logger.error(`❌ Error processing batch ${i}-${i + batchSize}`, { error });
         }
       }
 
       const processingTime = Date.now() - startTime;
-      console.log(`✅ CommitService.collectCommitData completed in ${processingTime}ms`);
+      logger.info(`✅ CommitService.collectCommitData completed in ${processingTime}ms`);
 
       return {
         success: true,
@@ -131,7 +132,7 @@ export class CommitService {
         const metadata = await this.collectCommitMetadata(commit, git);
 
         if (this.isDependencyCommit(metadata, commit)) {
-          console.log(`⏭️  Skipping dependency commit: ${commit.hash.substring(0, 12)}`);
+          logger.info(`⏭️  Skipping dependency commit: ${commit.hash.substring(0, 12)}`);
           continue;
         }
 
@@ -149,11 +150,11 @@ export class CommitService {
             });
             fileChangesTracked += result.total_files;
           } catch (error) {
-            console.warn(`Failed to track file changes for ${commit.hash}:`, error);
+            logger.warn(`Failed to track file changes for ${commit.hash}`, { error });
           }
         }
       } catch (error) {
-        console.error(`Failed to process commit ${commit.hash}:`, error);
+        logger.error(`Failed to process commit ${commit.hash}`, { error });
         throw error;
       }
     }
@@ -202,7 +203,7 @@ export class CommitService {
         processing_timestamp: new Date().toISOString()
       };
     } catch (error: any) {
-      console.warn(`Failed to collect metadata for ${commit.hash}:`, error);
+      logger.warn(`Failed to collect metadata for ${commit.hash}`, { error });
       return {
         parent_shas: [],
         is_merge_commit: false,
@@ -234,7 +235,7 @@ export class CommitService {
       const sourceBranches = Object.keys(sourceBranchInfo.branches).filter(b => !b.startsWith('remotes/'));
       sourceBranch = sourceBranches[0] || null;
     } catch (error) {
-      console.warn(`Could not determine merge branches for ${commit.hash}:`, error);
+      logger.warn(`Could not determine merge branches for ${commit.hash}`, { error });
     }
 
     return {

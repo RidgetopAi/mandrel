@@ -6,6 +6,7 @@
 
 import { db } from '../../database/connection.js';
 import { resolveProjectId } from './core.js';
+import { logger } from '../../config/logger';
 import type { 
   EmbeddingScope, 
   KnowledgeGapMetrics, 
@@ -218,7 +219,7 @@ export async function getKnowledgeGapMetrics(
       summary,
     };
   } catch (error) {
-    console.error('Error getting knowledge gap metrics:', error);
+    logger.error('Error getting knowledge gap metrics', { error });
     throw new Error('Failed to get knowledge gap metrics');
   }
 }

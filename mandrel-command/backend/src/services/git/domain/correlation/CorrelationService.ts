@@ -10,6 +10,7 @@ import {
 import { CommitRepo } from '../../infra/db/CommitRepo';
 import { CorrelationRepo, Correlation } from '../../infra/db/CorrelationRepo';
 import { createServiceError } from '../../utils/errors';
+import { logger } from '../../../../config/logger';
 
 export class CorrelationService {
   /**
@@ -22,7 +23,7 @@ export class CorrelationService {
     const startTime = Date.now();
     
     try {
-      console.log(`🔗 CorrelationService.correlateCommitsWithSessions - Project: ${project_id}`);
+      logger.info(`🔗 CorrelationService.correlateCommitsWithSessions - Project: ${project_id}`);
       
       const commits = await CommitRepo.getCommitsForCorrelation(project_id, since);
       const sessions = await CorrelationRepo.getSessionsForProject(project_id);
@@ -61,7 +62,7 @@ export class CorrelationService {
       }
       
       const processingTime = Date.now() - startTime;
-      console.log(`✅ CorrelationService completed in ${processingTime}ms`);
+      logger.info(`✅ CorrelationService completed in ${processingTime}ms`);
       
       return {
         project_id,

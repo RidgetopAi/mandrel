@@ -1,4 +1,5 @@
 import { db as pool } from '../database/connection';
+import { logger } from '../config/logger';
 
 export interface SessionAnalytics {
   total_sessions: number;
@@ -96,7 +97,7 @@ export class SessionAnalyticsService {
         sessions_this_month: parseInt(row.sessions_this_month) || 0
       };
     } catch (error) {
-      console.error('Get session analytics error:', error);
+      logger.error('Get session analytics error', { error });
       throw new Error('Failed to get session analytics');
     }
   }
@@ -160,7 +161,7 @@ export class SessionAnalyticsService {
         average_duration_minutes: Math.round(parseFloat(row.average_duration_minutes) || 0)
       }));
     } catch (error) {
-      console.error('Get session trends error:', error);
+      logger.error('Get session trends error', { error });
       throw new Error('Failed to get session trends');
     }
   }
@@ -224,7 +225,7 @@ export class SessionAnalyticsService {
         context_summary: row.context_summary
       }));
     } catch (error) {
-      console.error('Get productive sessions error:', error);
+      logger.error('Get productive sessions error', { error });
       throw new Error('Failed to get productive sessions');
     }
   }
@@ -273,7 +274,7 @@ export class SessionAnalyticsService {
         average_tokens_per_session: Math.round(parseFloat(row.average_tokens_per_session) || 0)
       }));
     } catch (error) {
-      console.error('Get token usage patterns error:', error);
+      logger.error('Get token usage patterns error', { error });
       throw new Error('Failed to get token usage patterns');
     }
   }
@@ -451,7 +452,7 @@ export class SessionAnalyticsService {
         total
       };
     } catch (error) {
-      console.error('Get sessions list error:', error);
+      logger.error('Get sessions list error', { error });
       throw new Error('Failed to get sessions list');
     }
   }
@@ -489,7 +490,7 @@ export class SessionAnalyticsService {
         averageDuration: Math.round(parseFloat(row.avg_duration_minutes) || 0),
       };
     } catch (error) {
-      console.error('Get session stats error:', error);
+      logger.error('Get session stats error', { error });
       throw new Error('Failed to get session stats');
     }
   }
