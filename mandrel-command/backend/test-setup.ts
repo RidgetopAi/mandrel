@@ -9,6 +9,17 @@ jest.setTimeout(30000);
 // Default to a test environment.
 process.env.NODE_ENV = process.env.NODE_ENV || 'test';
 
+// Local-dev DB defaults so `npm test` works without a hand-rolled env line.
+// The app config reads DATABASE_* (and the SSE pools read AIDIS_DB_*); the local
+// dev database is `aidis_production` owned by the OS user. CI / other machines
+// should set these explicitly (a dedicated test DB) to override these defaults.
+process.env.DATABASE_NAME = process.env.DATABASE_NAME || 'aidis_production';
+process.env.DATABASE_USER = process.env.DATABASE_USER || 'ridgetop';
+process.env.DATABASE_PASSWORD = process.env.DATABASE_PASSWORD || '';
+process.env.AIDIS_DB_DATABASE = process.env.AIDIS_DB_DATABASE || process.env.DATABASE_NAME;
+process.env.AIDIS_DB_USER = process.env.AIDIS_DB_USER || process.env.DATABASE_USER;
+process.env.AIDIS_DB_PASSWORD = process.env.AIDIS_DB_PASSWORD || process.env.DATABASE_PASSWORD;
+
 // Several suites require a live Postgres + MCP server. When those aren't
 // available, set MANDREL_SKIP_DB_TESTS=true to skip the infra-dependent paths
 // instead of hanging on connection attempts.

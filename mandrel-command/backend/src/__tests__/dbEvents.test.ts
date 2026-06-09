@@ -16,7 +16,10 @@ describe('DbEvents Service', () => {
     jest.clearAllMocks();
 
     mockConnect = jest.fn().mockResolvedValue(undefined);
-    mockQuery = jest.fn().mockResolvedValue(undefined);
+    // start() runs `SELECT ... FROM pg_listening_channels()` and destructures
+    // `.rows`, so the mock must resolve a result-shaped object (not undefined),
+    // otherwise start() throws before registering the error/end handlers.
+    mockQuery = jest.fn().mockResolvedValue({ rows: [{ channels: ['aidis_changes'] }] });
     mockEnd = jest.fn().mockResolvedValue(undefined);
     mockOn = jest.fn();
 
@@ -73,6 +76,7 @@ describe('DbEvents Service', () => {
         database: expect.any(String),
         password: expect.any(String),
         port: expect.any(Number),
+        application_name: expect.any(String),
       });
       expect(mockConnect).toHaveBeenCalledTimes(1);
       expect(mockQuery).toHaveBeenCalledWith('LISTEN aidis_changes');
@@ -156,7 +160,10 @@ describe('DbEvents Service', () => {
       notificationHandler!({ payload: null });
 
       expect(sseService.broadcastDbEvent).not.toHaveBeenCalled();
-      expect(logger.warn).toHaveBeenCalledWith('DB Events: Received notification without payload');
+      expect(logger.warn).toHaveBeenCalledWith(
+        'DB Events: Received notification without payload',
+        { channel: undefined }
+      );
     });
 
     it('should handle invalid JSON payload', () => {
@@ -280,13 +287,13 @@ describe('DbEvents Service', () => {
         .mockResolvedValueOnce(undefined);
 
       await dbEvents.start();
-      
-      jest.advanceTimersByTime(2000);
-      await Promise.resolve();
-      
-      jest.advanceTimersByTime(4000);
-      await Promise.resolve();
-      await Promise.resolve();
+
+      // advanceTimersByTimeAsync flushes the promise chain between timer
+      // firings; start() now awaits several queries before resetting the
+      // counter, so plain advanceTimersByTime + a couple of microtask flushes
+      // would settle too early and leave reconnectAttempts non-zero.
+      await jest.advanceTimersByTimeAsync(2000); // first reconnect (still fails)
+      await jest.advanceTimersByTimeAsync(4000); // second reconnect (succeeds)
 
       const status = dbEvents.getStatus();
       expect(status.reconnectAttempts).toBe(0);

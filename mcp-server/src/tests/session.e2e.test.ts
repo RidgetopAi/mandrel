@@ -107,7 +107,12 @@ describe('Session Management E2E Tests', () => {
 
       const { rows } = await db.query('SELECT project_id FROM sessions WHERE id = $1', [sessionId]);
       expect(rows).toHaveLength(1);
-      expect(rows[0].project_id).toBe('4afb236c-00d7-433d-87de-0f489b96acb2'); // aidis-bootstrap default
+      // TS010 project inheritance always resolves SOME project (current → primary
+      // → system default → personal fallback); a session is never left unassigned.
+      // Assert a valid resolved project rather than a hard-coded, env-specific id.
+      expect(rows[0].project_id).toBeTruthy();
+      const proj = await db.query('SELECT id FROM projects WHERE id = $1', [rows[0].project_id]);
+      expect(proj.rows).toHaveLength(1);
     } finally {
       // Clean up
       if (sessionId) {
@@ -198,9 +203,11 @@ describe('Session Management E2E Tests', () => {
 
       await SessionTracker.recordOperation(sessionId, 'context_creation');
 
+      // recordOperation now logs the raw operation type as event_type
+      // (was 'session_operation_<type>' before the session refactor).
       const { rows } = await db.query(`
         SELECT COUNT(*) FROM analytics_events
-        WHERE session_id = $1 AND event_type = 'session_operation_context_creation'
+        WHERE session_id = $1 AND event_type = 'context_creation'
       `, [sessionId]);
 
       expect(parseInt(rows[0].count)).toBe(1);
@@ -219,10 +226,12 @@ describe('Session Management E2E Tests', () => {
     try {
       sessionId = await SessionTracker.startSession(testProjectId);
 
-      // Simulate some operations
-      await SessionTracker.recordOperation(sessionId, 'context_creation');
+      // Simulate work. recordActivity persists session_activities rows, which is
+      // what drives sessions.activity_count (and therefore success_status =
+      // 'completed' / operations_count) — the same path real sessions use.
+      await SessionTracker.recordActivity(sessionId, 'context_creation');
       SessionTracker.recordContextCreated(sessionId); // Update in-memory tracking
-      await SessionTracker.recordOperation(sessionId, 'decision_creation');
+      await SessionTracker.recordActivity(sessionId, 'decision_creation');
 
       // End session to calculate productivity score
       await SessionTracker.endSession(sessionId);
@@ -250,8 +259,9 @@ describe('Session Management E2E Tests', () => {
     try {
       sessionId = await SessionTracker.startSession(testProjectId);
 
-      // Simulate operations
-      await SessionTracker.recordOperation(sessionId, 'context_creation');
+      // Simulate work via the activity path so activity_count > 0 (drives the
+      // 'completed' success_status the same way real sessions do).
+      await SessionTracker.recordActivity(sessionId, 'context_creation');
 
       const endedSession = await SessionTracker.endSession(sessionId);
 
@@ -396,15 +406,16 @@ describe('Session Management E2E Tests', () => {
     try {
       sessionId = await SessionTracker.startSession(testProjectId);
 
-      // Create contexts and decisions with known counts using proper API
-      await SessionTracker.recordOperation(sessionId, 'context_creation');
-      await SessionTracker.recordOperation(sessionId, 'context_creation');
-      await SessionTracker.recordOperation(sessionId, 'decision_creation');
+      // Record contexts in-memory, then end the session so the counts are flushed
+      // to the sessions.contexts_created column that productivity reads from.
+      SessionTracker.recordContextCreated(sessionId);
+      SessionTracker.recordContextCreated(sessionId);
+      await SessionTracker.endSession(sessionId);
 
       const productivity = await SessionTracker.calculateProductivity(sessionId);
 
       // Formula: (contexts * 2 + decisions * 3) / (duration_hours + 1)
-      // Should be: (2 * 2 + 1 * 3) / (very_small_duration + 1) ≈ 7
+      // 2 contexts, ~0h duration → (2 * 2) / (≈0 + 1) ≈ 4
       expect(productivity).toBeGreaterThan(0);
       expect(productivity).toBeLessThan(10); // Should be reasonable
     } finally {

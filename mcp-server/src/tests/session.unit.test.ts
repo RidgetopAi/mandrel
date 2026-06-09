@@ -14,12 +14,20 @@ import { db } from '../config/database.js';
 import { SessionTracker, SessionData, SessionStats, ensureActiveSession, recordSessionOperation } from '../services/sessionTracker.js';
 import { SessionManagementHandler, SessionAnalyticsHandler, getSessionStatistics, recordSessionOperation as recordAnalyticsOperation, startSessionTracking } from '../handlers/sessionAnalytics.js';
 import { projectHandler } from '../handlers/project.js';
+import { SessionRepo } from '../services/session/infra/db/index.js';
 
 // Mock database to avoid real DB operations in unit tests
 vi.mock('../config/database.js', () => ({
   db: {
     query: vi.fn()
   }
+}));
+
+// Neutralise project resolution so startSession() unit tests exercise the
+// session-insert path directly without project-lookup DB queries consuming the
+// mocked query sequence. (Refactor moved this off SessionTracker into a module.)
+vi.mock('../services/session/domain/lifecycle/projectResolution.js', () => ({
+  resolveProjectForSession: vi.fn().mockResolvedValue(null)
 }));
 
 const mockDb = db as any;
@@ -52,9 +60,7 @@ describe('SessionTracker Unit Tests', () => {
     });
 
     it('should create session without project ID', async () => {
-      // Mock resolveProjectForSession to return null (no project found)
-      vi.spyOn(SessionTracker as any, 'resolveProjectForSession').mockResolvedValueOnce(null);
-
+      // resolveProjectForSession is module-mocked to return null (no project found)
       mockDb.query
         .mockResolvedValueOnce({ rows: [{ id: 'session-123', started_at: new Date() }] }) // session insert
         .mockResolvedValueOnce({ rows: [] }); // analytics insert
@@ -69,8 +75,7 @@ describe('SessionTracker Unit Tests', () => {
     });
 
     it('should handle database errors', async () => {
-      // Mock resolveProjectForSession to return null
-      vi.spyOn(SessionTracker as any, 'resolveProjectForSession').mockResolvedValueOnce(null);
+      // resolveProjectForSession is module-mocked to return null
 
       // Mock database to reject on session insert
       mockDb.query.mockRejectedValueOnce(new Error('Database error'));
@@ -137,15 +142,20 @@ describe('SessionTracker Unit Tests', () => {
       mockDb.query.mockResolvedValueOnce({ rows: [] });
       
       await SessionTracker.recordOperation(sessionId, operationType);
-      
+
+      // Refactor: operations are now logged via AnalyticsEventsRepo.insert with
+      // actor 'system', the raw operation type as event_type, status 'completed',
+      // and ['operation', type] tags (was actor 'ai' / 'session_operation_*').
       expect(mockDb.query).toHaveBeenCalledWith(
         expect.stringContaining('INSERT INTO analytics_events'),
         [
-          'ai',
+          'system',
+          null,
           sessionId,
-          `session_operation_${operationType}`,
-          'closed',
-          ['session', 'operation', operationType]
+          operationType,
+          'completed',
+          JSON.stringify({}),
+          ['operation', operationType]
         ]
       );
     });
@@ -285,20 +295,20 @@ describe('SessionTracker Unit Tests', () => {
         duration_ms: 3600000 // 1 hour
       };
       
-      vi.spyOn(SessionTracker, 'getSessionData').mockResolvedValueOnce(mockSessionData);
-      
+      vi.spyOn(SessionRepo, 'getSessionData').mockResolvedValueOnce(mockSessionData);
+
       const productivity = await SessionTracker.calculateProductivity('test-123');
-      
+
       // Formula: (contexts * 2 + decisions * 3) / (duration_hours + 1)
       // (3 * 2 + 2 * 3) / (1 + 1) = 12 / 2 = 6
       expect(productivity).toBe(6);
     });
 
     it('should return 0 for non-existent session', async () => {
-      vi.spyOn(SessionTracker, 'getSessionData').mockResolvedValueOnce(null);
-      
+      vi.spyOn(SessionRepo, 'getSessionData').mockResolvedValueOnce(null);
+
       const productivity = await SessionTracker.calculateProductivity('invalid-session');
-      
+
       expect(productivity).toBe(0);
     });
 
@@ -318,10 +328,10 @@ describe('SessionTracker Unit Tests', () => {
         // No duration_ms
       };
       
-      vi.spyOn(SessionTracker, 'getSessionData').mockResolvedValueOnce(mockSessionData);
-      
+      vi.spyOn(SessionRepo, 'getSessionData').mockResolvedValueOnce(mockSessionData);
+
       const productivity = await SessionTracker.calculateProductivity('test-123');
-      
+
       // Should use default duration of 1 hour: (2*2 + 1*3) / (1 + 1) = 7 / 2 = 3.5
       expect(productivity).toBe(3.5);
     });
@@ -567,7 +577,9 @@ describe('Utility Functions Unit Tests', () => {
         undefined, // description
         undefined, // sessionGoal
         undefined, // tags
-        undefined  // aiModel
+        undefined, // aiModel
+        undefined, // sessionType
+        undefined  // connectionId
       );
     });
   });
@@ -602,7 +614,9 @@ describe('Utility Functions Unit Tests', () => {
         undefined, // description
         undefined, // sessionGoal
         undefined, // tags
-        undefined  // aiModel
+        undefined, // aiModel
+        undefined, // sessionType
+        undefined  // connectionId
       );
       expect(SessionTracker.recordOperation).toHaveBeenCalledWith(newSessionId, operationType);
     });

@@ -157,7 +157,7 @@ export const SessionLifecycleService = {
         decisions_created: sessionData.decisions_created,
         operations_count: sessionData.operations_count,
         productivity_score: productivityScore
-      });
+      }, durationMs);
 
       // Clear in-memory state
       ActiveSessionStore.clearIfActive(sessionId);
