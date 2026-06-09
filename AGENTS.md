@@ -220,7 +220,7 @@ project_list(includeStats?: boolean)
 
 ### Reference Guides
 
-- **Comprehensive MCP Guide**: `MANDREL_MCP_SERVER_REFERENCE_GUIDE.md`
+- **Comprehensive MCP Guide**: `docs/guides/MANDREL_MCP_SERVER_REFERENCE_GUIDE.md`
 - **Tool Parameters**: Use `mandrel_explain <toolname>` for current info
 - **Examples**: Use `mandrel_examples <toolname>` for usage patterns
 

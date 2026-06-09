@@ -41,8 +41,11 @@ archive/
 
 # Archive directories (keep local, exclude from repo)
 mcp-server-archive/
-docs/
+docs/*
 !docs/DEPLOYMENT.md
+# D3 (2026-06-09): organized doc homes — tracked, not scratch
+!docs/guides/
+!docs/archive/
 tests/
 ridge-parser-tui/
 
