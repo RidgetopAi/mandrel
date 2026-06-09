@@ -97,7 +97,7 @@ router.post('/validate/:schemaName', (req: Request, res: Response) => {
     });
 
     if (result.success) {
-      res.json({
+      return res.json({
         success: true,
         data: {
           valid: true,
@@ -107,7 +107,7 @@ router.post('/validate/:schemaName', (req: Request, res: Response) => {
         correlationId: req.correlationId
       });
     } else {
-      res.status(400).json({
+      return res.status(400).json({
         success: false,
         error: {
           type: 'validation',
@@ -125,7 +125,7 @@ router.post('/validate/:schemaName', (req: Request, res: Response) => {
       error: error instanceof Error ? error.message : 'Unknown error'
     });
 
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       error: {
         type: 'internal',

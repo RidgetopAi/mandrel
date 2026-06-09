@@ -60,7 +60,7 @@ router.get(
  *   uptimeSeconds: number
  * }
  */
-router.get('/events/stats', ensureAuthForSse, (req, res) => {
+router.get('/events/stats', ensureAuthForSse, (_req, res) => {
   const stats = sseService.getStats();
   res.json({
     success: true,
