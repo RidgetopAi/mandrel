@@ -17,6 +17,7 @@ import openApiRoutes from './openapi';
 import embeddingRoutes from './embedding';
 import eventsRoutes from './events';
 import gitRoutes from './git';
+import { logger } from '../config/logger';
 
 const router = Router();
 
@@ -46,7 +47,7 @@ const MCP_BASE = `http://localhost:${process.env.MANDREL_MCP_PORT || process.env
 
 // Deprecation warning for AIDIS_MCP_PORT
 if (process.env.AIDIS_MCP_PORT && !process.env.MANDREL_MCP_PORT) {
-  console.warn('⚠️  AIDIS_MCP_PORT is deprecated. Please use MANDREL_MCP_PORT instead.');
+  logger.warn('⚠️  AIDIS_MCP_PORT is deprecated. Please use MANDREL_MCP_PORT instead.');
 }
 
 /**
@@ -67,7 +68,7 @@ router.get('/v2/sessions/:sessionId/files', async (req: Request, res: Response):
     const data = await response.json();
     res.status(response.status).json(data);
   } catch (error) {
-    console.error('MCP proxy error (GET files):', error);
+    logger.error('MCP proxy error (GET files)', { error });
     res.status(503).json({
       success: false,
       error: 'MCP service unavailable',
@@ -95,7 +96,7 @@ router.post('/v2/sessions/:sessionId/sync-files', async (req: Request, res: Resp
     const data = await response.json();
     res.status(response.status).json(data);
   } catch (error) {
-    console.error('MCP proxy error (POST sync-files):', error);
+    logger.error('MCP proxy error (POST sync-files)', { error });
     res.status(503).json({
       success: false,
       error: 'MCP service unavailable',

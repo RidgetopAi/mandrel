@@ -69,11 +69,11 @@ const createValidationMiddleware = (options: ValidationOptions) => {
       const result = validateData(schema, dataToValidate);
 
       if (!result.success) {
-        console.error('=== VALIDATION FAILURE DETAILS ===');
-        console.error('Endpoint:', req.method, req.path);
-        console.error('Data received:', JSON.stringify(dataToValidate, null, 2));
-        console.error('Validation errors:', JSON.stringify(result.errors, null, 2));
-        console.error('================================');
+        logger.error('=== VALIDATION FAILURE DETAILS ===');
+        logger.error('Endpoint', { method: req.method, path: req.path });
+        logger.error('Data received', { data: JSON.stringify(dataToValidate, null, 2) });
+        logger.error('Validation errors', { errors: JSON.stringify(result.errors, null, 2) });
+        logger.error('================================');
         
         logger.warn('Validation failed: Invalid data format', {
           correlationId: req.correlationId,

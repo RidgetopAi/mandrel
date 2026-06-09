@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import dotenv from 'dotenv';
 import dotenvSafe from 'dotenv-safe';
+import { logger } from './logger';
 
 // Load environment variables with centralized configuration hierarchy:
 // 1. Environment-specific file from /config/environments/
@@ -20,15 +21,15 @@ const envPaths = [
   path.resolve(__dirname, '../../backend/.env')
 ];
 
-console.log(`🔧 Loading configuration for environment: ${nodeEnv}`);
+logger.info(`🔧 Loading configuration for environment: ${nodeEnv}`);
 
 // Load hierarchical configuration with dotenv first (preserve existing logic)
 for (const envPath of envPaths) {
   if (fs.existsSync(envPath)) {
-    console.log(`📄 Loading config from: ${envPath}`);
+    logger.info(`📄 Loading config from: ${envPath}`);
     dotenv.config({ path: envPath, override: false });
   } else {
-    console.log(`⚠️  Config file not found: ${envPath}`);
+    logger.info(`⚠️  Config file not found: ${envPath}`);
   }
 }
 
@@ -42,13 +43,13 @@ try {
     allowEmptyValues: true, // Allow empty values for optional variables
     path: false as any // Don't load any .env file, just validate current process.env
   });
-  console.log('✅ Environment variable validation passed');
+  logger.info('✅ Environment variable validation passed');
 } catch (error) {
-  console.error('❌ Environment variable validation failed:', (error as Error).message);
+  logger.error('❌ Environment variable validation failed', { error: (error as Error).message });
   if (process.env.NODE_ENV === 'production') {
     process.exit(1);
   } else {
-    console.warn('⚠️  Continuing in development mode despite validation errors');
+    logger.warn('⚠️  Continuing in development mode despite validation errors');
   }
 }
 
@@ -68,7 +69,7 @@ export const config = {
       if (process.env.NODE_ENV === 'production') {
         throw new Error('DATABASE_PASSWORD environment variable is required in production');
       }
-      console.warn('⚠️  DATABASE_PASSWORD not set - using empty string in development');
+      logger.warn('⚠️  DATABASE_PASSWORD not set - using empty string in development');
       return '';
     })(),
     port: parseInt(process.env.DATABASE_PORT || '5432'),
@@ -82,7 +83,7 @@ export const config = {
       if (process.env.NODE_ENV === 'production') {
         throw new Error('MANDREL_JWT_SECRET environment variable is required in production');
       }
-      console.warn('⚠️  Using default JWT secret - set MANDREL_JWT_SECRET environment variable');
+      logger.warn('⚠️  Using default JWT secret - set MANDREL_JWT_SECRET environment variable');
       return 'dev-only-' + Math.random().toString(36).substring(7);
     })(),
     jwtExpiresIn: process.env.JWT_EXPIRES_IN || '24h',

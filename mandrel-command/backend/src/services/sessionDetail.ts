@@ -1,5 +1,6 @@
 import { db as pool } from '../database/connection';
 import { GitService } from './gitService';
+import { logger } from '../config/logger';
 
 export interface SessionDetail {
   id: string;
@@ -300,7 +301,7 @@ export class SessionDetailService {
         tasks_updated: session.tasks_updated || 0,
       };
     } catch (error) {
-      console.error('Get session detail error:', error);
+      logger.error('Get session detail error', { error });
       throw new Error('Failed to get session detail');
     }
   }
@@ -408,7 +409,7 @@ export class SessionDetailService {
         commits_contributed: 0 // Will be populated when git correlation is implemented
       }));
     } catch (error) {
-      console.error('Get session summaries error:', error);
+      logger.error('Get session summaries error', { error });
       throw new Error('Failed to get session summaries');
     }
   }
@@ -424,7 +425,7 @@ export class SessionDetailService {
     message: string;
   }> {
     try {
-      console.log(`🔗 Correlating session ${sessionId.substring(0, 8)}... with git commits`);
+      logger.info(`🔗 Correlating session ${sessionId.substring(0, 8)}... with git commits`);
       
       // Get session details
       const sessionQuery = `
@@ -477,7 +478,7 @@ export class SessionDetailService {
       };
       
     } catch (error) {
-      console.error('Session git correlation error:', error);
+      logger.error('Session git correlation error', { error });
       return {
         success: false,
         linksCreated: 0,
@@ -493,7 +494,7 @@ export class SessionDetailService {
    */
   static async autoCorrelateOnSessionEnd(sessionId: string): Promise<void> {
     try {
-      console.log(`🔄 Auto-correlating session ${sessionId.substring(0, 8)}... on session end`);
+      logger.info(`🔄 Auto-correlating session ${sessionId.substring(0, 8)}... on session end`);
       
       // Small delay to ensure all git operations are complete
       await new Promise(resolve => setTimeout(resolve, 2000));
@@ -501,7 +502,7 @@ export class SessionDetailService {
       await this.correlateSessionWithGit(sessionId);
       
     } catch (error) {
-      console.error('Auto-correlation on session end failed:', error);
+      logger.error('Auto-correlation on session end failed', { error });
       // Non-blocking error - log but don't throw
     }
   }
@@ -554,7 +555,7 @@ export class SessionDetailService {
         avg_duration_minutes: Math.round(parseFloat(row.avg_duration_minutes) || 0)
       }));
     } catch (error) {
-      console.error('Get session stats by period error:', error);
+      logger.error('Get session stats by period error', { error });
       throw new Error('Failed to get session statistics by period');
     }
   }

@@ -4,6 +4,7 @@
  */
 
 import { CommitType } from '../../../types/git';
+import { logger } from '../../../config/logger';
 
 /**
  * Classify commit type from message
@@ -168,7 +169,7 @@ export function parseCommitStats(gitShowOutput: string): {
       });
     }
   } catch (error) {
-    console.warn('Failed to parse commit stats:', error);
+    logger.warn('Failed to parse commit stats', { error });
   }
 
   return stats;

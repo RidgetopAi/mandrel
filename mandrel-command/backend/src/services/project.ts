@@ -1,4 +1,5 @@
 import { db as pool } from '../database/connection';
+import { logger } from '../config/logger';
 
 export interface Project {
   id: string;
@@ -82,7 +83,7 @@ export class ProjectService {
         root_directory: row.root_directory
       }));
     } catch (error) {
-      console.error('Get watchable projects error:', error);
+      logger.error('Get watchable projects error', { error });
       throw new Error('Failed to get watchable projects');
     }
   }
@@ -121,7 +122,7 @@ export class ProjectService {
         last_activity: row.last_activity
       }));
     } catch (error) {
-      console.error('Get all projects error:', error);
+      logger.error('Get all projects error', { error });
       throw new Error('Failed to get projects');
     }
   }
@@ -165,7 +166,7 @@ export class ProjectService {
         last_activity: row.last_activity
       };
     } catch (error) {
-      console.error('Get project by ID error:', error);
+      logger.error('Get project by ID error', { error });
       throw new Error('Failed to get project');
     }
   }
@@ -199,7 +200,7 @@ export class ProjectService {
         session_count: 0
       };
     } catch (error: any) {
-      console.error('Create project error:', error);
+      logger.error('Create project error', { error });
       if (error.code === '23505') { // Unique constraint violation
         throw new Error('Project name already exists');
       }
@@ -267,7 +268,7 @@ export class ProjectService {
 
       return result.rows[0];
     } catch (error: any) {
-      console.error('Update project error:', error);
+      logger.error('Update project error', { error });
       if (error.code === '23505') { // Unique constraint violation
         throw new Error('Project name already exists');
       }
@@ -283,7 +284,7 @@ export class ProjectService {
       const result = await pool.query('DELETE FROM projects WHERE id = $1', [id]);
       return result.rowCount! > 0;
     } catch (error) {
-      console.error('Delete project error:', error);
+      logger.error('Delete project error', { error });
       throw new Error('Failed to delete project');
     }
   }
@@ -318,7 +319,7 @@ export class ProjectService {
         last_context_at: row.last_context_at
       }));
     } catch (error) {
-      console.error('Get project sessions error:', error);
+      logger.error('Get project sessions error', { error });
       throw new Error('Failed to get project sessions');
     }
   }
@@ -352,7 +353,7 @@ export class ProjectService {
         last_context_at: row.last_context_at
       }));
     } catch (error) {
-      console.error('Get all sessions error:', error);
+      logger.error('Get all sessions error', { error });
       throw new Error('Failed to get sessions');
     }
   }
@@ -418,7 +419,7 @@ export class ProjectService {
         }
       };
     } catch (error) {
-      console.error('Get project stats error:', error);
+      logger.error('Get project stats error', { error });
       throw new Error('Failed to get project statistics');
     }
   }

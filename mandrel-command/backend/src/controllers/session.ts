@@ -3,6 +3,7 @@ import { SessionAnalyticsService } from '../services/sessionAnalytics';
 import { SessionDetailService } from '../services/sessionDetail';
 import { db as pool } from '../database/connection';
 import type { UpdateSessionData } from '../validation/schemas';
+import { logger } from '../config/logger';
 
 export class SessionController {
   /**
@@ -26,7 +27,7 @@ export class SessionController {
         data: { session }
       });
     } catch (error) {
-      console.error('Get session detail error:', error);
+      logger.error('Get session detail error', { error });
       res.status(500).json({
         success: false,
         error: error instanceof Error ? error.message : 'Failed to get session details'
@@ -49,7 +50,7 @@ export class SessionController {
         data: analytics
       });
     } catch (error) {
-      console.error('Get session analytics error:', error);
+      logger.error('Get session analytics error', { error });
       res.status(500).json({
         success: false,
         error: error instanceof Error ? error.message : 'Failed to get session analytics'
@@ -73,7 +74,7 @@ export class SessionController {
         data: trends
       });
     } catch (error) {
-      console.error('Get session trends error:', error);
+      logger.error('Get session trends error', { error });
       res.status(500).json({
         success: false,
         error: error instanceof Error ? error.message : 'Failed to get session trends'
@@ -97,7 +98,7 @@ export class SessionController {
         data: { sessions }
       });
     } catch (error) {
-      console.error('Get productive sessions error:', error);
+      logger.error('Get productive sessions error', { error });
       res.status(500).json({
         success: false,
         error: error instanceof Error ? error.message : 'Failed to get productive sessions'
@@ -120,7 +121,7 @@ export class SessionController {
         data: { patterns }
       });
     } catch (error) {
-      console.error('Get token usage patterns error:', error);
+      logger.error('Get token usage patterns error', { error });
       res.status(500).json({
         success: false,
         error: error instanceof Error ? error.message : 'Failed to get token usage patterns'
@@ -145,7 +146,7 @@ export class SessionController {
         data: { summaries }
       });
     } catch (error) {
-      console.error('Get session summaries error:', error);
+      logger.error('Get session summaries error', { error });
       res.status(500).json({
         success: false,
         error: error instanceof Error ? error.message : 'Failed to get session summaries'
@@ -170,7 +171,7 @@ export class SessionController {
         data: { stats }
       });
     } catch (error) {
-      console.error('Get session stats by period error:', error);
+      logger.error('Get session stats by period error', { error });
       res.status(500).json({
         success: false,
         error: error instanceof Error ? error.message : 'Failed to get session statistics by period'
@@ -251,7 +252,7 @@ export class SessionController {
         data: { session }
       });
     } catch (error) {
-      console.error('Get current session error:', error);
+      logger.error('Get current session error', { error });
       res.status(500).json({
         success: false,
         error: { type: 'internal', message: 'Failed to get current session' }
@@ -359,7 +360,7 @@ export class SessionController {
         },
       });
     } catch (error) {
-      console.error('Update session error:', error);
+      logger.error('Update session error', { error });
       res.status(500).json({
         success: false,
         error: {
@@ -402,7 +403,7 @@ export class SessionController {
         data: sessions
       });
     } catch (error) {
-      console.error('Get sessions list error:', error);
+      logger.error('Get sessions list error', { error });
       res.status(500).json({
         success: false,
         error: error instanceof Error ? error.message : 'Failed to get sessions list'
@@ -425,7 +426,7 @@ export class SessionController {
         data: stats
       });
     } catch (error) {
-      console.error('Get session stats error:', error);
+      logger.error('Get session stats error', { error });
       res.status(500).json({
         success: false,
         error: error instanceof Error ? error.message : 'Failed to get session stats'

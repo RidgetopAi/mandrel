@@ -6,6 +6,7 @@
 
 import { db } from '../../database/connection.js';
 import { resolveProjectId } from './core.js';
+import { logger } from '../../config/logger';
 import type { 
   EmbeddingScope, 
   ProjectRelationshipResponse, 
@@ -163,7 +164,7 @@ export async function getProjectRelationships(
       summary,
     };
   } catch (error) {
-    console.error('Error getting project relationships:', error);
+    logger.error('Error getting project relationships', { error });
     throw new Error('Failed to get project relationship metrics');
   }
 }

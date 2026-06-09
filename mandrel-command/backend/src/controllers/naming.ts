@@ -2,6 +2,7 @@ import { Response } from 'express';
 import { AuthenticatedRequest } from '../types/auth';
 import { McpService } from '../services/mcp';
 import { db } from '../database/connection';
+import { logger } from '../config/logger';
 
 export class NamingController {
   /**
@@ -21,7 +22,7 @@ export class NamingController {
       const statsResult = await McpService.callTool('naming_stats', {});
       
       if (!statsResult.success) {
-        console.error('AIDIS naming_stats failed:', statsResult.error);
+        logger.error('AIDIS naming_stats failed', { error: statsResult.error });
         res.status(500).json({
           success: false,
           message: 'Failed to search naming entries',
@@ -96,7 +97,7 @@ export class NamingController {
       });
 
     } catch (error) {
-      console.error('Naming search error:', error);
+      logger.error('Naming search error', { error });
       res.status(500).json({
         success: false,
         message: 'Failed to search naming entries',
@@ -114,7 +115,7 @@ export class NamingController {
       const result = await McpService.callTool('naming_stats', {});
       
       if (!result.success) {
-        console.error('AIDIS naming_stats failed:', result.error);
+        logger.error('AIDIS naming_stats failed', { error: result.error });
         res.status(500).json({
           success: false,
           message: 'Failed to get naming statistics',
@@ -148,7 +149,7 @@ export class NamingController {
       });
 
     } catch (error) {
-      console.error('Naming stats error:', error);
+      logger.error('Naming stats error', { error });
       res.status(500).json({
         success: false,
         message: 'Failed to get naming statistics',
@@ -179,7 +180,7 @@ export class NamingController {
       });
       
       if (!result.success) {
-        console.error('AIDIS naming_check failed:', result.error);
+        logger.error('AIDIS naming_check failed', { error: result.error });
         res.status(500).json({
           success: false,
           message: 'Failed to check name availability',
@@ -203,7 +204,7 @@ export class NamingController {
       });
 
     } catch (error) {
-      console.error('Name availability check error:', error);
+      logger.error('Name availability check error', { error });
       res.status(500).json({
         success: false,
         message: 'Failed to check name availability',
@@ -235,7 +236,7 @@ export class NamingController {
       });
       
       if (!result.success) {
-        console.error('AIDIS naming_suggest failed:', result.error);
+        logger.error('AIDIS naming_suggest failed', { error: result.error });
         res.status(500).json({
           success: false,
           message: 'Failed to get naming suggestions',
@@ -251,7 +252,7 @@ export class NamingController {
       });
 
     } catch (error) {
-      console.error('Get naming suggestions error:', error);
+      logger.error('Get naming suggestions error', { error });
       res.status(500).json({
         success: false,
         message: 'Failed to get naming suggestions',
@@ -284,7 +285,7 @@ export class NamingController {
       });
       
       if (!result.success) {
-        console.error('AIDIS naming_register failed:', result.error);
+        logger.error('AIDIS naming_register failed', { error: result.error });
         res.status(500).json({
           success: false,
           message: 'Failed to register name',
@@ -317,7 +318,7 @@ export class NamingController {
       });
 
     } catch (error) {
-      console.error('Register name error:', error);
+      logger.error('Register name error', { error });
       res.status(500).json({
         success: false,
         message: 'Failed to register name',
@@ -337,7 +338,7 @@ export class NamingController {
       const statsResult = await McpService.callTool('naming_stats', {});
       
       if (!statsResult.success) {
-        console.error('AIDIS naming_stats failed:', statsResult.error);
+        logger.error('AIDIS naming_stats failed', { error: statsResult.error });
         res.status(500).json({
           success: false,
           message: 'Failed to get naming entry',
@@ -382,7 +383,7 @@ export class NamingController {
       });
 
     } catch (error) {
-      console.error('Get naming entry error:', error);
+      logger.error('Get naming entry error', { error });
       res.status(500).json({
         success: false,
         message: 'Failed to get naming entry',
@@ -432,7 +433,7 @@ export class NamingController {
       });
 
     } catch (error) {
-      console.error('Update naming entry error:', error);
+      logger.error('Update naming entry error', { error });
       res.status(500).json({
         success: false,
         message: 'Failed to update naming entry',
@@ -445,7 +446,7 @@ export class NamingController {
    * DELETE /api/naming/:id - Delete naming entry
    */
   static async deleteEntry(req: AuthenticatedRequest, res: Response): Promise<void> {
-    console.log(`DEBUG: DELETE request received for ID: ${req.params.id}`);
+    logger.info(`DEBUG: DELETE request received for ID: ${req.params.id}`);
     try {
       const { id } = req.params;
       
@@ -468,7 +469,7 @@ export class NamingController {
       // Verify the project exists by calling project_current
       const projectResult = await McpService.callTool('project_current', {});
       if (!projectResult.success) {
-        console.error('Failed to verify current project:', projectResult.error);
+        logger.error('Failed to verify current project', { error: projectResult.error });
         res.status(500).json({
           success: false,
           message: 'Failed to verify current project',
@@ -492,20 +493,20 @@ export class NamingController {
 
       try {
         // Get actual database entries for this project
-        console.log(`DEBUG: Searching for entries with project_id: ${projectId}`);
+        logger.info(`DEBUG: Searching for entries with project_id: ${projectId}`);
         const dbResult = await db.query(
           'SELECT id, canonical_name, entity_type FROM naming_registry WHERE project_id = $1',
           [projectId]
         );
 
-        console.log(`DEBUG: Found ${dbResult.rows.length} database entries:`, dbResult.rows);
+        logger.info(`DEBUG: Found ${dbResult.rows.length} database entries`, { rows: dbResult.rows });
 
         if (dbResult.rows.length === 0) {
           // Try querying all entries to see what's in the database
           const allResult = await db.query(
             'SELECT id, canonical_name, entity_type, project_id FROM naming_registry LIMIT 10'
           );
-          console.log(`DEBUG: All entries in database:`, allResult.rows);
+          logger.info(`DEBUG: All entries in database`, { rows: allResult.rows });
           
           res.status(404).json({
             success: false,
@@ -589,7 +590,7 @@ export class NamingController {
           return;
         }
 
-        console.log(`Successfully deleted naming entry: ${entryToDelete.canonical_name} (${entryToDelete.id}) with mock ID ${requestedId}`);
+        logger.info(`Successfully deleted naming entry: ${entryToDelete.canonical_name} (${entryToDelete.id}) with mock ID ${requestedId}`);
 
         res.json({
           success: true,
@@ -601,7 +602,7 @@ export class NamingController {
       }
 
     } catch (error) {
-      console.error('Delete naming entry error:', error);
+      logger.error('Delete naming entry error', { error });
       res.status(500).json({
         success: false,
         message: 'Failed to delete naming entry',

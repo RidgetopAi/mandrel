@@ -7,6 +7,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import * as http from 'http';
+import { logger } from '../config/logger';
 
 export interface ServicePortInfo {
   serviceName: string;
@@ -70,19 +71,19 @@ class PortManager {
     let envPort = process.env[mandrelEnvVar];
     if (!envPort && process.env[aidisEnvVar]) {
       envPort = process.env[aidisEnvVar];
-      console.warn(`\u26a0\ufe0f  ${aidisEnvVar} is deprecated. Use ${mandrelEnvVar} instead.`);
+      logger.warn(`\u26a0\ufe0f  ${aidisEnvVar} is deprecated. Use ${mandrelEnvVar} instead.`);
     }
 
     // Check specific environment variable first
     if (envPort === '0') {
-      console.log(`Dynamic port assignment requested for ${serviceName}`);
+      logger.info(`Dynamic port assignment requested for ${serviceName}`);
       return 0; // Let the server choose
     }
 
     if (envPort && envPort !== '0') {
       const port = parseInt(envPort, 10);
       if (!isNaN(port)) {
-        console.log(`Using configured port ${port} for ${serviceName}`);
+        logger.info(`Using configured port ${port} for ${serviceName}`);
         return port;
       }
     }
@@ -91,25 +92,25 @@ class PortManager {
     if (process.env.PORT) {
       const genericPort = process.env.PORT;
       if (genericPort === '0') {
-        console.log(`Dynamic port assignment requested for ${serviceName} via PORT`);
+        logger.info(`Dynamic port assignment requested for ${serviceName} via PORT`);
         return 0;
       }
       const port = parseInt(genericPort, 10);
       if (!isNaN(port)) {
-        console.log(`Using generic PORT ${port} for ${serviceName}`);
+        logger.info(`Using generic PORT ${port} for ${serviceName}`);
         return port;
       }
     }
 
     // Use preferred port if provided
     if (preferredPort) {
-      console.log(`Using preferred port ${preferredPort} for ${serviceName}`);
+      logger.info(`Using preferred port ${preferredPort} for ${serviceName}`);
       return preferredPort;
     }
 
     // Fall back to default port
     const defaultPort = this.config.defaultPorts[serviceName] || 5000;
-    console.log(`Using default port ${defaultPort} for ${serviceName}`);
+    logger.info(`Using default port ${defaultPort} for ${serviceName}`);
     return defaultPort;
   }
 
@@ -130,7 +131,7 @@ class PortManager {
     registry[serviceName] = serviceInfo;
     await this.saveRegistry(registry);
 
-    console.log(`Registered ${serviceName} on port ${port} (PID: ${process.pid})`);
+    logger.info(`Registered ${serviceName} on port ${port} (PID: ${process.pid})`);
   }
 
   /**
@@ -175,7 +176,7 @@ class PortManager {
     delete registry[serviceName];
     await this.saveRegistry(registry);
 
-    console.log(`Unregistered service: ${serviceName}`);
+    logger.info(`Unregistered service: ${serviceName}`);
   }
 
   /**
@@ -246,7 +247,7 @@ class PortManager {
 
       return registry;
     } catch (error) {
-      console.error('Failed to load port registry:', error instanceof Error ? error.message : 'Unknown error');
+      logger.error('Failed to load port registry', { error: error instanceof Error ? error.message : 'Unknown error' });
       return {};
     }
   }
@@ -258,7 +259,7 @@ class PortManager {
     try {
       fs.writeFileSync(this.registryPath, JSON.stringify(registry, null, 2));
     } catch (error) {
-      console.error('Failed to save port registry:', error instanceof Error ? error.message : 'Unknown error');
+      logger.error('Failed to save port registry', { error: error instanceof Error ? error.message : 'Unknown error' });
     }
   }
 
@@ -286,11 +287,11 @@ class PortManager {
     const envVar = PortManager.getPortEnvVar(serviceName);
     const envValue = process.env[envVar] || process.env.PORT;
 
-    console.log(`🔧 Port Configuration for ${serviceName}:`);
-    console.log(`   📡 Assigned Port: ${assignedPort}`);
-    console.log(`   🔧 Environment Variable: ${envVar}=${envValue || 'unset'}`);
-    console.log(`   ⚡ Dynamic Assignment: ${envValue === '0' ? 'YES' : 'NO'}`);
-    console.log(`   🆔 Process ID: ${process.pid}`);
+    logger.info(`🔧 Port Configuration for ${serviceName}:`);
+    logger.info(`   📡 Assigned Port: ${assignedPort}`);
+    logger.info(`   🔧 Environment Variable: ${envVar}=${envValue || 'unset'}`);
+    logger.info(`   ⚡ Dynamic Assignment: ${envValue === '0' ? 'YES' : 'NO'}`);
+    logger.info(`   🆔 Process ID: ${process.pid}`);
   }
 }
 

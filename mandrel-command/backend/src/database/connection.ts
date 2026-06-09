@@ -1,6 +1,6 @@
 import { Pool, PoolConfig } from 'pg';
 import { createDatabaseLogger } from '../middleware/databaseLogger';
-import { dbLogger } from '../config/logger';
+import { dbLogger, logger } from '../config/logger';
 import { config } from '../config/environment';
 
 // Environment variables are loaded by ../config/environment.ts
@@ -140,9 +140,9 @@ export async function getDatabaseStats(): Promise<{
 export async function closeDatabase(): Promise<void> {
   try {
     await db.end();
-    console.log('✅ Database connections closed');
+    logger.info('✅ Database connections closed');
   } catch (error) {
-    console.error('❌ Error closing database:', error);
+    logger.error('❌ Error closing database', { error });
   }
 }
 

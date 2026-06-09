@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { monitoringService } from '../services/monitoring';
+import { logger } from '../config/logger';
 
 export class MonitoringController {
   /**
@@ -14,7 +15,7 @@ export class MonitoringController {
         data: health
       });
     } catch (error) {
-      console.error('Get system health error:', error);
+      logger.error('Get system health error', { error });
       res.status(500).json({
         success: false,
         error: error instanceof Error ? error.message : 'Failed to get system health'
@@ -34,7 +35,7 @@ export class MonitoringController {
         data: metrics
       });
     } catch (error) {
-      console.error('Get system metrics error:', error);
+      logger.error('Get system metrics error', { error });
       res.status(500).json({
         success: false,
         error: error instanceof Error ? error.message : 'Failed to get system metrics'
@@ -55,7 +56,7 @@ export class MonitoringController {
         data: trends
       });
     } catch (error) {
-      console.error('Get performance trends error:', error);
+      logger.error('Get performance trends error', { error });
       res.status(500).json({
         success: false,
         error: error instanceof Error ? error.message : 'Failed to get performance trends'
@@ -71,7 +72,7 @@ export class MonitoringController {
       monitoringService.recordUiError(req.body);
       res.json({ success: true });
     } catch (error) {
-      console.error('Record UI error failed:', error);
+      logger.error('Record UI error failed', { error });
       res.status(500).json({
         success: false,
         error: error instanceof Error ? error.message : 'Failed to record UI error'

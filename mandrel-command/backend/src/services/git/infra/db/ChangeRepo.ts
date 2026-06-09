@@ -4,6 +4,7 @@
 
 import { db as pool } from '../../../../database/connection';
 import { GitFileChange, FileChangeType } from '../../../../types/git';
+import { logger } from '../../../../config/logger';
 
 /**
  * Map database row to GitFileChange type
@@ -89,7 +90,7 @@ export class ChangeRepo {
         const stored = await this.create(fileChange, enhancedMetadata);
         storedChanges.push(stored);
       } catch (error) {
-        console.error(`Failed to store file change for ${fileChange.file_path}:`, error);
+        logger.error(`Failed to store file change for ${fileChange.file_path}`, { error });
       }
     }
     
