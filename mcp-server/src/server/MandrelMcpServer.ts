@@ -196,7 +196,6 @@ export default class MandrelMcpServer {
     // Filter out disabled tools (Token Optimization 2025-10-01)
     const DISABLED_TOOLS = [
       'code_analyze', 'code_components', 'code_dependencies', 'code_impact', 'code_stats',
-      'git_session_commits', 'git_commit_sessions', 'git_correlate_session',
       'complexity_analyze', 'complexity_insights', 'complexity_manage'
     ];
 
