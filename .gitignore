@@ -199,3 +199,6 @@ spindles-proxy/
 
 # Concrete dev env holds a dev DB password — recreate from .env.example
 config/environments/.env.development
+
+# Playwright CLI session artifacts (local)
+.playwright-cli/
