@@ -56,11 +56,11 @@ describeStreaming('SSE Integration Tests', () => {
 
     // Setup database connection
     pool = new Pool({
-      user: process.env.AIDIS_DB_USER || 'ridgetop',
-      host: process.env.AIDIS_DB_HOST || 'localhost',
-      database: process.env.AIDIS_DB_DATABASE || 'mandrel',
-      password: process.env.AIDIS_DB_PASSWORD || '',
-      port: parseInt(process.env.AIDIS_DB_PORT || '5432'),
+      user: process.env.DATABASE_USER || 'ridgetop',
+      host: process.env.DATABASE_HOST || 'localhost',
+      database: process.env.DATABASE_NAME || 'mandrel',
+      password: process.env.DATABASE_PASSWORD || '',
+      port: parseInt(process.env.DATABASE_PORT || '5432'),
     });
 
     // Create the test project the contexts/tasks reference (project_id is a

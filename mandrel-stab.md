@@ -431,11 +431,12 @@ import { mandrelSystemSchemas } from './middleware/validation';
 **Test Environment Variables:**
 - `AIDIS_SKIP_DB_TESTS` → `MANDREL_SKIP_DB_TESTS`
 - `AIDIS_MCP_PORT` → `MANDREL_MCP_PORT`
-- `process.env.AIDIS_DB_USER` → `process.env.MANDREL_DB_USER`
-- `process.env.AIDIS_DB_HOST` → `process.env.MANDREL_DB_HOST`
-- `process.env.AIDIS_DB_DATABASE` → `process.env.MANDREL_DB_DATABASE`
-- `process.env.AIDIS_DB_PASSWORD` → `process.env.MANDREL_DB_PASSWORD`
-- `process.env.AIDIS_DB_PORT` → `process.env.MANDREL_DB_PORT`
+- DB env vars: **RESOLVED in D6 (2026-06-09)** — converged on the canonical
+  `DATABASE_*` convention (already used by mcp-server + backend prod config and
+  the prod `.env` files), NOT the `MANDREL_DB_*` originally sketched here. The
+  legacy `AIDIS_DB_*` alias (test-only) was removed. So: `AIDIS_DB_USER`→`DATABASE_USER`,
+  `AIDIS_DB_HOST`→`DATABASE_HOST`, `AIDIS_DB_DATABASE`→`DATABASE_NAME`,
+  `AIDIS_DB_PASSWORD`→`DATABASE_PASSWORD`, `AIDIS_DB_PORT`→`DATABASE_PORT`.
 
 **Affected Test Files:**
 - `aidis-command/backend/src/__tests__/dbEvents.test.ts`
