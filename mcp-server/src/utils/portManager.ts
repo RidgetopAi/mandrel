@@ -54,7 +54,7 @@ class PortManager {
 
     // Log deprecation warning if old var is used
     if (process.env[aidisVarName] && !process.env[mandrelVarName]) {
-      console.warn(`⚠️  ${aidisVarName} is deprecated. Use ${mandrelVarName} instead.`);
+      logger.warn(`⚠️  ${aidisVarName} is deprecated. Use ${mandrelVarName} instead.`);
     }
 
     // Check specific environment variable first
@@ -279,11 +279,11 @@ class PortManager {
       pid: process.pid
     } as any);
 
-    console.log(`🔧 Port Configuration for ${serviceName}:`);
-    console.log(`   📡 Assigned Port: ${assignedPort}`);
-    console.log(`   🔧 Environment Variable: ${envVar}=${envValue || 'unset'}`);
-    console.log(`   ⚡ Dynamic Assignment: ${envValue === '0' ? 'YES' : 'NO'}`);
-    console.log(`   🆔 Process ID: ${process.pid}`);
+    logger.info(`🔧 Port Configuration for ${serviceName}:`);
+    logger.info(`   📡 Assigned Port: ${assignedPort}`);
+    logger.info(`   🔧 Environment Variable: ${envVar}=${envValue || 'unset'}`);
+    logger.info(`   ⚡ Dynamic Assignment: ${envValue === '0' ? 'YES' : 'NO'}`);
+    logger.info(`   🆔 Process ID: ${process.pid}`);
   }
 }
 

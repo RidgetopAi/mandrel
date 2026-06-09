@@ -11,6 +11,8 @@
  * - Fallback: "default" for backward compatibility
  */
 
+import { logger } from '../../../utils/logger.js';
+
 const DEFAULT_CONNECTION_ID = 'default';
 
 interface SessionEntry {
@@ -32,7 +34,7 @@ function startCleanup(): void {
     const now = Date.now();
     for (const [connId, entry] of sessionsByConnection.entries()) {
       if (now - entry.lastSeen > MAX_IDLE_MS) {
-        console.log(`🧹 Cleaning up stale session for connection: ${connId}`);
+        logger.info(`🧹 Cleaning up stale session for connection: ${connId}`);
         sessionsByConnection.delete(connId);
       }
     }

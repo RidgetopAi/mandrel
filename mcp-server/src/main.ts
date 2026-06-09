@@ -21,7 +21,7 @@ async function shutdown(signal: string): Promise<void> {
   if (serverInstance) {
     await serverInstance.gracefulShutdown(signal);
   } else {
-    console.log(`\n📴 Received ${signal}, no server instance to shut down`);
+    logger.info(`\n📴 Received ${signal}, no server instance to shut down`);
   }
   process.exit(0);
 }
@@ -58,8 +58,8 @@ async function main() {
     logger.info('AIDIS MCP Server - Running');
 
   } catch (error) {
-    console.error('❌ FATAL ERROR:', error);
-    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack');
+    logger.error('❌ FATAL ERROR', error as Error);
+    logger.error('Error stack', undefined, { metadata: { stack: error instanceof Error ? error.stack : 'No stack' } });
     logger.error('Fatal error starting AIDIS MCP Server:', error as Error);
 
     // Attempt graceful cleanup even on startup failure
@@ -77,6 +77,6 @@ process.on('SIGTERM', () => shutdown('SIGTERM'));
 
 // Start the server
 main().catch((error) => {
-  console.error('Unhandled error in main():', error);
+  logger.error('Unhandled error in main()', error as Error);
   process.exit(1);
 });

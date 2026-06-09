@@ -3,6 +3,8 @@
  * Lightweight monitoring without external dependencies
  */
 
+import { logger } from './logger.js';
+
 interface Metric {
   name: string;
   value: number;
@@ -248,7 +250,7 @@ let backgroundCleanup: (() => void) | null = null;
 function startMonitoring() {
   if (!backgroundCleanup) {
     backgroundCleanup = monitoring.startBackgroundMonitoring();
-    console.log('📊 Background monitoring started');
+    logger.info('📊 Background monitoring started');
   }
 }
 

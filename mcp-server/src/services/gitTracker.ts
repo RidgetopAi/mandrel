@@ -17,6 +17,7 @@ import { GitCorrelationService } from './gitCorrelation.js';
 import { getCurrentSession } from './sessionTracker.js';
 import { db } from '../config/database.js';
 import { logEvent } from '../middleware/eventLogger.js';
+import { logger } from '../utils/logger.js';
 
 export interface GitTrackingConfig {
   enableFileWatching: boolean;
@@ -81,12 +82,12 @@ export class GitTracker {
    */
   async start(): Promise<void> {
     if (this.isRunning) {
-      console.log('⚡ Git tracker already running');
+      logger.info('⚡ Git tracker already running');
       return;
     }
 
     try {
-      console.log('🚀 Starting real-time git tracking...');
+      logger.info('🚀 Starting real-time git tracking...');
       
       this.isRunning = true;
       this.status.isActive = true;
@@ -115,10 +116,10 @@ export class GitTracker {
         tags: ['git', 'tracking', 'realtime']
       });
 
-      console.log('✅ Git tracking started successfully');
+      logger.info('✅ Git tracking started successfully');
 
     } catch (error) {
-      console.error('❌ Failed to start git tracking:', error);
+      logger.error('❌ Failed to start git tracking', error as Error);
       this.isRunning = false;
       this.status.isActive = false;
       throw error;
@@ -130,12 +131,12 @@ export class GitTracker {
    */
   async stop(): Promise<void> {
     if (!this.isRunning) {
-      console.log('⚡ Git tracker not running');
+      logger.info('⚡ Git tracker not running');
       return;
     }
 
     try {
-      console.log('🛑 Stopping real-time git tracking...');
+      logger.info('🛑 Stopping real-time git tracking...');
 
       this.isRunning = false;
       this.status.isActive = false;
@@ -162,10 +163,10 @@ export class GitTracker {
         tags: ['git', 'tracking', 'realtime']
       });
 
-      console.log('✅ Git tracking stopped successfully');
+      logger.info('✅ Git tracking stopped successfully');
 
     } catch (error) {
-      console.error('❌ Failed to stop git tracking:', error);
+      logger.error('❌ Failed to stop git tracking', error as Error);
       throw error;
     }
   }
@@ -221,7 +222,7 @@ export class GitTracker {
       this.status.lastCheckTime = new Date();
 
       if (result.recentCommits > 0) {
-        console.log(`⚡ Detected ${result.recentCommits} recent commits`);
+        logger.info(`⚡ Detected ${result.recentCommits} recent commits`);
         this.status.commitsDetected += result.recentCommits;
         
         if (result.autoCorrelated) {
@@ -242,7 +243,7 @@ export class GitTracker {
       };
 
     } catch (error) {
-      console.error('❌ Error checking git activity:', error);
+      logger.error('❌ Error checking git activity', error as Error);
       return {
         hasActivity: false,
         newCommits: 0,
@@ -264,7 +265,7 @@ export class GitTracker {
     error?: string;
   }> {
     try {
-      console.log('⚡ Checking for real-time git activity...');
+      logger.info('⚡ Checking for real-time git activity...');
 
       // Get current active session
       const sessionId = await getCurrentSession();
@@ -306,7 +307,7 @@ export class GitTracker {
       });
 
       if (recentCommitsResult.commits.length > 0) {
-        console.log(`🔄 Found ${recentCommitsResult.commits.length} recent commits, triggering auto-correlation`);
+        logger.info(`🔄 Found ${recentCommitsResult.commits.length} recent commits, triggering auto-correlation`);
 
         // Auto-correlate recent commits
         await GitCorrelationService.correlateSessionWithGit(sessionId);
@@ -327,7 +328,7 @@ export class GitTracker {
       };
 
     } catch (error) {
-      console.error('❌ Real-time git tracking error:', error);
+      logger.error('❌ Real-time git tracking error', error as Error);
       return {
         success: false,
         recentCommits: 0,
@@ -345,7 +346,7 @@ export class GitTracker {
       // Get current session and project
       const sessionId = await getCurrentSession();
       if (!sessionId) {
-        console.log('📁 No active session - skipping file watching');
+        logger.info('📁 No active session - skipping file watching');
         return;
       }
 
@@ -364,7 +365,7 @@ export class GitTracker {
       
       const result = await db.query(sessionQuery, [sessionId]);
       if (result.rows.length === 0) {
-        console.log('📁 Session not assigned to project - skipping file watching');
+        logger.info('📁 Session not assigned to project - skipping file watching');
         return;
       }
 
@@ -372,7 +373,7 @@ export class GitTracker {
       const projectPath = projectData.git_path || projectData.root_directory;
       
       if (!projectPath) {
-        console.log('📁 No project path found - skipping file watching');
+        logger.info('📁 No project path found - skipping file watching');
         return;
       }
 
@@ -392,17 +393,17 @@ export class GitTracker {
             const watchCallback = () => this.onGitFileChange(filePath);
             watchFile(filePath, { interval: 1000 }, watchCallback);
             this.watchers.set(filePath, () => unwatchFile(filePath, watchCallback));
-            console.log(`👀 Watching: ${filePath}`);
+            logger.info(`👀 Watching: ${filePath}`);
           } catch (error) {
-            console.warn(`⚠️  Failed to watch ${filePath}:`, error);
+            logger.warn(`⚠️  Failed to watch ${filePath}`, { metadata: { error } });
           }
         }
       }
 
-      console.log(`📁 Started file watching for ${this.watchers.size} git files`);
+      logger.info(`📁 Started file watching for ${this.watchers.size} git files`);
 
     } catch (error) {
-      console.error('❌ Failed to start file watching:', error);
+      logger.error('❌ Failed to start file watching', error as Error);
     }
   }
 
@@ -414,17 +415,17 @@ export class GitTracker {
       for (const [filePath, stopWatcher] of this.watchers) {
         try {
           stopWatcher();
-          console.log(`👁️  Stopped watching: ${filePath}`);
+          logger.info(`👁️  Stopped watching: ${filePath}`);
         } catch (error) {
-          console.warn(`⚠️  Failed to stop watching ${filePath}:`, error);
+          logger.warn(`⚠️  Failed to stop watching ${filePath}`, { metadata: { error } });
         }
       }
       
       this.watchers.clear();
-      console.log('📁 Stopped all file watchers');
+      logger.info('📁 Stopped all file watchers');
 
     } catch (error) {
-      console.error('❌ Failed to stop file watching:', error);
+      logger.error('❌ Failed to stop file watching', error as Error);
     }
   }
 
@@ -442,7 +443,7 @@ export class GitTracker {
       }
     }, this.config.pollingIntervalMs);
 
-    console.log(`⏰ Started periodic polling every ${this.config.pollingIntervalMs}ms`);
+    logger.info(`⏰ Started periodic polling every ${this.config.pollingIntervalMs}ms`);
   }
 
   /**
@@ -450,7 +451,7 @@ export class GitTracker {
    */
   private async onGitFileChange(filePath: string): Promise<void> {
     try {
-      console.log(`📝 Git file changed: ${filePath}`);
+      logger.info(`📝 Git file changed: ${filePath}`);
 
       // Add small delay to allow git operation to complete
       await new Promise(resolve => setTimeout(resolve, this.config.correlationDelayMs));
@@ -459,7 +460,7 @@ export class GitTracker {
       const activity = await this.checkForRecentActivity();
       
       if (activity.hasActivity) {
-        console.log(`⚡ Git file change triggered correlation: ${activity.newCommits} commits`);
+        logger.info(`⚡ Git file change triggered correlation: ${activity.newCommits} commits`);
         
         // Log the file change event
         await logEvent({
@@ -476,7 +477,7 @@ export class GitTracker {
       }
 
     } catch (error) {
-      console.error(`❌ Error handling git file change for ${filePath}:`, error);
+      logger.error(`❌ Error handling git file change for ${filePath}`, error as Error);
     }
   }
 
@@ -499,7 +500,7 @@ export class GitTracker {
         };
       }
 
-      console.log(`🔗 Force triggering correlation for session: ${sessionId.substring(0, 8)}...`);
+      logger.info(`🔗 Force triggering correlation for session: ${sessionId.substring(0, 8)}...`);
 
       const result = await GitCorrelationService.correlateSessionWithGit(sessionId);
       
@@ -515,7 +516,7 @@ export class GitTracker {
       };
 
     } catch (error) {
-      console.error('❌ Force correlation failed:', error);
+      logger.error('❌ Force correlation failed', error as Error);
       return {
         success: false,
         linksCreated: 0,

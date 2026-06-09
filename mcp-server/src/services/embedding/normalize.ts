@@ -5,6 +5,7 @@
  */
 
 import { EmbeddingVector } from './types.js';
+import { logger } from '../../utils/logger.js';
 
 /**
  * Pad or downsample embeddings so they match the configured dimensionality
@@ -64,7 +65,7 @@ export function applyTargetDimensions(
   const normalized = normalizeEmbedding(result.embedding, targetDimensions);
 
   if (normalized.length !== result.embedding.length) {
-    console.log(`🔁 Adjusted ${source} embedding from ${result.embedding.length}D to ${targetDimensions}D`);
+    logger.info(`🔁 Adjusted ${source} embedding from ${result.embedding.length}D to ${targetDimensions}D`);
   }
 
   return {

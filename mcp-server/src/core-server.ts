@@ -14,10 +14,11 @@
  */
 
 import { AIDISCoreServer } from './server/index.js';
+import { logger } from './utils/logger.js';
 
 // Enable debug logging if needed
 if (process.env.AIDIS_DEBUG) {
-  console.log('🐛 AIDIS Core debug logging enabled:', process.env.AIDIS_DEBUG);
+  logger.info('🐛 AIDIS Core debug logging enabled', { metadata: { aidisDebug: process.env.AIDIS_DEBUG } });
 }
 
 // Global shutdown handling
@@ -27,7 +28,7 @@ async function shutdown(signal: string): Promise<void> {
   if (serverInstance) {
     await serverInstance.gracefulShutdown(signal);
   } else {
-    console.log(`\n📴 Received ${signal}, no server instance to shut down`);
+    logger.info(`\n📴 Received ${signal}, no server instance to shut down`);
   }
   process.exit(0);
 }
@@ -40,13 +41,13 @@ process.on('SIGTERM', () => shutdown('SIGTERM'));
 if (import.meta.url === `file://${process.argv[1]}`) {
   (async () => {
     try {
-      console.log('🚀 Starting AIDIS Core HTTP Service (STDIO-free)');
+      logger.info('🚀 Starting AIDIS Core HTTP Service (STDIO-free)');
       
       serverInstance = new AIDISCoreServer();
       await serverInstance.start();
       
     } catch (error) {
-      console.error('❌ Unhandled startup error:', error);
+      logger.error('❌ Unhandled startup error', error as Error);
       
       if (serverInstance) {
         await serverInstance.gracefulShutdown('STARTUP_ERROR');

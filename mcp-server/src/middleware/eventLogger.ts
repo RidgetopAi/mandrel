@@ -16,6 +16,7 @@
 import { db } from '../config/database.js';
 import { projectHandler } from '../handlers/project.js';
 import { randomUUID } from 'crypto';
+import { logger } from '../utils/logger.js';
 
 export interface AnalyticsEvent {
   actor: 'human' | 'ai' | 'system';
@@ -42,7 +43,7 @@ class SessionManager {
   
   static generateSessionId(): string {
     this.currentSessionId = randomUUID();
-    console.log(`🔄 Generated new session ID: ${this.currentSessionId.substring(0, 8)}...`);
+    logger.info(`🔄 Generated new session ID: ${this.currentSessionId.substring(0, 8)}...`);
     return this.currentSessionId;
   }
   
@@ -63,7 +64,7 @@ class SessionManager {
  */
 export async function logEvent(event: AnalyticsEvent): Promise<string> {
   try {
-    console.log(`📊 Logging event: ${event.event_type} by ${event.actor}`);
+    logger.info(`📊 Logging event: ${event.event_type} by ${event.actor}`);
     
     // Ensure we have a session ID
     const sessionId = event.session_id || SessionManager.getCurrentSessionId();
@@ -76,7 +77,7 @@ export async function logEvent(event: AnalyticsEvent): Promise<string> {
         const currentProject = await projectHandler.getCurrentProject();
         projectId = currentProject?.id;
       } catch (error) {
-        console.warn('⚠️  Could not get current project for event logging:', error);
+        logger.warn('⚠️  Could not get current project for event logging', { metadata: { error } });
         // Continue without project_id - some events might not need it
       }
     }
@@ -112,11 +113,11 @@ export async function logEvent(event: AnalyticsEvent): Promise<string> {
     const eventId = result.rows[0].event_id;
     const timestamp = result.rows[0].timestamp;
     
-    console.log(`✅ Event logged: ${eventId.substring(0, 8)}... at ${timestamp}`);
+    logger.info(`✅ Event logged: ${eventId.substring(0, 8)}... at ${timestamp}`);
     return eventId;
     
   } catch (error) {
-    console.error('❌ Failed to log event:', error);
+    logger.error('❌ Failed to log event', error as Error);
     // Don't throw - we don't want logging failures to break functionality
     return 'error';
   }

@@ -5,6 +5,7 @@
 
 import { formatMcpError } from '../utils/mcpFormatter.js';
 import type { McpResponse } from '../utils/mcpFormatter.js';
+import { logger } from '../utils/logger.js';
 
 // Import all route modules
 import { systemRoutes } from './system.routes.js';
@@ -31,7 +32,7 @@ export async function routeExecutor(toolName: string, args: any, context?: Route
     const deprecatedTools = ['aidis_ping', 'aidis_status', 'aidis_help', 'aidis_explain', 'aidis_examples'];
     if (deprecatedTools.includes(toolName)) {
       const newName = toolName.replace('aidis_', 'mandrel_');
-      console.warn(`⚠️  Tool '${toolName}' is deprecated. Use '${newName}' instead.`);
+      logger.warn(`⚠️  Tool '${toolName}' is deprecated. Use '${newName}' instead.`);
     }
 
     switch (toolName) {
@@ -112,14 +113,14 @@ export async function routeExecutor(toolName: string, args: any, context?: Route
 
       // Unknown tool
       default:
-        console.warn(`Unknown MCP tool requested: ${toolName}`);
+        logger.warn(`Unknown MCP tool requested: ${toolName}`);
         return formatMcpError(
           `Unknown tool: ${toolName}. Use 'mandrel_help' to see available tools.`,
           'route_executor'
         );
     }
   } catch (error) {
-    console.error(`Error executing tool ${toolName}:`, error);
+    logger.error(`Error executing tool ${toolName}`, error as Error);
     return formatMcpError(error as Error, toolName);
   }
 }

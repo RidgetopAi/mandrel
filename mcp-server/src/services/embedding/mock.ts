@@ -5,6 +5,7 @@
  */
 
 import { EmbeddingVector } from './types.js';
+import { logger } from '../../utils/logger.js';
 
 /**
  * Simple hash function for consistent mock embeddings
@@ -64,7 +65,7 @@ function addContentSignals(embedding: number[], text: string): void {
  * the vector search infrastructure!
  */
 export function generateMockEmbedding(text: string, targetDimensions: number, model: string): EmbeddingVector {
-  console.log('🎭 Generating mock embedding for development...');
+  logger.info('🎭 Generating mock embedding for development...');
   
   const dimensions = targetDimensions;
   const embedding = new Array(dimensions);
@@ -81,7 +82,7 @@ export function generateMockEmbedding(text: string, targetDimensions: number, mo
   // Add some content-based signals to make similar texts have similar embeddings
   addContentSignals(embedding, text);
 
-  console.log(`✅ Generated mock embedding (${dimensions} dimensions before normalization)`);
+  logger.info(`✅ Generated mock embedding (${dimensions} dimensions before normalization)`);
   
   return {
     embedding,

@@ -1,5 +1,6 @@
 import { Pool } from 'pg';
 import { db } from '../config/database.js';
+import { logger } from '../utils/logger.js';
 import { contextHandler } from './context.js';
 import { decisionsHandler } from './decisions.js';
 import { codeAnalysisHandler } from './codeAnalysis.js';
@@ -33,18 +34,18 @@ class SmartSearchHandler {
         includeTypes: string[] = ['context', 'component', 'decision', 'naming'],
         limit: number = 10
     ): Promise<SmartSearchResult[]> {
-        console.log(`🔍 Smart search for: "${query}" in project ${projectId}`);
-        console.log(`📋 Include types: [${includeTypes.join(', ')}]`);
-        console.log(`🎯 Limit: ${limit}`);
+        logger.info(`🔍 Smart search for: "${query}" in project ${projectId}`);
+        logger.info(`📋 Include types: [${includeTypes.join(', ')}]`);
+        logger.info(`🎯 Limit: ${limit}`);
         
         const results: SmartSearchResult[] = [];
 
         try {
             // Search contexts using semantic search
             if (includeTypes.includes('context')) {
-                console.log(`🔍 Searching contexts...`);
+                logger.info(`🔍 Searching contexts...`);
                 const contextLimit = Math.ceil(limit / 2);
-                console.log(`📊 Context search limit: ${contextLimit}`);
+                logger.info(`📊 Context search limit: ${contextLimit}`);
 
                 const contextResults = await contextHandler.searchContext({
                     projectId,
@@ -52,10 +53,10 @@ class SmartSearchHandler {
                     limit: contextLimit
                 });
 
-                console.log(`📝 Context search returned ${contextResults.length} results`);
-                
+                logger.info(`📝 Context search returned ${contextResults.length} results`);
+
                 for (const context of contextResults) {
-                    console.log(`   - Context ${context.id}: similarity=${context.similarity}%, type=${context.contextType}`);
+                    logger.info(`   - Context ${context.id}: similarity=${context.similarity}%, type=${context.contextType}`);
 
                     // Improved relevance scoring with fallback
                     let relevanceScore = (context.similarity || 0) / 100;
@@ -99,27 +100,27 @@ class SmartSearchHandler {
                         source: (context.similarity !== undefined && context.similarity > 0) ? 'semantic_search' : 'text_matching'
                     });
                 }
-                console.log(`✅ Added ${contextResults.length} context results to smart search`);
+                logger.info(`✅ Added ${contextResults.length} context results to smart search`);
             } else {
-                console.log(`⏭️  Skipping context search (not in includeTypes)`);
+                logger.info(`⏭️  Skipping context search (not in includeTypes)`);
             }
 
             // Search technical decisions
             if (includeTypes.includes('decision')) {
-                console.log(`🎯 Searching decisions...`);
+                logger.info(`🎯 Searching decisions...`);
                 const decisionLimit = Math.ceil(limit / 4);
-                console.log(`📊 Decision search limit: ${decisionLimit}`);
-                
+                logger.info(`📊 Decision search limit: ${decisionLimit}`);
+
                 const decisions = await decisionsHandler.searchDecisions({
                     projectId,
                     query,
                     limit: decisionLimit
                 });
-                
-                console.log(`🎯 Decision search returned ${decisions.length} results`);
-                
+
+                logger.info(`🎯 Decision search returned ${decisions.length} results`);
+
                 for (const decision of decisions) {
-                    console.log(`   - Decision ${decision.id}: ${decision.title}`);
+                    logger.info(`   - Decision ${decision.id}: ${decision.title}`);
 
                     // Calculate decision relevance based on content matching
                     const title = decision.title.toLowerCase();
@@ -161,9 +162,9 @@ class SmartSearchHandler {
                         source: 'decision_search'
                     });
                 }
-                console.log(`✅ Added ${decisions.length} decision results to smart search`);
+                logger.info(`✅ Added ${decisions.length} decision results to smart search`);
             } else {
-                console.log(`⏭️  Skipping decision search (not in includeTypes)`);
+                logger.info(`⏭️  Skipping decision search (not in includeTypes)`);
             }
 
             // Search naming registry
@@ -262,21 +263,21 @@ class SmartSearchHandler {
                 }
             }
         } catch (error) {
-            console.error('❌ Error in smart search:', error);
+            logger.error('❌ Error in smart search', error as Error);
         }
 
-        console.log(`📊 Total results before sorting: ${results.length}`);
+        logger.info(`📊 Total results before sorting: ${results.length}`);
         results.forEach((result, index) => {
-            console.log(`   ${index + 1}. [${result.type}] ${result.title.substring(0, 50)}... (score: ${result.relevanceScore})`);
+            logger.info(`   ${index + 1}. [${result.type}] ${result.title.substring(0, 50)}... (score: ${result.relevanceScore})`);
         });
 
         // Sort by relevance score and limit
         results.sort((a, b) => b.relevanceScore - a.relevanceScore);
         const limitedResults = results.slice(0, limit);
         
-        console.log(`✅ Smart search found ${limitedResults.length} final results (after sorting and limiting)`);
+        logger.info(`✅ Smart search found ${limitedResults.length} final results (after sorting and limiting)`);
         limitedResults.forEach((result, index) => {
-            console.log(`   ${index + 1}. [${result.type}] ${result.title.substring(0, 50)}... (score: ${result.relevanceScore})`);
+            logger.info(`   ${index + 1}. [${result.type}] ${result.title.substring(0, 50)}... (score: ${result.relevanceScore})`);
         });
         
         return limitedResults;
@@ -287,7 +288,7 @@ class SmartSearchHandler {
         context: string,
         type: 'naming' | 'implementation' | 'architecture' | 'testing' = 'implementation'
     ): Promise<Recommendation[]> {
-        console.log(`💡 Generating ${type} recommendations for project ${projectId}`);
+        logger.info(`💡 Generating ${type} recommendations for project ${projectId}`);
         
         const recommendations: Recommendation[] = [];
 
@@ -375,16 +376,16 @@ class SmartSearchHandler {
                 }
             }
         } catch (error) {
-            console.error('Error generating recommendations:', error);
+            logger.error('Error generating recommendations', error as Error);
         }
 
         recommendations.sort((a, b) => b.confidence - a.confidence);
-        console.log(`✅ Generated ${recommendations.length} recommendations`);
+        logger.info(`✅ Generated ${recommendations.length} recommendations`);
         return recommendations;
     }
 
     async getProjectInsights(projectId: string): Promise<any> {
-        console.log(`🔍 Analyzing project insights for ${projectId}`);
+        logger.info(`🔍 Analyzing project insights for ${projectId}`);
         
         const client = await this.pool.connect();
         try {

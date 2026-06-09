@@ -4,6 +4,7 @@ import { SessionTrackingMiddleware } from '../api/middleware/sessionTracking.js'
 import { formatMcpError } from '../utils/mcpFormatter.js';
 import type { McpResponse } from '../utils/mcpFormatter.js';
 import type { RouteContext } from './index.js';
+import { logger } from '../utils/logger.js';
 
 /**
  * Technical Decisions Routes
@@ -26,7 +27,7 @@ class DecisionsRoutes {
   async handleRecord(args: any, context?: RouteContext): Promise<McpResponse> {
     try {
       const projectId = await this.resolveProjectId(args.projectId, context);
-      console.log(`📝 Decision record request: ${args.decisionType} (project: ${projectId?.substring(0, 8)}...)`);
+      logger.info(`📝 Decision record request: ${args.decisionType} (project: ${projectId?.substring(0, 8)}...)`);
 
       const decision = await decisionsHandler.recordDecision({
         decisionType: args.decisionType,
@@ -80,7 +81,7 @@ class DecisionsRoutes {
   async handleSearch(args: any, context?: RouteContext): Promise<McpResponse> {
     try {
       const projectId = await this.resolveProjectId(args.projectId, context);
-      console.log(`🔍 Decision search request (project: ${projectId?.substring(0, 8)}...)`);
+      logger.info(`🔍 Decision search request (project: ${projectId?.substring(0, 8)}...)`);
 
       const decisions = await decisionsHandler.searchDecisions({
         query: args.query,
@@ -174,7 +175,7 @@ class DecisionsRoutes {
    */
   async handleUpdate(args: any): Promise<McpResponse> {
     try {
-      console.log(`📝 Decision update request: ${args.decisionId.substring(0, 8)}...`);
+      logger.info(`📝 Decision update request: ${args.decisionId.substring(0, 8)}...`);
 
       const decision = await decisionsHandler.updateDecision({
         decisionId: args.decisionId,
@@ -206,7 +207,7 @@ class DecisionsRoutes {
   async handleStats(args: any, context?: RouteContext): Promise<McpResponse> {
     try {
       const projectId = await this.resolveProjectId(args.projectId, context);
-      console.log(`📊 Decision stats request received (project: ${projectId?.substring(0, 8)}...)`);
+      logger.info(`📊 Decision stats request received (project: ${projectId?.substring(0, 8)}...)`);
 
       const stats = await decisionsHandler.getDecisionStats(projectId);
 

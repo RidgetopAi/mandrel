@@ -3,6 +3,7 @@ import { db } from '../config/database.js';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import * as crypto from 'crypto';
+import { logger } from '../utils/logger.js';
 
 export interface CodeComponent {
     id: string;
@@ -71,7 +72,7 @@ class CodeAnalysisHandler {
             analysisContext?: string;
         }
     ): Promise<{ components: CodeComponent[]; dependencies: CodeDependency[]; analysisSessionId: string }> {
-        console.log(`🔍 Analyzing file: ${filePath}`);
+        logger.info(`🔍 Analyzing file: ${filePath}`);
         
         const forceReanalyze = options?.forceReanalyze || false;
         const startTime = Date.now();
@@ -111,7 +112,7 @@ class CodeAnalysisHandler {
                 );
                 
                 if (cacheResult.rows.length > 0) {
-                    console.log(`✅ Using cached analysis for ${filePath}`);
+                    logger.info(`✅ Using cached analysis for ${filePath}`);
                     const cached = cacheResult.rows[0].analysis_result;
                     
                     // Still complete the analysis session for cache hits
@@ -274,7 +275,7 @@ class CodeAnalysisHandler {
                 }
             }
             
-            console.log(`✅ Analyzed ${filePath}: ${components.length} components, ${dependencies.length} dependencies`);
+            logger.info(`✅ Analyzed ${filePath}: ${components.length} components, ${dependencies.length} dependencies`);
             return { components, dependencies, analysisSessionId: analysisSessionId! };
         } catch (error) {
             // Update analysis session with error
@@ -285,7 +286,7 @@ class CodeAnalysisHandler {
                         errorMessage: error instanceof Error ? error.message : String(error)
                     });
                 } catch (sessionError) {
-                    console.error('Failed to update analysis session on error:', sessionError);
+                    logger.error('Failed to update analysis session on error', sessionError as Error);
                 }
             }
             throw error;
@@ -465,7 +466,7 @@ class CodeAnalysisHandler {
         componentType?: string,
         filePath?: string
     ): Promise<CodeComponent[]> {
-        console.log(`📋 Getting components for project ${projectId}`);
+        logger.info(`📋 Getting components for project ${projectId}`);
         
         const client = await this.pool.connect();
         try {
@@ -491,7 +492,7 @@ class CodeAnalysisHandler {
             query += ` ORDER BY file_path, start_line`;
             
             const result = await client.query(query, params);
-            console.log(`✅ Found ${result.rows.length} components`);
+            logger.info(`✅ Found ${result.rows.length} components`);
             return result.rows.map(row => this.mapComponent(row));
         } finally {
             client.release();
@@ -499,7 +500,7 @@ class CodeAnalysisHandler {
     }
 
     async getComponentDependencies(componentId: string): Promise<CodeDependency[]> {
-        console.log(`🔗 Getting dependencies for component ${componentId}`);
+        logger.info(`🔗 Getting dependencies for component ${componentId}`);
         
         const client = await this.pool.connect();
         try {
@@ -511,7 +512,7 @@ class CodeAnalysisHandler {
                 ORDER BY dependency_type, import_path
             `, [componentId]);
             
-            console.log(`✅ Found ${result.rows.length} dependencies`);
+            logger.info(`✅ Found ${result.rows.length} dependencies`);
             return result.rows.map(row => this.mapDependency(row));
         } finally {
             client.release();
@@ -522,7 +523,7 @@ class CodeAnalysisHandler {
         _projectId: string,
         componentId: string
     ): Promise<{ dependents: any[]; impactScore: number }> {
-        console.log(`📊 Analyzing impact for component ${componentId}`);
+        logger.info(`📊 Analyzing impact for component ${componentId}`);
         
         const client = await this.pool.connect();
         try {
@@ -560,7 +561,7 @@ class CodeAnalysisHandler {
             
             const impactScore = Math.round(baseScore + complexityBonus + exportBonus);
 
-            console.log(`✅ Impact analysis: ${dependents.length} dependents, score: ${impactScore}`);
+            logger.info(`✅ Impact analysis: ${dependents.length} dependents, score: ${impactScore}`);
             
             return {
                 dependents,
@@ -572,7 +573,7 @@ class CodeAnalysisHandler {
     }
 
     async getProjectAnalysisStats(projectId: string): Promise<any> {
-        console.log(`📊 Getting code analysis stats for project ${projectId}`);
+        logger.info(`📊 Getting code analysis stats for project ${projectId}`);
         
         const client = await this.pool.connect();
         try {
@@ -661,7 +662,7 @@ class CodeAnalysisHandler {
         analysisContext?: string;
         status?: string;
     }): Promise<string> {
-        console.log(`📝 Creating analysis session for project ${options.projectId}`);
+        logger.info(`📝 Creating analysis session for project ${options.projectId}`);
         
         const client = await this.pool.connect();
         try {
@@ -730,7 +731,7 @@ class CodeAnalysisHandler {
                 });
             }
 
-            console.log(`✅ Created analysis session: ${sessionId}`);
+            logger.info(`✅ Created analysis session: ${sessionId}`);
             return sessionId;
         } finally {
             client.release();
@@ -749,7 +750,7 @@ class CodeAnalysisHandler {
         status?: string;
         errorMessage?: string;
     }): Promise<void> {
-        console.log(`✅ Completing analysis session: ${sessionId}`);
+        logger.info(`✅ Completing analysis session: ${sessionId}`);
         
         const client = await this.pool.connect();
         try {
@@ -831,7 +832,7 @@ class CodeAnalysisHandler {
                 await client.query(query, values);
             }
 
-            console.log(`✅ Updated analysis session ${sessionId}`);
+            logger.info(`✅ Updated analysis session ${sessionId}`);
         } finally {
             client.release();
         }
@@ -902,14 +903,14 @@ class CodeAnalysisHandler {
                 isClean: true
             };
         } catch (error) {
-            console.warn('Could not get git context:', error);
+            logger.warn('Could not get git context', { metadata: { error } });
             return { branchName: 'main', isClean: true };
         }
     }
 
 
     async getSessionAnalytics(sessionId: string): Promise<any> {
-        console.log(`📊 Getting analytics for analysis session ${sessionId}`);
+        logger.info(`📊 Getting analytics for analysis session ${sessionId}`);
         
         const client = await this.pool.connect();
         try {

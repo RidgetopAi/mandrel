@@ -10,6 +10,7 @@ import { getQueueManager } from './queueManager.js';
 import * as http from 'http';
 import * as https from 'https';
 import { URL } from 'url';
+import { logger } from '../utils/logger.js';
 
 export interface HealthCheckResult {
   status: 'healthy' | 'degraded' | 'unhealthy';
@@ -360,11 +361,11 @@ export function createHealthCheckServer(port: number = 9090): http.Server {
   });
 
   server.listen(port, () => {
-    console.log(`🏥 Health check server listening on port ${port}`);
-    console.log(`   📍 Endpoints available:`);
-    console.log(`      - http://localhost:${port}/health   (full health check)`);
-    console.log(`      - http://localhost:${port}/livez    (liveness probe)`);
-    console.log(`      - http://localhost:${port}/readyz   (readiness probe)`);
+    logger.info(`🏥 Health check server listening on port ${port}`);
+    logger.info(`   📍 Endpoints available:`);
+    logger.info(`      - http://localhost:${port}/health   (full health check)`);
+    logger.info(`      - http://localhost:${port}/livez    (liveness probe)`);
+    logger.info(`      - http://localhost:${port}/readyz   (readiness probe)`);
   });
 
   return server;

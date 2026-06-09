@@ -2,6 +2,8 @@
  * Retry Logic with Exponential Backoff
  */
 
+import { logger } from '../../utils/logger.js';
+
 const MAX_RETRIES = 3;
 const INITIAL_RETRY_DELAY = 1000;
 
@@ -24,7 +26,7 @@ export class RetryHandler {
         }
         
         const delay = baseDelay * Math.pow(2, attempt);
-        console.log(`🔄 Retry ${attempt + 1}/${maxRetries} after ${delay}ms: ${lastError.message}`);
+        logger.info(`🔄 Retry ${attempt + 1}/${maxRetries} after ${delay}ms: ${lastError.message}`);
         await new Promise(resolve => setTimeout(resolve, delay));
       }
     }

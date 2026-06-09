@@ -172,7 +172,7 @@ export default class MandrelMcpServer {
       }
     } catch (error) {
       // Don't fail the request if token tracking fails
-      console.error('Failed to record token usage:', error);
+      logger.error('Failed to record token usage', error as Error);
     }
 
     return result;
@@ -216,7 +216,7 @@ export default class MandrelMcpServer {
         // Use shared tool execution logic
         return await this.executeMcpTool(name, args);
       } catch (error) {
-        console.error(`Error executing tool ${name}:`, error);
+        logger.error(`Error executing tool ${name}`, error as Error);
         throw new McpError(
           ErrorCode.InternalError,
           `Failed to execute tool: ${error instanceof Error ? error.message : 'Unknown error'}`
@@ -288,7 +288,7 @@ export default class MandrelMcpServer {
           if (Array.isArray(parsed)) {
             result[param] = parsed;
             // Minimal logging for production
-            console.error(`✅ Deserialized ${param} array parameter (${parsed.length} items)`);
+            logger.error(`✅ Deserialized ${param} array parameter (${parsed.length} items)`);
           }
         } catch (error) {
           // If parsing fails, leave as string - might be intentional
@@ -303,7 +303,7 @@ export default class MandrelMcpServer {
         const numValue = Number(result[param]);
         if (!isNaN(numValue)) {
           result[param] = numValue;
-          console.error(`✅ Converted ${param} to number: ${numValue}`);
+          logger.error(`✅ Converted ${param} to number: ${numValue}`);
         }
       }
     }
@@ -348,7 +348,7 @@ export default class MandrelMcpServer {
       const result = await db.query('SELECT 1 as test');
       databaseConnected = result.rows.length > 0;
     } catch (error) {
-      console.warn('Database connectivity test failed:', error);
+      logger.warn('Database connectivity test failed', { metadata: { error } });
     }
 
     return {
@@ -411,7 +411,7 @@ export default class MandrelMcpServer {
         });
 
         // Initialize session tracking for this AIDIS instance
-        console.log('📋 Ensuring session exists for this AIDIS instance...');
+        logger.info('📋 Ensuring session exists for this AIDIS instance...');
         try {
           const currentProject = await projectHandler.getCurrentProject();
 
@@ -423,7 +423,7 @@ export default class MandrelMcpServer {
             process.env.MODEL ||
             'claude-sonnet-4-5'; // Default to Claude Sonnet 4.5
 
-          console.log(`🤖 AI Model detected: ${aiModel}`);
+          logger.info(`🤖 AI Model detected: ${aiModel}`);
 
           // Use ensureActiveSession to reuse existing active session or create new one
           // Using 'stdio' as connection ID for the main MCP stdio transport
@@ -436,55 +436,55 @@ export default class MandrelMcpServer {
             aiModel,   // AI model
             'stdio'    // connectionId - isolates stdio from HTTP connections
           );
-          console.log(`✅ Session tracking initialized: ${sessionId.substring(0, 8)}... (connection: stdio)`);
+          logger.info(`✅ Session tracking initialized: ${sessionId.substring(0, 8)}... (connection: stdio)`);
         } catch (error) {
-          console.warn('⚠️  Failed to initialize session tracking:', error);
-          console.warn('   Contexts will be stored without session association');
+          logger.warn('⚠️  Failed to initialize session tracking', { metadata: { error } });
+          logger.warn('   Contexts will be stored without session association');
         }
       } else {
-        console.log('🧪 Skipping database initialization (AIDIS_SKIP_DATABASE=true)');
+        logger.info('🧪 Skipping database initialization (AIDIS_SKIP_DATABASE=true)');
       }
 
       // Phase 6.3: Start background services via backgroundServices module
-      console.log('🚀 Starting background services...');
+      logger.info('🚀 Starting background services...');
       try {
         await backgroundServices.startAll();
-        console.log('✅ Background services initialized successfully');
+        logger.info('✅ Background services initialized successfully');
       } catch (error) {
-        console.warn('⚠️  Failed to initialize background services:', error);
-        console.warn('   Background processing will be disabled');
+        logger.warn('⚠️  Failed to initialize background services', { metadata: { error } });
+        logger.warn('   Background processing will be disabled');
       }
 
       // ORACLE FIX #3: Start health check server
-      console.log(`🏥 Starting health check server...`);
+      logger.info(`🏥 Starting health check server...`);
       try {
         await this.healthServer.start();
-        console.log(`✅ Health endpoints available`);
+        logger.info(`✅ Health endpoints available`);
       } catch (error) {
-        console.warn('⚠️  Failed to start health server:', error);
+        logger.warn('⚠️  Failed to start health server', { metadata: { error } });
       }
 
       // ORACLE FIX #4: Create transport with MCP debug logging
       if (!SKIP_STDIO_TRANSPORT) {
-        console.log('🔗 Creating MCP transport with debug logging...');
+        logger.info('🔗 Creating MCP transport with debug logging...');
         const transport = new StdioServerTransport();
 
         // Enhanced connection logging
-        console.log('🤝 Connecting to MCP transport...');
+        logger.info('🤝 Connecting to MCP transport...');
         await this.server.connect(transport);
 
-        console.log('✅ AIDIS MCP Server is running and ready for connections!');
+        logger.info('✅ AIDIS MCP Server is running and ready for connections!');
       } else {
-        console.log('🧪 Skipping MCP stdio transport (AIDIS_SKIP_STDIO=true)');
+        logger.info('🧪 Skipping MCP stdio transport (AIDIS_SKIP_STDIO=true)');
       }
 
-      console.log('🔒 Enterprise Security Features:');
-      console.log(`   🔒 Process Singleton: ACTIVE (PID: ${process.pid})`);
-      console.log(`   🔄 Retry Logic: ${MAX_RETRIES} attempts with exponential backoff`);
-      console.log(`   ⚡ Circuit Breaker: ${this.circuitBreaker.getState().toUpperCase()}`);
-      console.log(`   🐛 MCP Debug: ${getEnvVar('AIDIS_MCP_DEBUG', 'MCP_DEBUG', 'DISABLED')}`);
+      logger.info('🔒 Enterprise Security Features:');
+      logger.info(`   🔒 Process Singleton: ACTIVE (PID: ${process.pid})`);
+      logger.info(`   🔄 Retry Logic: ${MAX_RETRIES} attempts with exponential backoff`);
+      logger.info(`   ⚡ Circuit Breaker: ${this.circuitBreaker.getState().toUpperCase()}`);
+      logger.info(`   🐛 MCP Debug: ${getEnvVar('AIDIS_MCP_DEBUG', 'MCP_DEBUG', 'DISABLED')}`);
 
-      console.log('🎯 AIDIS System Status: ONLINE');
+      logger.info('🎯 AIDIS System Status: ONLINE');
 
     } catch (error) {
       // Enhanced error handling for startup failures
@@ -517,51 +517,51 @@ export default class MandrelMcpServer {
     try {
       if (!SKIP_DATABASE) {
         // Flush in-memory data before ending session
-        console.log('💾 Flushing in-memory session data...');
+        logger.info('💾 Flushing in-memory session data...');
         try {
           await SessionTracker.flushTokensToDatabase();
           await SessionTracker.flushActivityToDatabase();
-          console.log('✅ Session data flushed to database');
+          logger.info('✅ Session data flushed to database');
         } catch (error) {
-          console.warn('⚠️  Failed to flush session data:', error);
+          logger.warn('⚠️  Failed to flush session data', { metadata: { error } });
         }
 
         // End current session if active
-        console.log('📋 Ending active session...');
+        logger.info('📋 Ending active session...');
         try {
           const activeSessionId = await SessionTracker.getActiveSession();
           if (activeSessionId) {
             await SessionTracker.endSession(activeSessionId);
-            console.log('✅ Session ended gracefully');
+            logger.info('✅ Session ended gracefully');
           } else {
-            console.log('ℹ️  No active session to end');
+            logger.info('ℹ️  No active session to end');
           }
         } catch (error) {
-          console.warn('⚠️  Failed to end session:', error);
+          logger.warn('⚠️  Failed to end session', { metadata: { error } });
         }
       }
 
       // Phase 6.3: Stop background services via backgroundServices module
-      console.log('🚀 Stopping background services...');
+      logger.info('🚀 Stopping background services...');
       try {
         await backgroundServices.stopAll();
-        console.log('✅ Background services stopped gracefully');
+        logger.info('✅ Background services stopped gracefully');
       } catch (error) {
-        console.warn('⚠️  Failed to stop background services:', error);
+        logger.warn('⚠️  Failed to stop background services', { metadata: { error } });
       }
 
       // Close health check server
       if (this.healthServer) {
-        console.log('🏥 Closing health check server...');
+        logger.info('🏥 Closing health check server...');
         await this.healthServer.stop();
-        console.log('✅ Health check server closed');
+        logger.info('✅ Health check server closed');
       }
 
       if (!SKIP_DATABASE) {
         // Close database connections
-        console.log('🔌 Closing database connections...');
+        logger.info('🔌 Closing database connections...');
         await closeDatabase();
-        console.log('✅ Database connections closed');
+        logger.info('✅ Database connections closed');
       }
 
       RequestLogger.logSystemEvent('graceful_shutdown_completed', {

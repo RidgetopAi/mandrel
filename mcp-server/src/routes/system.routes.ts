@@ -1,6 +1,7 @@
 import { navigationHandler } from '../handlers/navigation.js';
 import { formatMcpError } from '../utils/mcpFormatter.js';
 import type { McpResponse } from '../utils/mcpFormatter.js';
+import { logger } from '../utils/logger.js';
 
 /**
  * System & Navigation Routes
@@ -15,7 +16,7 @@ class SystemRoutes {
       const message = args.message || 'Hello Mandrel!';
       const timestamp = new Date().toISOString();
 
-      console.log(`🏓 Ping received: "${message}" at ${timestamp}`);
+      logger.info(`🏓 Ping received: "${message}" at ${timestamp}`);
 
       return {
         content: [{
@@ -33,7 +34,7 @@ class SystemRoutes {
    */
   async handleStatus(): Promise<McpResponse> {
     try {
-      console.log('🎯 Status request received');
+      logger.info('🎯 Status request received');
       // Navigation handler doesn't have getStatus, will be implemented in Phase 6.3
       // For now, return basic status
       return {
@@ -52,7 +53,7 @@ class SystemRoutes {
    */
   async handleHelp(): Promise<McpResponse> {
     try {
-      console.log('🔧 Mandrel help request received');
+      logger.info('🔧 Mandrel help request received');
       return await navigationHandler.getHelp();
     } catch (error) {
       return formatMcpError(error as Error, 'mandrel_help');
@@ -64,7 +65,7 @@ class SystemRoutes {
    */
   async handleExplain(args: { toolName: string }): Promise<McpResponse> {
     try {
-      console.log('🔧 Mandrel explain request received for tool:', args.toolName);
+      logger.info('🔧 Mandrel explain request received for tool', { metadata: { toolName: args.toolName } });
       return await navigationHandler.explainTool(args);
     } catch (error) {
       return formatMcpError(error as Error, 'mandrel_explain');
@@ -76,7 +77,7 @@ class SystemRoutes {
    */
   async handleExamples(args: { toolName: string }): Promise<McpResponse> {
     try {
-      console.log('🔧 Mandrel examples request received for tool:', args.toolName);
+      logger.info('🔧 Mandrel examples request received for tool', { metadata: { toolName: args.toolName } });
       return await navigationHandler.getExamples(args);
     } catch (error) {
       return formatMcpError(error as Error, 'mandrel_examples');

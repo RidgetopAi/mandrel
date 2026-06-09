@@ -38,7 +38,7 @@ export class RequestLogger {
   private static slowOperationThreshold = (() => {
     const threshold = parseInt(process.env.MANDREL_SLOW_OP_THRESHOLD || process.env.AIDIS_SLOW_OP_THRESHOLD || '1000');
     if (process.env.AIDIS_SLOW_OP_THRESHOLD && !process.env.MANDREL_SLOW_OP_THRESHOLD) {
-      console.warn('⚠️  AIDIS_SLOW_OP_THRESHOLD is deprecated. Use MANDREL_SLOW_OP_THRESHOLD instead.');
+      logger.warn('⚠️  AIDIS_SLOW_OP_THRESHOLD is deprecated. Use MANDREL_SLOW_OP_THRESHOLD instead.');
     }
     return threshold;
   })();
@@ -46,7 +46,7 @@ export class RequestLogger {
   private static enableDetailedLogging = (() => {
     const enabled = (process.env.MANDREL_DETAILED_LOGGING || process.env.AIDIS_DETAILED_LOGGING || 'false') === 'true';
     if (process.env.AIDIS_DETAILED_LOGGING && !process.env.MANDREL_DETAILED_LOGGING) {
-      console.warn('⚠️  AIDIS_DETAILED_LOGGING is deprecated. Use MANDREL_DETAILED_LOGGING instead.');
+      logger.warn('⚠️  AIDIS_DETAILED_LOGGING is deprecated. Use MANDREL_DETAILED_LOGGING instead.');
     }
     return enabled;
   })();

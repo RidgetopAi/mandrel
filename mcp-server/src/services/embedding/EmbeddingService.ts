@@ -24,6 +24,7 @@ import { generateMockEmbedding } from './mock.js';
 import { applyTargetDimensions } from './normalize.js';
 import { calculateCosineSimilarity, validateEmbedding } from './similarity.js';
 import { validateInput } from './validation.js';
+import { logger } from '../../utils/logger.js';
 
 export class EmbeddingService {
   private model: string;
@@ -57,7 +58,7 @@ export class EmbeddingService {
   private recordError(message: string): void {
     this.metrics.lastError = message;
     this.metrics.lastErrorTime = new Date();
-    console.error(`🔍 EMBEDDING ERROR RECORDED: ${message}`);
+    logger.error(`🔍 EMBEDDING ERROR RECORDED: ${message}`);
   }
 
   /**
@@ -72,7 +73,7 @@ export class EmbeddingService {
       validateInput(request.text, this.maxTextLength);
       const text = request.text.trim();
 
-      console.log(`📝 Generating embedding for text (${text.length} chars): "${text.substring(0, 60)}..."`);
+      logger.info(`📝 Generating embedding for text (${text.length} chars): "${text.substring(0, 60)}..."`);
 
       let result: EmbeddingVector | undefined;
       let errors: EmbeddingError[] = [];
@@ -84,7 +85,7 @@ export class EmbeddingService {
           result = applyTargetDimensions(localResult, 'local', this.targetDimensions);
           this.metrics.localModelSuccesses++;
           this.modelInitialized = true;
-          console.log(`✅ Successfully generated embedding using local model`);
+          logger.info(`✅ Successfully generated embedding using local model`);
         } catch (error) {
           const err = error as Error;
           const embeddingError = err instanceof EmbeddingError ? err :
@@ -95,7 +96,7 @@ export class EmbeddingService {
               err
             );
           errors.push(embeddingError);
-          console.warn('⚠️  Local embedding failed, trying alternatives:', embeddingError.message);
+          logger.warn('⚠️  Local embedding failed, trying alternatives', { metadata: { message: embeddingError.message } });
         }
       }
 
@@ -107,7 +108,7 @@ export class EmbeddingService {
             const openAIResult = await generateOpenAIEmbedding(text, apiKey, this.model, this.retryConfig);
             result = applyTargetDimensions(openAIResult, 'openai', this.targetDimensions);
             this.metrics.openAiSuccesses++;
-            console.log(`✅ Successfully generated embedding using OpenAI API`);
+            logger.info(`✅ Successfully generated embedding using OpenAI API`);
           } catch (error) {
             const err = error as Error;
             const embeddingError = err instanceof EmbeddingError ? err :
@@ -118,7 +119,7 @@ export class EmbeddingService {
                 err
               );
             errors.push(embeddingError);
-            console.warn('⚠️  OpenAI embedding failed, trying alternatives:', embeddingError.message);
+            logger.warn('⚠️  OpenAI embedding failed, trying alternatives', { metadata: { message: embeddingError.message } });
           }
         }
       }
@@ -130,7 +131,7 @@ export class EmbeddingService {
           result = applyTargetDimensions(backupLocal, 'local-backup', this.targetDimensions);
           this.metrics.localModelSuccesses++;
           this.modelInitialized = true;
-          console.log(`✅ Successfully generated embedding using local model (backup)`);
+          logger.info(`✅ Successfully generated embedding using local model (backup)`);
         } catch (error) {
           const err = error as Error;
           const embeddingError = err instanceof EmbeddingError ? err :
@@ -141,7 +142,7 @@ export class EmbeddingService {
               err
             );
           errors.push(embeddingError);
-          console.warn('⚠️  Local embedding backup failed:', embeddingError.message);
+          logger.warn('⚠️  Local embedding backup failed', { metadata: { message: embeddingError.message } });
         }
       }
 
@@ -162,7 +163,7 @@ export class EmbeddingService {
         }
 
         // In development/testing, allow mock fallback
-        console.warn('⚠️  All embedding methods failed, using mock embeddings (development mode only)');
+        logger.warn('⚠️  All embedding methods failed, using mock embeddings (development mode only)');
         const mockEmbedding = generateMockEmbedding(text, this.targetDimensions, this.model);
         result = applyTargetDimensions(mockEmbedding, 'mock', this.targetDimensions);
         this.metrics.mockFallbacks++;
@@ -174,7 +175,7 @@ export class EmbeddingService {
       this.metrics.totalProcessingTime += processingTime;
       this.metrics.averageProcessingTime = this.metrics.totalProcessingTime / this.metrics.successfulRequests;
 
-      console.log(`⏱️  Embedding generated in ${processingTime}ms (${result.dimensions}D, model: ${result.model})`);
+      logger.info(`⏱️  Embedding generated in ${processingTime}ms (${result.dimensions}D, model: ${result.model})`);
       return result;
 
     } catch (error) {
@@ -183,7 +184,7 @@ export class EmbeddingService {
       const processingTime = Date.now() - startTime;
       this.recordError(err.message);
 
-      console.error(`❌ Embedding generation failed after ${processingTime}ms:`, err.message);
+      logger.error(`❌ Embedding generation failed after ${processingTime}ms`, err);
 
       if (err instanceof EmbeddingError) {
         throw err;
@@ -225,7 +226,7 @@ export class EmbeddingService {
              result.embedding.every(val => isFinite(val));
     } catch (error) {
       const err = error as Error;
-      console.error('🌡️  Health check failed:', err.message);
+      logger.error('🌡️  Health check failed', err);
       return false;
     }
   }
@@ -270,7 +271,7 @@ export class EmbeddingService {
    */
   resetMetrics(): void {
     this.metrics = createDefaultMetrics();
-    console.log('🔄 Embedding service metrics reset');
+    logger.info('🔄 Embedding service metrics reset');
   }
 
   /**

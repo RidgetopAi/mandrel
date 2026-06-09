@@ -91,7 +91,7 @@ export const SessionStatsService = {
       };
 
     } catch (error) {
-      console.error('❌ Failed to get session stats:', error);
+      logger.error('❌ Failed to get session stats', error as Error);
       throw error;
     }
   },
@@ -159,11 +159,11 @@ export const SessionStatsService = {
 
       const productivity = calculateBasicProductivity(sessionData);
 
-      console.log(`📊 Session ${sessionId.substring(0, 8)}... productivity: ${productivity.toFixed(2)}`);
+      logger.info(`📊 Session ${sessionId.substring(0, 8)}... productivity: ${productivity.toFixed(2)}`);
       return productivity;
 
     } catch (error) {
-      console.error('❌ Failed to calculate productivity:', error);
+      logger.error('❌ Failed to calculate productivity', error as Error);
       return 0;
     }
   },

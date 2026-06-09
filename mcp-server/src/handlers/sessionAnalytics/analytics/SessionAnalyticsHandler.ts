@@ -8,6 +8,7 @@
  * - Operation recording
  */
 
+import { logger } from '../../../utils/logger.js';
 import { SessionTracker, SessionStats } from '../../../services/sessionTracker.js';
 import { logEvent } from '../../../middleware/eventLogger.js';
 import { SessionAnalyticsResult, SessionDetailsResult } from '../types.js';
@@ -19,7 +20,7 @@ export class SessionAnalyticsHandler {
    */
   static async getSessionStats(projectId?: string): Promise<SessionAnalyticsResult> {
     try {
-      console.log(`📊 Getting session statistics for project: ${projectId || 'all'}`);
+      logger.info(`📊 Getting session statistics for project: ${projectId || 'all'}`);
       
       await logEvent({
         actor: 'ai',
@@ -47,9 +48,9 @@ export class SessionAnalyticsHandler {
         tags: ['analytics', 'session', 'statistics', 'completed']
       });
       
-      console.log(`✅ Session statistics retrieved in ${duration}ms`);
-      console.log(`   Sessions: ${stats.totalSessions}, Avg Duration: ${Math.round(stats.avgDuration/1000)}s`);
-      console.log(`   Productivity: ${stats.productivityScore}, Retention: ${stats.retentionRate}`);
+      logger.info(`✅ Session statistics retrieved in ${duration}ms`);
+      logger.info(`   Sessions: ${stats.totalSessions}, Avg Duration: ${Math.round(stats.avgDuration/1000)}s`);
+      logger.info(`   Productivity: ${stats.productivityScore}, Retention: ${stats.retentionRate}`);
       
       return {
         success: true,
@@ -58,7 +59,7 @@ export class SessionAnalyticsHandler {
       };
       
     } catch (error) {
-      console.error('❌ Failed to get session statistics:', error);
+      logger.error('❌ Failed to get session statistics', error as Error);
       
       await logEvent({
         actor: 'ai',
@@ -84,7 +85,7 @@ export class SessionAnalyticsHandler {
    */
   static async getSessionDetails(sessionId: string): Promise<SessionDetailsResult> {
     try {
-      console.log(`🔍 Getting session details for: ${sessionId.substring(0, 8)}...`);
+      logger.info(`🔍 Getting session details for: ${sessionId.substring(0, 8)}...`);
       
       await logEvent({
         actor: 'ai',
@@ -99,7 +100,7 @@ export class SessionAnalyticsHandler {
       const duration = Date.now() - startTime;
       
       if (!sessionData) {
-        console.warn(`⚠️  Session not found: ${sessionId}`);
+        logger.warn(`⚠️  Session not found: ${sessionId}`);
         
         await logEvent({
           actor: 'ai',
@@ -133,9 +134,9 @@ export class SessionAnalyticsHandler {
         tags: ['analytics', 'session', 'details', 'completed']
       });
       
-      console.log(`✅ Session details retrieved in ${duration}ms`);
-      console.log(`   Status: ${sessionData.success_status}, Operations: ${sessionData.operations_count}`);
-      console.log(`   Contexts: ${sessionData.contexts_created}, Decisions: ${sessionData.decisions_created}`);
+      logger.info(`✅ Session details retrieved in ${duration}ms`);
+      logger.info(`   Status: ${sessionData.success_status}, Operations: ${sessionData.operations_count}`);
+      logger.info(`   Contexts: ${sessionData.contexts_created}, Decisions: ${sessionData.decisions_created}`);
       
       return {
         success: true,
@@ -144,7 +145,7 @@ export class SessionAnalyticsHandler {
       };
       
     } catch (error) {
-      console.error('❌ Failed to get session details:', error);
+      logger.error('❌ Failed to get session details', error as Error);
       
       await logEvent({
         actor: 'ai',
@@ -178,10 +179,10 @@ export class SessionAnalyticsHandler {
     sessionType?: 'mcp-server' | 'AI Model'
   ): Promise<SessionDetailsResult> {
     try {
-      console.log(`🚀 Starting new session for project: ${projectId || 'auto-detect'}`);
-      if (title) console.log(`   Title: ${title}`);
-      if (sessionGoal) console.log(`   Goal: ${sessionGoal}`);
-      if (sessionType) console.log(`   Type: ${sessionType}`);
+      logger.info(`🚀 Starting new session for project: ${projectId || 'auto-detect'}`);
+      if (title) logger.info(`   Title: ${title}`);
+      if (sessionGoal) logger.info(`   Goal: ${sessionGoal}`);
+      if (sessionType) logger.info(`   Type: ${sessionType}`);
 
       const startTime = Date.now();
 
@@ -216,7 +217,7 @@ export class SessionAnalyticsHandler {
         tags: ['analytics', 'session', 'start']
       });
 
-      console.log(`✅ Session started: ${sessionId.substring(0, 8)}... in ${duration}ms`);
+      logger.info(`✅ Session started: ${sessionId.substring(0, 8)}... in ${duration}ms`);
 
       return {
         success: true,
@@ -225,7 +226,7 @@ export class SessionAnalyticsHandler {
       };
 
     } catch (error) {
-      console.error('❌ Failed to start session:', error);
+      logger.error('❌ Failed to start session', error as Error);
 
       await logEvent({
         actor: 'ai',
@@ -251,7 +252,7 @@ export class SessionAnalyticsHandler {
    */
   static async endSession(sessionId: string): Promise<SessionDetailsResult> {
     try {
-      console.log(`🏁 Ending session: ${sessionId.substring(0, 8)}...`);
+      logger.info(`🏁 Ending session: ${sessionId.substring(0, 8)}...`);
       
       const startTime = Date.now();
       const sessionData = await SessionTracker.endSession(sessionId);
@@ -273,9 +274,9 @@ export class SessionAnalyticsHandler {
         tags: ['analytics', 'session', 'end', 'completed']
       });
       
-      console.log(`✅ Session ended: ${sessionId.substring(0, 8)}... in ${duration}ms`);
-      console.log(`   Final productivity score: ${sessionData.productivity_score}`);
-      console.log(`   Status: ${sessionData.success_status}`);
+      logger.info(`✅ Session ended: ${sessionId.substring(0, 8)}... in ${duration}ms`);
+      logger.info(`   Final productivity score: ${sessionData.productivity_score}`);
+      logger.info(`   Status: ${sessionData.success_status}`);
       
       return {
         success: true,
@@ -284,7 +285,7 @@ export class SessionAnalyticsHandler {
       };
       
     } catch (error) {
-      console.error('❌ Failed to end session:', error);
+      logger.error('❌ Failed to end session', error as Error);
       
       await logEvent({
         actor: 'ai',
@@ -310,13 +311,13 @@ export class SessionAnalyticsHandler {
    */
   static async getActiveSession(): Promise<SessionDetailsResult> {
     try {
-      console.log('🔍 Getting active session information');
+      logger.info('🔍 Getting active session information');
       
       const startTime = Date.now();
       const activeSessionId = await SessionTracker.getActiveSession();
       
       if (!activeSessionId) {
-        console.log('ℹ️  No active session found');
+        logger.info('ℹ️  No active session found');
         
         return {
           success: false,
@@ -337,7 +338,7 @@ export class SessionAnalyticsHandler {
         tags: ['analytics', 'session', 'active']
       });
       
-      console.log(`✅ Active session: ${activeSessionId.substring(0, 8)}... retrieved in ${duration}ms`);
+      logger.info(`✅ Active session: ${activeSessionId.substring(0, 8)}... retrieved in ${duration}ms`);
       
       return {
         success: true,
@@ -346,7 +347,7 @@ export class SessionAnalyticsHandler {
       };
       
     } catch (error) {
-      console.error('❌ Failed to get active session:', error);
+      logger.error('❌ Failed to get active session', error as Error);
       
       await logEvent({
         actor: 'ai',
@@ -371,14 +372,14 @@ export class SessionAnalyticsHandler {
    */
   static async recordOperation(operationType: string, projectId?: string): Promise<SessionAnalyticsResult> {
     try {
-      console.log(`📝 Recording operation: ${operationType} for project: ${projectId || 'current'}`);
+      logger.info(`📝 Recording operation: ${operationType} for project: ${projectId || 'current'}`);
       
       const startTime = Date.now();
       let sessionId = await SessionTracker.getActiveSession();
       
       if (!sessionId) {
         sessionId = await SessionTracker.startSession(projectId);
-        console.log(`🚀 Auto-started session for operation: ${sessionId.substring(0, 8)}...`);
+        logger.info(`🚀 Auto-started session for operation: ${sessionId.substring(0, 8)}...`);
       }
       
       await SessionTracker.recordOperation(sessionId, operationType);
@@ -397,7 +398,7 @@ export class SessionAnalyticsHandler {
         tags: ['analytics', 'session', 'operation', operationType]
       });
       
-      console.log(`✅ Operation recorded: ${operationType} in ${duration}ms`);
+      logger.info(`✅ Operation recorded: ${operationType} in ${duration}ms`);
       
       const stats: SessionStats = {
         totalSessions: 1,
@@ -414,7 +415,7 @@ export class SessionAnalyticsHandler {
       };
       
     } catch (error) {
-      console.error('❌ Failed to record operation:', error);
+      logger.error('❌ Failed to record operation', error as Error);
       
       await logEvent({
         actor: 'ai',
