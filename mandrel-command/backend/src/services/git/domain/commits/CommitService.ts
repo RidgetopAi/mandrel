@@ -4,18 +4,16 @@
  */
 
 import { SimpleGit } from 'simple-git';
-import { GitCommit, CommitType, GitFileChange, GitServiceConfig, DEFAULT_GIT_SERVICE_CONFIG } from '../../../../types/git';
+import { GitServiceConfig, DEFAULT_GIT_SERVICE_CONFIG } from '../../../../types/git';
 import { GitClient } from '../../infra/git/GitClient';
 import { CommitRepo } from '../../infra/db/CommitRepo';
-import { ChangeRepo } from '../../infra/db/ChangeRepo';
-import { 
+import {
   classifyCommitType, 
   analyzeCommitMessage, 
   parseCommitStats,
   extractBranches,
   determineMergeStrategy 
 } from '../../utils/messageAnalysis';
-import { analyzeFileChange, isGeneratedFile } from '../../utils/fileAnalysis';
 import { createServiceError } from '../../utils/errors';
 import { FileChangeService } from '../changes/ChangeService';
 import { logger } from '../../../../config/logger';

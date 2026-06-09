@@ -4,7 +4,7 @@
  */
 
 import { Router, Request, Response } from 'express';
-import { validateBody, validateQuery } from '../middleware/validation';
+import { validateBody } from '../middleware/validation';
 import { SchemaRegistry, validateData } from '../validation/schemas';
 import {
   ApiSuccessResponse,
@@ -17,7 +17,6 @@ import {
   isApiErrorResponse
 } from '../types/generated';
 import { logger } from '../config/logger';
-import { z } from 'zod';
 
 const router = Router();
 

@@ -28,7 +28,6 @@ export { getKnowledgeGapMetrics } from './knowledgeGap.js';
 export { getUsagePatterns } from './usagePatterns.js';
 
 // Re-export as EmbeddingService class for backward compatibility
-import { resolveProjectId, cosineSimilarity } from './core.js';
 import { getAvailableDatasets } from './datasets.js';
 import { getSimilarityMatrix, getProjection, getClusters } from './visualization.js';
 import { getQualityMetrics } from './quality.js';
@@ -37,9 +36,6 @@ import { getKnowledgeGapMetrics } from './knowledgeGap.js';
 import { getUsagePatterns } from './usagePatterns.js';
 
 export class EmbeddingService {
-  private static resolveProjectId = resolveProjectId;
-  private static cosineSimilarity = cosineSimilarity;
-
   static getAvailableDatasets = getAvailableDatasets;
   static getSimilarityMatrix = getSimilarityMatrix;
   static getProjection = getProjection;

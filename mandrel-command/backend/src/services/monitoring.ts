@@ -699,8 +699,6 @@ class MonitoringService {
       const services = await this.checkAllServices();
       this.evaluateAlerts(services);
 
-      const stats = this.getServiceMonitoringStats();
-
     } catch (error) {
       logger.error('Service monitoring cycle error', { error });
     }

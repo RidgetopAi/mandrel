@@ -6,7 +6,6 @@
  * All public methods from the original GitService are preserved here.
  */
 
-import { simpleGit, SimpleGit } from 'simple-git';
 import { db as pool } from '../../database/connection';
 import { logger } from '../../config/logger';
 import path from 'path';
@@ -15,7 +14,6 @@ import fs from 'fs';
 // Types
 import {
   GitCommit,
-  GitBranch,
   GitFileChange,
   InitializeRepositoryRequest,
   InitializeRepositoryResponse,
@@ -32,9 +30,7 @@ import {
   CorrelateCommitsWithSessionsResponse,
   GitProjectStats,
   GitRepositoryStatus,
-  CommitType,
-  DEFAULT_GIT_SERVICE_CONFIG,
-  GitServiceConfig
+  CommitType
 } from '../../types/git';
 
 // Domain services
@@ -45,22 +41,14 @@ import { CorrelationService } from './domain/correlation';
 
 // Infrastructure
 import { GitClient } from './infra/git';
-import { CommitRepo, mapRowToGitCommit, BranchRepo, ChangeRepo, mapRowToGitFileChange } from './infra/db';
+import { CommitRepo, mapRowToGitCommit, ChangeRepo } from './infra/db';
 
 // Utilities
-import { 
-  analyzeFileChange, 
-  calculateFileRiskScore,
-  isGeneratedFile 
+import {
+  calculateFileRiskScore
 } from './utils/fileAnalysis';
-import { 
-  classifyCommitType, 
-  analyzeCommitMessage 
-} from './utils/messageAnalysis';
-import { 
-  classifyBranchType, 
-  findDefaultBranch, 
-  getMostActiveCategory 
+import {
+  getMostActiveCategory
 } from './utils/branchAnalysis';
 import { createServiceError } from './utils/errors';
 
@@ -69,16 +57,13 @@ import { createServiceError } from './utils/errors';
  * Delegates to domain services while maintaining the original API
  */
 export class GitService {
-  private static config: GitServiceConfig = DEFAULT_GIT_SERVICE_CONFIG;
-
   // ============================================
   // Repository Initialization
   // ============================================
 
   static async initializeRepository(request: InitializeRepositoryRequest): Promise<InitializeRepositoryResponse> {
     const { project_id, repo_path, remote_url } = request;
-    const startTime = Date.now();
-    
+
     try {
       logger.info(`🔧 GitService.initializeRepository - Project: ${project_id}, Path: ${repo_path}`);
       

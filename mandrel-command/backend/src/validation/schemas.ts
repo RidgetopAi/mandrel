@@ -25,20 +25,12 @@ const optionalString = (maxLength = 255) =>
     .nullable()
     .transform(val => val === null ? undefined : val);
 
-const email = z.string()
-  .email('Please enter a valid email address')
-  .max(255, 'Email must be less than 255 characters');
-
 const url = z.union([
   z.string().url('Please enter a valid URL'),
   z.literal(''),
   z.null()
 ]).optional()
   .transform(val => val === null ? undefined : val);
-
-const positiveInteger = z.number()
-  .int('Must be an integer')
-  .positive('Must be a positive number');
 
 const tags = z.array(z.string().min(1).max(50))
   .max(10, 'Maximum 10 tags allowed')
@@ -242,13 +234,6 @@ const formatZodError = (error: z.ZodError): ValidationError[] => {
   }));
 };
 
-const formatFieldErrors = (errors: ValidationError[]): Record<string, string> => {
-  return errors.reduce((acc, error) => {
-    acc[error.field] = error.message;
-    return acc;
-  }, {} as Record<string, string>);
-};
-
 // ================================
 // SCHEMA REGISTRY
 // ================================
@@ -283,10 +268,6 @@ export const SchemaRegistry = {
 
 export type SchemaName = keyof typeof SchemaRegistry;
 
-const getSchema = (schemaName: SchemaName) => {
-  return SchemaRegistry[schemaName];
-};
-
 // ================================
 // VALIDATION UTILITIES
 // ================================
@@ -303,42 +284,6 @@ export const validateData = <T>(schema: z.ZodSchema<T>, data: any): {
     if (error instanceof z.ZodError) {
       return { success: false, errors: formatZodError(error) };
     }
-    return {
-      success: false,
-      errors: [{ field: 'general', message: 'Validation failed' }]
-    };
-  }
-};
-
-const validatePartial = <T>(schema: z.ZodSchema<T>, data: any): {
-  success: boolean;
-  data?: Partial<T>;
-  errors?: ValidationError[];
-} => {
-  try {
-    // For partial validation, we'll use a more permissive approach
-    const result = validateData(schema, data);
-    if (result.success) {
-      return { success: true, data: result.data };
-    }
-
-    // If full validation fails, check if it's just due to missing required fields
-    const missingFieldErrors = result.errors?.filter(error =>
-      error.message.includes('required') || error.message.includes('is required')
-    ) || [];
-
-    const otherErrors = result.errors?.filter(error =>
-      !error.message.includes('required') && !error.message.includes('is required')
-    ) || [];
-
-    // If only missing field errors, it's a successful partial validation
-    if (otherErrors.length === 0) {
-      return { success: true, data: data as Partial<T> };
-    }
-
-    // Otherwise, return the validation errors
-    return { success: false, errors: otherErrors };
-  } catch (error) {
     return {
       success: false,
       errors: [{ field: 'general', message: 'Validation failed' }]

@@ -11,7 +11,7 @@
 
 import request from 'supertest';
 import { randomUUID } from 'crypto';
-import { Pool, PoolClient } from 'pg';
+import { Pool } from 'pg';
 import express, { Express } from 'express';
 import eventsRouter from '../routes/events';
 import { sseService } from '../services/sse';
