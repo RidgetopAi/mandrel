@@ -418,18 +418,11 @@ const validationSchemas = {
   
   // Smart Search & AI Recommendations
   smart_search: smartSearchSchemas.search,
-  get_recommendations: smartSearchSchemas.recommendations,
+  get_recommendations: smartSearchSchemas.recommendations
 
-  // Git Integration Tools
-  git_session_commits: z.object({
-    sessionId: z.string().optional()
-  }),
-  git_commit_sessions: z.object({
-    commitHash: z.string().min(1)
-  }),
-  git_correlate_session: z.object({
-    sessionId: z.string().optional()
-  })
+  // Git Integration Tools - DELETED (C4, 2026-06-09)
+  // 3 dormant git MCP tools (git_session_commits, git_commit_sessions,
+  // git_correlate_session) removed; live gitTracker service retained.
 
   // Session Management - DELETED (2025-10-24)
   // 5 session tools removed - sessions auto-manage via SessionTracker service

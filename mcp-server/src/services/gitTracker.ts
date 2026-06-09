@@ -13,7 +13,6 @@
 
 import { watchFile, unwatchFile, existsSync } from 'fs';
 import { join } from 'path';
-import { GitHandler } from '../handlers/git.js';
 import { GitCorrelationService } from './gitCorrelation.js';
 import { getCurrentSession } from './sessionTracker.js';
 import { db } from '../config/database.js';
@@ -216,8 +215,8 @@ export class GitTracker {
         };
       }
 
-      // Check for new commits using GitHandler
-      const result = await GitHandler.trackRealtimeGitActivity();
+      // Check for new commits via real-time git activity tracking
+      const result = await this.trackRealtimeGitActivity();
       
       this.status.lastCheckTime = new Date();
 
@@ -248,6 +247,92 @@ export class GitTracker {
         hasActivity: false,
         newCommits: 0,
         correlationTriggered: false
+      };
+    }
+  }
+
+  /**
+   * Real-time git tracking - detect recent commits during active session
+   * and auto-correlate them. (Previously GitHandler.trackRealtimeGitActivity;
+   * inlined here when the dormant git MCP tool handlers were removed.)
+   */
+  private async trackRealtimeGitActivity(): Promise<{
+    success: boolean;
+    sessionId?: string;
+    recentCommits: number;
+    autoCorrelated: boolean;
+    error?: string;
+  }> {
+    try {
+      console.log('⚡ Checking for real-time git activity...');
+
+      // Get current active session
+      const sessionId = await getCurrentSession();
+      if (!sessionId) {
+        return {
+          success: true,
+          recentCommits: 0,
+          autoCorrelated: false,
+          error: 'No active session - git tracking inactive'
+        };
+      }
+
+      // Get session project
+      const sessionQuery = `
+        SELECT project_id, started_at
+        FROM user_sessions WHERE id = $1
+        UNION ALL
+        SELECT project_id, started_at
+        FROM sessions WHERE id = $1
+      `;
+      const sessionResult = await db.query(sessionQuery, [sessionId]);
+
+      if (sessionResult.rows.length === 0 || !sessionResult.rows[0].project_id) {
+        return {
+          success: true,
+          sessionId,
+          recentCommits: 0,
+          autoCorrelated: false,
+          error: 'Session not assigned to project'
+        };
+      }
+
+      const session = sessionResult.rows[0];
+
+      // Check for commits in the last 5 minutes
+      const recentCommitsResult = await GitCorrelationService.getRecentCommits({
+        project_id: session.project_id,
+        hours: 0.083, // 5 minutes
+      });
+
+      if (recentCommitsResult.commits.length > 0) {
+        console.log(`🔄 Found ${recentCommitsResult.commits.length} recent commits, triggering auto-correlation`);
+
+        // Auto-correlate recent commits
+        await GitCorrelationService.correlateSessionWithGit(sessionId);
+
+        return {
+          success: true,
+          sessionId,
+          recentCommits: recentCommitsResult.commits.length,
+          autoCorrelated: true
+        };
+      }
+
+      return {
+        success: true,
+        sessionId,
+        recentCommits: 0,
+        autoCorrelated: false
+      };
+
+    } catch (error) {
+      console.error('❌ Real-time git tracking error:', error);
+      return {
+        success: false,
+        recentCommits: 0,
+        autoCorrelated: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
       };
     }
   }

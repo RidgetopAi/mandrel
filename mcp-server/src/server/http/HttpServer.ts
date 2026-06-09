@@ -7,8 +7,7 @@ import { AIDIS_TOOL_DEFINITIONS } from '../../config/toolDefinitions.js';
 import { CircuitBreaker } from '../infra/CircuitBreaker.js';
 
 const DISABLED_TOOLS = [
-  'code_analyze', 'code_components', 'code_dependencies', 'code_impact', 'code_stats',
-  'git_session_commits', 'git_commit_sessions', 'git_correlate_session'
+  'code_analyze', 'code_components', 'code_dependencies', 'code_impact', 'code_stats'
 ];
 
 export function createHttpServer(
