@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { User } from '../api/generated/models/User';
+import { logger } from '../utils/logger';
 
 interface AuthState {
   // State
@@ -49,7 +50,7 @@ export const useAuthStore = create<AuthState>()(
         try {
           localStorage.removeItem('aidis-auth');
         } catch (e) {
-          console.warn('Failed to clear Zustand cache:', e);
+          logger.warn('Failed to clear Zustand cache:', e);
         }
         
         // Update state
@@ -108,7 +109,7 @@ export const useAuth = () => {
             const user = JSON.parse(userStr);
             store.setUser(user, token);
           } catch (error) {
-            console.error('Failed to parse stored user:', error);
+            logger.error('Failed to parse stored user:', error);
             localStorage.removeItem('aidis_token');
             localStorage.removeItem('aidis_user');
           }
@@ -116,7 +117,7 @@ export const useAuth = () => {
           // CRITICAL FIX: If no valid token/user data, ensure we're not authenticated
           // This prevents the corrupted state where isAuthenticated=true but no credentials
           if (store.isAuthenticated) {
-            console.warn('Detected corrupted auth state - clearing authentication');
+            logger.warn('Detected corrupted auth state - clearing authentication');
             localStorage.removeItem('aidis_token');
             localStorage.removeItem('aidis_user');
             // Don't call store.logout() to avoid infinite loop

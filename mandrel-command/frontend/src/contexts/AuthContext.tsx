@@ -5,6 +5,7 @@ import { useLogin, useLogout, useAuthCheck } from '../hooks/useAuth';
 import { useAuth } from '../stores/authStore';
 import { LoginRequest } from '../api/generated/models/LoginRequest';
 import { User } from '../api/generated/models/User';
+import { logger } from '../utils/logger';
 
 interface AuthContextType {
   user: User | null;
@@ -78,7 +79,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // Explicitly navigate to login page after logout
       navigate('/login', { replace: true });
     } catch (error) {
-      console.error('Logout error:', error);
+      logger.error('Logout error:', error);
       // Even if logout fails, clear local state and redirect
       message.info('Logged out successfully');
       navigate('/login', { replace: true });

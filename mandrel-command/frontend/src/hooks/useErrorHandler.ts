@@ -7,6 +7,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { message } from 'antd';
 import { mandrelApi } from '../api/mandrelApiClient';
 import type { ApiError } from '../api/mandrelApiClient';
+import { logger } from '../utils/logger';
 
 export interface ErrorState {
   hasError: boolean;
@@ -105,9 +106,9 @@ export const useErrorHandler = (config: ErrorHandlerConfig) => {
         ['ui-error', errorType, finalConfig.componentName.toLowerCase()]
       );
 
-      console.log('✅ Error reported to AIDIS:', errorContext);
+      logger.log('✅ Error reported to AIDIS:', errorContext);
     } catch (reportError) {
-      console.warn('⚠️ Failed to report error to AIDIS:', reportError);
+      logger.warn('⚠️ Failed to report error to AIDIS:', reportError);
     }
   }, [finalConfig.componentName, finalConfig.reportToAidis]);
 

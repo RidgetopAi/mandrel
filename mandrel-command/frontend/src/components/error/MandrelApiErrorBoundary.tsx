@@ -7,6 +7,7 @@ import React, { Component, ReactNode } from 'react';
 import { Alert, Button, Card, Space, Typography, Spin } from 'antd';
 import { ExclamationCircleOutlined, ReloadOutlined, ApiOutlined } from '@ant-design/icons';
 import { mandrelApi } from '../../api/mandrelApiClient';
+import { logger } from '../../utils/logger';
 
 
 const { Text, Title } = Typography;
@@ -119,10 +120,10 @@ export class MandrelApiErrorBoundary extends Component<MandrelApiErrorBoundaryPr
         ['ui-error', 'error-boundary', this.props.componentName.toLowerCase()]
       );
 
-      console.log('✅ Error reported to AIDIS V2 API:', errorContext);
+      logger.log('✅ Error reported to AIDIS V2 API:', errorContext);
     } catch (aidisError) {
       this.setState({ aidisApiConnected: false });
-      console.warn('⚠️ Failed to report error to AIDIS API:', aidisError);
+      logger.warn('⚠️ Failed to report error to AIDIS API:', aidisError);
 
       // Fallback to local storage for offline error tracking
       this.storeErrorLocally(error, errorInfo);
@@ -155,7 +156,7 @@ export class MandrelApiErrorBoundary extends Component<MandrelApiErrorBoundaryPr
 
       localStorage.setItem('aidis_ui_errors', JSON.stringify(existingErrors));
     } catch (storageError) {
-      console.warn('Failed to store error locally:', storageError);
+      logger.warn('Failed to store error locally:', storageError);
     }
   }
 

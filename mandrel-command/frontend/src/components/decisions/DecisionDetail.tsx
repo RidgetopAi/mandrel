@@ -32,6 +32,7 @@ import {
 } from '@ant-design/icons';
 import { TechnicalDecision } from './types';
 import { DecisionApi } from '../../services/decisionApi';
+import { logger } from '../../utils/logger';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
@@ -98,20 +99,20 @@ const DecisionDetail: React.FC<DecisionDetailProps> = ({
       setLoading(true);
 
       // Debug logging
-      console.log('🔍 [DecisionDetail] Attempting to save decision:', {
+      logger.log('🔍 [DecisionDetail] Attempting to save decision:', {
         id: decision.id,
         idType: typeof decision.id,
         title: decision.title
       });
 
       if (!decision || !decision.id) {
-        console.error('❌ [DecisionDetail] Invalid decision object:', decision);
+        logger.error('❌ [DecisionDetail] Invalid decision object:', decision);
         message.error('Cannot update decision: Invalid decision data');
         return;
       }
 
       const values = await form.validateFields();
-      console.log('📝 [DecisionDetail] Form values:', values);
+      logger.log('📝 [DecisionDetail] Form values:', values);
 
       // Call update API (returns void)
       await DecisionApi.updateDecision(decision.id, values);
@@ -123,13 +124,13 @@ const DecisionDetail: React.FC<DecisionDetailProps> = ({
         updated_at: new Date().toISOString()
       };
 
-      console.log('✅ [DecisionDetail] Update successful:', updatedDecision);
+      logger.log('✅ [DecisionDetail] Update successful:', updatedDecision);
 
       message.success('Decision updated successfully');
       onUpdate?.(updatedDecision);
       setEditMode(false);
     } catch (error) {
-      console.error('❌ [DecisionDetail] Failed to update decision:', error);
+      logger.error('❌ [DecisionDetail] Failed to update decision:', error);
       message.error('Failed to update decision');
     } finally {
       setLoading(false);
@@ -155,7 +156,7 @@ const DecisionDetail: React.FC<DecisionDetailProps> = ({
     };
 
     if (navigator.share) {
-      navigator.share(shareData).catch(console.error);
+      navigator.share(shareData).catch(logger.error);
     } else {
       navigator.clipboard.writeText(shareData.text);
       message.success('Decision details copied to clipboard');

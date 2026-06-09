@@ -18,6 +18,7 @@ import {
 import type { Project } from '../types/project';
 import type { Session, UpdateSessionRequest } from '../types/session';
 import { sessionsClient } from '../api/sessionsClient';
+import { logger } from '../utils/logger';
 
 // Query keys for cache management
 type ProjectsQueryData = {
@@ -117,18 +118,18 @@ export const useProjectStats = () => {
  * Hook to fetch project insights
  */
 export const useProjectInsights = (id: string | undefined) => {
-  console.log('[useProjectInsights] Called with ID:', id);
+  logger.log('[useProjectInsights] Called with ID:', id);
 
   return useQuery({
     queryKey: projectQueryKeys.insights(id!),
     queryFn: () => {
-      console.log('[useProjectInsights] Making API call for ID:', id);
+      logger.log('[useProjectInsights] Making API call for ID:', id);
       return ProjectsService.getProjectsInsights({ id: id! });
     },
     enabled: !!id,
     staleTime: 1000 * 60 * 15, // 15 minutes - insights are expensive to compute
     select: (response) => {
-      console.log('[useProjectInsights] API Response:', response);
+      logger.log('[useProjectInsights] API Response:', response);
       return response;  // Changed: Return the full response, not just response.data
     },
   });
@@ -173,7 +174,7 @@ export const useCreateProject = () => {
       queryClient.invalidateQueries({ queryKey: projectQueryKeys.stats() });
     },
     onError: (error) => {
-      console.error('Failed to create project:', error);
+      logger.error('Failed to create project:', error);
     },
   });
 };
@@ -202,7 +203,7 @@ export const useUpdateProject = () => {
       queryClient.invalidateQueries({ queryKey: projectQueryKeys.stats() });
     },
     onError: (error) => {
-      console.error('Failed to update project:', error);
+      logger.error('Failed to update project:', error);
     },
   });
 };
@@ -226,7 +227,7 @@ export const useDeleteProject = () => {
       queryClient.invalidateQueries({ queryKey: projectQueryKeys.stats() });
     },
     onError: (error) => {
-      console.error('Failed to delete project:', error);
+      logger.error('Failed to delete project:', error);
     },
   });
 };
@@ -316,7 +317,7 @@ export const useUpdateSession = () => {
       });
     },
     onError: (error) => {
-      console.error('Failed to update session:', error);
+      logger.error('Failed to update session:', error);
     },
   });
 };

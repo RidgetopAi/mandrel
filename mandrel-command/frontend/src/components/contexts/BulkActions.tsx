@@ -12,6 +12,7 @@ import { useBulkDeleteContexts, useBulkUpdateContexts } from '../../hooks/useCon
 import contextsClient from '../../api/contextsClient';
 import { useProjectContext } from '../../contexts/ProjectContext';
 import { useTheme } from '../../contexts/ThemeContext';
+import { logger } from '../../utils/logger';
 
 const { Text } = Typography;
 const { Option } = Select;
@@ -74,7 +75,7 @@ const BulkActions: React.FC<BulkActionsProps> = ({
       onBulkDelete?.(result.deleted);
       setDeleteModalVisible(false);
     } catch (error) {
-      console.error('Bulk delete failed:', error);
+      logger.error('Bulk delete failed:', error);
       message.error('Failed to delete contexts');
     }
   };
@@ -92,7 +93,7 @@ const BulkActions: React.FC<BulkActionsProps> = ({
       setMoveModalVisible(false);
       setTargetProjectId(undefined);
     } catch (error) {
-      console.error('Bulk move failed:', error);
+      logger.error('Bulk move failed:', error);
       message.error('Failed to move contexts');
     }
   };
@@ -112,7 +113,7 @@ const BulkActions: React.FC<BulkActionsProps> = ({
       message.success(`Exported ${hasSelection ? selectedCount : 'all filtered'} contexts as ${exportFormat.toUpperCase()}`);
       setExportModalVisible(false);
     } catch (error) {
-      console.error('Export failed:', error);
+      logger.error('Export failed:', error);
       message.error('Failed to export contexts');
     } finally {
       setExporting(false);
@@ -141,7 +142,7 @@ const BulkActions: React.FC<BulkActionsProps> = ({
       setNewContextData({ content: '', type: 'discussion', tags: [], metadata: {} });
       onContextCreated?.();
     } catch (error) {
-      console.error('Create context failed:', error);
+      logger.error('Create context failed:', error);
       message.error('Failed to create context');
     } finally {
       setCreating(false);

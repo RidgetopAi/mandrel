@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { Form, Input, Select, Button, Modal } from 'antd';
 import { ProjectEntity, CreateProjectRequest, UpdateProjectRequest } from '../../api/generated';
+import { logger } from '../../utils/logger';
 
 const { TextArea } = Input;
 const { Option } = Select;
@@ -46,7 +47,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
       const values = await form.validateFields();
       onSubmit(values);
     } catch (error) {
-      console.error('Form validation error:', error);
+      logger.error('Form validation error:', error);
     }
   };
 

@@ -23,6 +23,7 @@ import {
 } from '@ant-design/icons';
 import { apiService } from '../../services/api';
 import SessionInlineEdit from '../sessions/SessionInlineEdit';
+import { logger } from '../../utils/logger';
 
 const { Text } = Typography;
 const { TabPane } = Tabs;
@@ -117,7 +118,7 @@ const SessionDetail: React.FC<SessionDetailProps> = ({ sessionId }) => {
       setError(null);
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to load session details');
-      console.error('Failed to fetch session details:', err);
+      logger.error('Failed to fetch session details:', err);
     } finally {
       setLoading(false);
     }

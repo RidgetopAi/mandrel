@@ -10,6 +10,7 @@ import { useValidatedForm } from '../../hooks/useValidatedForm';
 import { CreateProjectSchema, type CreateProjectData } from '../../validation/schemas';
 import MandrelApiErrorBoundary from '../error/MandrelApiErrorBoundary';
 import { ProjectEntity } from '../../api/generated';
+import { logger } from '../../utils/logger';
 
 const { TextArea } = Input;
 const { Text } = Typography;
@@ -49,10 +50,10 @@ const ValidatedProjectForm: React.FC<ValidatedProjectFormProps> = ({
       }
     },
     onSubmitError: (error) => {
-      console.error('Project form submission error:', error);
+      logger.error('Project form submission error:', error);
     },
     onValidationError: (errors) => {
-      console.log('Validation errors:', errors);
+      logger.log('Validation errors:', errors);
     },
   });
 

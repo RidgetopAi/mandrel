@@ -20,6 +20,7 @@ import {
   CalendarOutlined
 } from '@ant-design/icons';
 import { apiService } from '../../services/api';
+import { logger } from '../../utils/logger';
 
 const { Title, Text } = Typography;
 const { TabPane } = Tabs;
@@ -69,7 +70,7 @@ const SessionDetailView: React.FC<SessionDetailViewProps> = ({ session }) => {
       setContexts(response.data.contexts || []);
       setError(null);
     } catch (err: any) {
-      console.error('Failed to load contexts:', err);
+      logger.error('Failed to load contexts:', err);
       setError('Failed to load session contexts');
       setContexts([]);
     } finally {

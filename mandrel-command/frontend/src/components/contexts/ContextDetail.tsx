@@ -20,6 +20,7 @@ import {
   getTypeColor,
   getTypeDisplayName,
 } from '../../utils/contextHelpers';
+import { logger } from '../../utils/logger';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
@@ -116,7 +117,7 @@ const ContextDetail: React.FC<ContextDetailProps> = ({
         await saveContext(values);
       }
     } catch (error) {
-      console.error('Failed to validate form:', error);
+      logger.error('Failed to validate form:', error);
     }
   };
 
@@ -142,7 +143,7 @@ const ContextDetail: React.FC<ContextDetailProps> = ({
       // Update original project ID after successful save
       setOriginalProjectId(values.project_id);
     } catch (error) {
-      console.error('Failed to update context:', error);
+      logger.error('Failed to update context:', error);
 
       // Show specific validation error if available
       if (error && typeof error === 'object' && 'body' in error) {
@@ -171,7 +172,7 @@ const ContextDetail: React.FC<ContextDetailProps> = ({
       onClose();
       message.success('Context deleted successfully');
     } catch (error) {
-      console.error('Failed to delete context:', error);
+      logger.error('Failed to delete context:', error);
       message.error('Failed to delete context');
     }
   };

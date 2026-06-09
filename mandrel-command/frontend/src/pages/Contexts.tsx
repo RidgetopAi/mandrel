@@ -23,6 +23,7 @@ import ContextStats from '../components/contexts/ContextStats';
 import BulkActions from '../components/contexts/BulkActions';
 import { useProjectContext } from '../contexts/ProjectContext';
 import '../components/contexts/contexts.css';
+import { logger } from '../utils/logger';
 
 const { Title, Text } = Typography;
 
@@ -129,14 +130,14 @@ const Contexts: React.FC = () => {
   // Optimized: Consolidate error handling
   useEffect(() => {
     if (contextsError) {
-      console.error('Failed to load contexts:', contextsError);
+      logger.error('Failed to load contexts:', contextsError);
       setError('Failed to load contexts. Please try again.');
       message.error('Failed to load contexts');
     } else {
       setError(null);
     }
     if (statsError) {
-      console.error('Failed to load context stats:', statsError);
+      logger.error('Failed to load context stats:', statsError);
     }
   }, [contextsError, statsError, setError]);
 
@@ -213,7 +214,7 @@ const Contexts: React.FC = () => {
           refetchContexts();
           refetchStats();
         } catch (err) {
-          console.error('Failed to delete context:', err);
+          logger.error('Failed to delete context:', err);
           message.error('Failed to delete context');
         }
       }

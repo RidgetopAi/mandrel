@@ -6,6 +6,7 @@
  */
 
 import type { Session } from '../types/session';
+import { logger } from '../utils/logger';
 
 interface SessionState {
   currentSession: Session | null;
@@ -55,7 +56,7 @@ class SessionRecoveryService {
         }
       }
     } catch (error) {
-      console.warn('Failed to load persisted session state:', error);
+      logger.warn('Failed to load persisted session state:', error);
       // Clear corrupted data if localStorage is available
       if (typeof window !== 'undefined' && window.localStorage) {
         localStorage.removeItem(SESSION_STORAGE_KEY);
@@ -77,7 +78,7 @@ class SessionRecoveryService {
         localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(stateToPersist));
       }
     } catch (error) {
-      console.warn('Failed to persist session state:', error);
+      logger.warn('Failed to persist session state:', error);
     }
   }
 
@@ -112,7 +113,7 @@ class SessionRecoveryService {
                           this.state.currentSession.id !== currentSession.id;
         
         if (hasChanged) {
-          console.log('Session changed detected, updating state');
+          logger.log('Session changed detected, updating state');
           this.updateSession(currentSession);
         }
         
@@ -120,7 +121,7 @@ class SessionRecoveryService {
         this.setConnectionStatus(true);
       }
     } catch (error) {
-      console.warn('Session sync failed:', error);
+      logger.warn('Session sync failed:', error);
       this.handleConnectionError();
     }
   }
@@ -141,11 +142,11 @@ class SessionRecoveryService {
       const delay = RECONNECT_INTERVAL * Math.pow(2, this.state.reconnectAttempts - 1);
       
       this.reconnectTimeout = setTimeout(() => {
-        console.log(`Attempting reconnection ${this.state.reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS}`);
+        logger.log(`Attempting reconnection ${this.state.reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS}`);
         this.syncWithBackend();
       }, delay);
     } else {
-      console.error('Maximum reconnection attempts reached');
+      logger.error('Maximum reconnection attempts reached');
       this.notifyListeners();
     }
   }
@@ -230,7 +231,7 @@ class SessionRecoveryService {
       try {
         listener({ ...this.state });
       } catch (error) {
-        console.error('Error in session state listener:', error);
+        logger.error('Error in session state listener:', error);
       }
     });
   }

@@ -1,6 +1,7 @@
 import React from 'react';
 import type { ErrorInfo } from 'react';
 import { reportError, type ErrorReportContext } from '../../services/errorReporter';
+import { logger } from '../../utils/logger';
 
 export interface FallbackRenderProps {
   error: Error;
@@ -43,7 +44,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
         this.props.onReset();
       } catch (resetError) {
         // eslint-disable-next-line no-console
-        console.warn('Error boundary reset handler failed', resetError);
+        logger.warn('Error boundary reset handler failed', resetError);
       }
     }
   };

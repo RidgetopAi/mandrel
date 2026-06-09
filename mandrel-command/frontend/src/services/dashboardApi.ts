@@ -5,6 +5,7 @@
  */
 
 import { DashboardService } from '../api/generated';
+import { logger } from '../utils/logger';
 
 export interface DashboardStats {
   contexts: number;
@@ -66,11 +67,11 @@ class DashboardApi {
         }
       };
 
-      console.log('✅ Phase 6 Dashboard - Generated API Stats:', dashboardStats);
+      logger.log('✅ Phase 6 Dashboard - Generated API Stats:', dashboardStats);
       return dashboardStats;
 
     } catch (error) {
-      console.error('❌ Phase 6 Dashboard API Error:', error);
+      logger.error('❌ Phase 6 Dashboard API Error:', error);
       throw error;
     }
   }
@@ -86,7 +87,7 @@ class DashboardApi {
       const data = await response.json();
       return data.data?.stats ?? data;
     } catch (error) {
-      console.error('Project stats fetch error:', error);
+      logger.error('Project stats fetch error:', error);
       throw error;
     }
   }
@@ -103,7 +104,7 @@ class DashboardApi {
       const data = await response.json();
       return data.data ?? data;
     } catch (error) {
-      console.error('Context stats fetch error:', error);
+      logger.error('Context stats fetch error:', error);
       throw error;
     }
   }

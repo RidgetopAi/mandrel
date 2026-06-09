@@ -9,6 +9,7 @@ import { ExclamationCircleOutlined, CheckCircleOutlined } from '@ant-design/icon
 import { useValidatedForm } from '../../hooks/useValidatedForm';
 import { CreateTaskSchema, type CreateTaskData } from '../../validation/schemas';
 import MandrelApiErrorBoundary from '../error/MandrelApiErrorBoundary';
+import { logger } from '../../utils/logger';
 
 const { TextArea } = Input;
 const { Option } = Select;
@@ -65,10 +66,10 @@ const ValidatedTaskForm: React.FC<ValidatedTaskFormProps> = ({
       }
     },
     onSubmitError: (error) => {
-      console.error('Task form submission error:', error);
+      logger.error('Task form submission error:', error);
     },
     onValidationError: (errors) => {
-      console.log('Validation errors:', errors);
+      logger.log('Validation errors:', errors);
     },
   });
 

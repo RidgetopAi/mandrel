@@ -1,5 +1,6 @@
 import { QueryClient } from '@tanstack/react-query';
 import { AidisDbEvent, AidisEntity } from '../types/events';
+import { logger } from '../utils/logger';
 
 export type SseOptions = {
   token: string;
@@ -21,7 +22,7 @@ export function startSse(options: SseOptions): SseHandle {
 
   // Check browser support
   if (!('EventSource' in window)) {
-    console.warn('SSE not supported by browser');
+    logger.warn('SSE not supported by browser');
     return { stop: () => {}, unsupported: true };
   }
 
@@ -34,17 +35,17 @@ export function startSse(options: SseOptions): SseHandle {
   const apiBase = process.env.REACT_APP_API_URL?.replace('/api', '') || 'http://localhost:5000';
   const url = `${apiBase}/api/events?${params.toString()}`;
 
-  console.log('Starting SSE connection:', { projectId, entities, url: url.replace(/token=[^&]+/, 'token=***') });
+  logger.log('Starting SSE connection:', { projectId, entities, url: url.replace(/token=[^&]+/, 'token=***') });
   const es = new EventSource(url);
 
   // Generic event handler for all entity types
   const handleEvent = (e: MessageEvent) => {
     try {
       const payload: AidisDbEvent = JSON.parse(e.data);
-      console.log('SSE event received:', payload);
+      logger.log('SSE event received:', payload);
       invalidateCachesForEvent(payload, queryClient);
     } catch (err) {
-      console.error('Failed to parse SSE event:', err);
+      logger.error('Failed to parse SSE event:', err);
     }
   };
 
@@ -55,12 +56,12 @@ export function startSse(options: SseOptions): SseHandle {
   });
 
   es.onopen = () => {
-    console.log('SSE connection opened');
+    logger.log('SSE connection opened');
     onConnect?.();
   };
 
   es.onerror = (err) => {
-    console.error('SSE connection error:', err);
+    logger.error('SSE connection error:', err);
     
     // EventSource will auto-reconnect, but trigger invalidation as safety
     queryClient.invalidateQueries({ queryKey: ['dashboardStats'] });
@@ -69,7 +70,7 @@ export function startSse(options: SseOptions): SseHandle {
   };
 
   function stop() {
-    console.log('Stopping SSE connection');
+    logger.log('Stopping SSE connection');
     es.close();
     onDisconnect?.();
   }
@@ -134,6 +135,6 @@ function invalidateCachesForEvent(evt: AidisDbEvent, queryClient: QueryClient) {
       break;
 
     default:
-      console.warn('Unknown entity type for cache invalidation:', evt.entity);
+      logger.warn('Unknown entity type for cache invalidation:', evt.entity);
   }
 }

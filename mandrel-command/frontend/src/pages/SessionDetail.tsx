@@ -38,6 +38,7 @@ import { sessionsClient } from '../api/sessionsClient';
 import { SessionsService } from '../api/generated';
 import type { Context } from '../types/context';
 import { getTypeColor, getTypeDisplayName } from '../utils/contextHelpers';
+import { logger } from '../utils/logger';
 
 // Session detail type
 interface SessionDetailType {
@@ -148,17 +149,17 @@ const SessionDetail: React.FC = () => {
   const session = sessionResponse?.data?.session as SessionDetailType | undefined;
 
   // DEBUG: Log the API response
-  console.log('=== SESSION DETAIL DEBUG ===');
-  console.log('Session Response:', sessionResponse);
-  console.log('Session Data:', session);
-  console.log('Contexts:', session?.contexts);
-  console.log('Tasks:', session?.tasks);
-  console.log('Decisions:', session?.decisions);
+  logger.log('=== SESSION DETAIL DEBUG ===');
+  logger.log('Session Response:', sessionResponse);
+  logger.log('Session Data:', session);
+  logger.log('Contexts:', session?.contexts);
+  logger.log('Tasks:', session?.tasks);
+  logger.log('Decisions:', session?.decisions);
 
   // Handle error state
   useEffect(() => {
     if (error) {
-      console.error('Load session error:', error);
+      logger.error('Load session error:', error);
       message.error('Failed to load session details');
       navigate('/sessions');
     }
@@ -181,14 +182,14 @@ const SessionDetail: React.FC = () => {
   const decisions = session?.decisions ?? [];
 
   // DEBUG: Log mapped data
-  console.log('Mapped Contexts Count:', contexts.length);
-  console.log('Tasks Count:', tasks.length);
-  console.log('Decisions Count:', decisions.length);
-  console.log('First Context:', contexts[0]);
+  logger.log('Mapped Contexts Count:', contexts.length);
+  logger.log('Tasks Count:', tasks.length);
+  logger.log('Decisions Count:', decisions.length);
+  logger.log('First Context:', contexts[0]);
 
   useEffect(() => {
     if (filesError) {
-      console.error('Load files error:', filesError);
+      logger.error('Load files error:', filesError);
       // Don't show error message for files - it's not critical
     }
   }, [filesError]);
