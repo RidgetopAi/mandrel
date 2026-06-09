@@ -7,6 +7,7 @@
 import { pipeline } from '@xenova/transformers';
 import { EmbeddingError, EmbeddingErrorType, EmbeddingVector, RetryConfig } from './types.js';
 import { executeWithRetry } from './retry.js';
+import { logger } from '../../utils/logger.js';
 
 // Singleton model instance
 let localModel: any = null;
@@ -20,16 +21,16 @@ export async function initializeLocalModel(): Promise<any> {
     return localModel;
   }
 
-  console.log(`🔄 Loading local embedding model: ${LOCAL_MODEL_NAME}`);
-  console.log('📦 First run will download model (~25MB), subsequent runs use cached version');
-  
+  logger.info(`🔄 Loading local embedding model: ${LOCAL_MODEL_NAME}`);
+  logger.info('📦 First run will download model (~25MB), subsequent runs use cached version');
+
   try {
     localModel = await pipeline('feature-extraction', LOCAL_MODEL_NAME);
-    console.log('✅ Local embedding model loaded successfully!');
+    logger.info('✅ Local embedding model loaded successfully!');
     return localModel;
   } catch (error) {
     const err = error as Error;
-    console.error('❌ Failed to load local model:', err);
+    logger.error('❌ Failed to load local model', err);
     throw new Error(`Failed to initialize local embedding model: ${err.message}`);
   }
 }
@@ -55,7 +56,7 @@ export async function generateLocalEmbedding(
   text: string,
   retryConfig: RetryConfig
 ): Promise<EmbeddingVector> {
-  console.log('🏠 Generating LOCAL embedding (FREE!)...');
+  logger.info('🏠 Generating LOCAL embedding (FREE!)...');
 
   return executeWithRetry(async () => {
     const model = await initializeLocalModel();
@@ -86,7 +87,7 @@ export async function generateLocalEmbedding(
         );
       }
 
-      console.log(`✅ Generated LOCAL embedding (${embedding.length} dimensions)`);
+      logger.info(`✅ Generated LOCAL embedding (${embedding.length} dimensions)`);
 
       return {
         embedding,

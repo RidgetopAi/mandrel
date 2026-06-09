@@ -9,6 +9,7 @@
  */
 
 import { db } from '../config/database.js';
+import { logger } from '../utils/logger.js';
 
 export interface CorrelationResult {
   success: boolean;
@@ -96,7 +97,7 @@ export class GitCorrelationService {
    */
   static async correlateSessionWithGit(sessionId: string): Promise<CorrelationResult> {
     try {
-      console.log(`🔗 Correlating session ${sessionId.substring(0, 8)}... with git commits`);
+      logger.info(`🔗 Correlating session ${sessionId.substring(0, 8)}... with git commits`);
       
       // Get session details from both tables (user_sessions and sessions)
       const sessionQuery = `
@@ -149,7 +150,7 @@ export class GitCorrelationService {
       };
       
     } catch (error) {
-      console.error('Session git correlation error:', error);
+      logger.error('Session git correlation error', error as Error);
       return {
         success: false,
         linksCreated: 0,
@@ -169,7 +170,7 @@ export class GitCorrelationService {
     const startTime = Date.now();
     
     try {
-      console.log(`🔗 GitCorrelationService.correlateCommitsWithSessions - Project: ${project_id}`);
+      logger.info(`🔗 GitCorrelationService.correlateCommitsWithSessions - Project: ${project_id}`);
       
       // Get commits to correlate
       let commitSql = `
@@ -251,7 +252,7 @@ export class GitCorrelationService {
       }
       
       const processingTime = Date.now() - startTime;
-      console.log(`✅ GitCorrelationService.correlateCommitsWithSessions completed in ${processingTime}ms`);
+      logger.info(`✅ GitCorrelationService.correlateCommitsWithSessions completed in ${processingTime}ms`);
       
       return {
         project_id,
@@ -262,7 +263,7 @@ export class GitCorrelationService {
         correlation_stats: correlationStats
       };
     } catch (error) {
-      console.error('Correlate commits with sessions error:', error);
+      logger.error('Correlate commits with sessions error', error as Error);
       throw error;
     }
   }
@@ -275,7 +276,7 @@ export class GitCorrelationService {
     const { project_id, hours, branch, author } = request;
     
     try {
-      console.log(`🕒 GitCorrelationService.getRecentCommits - Project: ${project_id}, Hours: ${hours}`);
+      logger.info(`🕒 GitCorrelationService.getRecentCommits - Project: ${project_id}, Hours: ${hours}`);
       
       let sql = `
         SELECT 
@@ -336,7 +337,7 @@ export class GitCorrelationService {
         author_filter: author || ''
       };
     } catch (error) {
-      console.error('Get recent commits error:', error);
+      logger.error('Get recent commits error', error as Error);
       throw error;
     }
   }
@@ -346,7 +347,7 @@ export class GitCorrelationService {
    */
   static async autoCorrelateOnSessionEnd(sessionId: string): Promise<void> {
     try {
-      console.log(`🔄 Auto-correlating session ${sessionId.substring(0, 8)}... on session end`);
+      logger.info(`🔄 Auto-correlating session ${sessionId.substring(0, 8)}... on session end`);
       
       // Small delay to ensure all git operations are complete
       await new Promise(resolve => setTimeout(resolve, 2000));
@@ -354,7 +355,7 @@ export class GitCorrelationService {
       await this.correlateSessionWithGit(sessionId);
       
     } catch (error) {
-      console.error('Auto-correlation on session end failed:', error);
+      logger.error('Auto-correlation on session end failed', error as Error);
       // Non-blocking error - log but don't throw
     }
   }

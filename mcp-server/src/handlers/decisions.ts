@@ -22,6 +22,7 @@
 import { db } from '../config/database.js';
 import { projectHandler } from './project.js';
 import { logDecisionEvent, logEvent } from '../middleware/eventLogger.js';
+import { logger } from '../utils/logger.js';
 
 export interface TechnicalDecision {
   id: string;
@@ -117,7 +118,7 @@ class DecisionsHandler {
    * Record a new technical decision
    */
   async recordDecision(request: RecordDecisionRequest): Promise<TechnicalDecision> {
-    console.log(`📝 Recording ${request.decisionType} decision: "${request.title}"`);
+    logger.info(`📝 Recording ${request.decisionType} decision: "${request.title}"`);
 
     try {
       const projectId = await this.ensureProjectId(request.projectId);
@@ -129,10 +130,10 @@ class DecisionsHandler {
           const { SessionTracker } = await import('../services/sessionTracker.js');
           sessionId = await SessionTracker.getActiveSession();
           if (sessionId) {
-            console.log(`📋 Linking decision to active session: ${sessionId.substring(0, 8)}...`);
+            logger.info(`📋 Linking decision to active session: ${sessionId.substring(0, 8)}...`);
           }
         } catch (error) {
-          console.warn('⚠️  Failed to get active session for decision:', error);
+          logger.warn('⚠️  Failed to get active session for decision', { metadata: { error } });
         }
       }
 
@@ -155,7 +156,7 @@ class DecisionsHandler {
       );
 
       if (existingDecision) {
-        console.log(`⚠️  Similar decision exists: ${existingDecision.title}`);
+        logger.info(`⚠️  Similar decision exists: ${existingDecision.title}`);
         // Could return warning but allow duplicate, or suggest linking
       }
 
@@ -194,9 +195,9 @@ class DecisionsHandler {
         await SessionTracker.updateSessionActivity(request.sessionId);
       }
 
-      console.log(`✅ Decision recorded: ${decision.id.substring(0, 8)}...`);
-      console.log(`🎯 Impact: ${decision.impactLevel} | Type: ${decision.decisionType}`);
-      console.log(`📊 Alternatives considered: ${decision.alternativesConsidered.length}`);
+      logger.info(`✅ Decision recorded: ${decision.id.substring(0, 8)}...`);
+      logger.info(`🎯 Impact: ${decision.impactLevel} | Type: ${decision.decisionType}`);
+      logger.info(`📊 Alternatives considered: ${decision.alternativesConsidered.length}`);
 
       // Log the decision creation event
       await logDecisionEvent(decision.id, 'recorded', {
@@ -213,7 +214,7 @@ class DecisionsHandler {
       return decision;
 
     } catch (error) {
-      console.error('❌ Failed to record decision:', error);
+      logger.error('❌ Failed to record decision', error as Error);
       throw new Error(`Decision recording failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
@@ -222,7 +223,7 @@ class DecisionsHandler {
    * Update an existing decision (status, outcomes, lessons learned)
    */
   async updateDecision(request: UpdateDecisionRequest): Promise<TechnicalDecision> {
-    console.log(`📝 Updating decision: ${request.decisionId.substring(0, 8)}...`);
+    logger.info(`📝 Updating decision: ${request.decisionId.substring(0, 8)}...`);
 
     try {
       // Build dynamic update query
@@ -290,7 +291,7 @@ class DecisionsHandler {
 
       const decision = this.mapDatabaseRowToDecision(result.rows[0]);
 
-      console.log(`✅ Decision updated: ${decision.status} | Outcome: ${decision.outcomeStatus}`);
+      logger.info(`✅ Decision updated: ${decision.status} | Outcome: ${decision.outcomeStatus}`);
       
       // Log the decision update event
       await logDecisionEvent(decision.id, 'updated', {
@@ -306,7 +307,7 @@ class DecisionsHandler {
       return decision;
 
     } catch (error) {
-      console.error('❌ Failed to update decision:', error);
+      logger.error('❌ Failed to update decision', error as Error);
       throw new Error(`Decision update failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
@@ -315,7 +316,7 @@ class DecisionsHandler {
    * Search technical decisions with various filters
    */
   async searchDecisions(request: SearchDecisionsRequest): Promise<TechnicalDecision[]> {
-    console.log(`🔍 Searching decisions...`);
+    logger.info(`🔍 Searching decisions...`);
 
     try {
       const projectId = await this.ensureProjectId(request.projectId);
@@ -387,7 +388,7 @@ class DecisionsHandler {
       const result = await db.query(sql, params);
       const decisions = result.rows.map(row => this.mapDatabaseRowToDecision(row));
 
-      console.log(`✅ Found ${decisions.length} matching decisions`);
+      logger.info(`✅ Found ${decisions.length} matching decisions`);
       
       // Log the search event
       await logEvent({
@@ -413,7 +414,7 @@ class DecisionsHandler {
       return decisions;
 
     } catch (error) {
-      console.error('❌ Failed to search decisions:', error);
+      logger.error('❌ Failed to search decisions', error as Error);
       throw new Error(`Decision search failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
@@ -422,7 +423,7 @@ class DecisionsHandler {
    * Get decisions affecting a specific component
    */
   async getDecisionsForComponent(component: string, projectId?: string): Promise<TechnicalDecision[]> {
-    console.log(`🎯 Getting decisions for component: ${component}`);
+    logger.info(`🎯 Getting decisions for component: ${component}`);
 
     return await this.searchDecisions({
       projectId,
@@ -454,7 +455,7 @@ class DecisionsHandler {
     reason: string, 
     replacementId?: string
   ): Promise<TechnicalDecision> {
-    console.log(`📋 Deprecating decision: ${decisionId.substring(0, 8)}...`);
+    logger.info(`📋 Deprecating decision: ${decisionId.substring(0, 8)}...`);
 
     return await this.updateDecision({
       decisionId,
@@ -604,7 +605,7 @@ class DecisionsHandler {
     impacts: string[];
     recommendations: string[];
   }> {
-    console.log(`📊 Generating decision report...`);
+    logger.info(`📊 Generating decision report...`);
 
     const actualProjectId = await this.ensureProjectId(projectId);
     let decisions: TechnicalDecision[] = [];

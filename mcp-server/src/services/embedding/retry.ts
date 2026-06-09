@@ -5,6 +5,7 @@
  */
 
 import { EmbeddingError, RetryConfig } from './types.js';
+import { logger } from '../../utils/logger.js';
 
 /**
  * Create default retry configuration from environment
@@ -84,7 +85,7 @@ export async function executeWithRetry<T>(
     try {
       const result = await operation();
       if (attempt > 0) {
-        console.log(`✅ ${operationName} succeeded after ${attempt} retries`);
+        logger.info(`✅ ${operationName} succeeded after ${attempt} retries`);
       }
       return result;
     } catch (error) {
@@ -92,17 +93,17 @@ export async function executeWithRetry<T>(
       lastError = err;
 
       if (attempt === config.maxRetries) {
-        console.error(`❌ ${operationName} failed after ${attempt} retries:`, err.message);
+        logger.error(`❌ ${operationName} failed after ${attempt} retries`, err);
         break;
       }
 
       if (!isRetryableError(err)) {
-        console.error(`❌ ${operationName} failed with non-retryable error:`, err.message);
+        logger.error(`❌ ${operationName} failed with non-retryable error`, err);
         throw err;
       }
 
       const delay = calculateRetryDelay(attempt, config);
-      console.warn(`⚠️ ${operationName} failed (attempt ${attempt + 1}/${config.maxRetries + 1}), retrying in ${delay}ms:`, err.message);
+      logger.warn(`⚠️ ${operationName} failed (attempt ${attempt + 1}/${config.maxRetries + 1}), retrying in ${delay}ms`, { metadata: { error: err.message } });
       await sleep(delay);
     }
   }

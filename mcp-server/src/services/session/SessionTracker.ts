@@ -10,6 +10,7 @@ import { TokenTracker, OperationTracker } from './domain/tracking/index.js';
 import { SessionStatsService } from './domain/stats/index.js';
 import { SessionRepo, ActivityRepo, FileRepo } from './infra/db/index.js';
 import { ActiveSessionStore } from './state/index.js';
+import { logger } from '../../utils/logger.js';
 import { GitFileSync } from './infra/git/index.js';
 import type { SessionData, SessionStats, SessionActivity, SessionFile } from './types.js';
 
@@ -254,9 +255,9 @@ export class SessionTracker {
   ): Promise<boolean> {
     const result = await SessionRepo.updateDetails(sessionId, title, description, sessionGoal, tags);
     if (result) {
-      console.log(`✅ Session details updated`);
+      logger.info(`✅ Session details updated`);
     } else {
-      console.log(`⚠️  Session ${sessionId} not found`);
+      logger.info(`⚠️  Session ${sessionId} not found`);
     }
     return result;
   }

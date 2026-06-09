@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import EventEmitter from 'events';
+import { logger } from './logger.js';
 
 export interface FeatureFlagConfig {
   version: number;
@@ -29,7 +30,7 @@ function loadOverridesFromEnv(): Record<string, boolean> {
       return acc;
     }, {});
   } catch (error) {
-    console.warn('[FeatureFlags] Failed to parse AIDIS_FEATURE_FLAG_OVERRIDES env var:', error);
+    logger.warn('[FeatureFlags] Failed to parse AIDIS_FEATURE_FLAG_OVERRIDES env var', { metadata: { error } });
     return {};
   }
 }
@@ -41,7 +42,7 @@ async function readConfig(configPath: string): Promise<FeatureFlagConfig | null>
     parsed.flags = parsed.flags || {};
     return parsed;
   } catch (error) {
-    console.warn(`[FeatureFlags] Unable to read config at ${configPath}:`, error);
+    logger.warn(`[FeatureFlags] Unable to read config at ${configPath}`, { metadata: { error } });
     return null;
   }
 }
@@ -65,7 +66,7 @@ export class FeatureFlagStore {
     // Note: Timer-based refresh replaced by BullMQ queue system
     // Background refresh is now handled by QueueManager
     if (this.refreshInterval > 0) {
-      console.log(`[FeatureFlags] Background refresh delegated to QueueManager (${this.refreshInterval}ms interval)`);
+      logger.info(`[FeatureFlags] Background refresh delegated to QueueManager (${this.refreshInterval}ms interval)`);
     }
   }
 

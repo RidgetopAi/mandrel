@@ -3,6 +3,7 @@ import { switchProjectWithValidation } from '../services/projectSwitchValidator.
 import { formatMcpError } from '../utils/mcpFormatter.js';
 import type { McpResponse } from '../utils/mcpFormatter.js';
 import type { RouteContext } from './index.js';
+import { logger } from '../utils/logger.js';
 
 /**
  * Project Management Routes
@@ -23,7 +24,7 @@ class ProjectRoutes {
    */
   async handleList(args: any, context?: RouteContext): Promise<McpResponse> {
     try {
-      console.log('📋 Project list request received');
+      logger.info('📋 Project list request received');
       const sessionId = this.getSessionId(context);
 
       await projectHandler.initializeSession(sessionId); // Ensure session is initialized
@@ -68,7 +69,7 @@ class ProjectRoutes {
    */
   async handleCreate(args: any): Promise<McpResponse> {
     try {
-      console.log(`🆕 Project create request: "${args.name}"`);
+      logger.info(`🆕 Project create request: "${args.name}"`);
 
       const project = await projectHandler.createProject({
         name: args.name,
@@ -101,7 +102,7 @@ class ProjectRoutes {
   async handleSwitch(args: any, context?: RouteContext): Promise<McpResponse> {
     try {
       const sessionId = this.getSessionId(context);
-      console.log(`🔄 [TS012] Project switch request: "${args.project}" (session: ${sessionId})`);
+      logger.info(`🔄 [TS012] Project switch request: "${args.project}" (session: ${sessionId})`);
 
       // Use enhanced validation switching (now from projectSwitchValidator to avoid circular dependency)
       const project = await switchProjectWithValidation(args.project, sessionId);
@@ -115,7 +116,7 @@ class ProjectRoutes {
         validationPassed: true
       };
 
-      console.log(`✅ [TS012] Project switch metrics:`, switchMetrics);
+      logger.info(`✅ [TS012] Project switch metrics`, { metadata: { switchMetrics } });
 
       return {
         content: [{
@@ -130,7 +131,7 @@ class ProjectRoutes {
         }],
       };
     } catch (error) {
-      console.error(`❌ [TS012] Project switch failed:`, error);
+      logger.error(`❌ [TS012] Project switch failed`, error as Error);
 
       // Log failed switch for metrics and monitoring
       const errorMetrics = {
@@ -141,7 +142,7 @@ class ProjectRoutes {
         error: error instanceof Error ? error.message : String(error)
       };
 
-      console.log(`❌ [TS012] Project switch error metrics:`, errorMetrics);
+      logger.info(`❌ [TS012] Project switch error metrics`, { metadata: { errorMetrics } });
 
       // Try to provide helpful error message based on error type
       let userFriendlyMessage = `Failed to switch to project "${args.project}"`;
@@ -181,7 +182,7 @@ class ProjectRoutes {
   async handleCurrent(_args: any, context?: RouteContext): Promise<McpResponse> {
     try {
       const sessionId = this.getSessionId(context);
-      console.log(`🔍 Current project request received (session: ${sessionId})`);
+      logger.info(`🔍 Current project request received (session: ${sessionId})`);
 
       const project = await projectHandler.getCurrentProject(sessionId);
 
@@ -232,7 +233,7 @@ class ProjectRoutes {
    */
   async handleInfo(args: any): Promise<McpResponse> {
     try {
-      console.log(`🔍 Project info request: "${args.project}"`);
+      logger.info(`🔍 Project info request: "${args.project}"`);
 
       const project = await projectHandler.getProject(args.project);
 

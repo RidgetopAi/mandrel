@@ -126,7 +126,7 @@ export const GitFileSync = {
           maxBuffer: 10 * 1024 * 1024
         });
       } catch {
-        console.warn('Git diff with commit SHA failed, trying uncommitted changes only');
+        logger.warn('Git diff with commit SHA failed, trying uncommitted changes only');
         diffOutput = execSync('git diff HEAD --numstat', {
           encoding: 'utf8',
           cwd: gitWorkingDir,

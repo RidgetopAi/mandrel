@@ -9,6 +9,7 @@ import { GitFileSync } from '../../infra/git/index.js';
 import { TokenTracker, OperationTracker } from '../tracking/index.js';
 import { calculateBasicProductivity } from '../productivity/index.js';
 import { resolveProjectForSession } from './projectResolution.js';
+import { logger } from '../../../../utils/logger.js';
 import type { SessionData } from '../../types.js';
 
 export interface StartSessionOptions {
@@ -37,16 +38,16 @@ export const SessionLifecycleService = {
         resolvedProjectId = await resolveProjectForSession(sessionId);
       }
 
-      console.log(`🚀 Starting session: ${sessionId.substring(0, 8)}... for project: ${resolvedProjectId || 'none'}`);
+      logger.info(`🚀 Starting session: ${sessionId.substring(0, 8)}... for project: ${resolvedProjectId || 'none'}`);
 
       // Capture git information
       const gitInfo = await GitFileSync.captureHeadInfo();
-      if (gitInfo.branch) console.log(`🌿 Git branch: ${gitInfo.branch}`);
-      if (gitInfo.commitSha) console.log(`📌 Git commit: ${gitInfo.commitSha.substring(0, 8)}...`);
+      if (gitInfo.branch) logger.info(`🌿 Git branch: ${gitInfo.branch}`);
+      if (gitInfo.commitSha) logger.info(`📌 Git commit: ${gitInfo.commitSha.substring(0, 8)}...`);
 
       // Determine session type
       const finalSessionType = options.sessionType || 'AI Model';
-      console.log(`📋 Session type: ${finalSessionType}${options.aiModel ? ` (${options.aiModel})` : ''}`);
+      logger.info(`📋 Session type: ${finalSessionType}${options.aiModel ? ` (${options.aiModel})` : ''}`);
 
       // Create session record
       await SessionRepo.create({
@@ -85,11 +86,11 @@ export const SessionLifecycleService = {
       // Set as active session for this connection
       ActiveSessionStore.set(sessionId, options.connectionId);
 
-      console.log(`✅ Session started: ${sessionId.substring(0, 8)}...${options.connectionId ? ` (connection: ${options.connectionId})` : ''}`);
+      logger.info(`✅ Session started: ${sessionId.substring(0, 8)}...${options.connectionId ? ` (connection: ${options.connectionId})` : ''}`);
       return sessionId;
 
     } catch (error) {
-      console.error('❌ Failed to start session:', error);
+      logger.error('❌ Failed to start session', error as Error);
       throw error;
     }
   },
@@ -100,15 +101,15 @@ export const SessionLifecycleService = {
   async endSession(sessionId: string): Promise<SessionData> {
     try {
       const endTime = new Date();
-      console.log(`🏁 Ending session: ${sessionId.substring(0, 8)}...`);
+      logger.info(`🏁 Ending session: ${sessionId.substring(0, 8)}...`);
 
       // Sync file changes from git
-      console.log(`📁 Syncing file changes from git...`);
+      logger.info(`📁 Syncing file changes from git...`);
       try {
         const fileSync = await GitFileSync.syncFilesFromGit(sessionId);
-        console.log(`✅ File sync complete: ${fileSync.filesProcessed} files, +${fileSync.totalLinesAdded}/-${fileSync.totalLinesDeleted} lines`);
+        logger.info(`✅ File sync complete: ${fileSync.filesProcessed} files, +${fileSync.totalLinesAdded}/-${fileSync.totalLinesDeleted} lines`);
       } catch (error) {
-        console.warn('⚠️  Failed to sync files from git:', error);
+        logger.warn('⚠️  Failed to sync files from git', { metadata: { error } });
       }
 
       // Get session data
@@ -174,11 +175,11 @@ export const SessionLifecycleService = {
         total_tokens: tokenUsage.total
       };
 
-      console.log(`✅ Session ended: ${sessionId.substring(0, 8)}... Duration: ${Math.round(durationMs / 1000)}s`);
+      logger.info(`✅ Session ended: ${sessionId.substring(0, 8)}... Duration: ${Math.round(durationMs / 1000)}s`);
       return finalData;
 
     } catch (error) {
-      console.error('❌ Failed to end session:', error);
+      logger.error('❌ Failed to end session', error as Error);
       throw error;
     }
   },
@@ -207,7 +208,7 @@ export const SessionLifecycleService = {
       return null;
 
     } catch (error) {
-      console.error('❌ Failed to get active session:', error);
+      logger.error('❌ Failed to get active session', error as Error);
       return null;
     }
   },
@@ -219,7 +220,7 @@ export const SessionLifecycleService = {
   clearActiveSession(connectionId?: string): void {
     const currentId = ActiveSessionStore.get(connectionId);
     if (currentId) {
-      console.log(`🧹 Clearing active session: ${currentId.substring(0, 8)}...${connectionId ? ` (connection: ${connectionId})` : ''}`);
+      logger.info(`🧹 Clearing active session: ${currentId.substring(0, 8)}...${connectionId ? ` (connection: ${connectionId})` : ''}`);
       ActiveSessionStore.clear(connectionId);
     }
   },
@@ -230,9 +231,9 @@ export const SessionLifecycleService = {
    */
   setActiveSession(sessionId: string | null, connectionId?: string): void {
     if (sessionId) {
-      console.log(`📌 Setting active session: ${sessionId.substring(0, 8)}...${connectionId ? ` (connection: ${connectionId})` : ''}`);
+      logger.info(`📌 Setting active session: ${sessionId.substring(0, 8)}...${connectionId ? ` (connection: ${connectionId})` : ''}`);
     } else {
-      console.log(`🧹 Clearing active session explicitly${connectionId ? ` (connection: ${connectionId})` : ''}`);
+      logger.info(`🧹 Clearing active session explicitly${connectionId ? ` (connection: ${connectionId})` : ''}`);
     }
     ActiveSessionStore.set(sessionId, connectionId);
   },

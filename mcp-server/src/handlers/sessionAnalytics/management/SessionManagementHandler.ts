@@ -13,6 +13,7 @@ import { logEvent } from '../../../middleware/eventLogger.js';
 import { db } from '../../../config/database.js';
 import { projectHandler } from '../../project.js';
 import { SessionOperationResult, SessionStatusResult } from '../types.js';
+import { logger } from '../../../utils/logger.js';
 
 export class SessionManagementHandler {
   /**
@@ -76,7 +77,7 @@ export class SessionManagementHandler {
           };
         }
       } catch (dbError) {
-        console.error('❌ Database error during session assignment:', dbError);
+        logger.error('❌ Database error during session assignment', dbError as Error);
         return {
           success: false,
           message: `Database dependency error: ${dbError instanceof Error ? dbError.message : 'Unknown database error'}`
@@ -91,7 +92,7 @@ export class SessionManagementHandler {
       };
 
     } catch (error) {
-      console.error('❌ Session assignment error:', error);
+      logger.error('❌ Session assignment error', error as Error);
       return {
         success: false,
         message: error instanceof Error ? error.message : 'Failed to assign session to project'
@@ -182,7 +183,7 @@ export class SessionManagementHandler {
       };
 
     } catch (error) {
-      console.error('❌ Session status error:', error);
+      logger.error('❌ Session status error', error as Error);
       return {
         success: false,
         message: error instanceof Error ? error.message : 'Failed to get session status'
@@ -205,7 +206,7 @@ export class SessionManagementHandler {
     message: string;
   }> {
     try {
-      console.log(`✏️  Updating session ${sessionId.substring(0, 8)}... with title: "${title || ''}" description: "${description ? description.substring(0, 50) + '...' : ''}"`);
+      logger.info(`✏️  Updating session ${sessionId.substring(0, 8)}... with title: "${title || ''}" description: "${description ? description.substring(0, 50) + '...' : ''}"`);
 
       this.validateSessionParams({ sessionGoal, tags, aiModel: undefined });
 
@@ -313,7 +314,7 @@ export class SessionManagementHandler {
         tags: ['session', 'update', 'management']
       });
 
-      console.log(`✅ Session ${sessionId.substring(0, 8)}... updated successfully`);
+      logger.info(`✅ Session ${sessionId.substring(0, 8)}... updated successfully`);
 
       return {
         success: true,
@@ -331,7 +332,7 @@ export class SessionManagementHandler {
       };
 
     } catch (error) {
-      console.error('❌ Session update error:', error);
+      logger.error('❌ Session update error', error as Error);
 
       await logEvent({
         actor: 'ai',
@@ -364,7 +365,7 @@ export class SessionManagementHandler {
     message: string;
   }> {
     try {
-      console.log(`🔍 Getting detailed session info for: ${sessionId.substring(0, 8)}...`);
+      logger.info(`🔍 Getting detailed session info for: ${sessionId.substring(0, 8)}...`);
 
       const result = await db.query(`
         SELECT
@@ -443,7 +444,7 @@ export class SessionManagementHandler {
       };
 
     } catch (error) {
-      console.error('❌ Session details error:', error);
+      logger.error('❌ Session details error', error as Error);
       return {
         success: false,
         message: error instanceof Error ? error.message : 'Failed to get session details'
@@ -575,7 +576,7 @@ export class SessionManagementHandler {
       };
 
     } catch (error) {
-      console.error('❌ New session error:', error);
+      logger.error('❌ New session error', error as Error);
       return {
         success: false,
         message: error instanceof Error ? error.message : 'Failed to create new session'

@@ -6,6 +6,7 @@
 
 import { SessionTracker, SessionStats } from '../../services/sessionTracker.js';
 import { SessionAnalyticsHandler } from './analytics/SessionAnalyticsHandler.js';
+import { logger } from '../../utils/logger.js';
 
 /**
  * Simple function to get session statistics
@@ -15,7 +16,7 @@ export async function getSessionStatistics(projectId?: string): Promise<SessionS
     const result = await SessionAnalyticsHandler.getSessionStats(projectId);
     return result.success ? result.data || null : null;
   } catch (error) {
-    console.error('❌ Failed to get session statistics:', error);
+    logger.error('❌ Failed to get session statistics', error as Error);
     return null;
   }
 }
@@ -28,7 +29,7 @@ export async function recordSessionOperation(operationType: string, projectId?: 
     const result = await SessionAnalyticsHandler.recordOperation(operationType, projectId);
     return result.success;
   } catch (error) {
-    console.error('❌ Failed to record session operation:', error);
+    logger.error('❌ Failed to record session operation', error as Error);
     return false;
   }
 }
@@ -45,7 +46,7 @@ export async function startSessionTracking(projectId?: string): Promise<string |
     }
     return null;
   } catch (error) {
-    console.error('❌ Failed to start session tracking:', error);
+    logger.error('❌ Failed to start session tracking', error as Error);
     return null;
   }
 }

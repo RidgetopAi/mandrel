@@ -10,6 +10,7 @@
 
 import { SessionTracker } from '../../../services/sessionTracker.js';
 import { MCPToolResponse } from '../types.js';
+import { logger } from '../../../utils/logger.js';
 
 export class ActivityHandler {
   /**
@@ -34,7 +35,7 @@ export class ActivityHandler {
         }]
       };
     } catch (error) {
-      console.error('❌ Failed to record session activity:', error, {
+      logger.error('❌ Failed to record session activity', error as Error, {
         component: 'ActivityHandler',
         operation: 'recordSessionActivity',
         metadata: { sessionId, activityType }
@@ -85,7 +86,7 @@ export class ActivityHandler {
         }]
       };
     } catch (error) {
-      console.error('❌ Failed to get session activities:', error, {
+      logger.error('❌ Failed to get session activities', error as Error, {
         component: 'ActivityHandler',
         operation: 'getSessionActivitiesHandler',
         metadata: { sessionId, activityType, limit }
@@ -125,7 +126,7 @@ export class ActivityHandler {
         }]
       };
     } catch (error) {
-      console.error('❌ Failed to record file edit:', error, {
+      logger.error('❌ Failed to record file edit', error as Error, {
         component: 'ActivityHandler',
         operation: 'recordFileEdit',
         metadata: { sessionId, filePath, linesAdded, linesDeleted, source }
@@ -176,7 +177,7 @@ export class ActivityHandler {
         }]
       };
     } catch (error) {
-      console.error('❌ Failed to get session files:', error, {
+      logger.error('❌ Failed to get session files', error as Error, {
         component: 'ActivityHandler',
         operation: 'getSessionFilesHandler',
         metadata: { sessionId }
@@ -212,7 +213,7 @@ export class ActivityHandler {
         }]
       };
     } catch (error) {
-      console.error('❌ Failed to calculate productivity score:', error, {
+      logger.error('❌ Failed to calculate productivity score', error as Error, {
         component: 'ActivityHandler',
         operation: 'calculateSessionProductivity',
         metadata: { sessionId, configName }

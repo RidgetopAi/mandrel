@@ -8,6 +8,7 @@
  */
 
 import { db } from '../config/database.js';
+import { logger } from '../utils/logger.js';
 
 export class SessionTimeoutService {
   private static intervalId: NodeJS.Timeout | null = null;
@@ -21,28 +22,28 @@ export class SessionTimeoutService {
    */
   static start(): void {
     if (this.isRunning) {
-      console.log('⚠️  Session timeout service already running');
+      logger.warn('⚠️  Session timeout service already running');
       return;
     }
 
-    console.log(`🕐 Starting session timeout service...`);
-    console.log(`   Check interval: ${this.CHECK_INTERVAL_MS / 1000}s`);
-    console.log(`   Timeout threshold: ${this.TIMEOUT_THRESHOLD_HOURS}h`);
+    logger.info(`🕐 Starting session timeout service...`);
+    logger.info(`   Check interval: ${this.CHECK_INTERVAL_MS / 1000}s`);
+    logger.info(`   Timeout threshold: ${this.TIMEOUT_THRESHOLD_HOURS}h`);
 
     // Run initial check immediately
     this.checkTimeouts().catch(error => {
-      console.error('❌ Initial timeout check failed:', error);
+      logger.error('❌ Initial timeout check failed', error as Error);
     });
 
     // Schedule periodic checks
     this.intervalId = setInterval(() => {
       this.checkTimeouts().catch(error => {
-        console.error('❌ Periodic timeout check failed:', error);
+        logger.error('❌ Periodic timeout check failed', error as Error);
       });
     }, this.CHECK_INTERVAL_MS);
 
     this.isRunning = true;
-    console.log('✅ Session timeout service started');
+    logger.info('✅ Session timeout service started');
   }
 
   /**
@@ -50,7 +51,7 @@ export class SessionTimeoutService {
    */
   static stop(): void {
     if (!this.isRunning) {
-      console.log('⚠️  Session timeout service not running');
+      logger.warn('⚠️  Session timeout service not running');
       return;
     }
 
@@ -60,7 +61,7 @@ export class SessionTimeoutService {
     }
 
     this.isRunning = false;
-    console.log('🛑 Session timeout service stopped');
+    logger.info('🛑 Session timeout service stopped');
   }
 
   /**
@@ -81,18 +82,18 @@ export class SessionTimeoutService {
       const duration = Date.now() - startTime;
 
       if (timedOutCount > 0) {
-        console.log(`⏱️  Timed out ${timedOutCount} inactive session(s) (${duration}ms)`);
+        logger.info(`⏱️  Timed out ${timedOutCount} inactive session(s) (${duration}ms)`);
         result.rows.forEach((row: any) => {
-          console.log(`   - ${row.session_id.substring(0, 8)}...`);
+          logger.info(`   - ${row.session_id.substring(0, 8)}...`);
         });
       } else {
         // Only log every ~6 hours to reduce noise (72 checks = 6 hours at 5min intervals)
         if (this.checkCount++ % 72 === 0) {
-          console.log(`✅ Session timeout check: 0 timeouts (${duration}ms)`);
+          logger.info(`✅ Session timeout check: 0 timeouts (${duration}ms)`);
         }
       }
     } catch (error) {
-      console.error('❌ Failed to check session timeouts:', error);
+      logger.error('❌ Failed to check session timeouts', error as Error);
       throw error;
     }
   }
@@ -121,14 +122,14 @@ export class SessionTimeoutService {
    * Manually trigger a timeout check (for testing/debugging)
    */
   static async manualCheck(): Promise<number> {
-    console.log('🔍 Running manual timeout check...');
+    logger.info('🔍 Running manual timeout check...');
     const result = await db.query(
       `SELECT * FROM timeout_inactive_sessions($1::INTERVAL)`,
       [`${this.TIMEOUT_THRESHOLD_HOURS} hours`]
     );
 
     const timedOutCount = result.rows.length;
-    console.log(`   Timed out ${timedOutCount} session(s)`);
+    logger.info(`   Timed out ${timedOutCount} session(s)`);
 
     return timedOutCount;
   }

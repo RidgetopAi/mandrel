@@ -12,6 +12,7 @@
  */
 
 import { db } from '../config/database.js';
+import { logger } from '../utils/logger.js';
 import type { ProjectInfo } from '../types/project.js';  // ← Import type from shared file
 import { randomUUID } from 'crypto';
 
@@ -85,7 +86,7 @@ class ProjectSwitchValidator {
     sessionId: string, 
     targetIdentifier: string
   ): Promise<SwitchValidationResult> {
-    console.log(`🔍 [TS012] Pre-switch validation for session ${sessionId.substring(0, 8)}... -> "${targetIdentifier}"`);
+    logger.info(`🔍 [TS012] Pre-switch validation for session ${sessionId.substring(0, 8)}... -> "${targetIdentifier}"`);
     
     const result: SwitchValidationResult = {
       isValid: true,
@@ -150,15 +151,15 @@ class ProjectSwitchValidator {
         result.metadata.validationEndTime.getTime() - result.metadata.validationStartTime.getTime();
 
       if (result.isValid) {
-        console.log(`✅ [TS012] Pre-switch validation passed (${result.metadata.validationDurationMs}ms)`);
+        logger.info(`✅ [TS012] Pre-switch validation passed (${result.metadata.validationDurationMs}ms)`);
       } else {
-        console.log(`❌ [TS012] Pre-switch validation failed: ${result.errors.length} errors`);
+        logger.info(`❌ [TS012] Pre-switch validation failed: ${result.errors.length} errors`);
       }
 
       return result;
 
     } catch (error) {
-      console.error('❌ [TS012] Pre-switch validation error:', error);
+      logger.error('❌ [TS012] Pre-switch validation error', error as Error);
       result.isValid = false;
       result.errors.push({
         code: 'PRE_SWITCH_VALIDATION_ERROR',
@@ -188,7 +189,7 @@ class ProjectSwitchValidator {
       transactionId
     };
 
-    console.log(`⚛️  [TS012] Starting atomic switch (transaction: ${transactionId.substring(0, 8)}...)`);
+    logger.info(`⚛️  [TS012] Starting atomic switch (transaction: ${transactionId.substring(0, 8)}...)`);
 
     // Check if we're already at capacity for concurrent switches
     if (this.activeSwitches.size >= this.MAX_CONCURRENT_SWITCHES) {
@@ -220,16 +221,16 @@ class ProjectSwitchValidator {
       const switchResult = await Promise.race([switchPromise, timeoutPromise]) as any;
 
       if (switchResult.success) {
-        console.log(`✅ [TS012] Atomic switch completed successfully`);
+        logger.info(`✅ [TS012] Atomic switch completed successfully`);
         return switchResult;
       } else {
-        console.log(`❌ [TS012] Switch failed, attempting rollback`);
+        logger.info(`❌ [TS012] Switch failed, attempting rollback`);
         await this.performRollback(switchContext);
         return switchResult;
       }
 
     } catch (error) {
-      console.error('❌ [TS012] Atomic switch error, performing rollback:', error);
+      logger.error('❌ [TS012] Atomic switch error, performing rollback', error as Error);
       await this.performRollback(switchContext);
       
       return {
@@ -255,7 +256,7 @@ class ProjectSwitchValidator {
     targetProjectId: string,
     switchContext: SwitchContext
   ): Promise<SwitchValidationResult> {
-    console.log(`🔍 [TS012] Post-switch validation for transaction ${switchContext.transactionId.substring(0, 8)}...`);
+    logger.info(`🔍 [TS012] Post-switch validation for transaction ${switchContext.transactionId.substring(0, 8)}...`);
     
     const result: SwitchValidationResult = {
       isValid: true,
@@ -308,15 +309,15 @@ class ProjectSwitchValidator {
         result.metadata.validationEndTime.getTime() - result.metadata.validationStartTime.getTime();
 
       if (result.isValid) {
-        console.log(`✅ [TS012] Post-switch validation passed (${result.metadata.validationDurationMs}ms)`);
+        logger.info(`✅ [TS012] Post-switch validation passed (${result.metadata.validationDurationMs}ms)`);
       } else {
-        console.log(`❌ [TS012] Post-switch validation failed: ${result.errors.length} errors`);
+        logger.info(`❌ [TS012] Post-switch validation failed: ${result.errors.length} errors`);
       }
 
       return result;
 
     } catch (error) {
-      console.error('❌ [TS012] Post-switch validation error:', error);
+      logger.error('❌ [TS012] Post-switch validation error', error as Error);
       result.isValid = false;
       result.errors.push({
         code: 'POST_SWITCH_VALIDATION_ERROR',
@@ -697,17 +698,17 @@ class ProjectSwitchValidator {
 
   private static async performRollback(switchContext: SwitchContext): Promise<void> {
     try {
-      console.log(`🔄 [TS012] Performing rollback for transaction ${switchContext.transactionId.substring(0, 8)}...`);
+      logger.info(`🔄 [TS012] Performing rollback for transaction ${switchContext.transactionId.substring(0, 8)}...`);
 
       if (switchContext.rollbackData?.previousProjectId) {
         const handler = await getProjectHandler();
         handler.setCurrentProject(switchContext.rollbackData.previousProjectId, switchContext.sessionId);
-        console.log(`✅ [TS012] Rollback completed: restored project ${switchContext.rollbackData.previousProjectId}`);
+        logger.info(`✅ [TS012] Rollback completed: restored project ${switchContext.rollbackData.previousProjectId}`);
       } else {
-        console.log(`⚠️  [TS012] No previous project to rollback to`);
+        logger.info(`⚠️  [TS012] No previous project to rollback to`);
       }
     } catch (error) {
-      console.error('❌ [TS012] Rollback failed:', error);
+      logger.error('❌ [TS012] Rollback failed', error as Error);
       // Rollback failures are logged but not thrown to avoid masking the original error
     }
   }
@@ -727,7 +728,7 @@ class ProjectSwitchValidator {
     for (const [sessionId, context] of this.activeSwitches.entries()) {
       const elapsedMs = now.getTime() - context.timestamp.getTime();
       if (elapsedMs > this.SWITCH_TIMEOUT_MS) {
-        console.log(`🧹 [TS012] Cleaning up timed-out switch for session ${sessionId}`);
+        logger.info(`🧹 [TS012] Cleaning up timed-out switch for session ${sessionId}`);
         this.activeSwitches.delete(sessionId);
       }
     }
@@ -744,7 +745,7 @@ export async function switchProjectWithValidation(
 ): Promise<ProjectInfo> {
   const handler = await getProjectHandler();
 
-  console.log(`🔄 [TS012] Enhanced switching to project: "${identifier}" (session: ${sessionId.substring(0, 8)}...)`);
+  logger.info(`🔄 [TS012] Enhanced switching to project: "${identifier}" (session: ${sessionId.substring(0, 8)}...)`);
 
   try {
     // Step 1: Pre-switch validation
@@ -755,7 +756,7 @@ export async function switchProjectWithValidation(
     }
 
     if (preValidation.warnings.length > 0) {
-      console.log(`⚠️  [TS012] Pre-switch warnings: ${preValidation.warnings.join('; ')}`);
+      logger.info(`⚠️  [TS012] Pre-switch warnings: ${preValidation.warnings.join('; ')}`);
     }
 
     // Step 2: Get target project info for atomic switch
@@ -792,20 +793,20 @@ export async function switchProjectWithValidation(
     );
 
     if (!postValidation.isValid) {
-      console.error(`❌ [TS012] Post-switch validation failed:`, postValidation.errors);
+      logger.error(`❌ [TS012] Post-switch validation failed`, undefined, { metadata: { errors: postValidation.errors } });
       // Don't throw here - log the issues but return the project since switch completed
     }
 
     if (postValidation.warnings.length > 0) {
-      console.log(`⚠️  [TS012] Post-switch warnings: ${postValidation.warnings.join('; ')}`);
+      logger.info(`⚠️  [TS012] Post-switch warnings: ${postValidation.warnings.join('; ')}`);
     }
 
     const resultProject = switchResult.project || { ...targetProject, isActive: true };
-    console.log(`✅ [TS012] Enhanced switch completed: ${resultProject.name}`);
+    logger.info(`✅ [TS012] Enhanced switch completed: ${resultProject.name}`);
     return resultProject;
 
   } catch (error) {
-    console.error('❌ [TS012] Enhanced switch failed:', error);
+    logger.error('❌ [TS012] Enhanced switch failed', error as Error);
     throw new Error(`Enhanced project switch failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }

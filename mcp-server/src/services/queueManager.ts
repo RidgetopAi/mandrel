@@ -1,5 +1,6 @@
 import { Queue, Worker, Job, QueueOptions, WorkerOptions } from 'bullmq';
 import IORedis from 'ioredis';
+import { logger } from '../utils/logger.js';
 
 /**
  * AIDIS Queue Manager
@@ -63,11 +64,11 @@ export class QueueManager {
 
     // Setup error handling
     this.queue.on('error', (error) => {
-      console.error('[QueueManager] Queue error:', error);
+      logger.error('[QueueManager] Queue error', error as Error);
     });
 
     this.redis.on('error', (error) => {
-      console.error('[QueueManager] Redis connection error:', error);
+      logger.error('[QueueManager] Redis connection error', error as Error);
     });
   }
 
@@ -77,7 +78,7 @@ export class QueueManager {
   async initialize(): Promise<void> {
     try {
       await this.redis.ping();
-      console.log('[QueueManager] Redis connection established');
+      logger.info('[QueueManager] Redis connection established');
 
       // Register all job processors
       this.registerWorkers();
@@ -85,9 +86,9 @@ export class QueueManager {
       // Schedule recurring jobs to replace timers
       await this.scheduleRecurringJobs();
 
-      console.log('[QueueManager] Queue system initialized');
+      logger.info('[QueueManager] Queue system initialized');
     } catch (error) {
-      console.error('[QueueManager] Failed to initialize:', error);
+      logger.error('[QueueManager] Failed to initialize', error as Error);
       throw error;
     }
   }
@@ -100,35 +101,35 @@ export class QueueManager {
     this.createWorker(JobType.FEATURE_FLAGS_REFRESH, async (_job: Job<QueueJobData>) => {
       const { default: featureFlagStore } = await import('../utils/featureFlags.js');
       await featureFlagStore.refresh();
-      console.log(`[QueueManager] Feature flags refreshed at ${new Date().toISOString()}`);
+      logger.info(`[QueueManager] Feature flags refreshed at ${new Date().toISOString()}`);
       return { success: true, timestamp: Date.now() };
     });
 
     // Git tracking worker (replaces 30s timer)
     this.createWorker(JobType.GIT_TRACKING, async (_job: Job<QueueJobData>) => {
       // TODO: Implement git tracking logic (currently timer-based in server.ts:4931)
-      console.log(`[QueueManager] Git tracking executed at ${new Date().toISOString()}`);
+      logger.info(`[QueueManager] Git tracking executed at ${new Date().toISOString()}`);
       return { success: true, timestamp: Date.now() };
     });
 
     // Metrics collection worker (replaces 5min timer)
     this.createWorker(JobType.METRICS_COLLECTION, async (_job: Job<QueueJobData>) => {
       // TODO: Implement metrics collection logic
-      console.log(`[QueueManager] Metrics collection executed at ${new Date().toISOString()}`);
+      logger.info(`[QueueManager] Metrics collection executed at ${new Date().toISOString()}`);
       return { success: true, timestamp: Date.now() };
     });
 
     // Complexity analysis worker (replaces 10min timer)
     this.createWorker(JobType.COMPLEXITY_ANALYSIS, async (_job: Job<QueueJobData>) => {
       // TODO: Implement complexity analysis logic
-      console.log(`[QueueManager] Complexity analysis executed at ${new Date().toISOString()}`);
+      logger.info(`[QueueManager] Complexity analysis executed at ${new Date().toISOString()}`);
       return { success: true, timestamp: Date.now() };
     });
 
     // Pattern detection worker
     this.createWorker(JobType.PATTERN_DETECTION, async (_job: Job<QueueJobData>) => {
       // TODO: Implement pattern detection logic
-      console.log(`[QueueManager] Pattern detection executed at ${new Date().toISOString()}`);
+      logger.info(`[QueueManager] Pattern detection executed at ${new Date().toISOString()}`);
       return { success: true, timestamp: Date.now() };
     });
   }
@@ -151,11 +152,11 @@ export class QueueManager {
     );
 
     worker.on('error', (error) => {
-      console.error(`[QueueManager] Worker ${jobType} error:`, error);
+      logger.error(`[QueueManager] Worker ${jobType} error`, error as Error);
     });
 
     worker.on('failed', (job, error) => {
-      console.error(`[QueueManager] Job ${job?.id} (${jobType}) failed:`, error);
+      logger.error(`[QueueManager] Job ${job?.id} (${jobType}) failed`, error as Error);
     });
 
     this.workers.set(jobType, worker);
@@ -217,7 +218,7 @@ export class QueueManager {
       }
     );
 
-    console.log('[QueueManager] Recurring jobs scheduled');
+    logger.info('[QueueManager] Recurring jobs scheduled');
   }
 
   /**
@@ -260,32 +261,32 @@ export class QueueManager {
     if (this.isShuttingDown) return;
     this.isShuttingDown = true;
 
-    console.log('[QueueManager] Shutting down...');
+    logger.info('[QueueManager] Shutting down...');
 
     // Close all workers
     for (const [jobType, worker] of this.workers) {
       try {
         await worker.close();
-        console.log(`[QueueManager] Worker ${jobType} closed`);
+        logger.info(`[QueueManager] Worker ${jobType} closed`);
       } catch (error) {
-        console.error(`[QueueManager] Error closing worker ${jobType}:`, error);
+        logger.error(`[QueueManager] Error closing worker ${jobType}`, error as Error);
       }
     }
 
     // Close queue
     try {
       await this.queue.close();
-      console.log('[QueueManager] Queue closed');
+      logger.info('[QueueManager] Queue closed');
     } catch (error) {
-      console.error('[QueueManager] Error closing queue:', error);
+      logger.error('[QueueManager] Error closing queue', error as Error);
     }
 
     // Close Redis connection
     try {
       await this.redis.quit();
-      console.log('[QueueManager] Redis connection closed');
+      logger.info('[QueueManager] Redis connection closed');
     } catch (error) {
-      console.error('[QueueManager] Error closing Redis:', error);
+      logger.error('[QueueManager] Error closing Redis', error as Error);
     }
   }
 }

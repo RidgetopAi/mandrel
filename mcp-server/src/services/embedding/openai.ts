@@ -6,6 +6,7 @@
 
 import { EmbeddingError, EmbeddingErrorType, EmbeddingVector, RetryConfig } from './types.js';
 import { executeWithRetry, isRetryableError } from './retry.js';
+import { logger } from '../../utils/logger.js';
 
 /**
  * Check if OpenAI API is available
@@ -24,7 +25,7 @@ export async function generateOpenAIEmbedding(
   model: string,
   retryConfig: RetryConfig
 ): Promise<EmbeddingVector> {
-  console.log('🔮 Generating real OpenAI embedding...');
+  logger.info('🔮 Generating real OpenAI embedding...');
 
   return executeWithRetry(async () => {
     try {
@@ -101,7 +102,7 @@ export async function generateOpenAIEmbedding(
         );
       }
 
-      console.log(`✅ Generated OpenAI embedding (${embedding.length} dimensions)`);
+      logger.info(`✅ Generated OpenAI embedding (${embedding.length} dimensions)`);
 
       return {
         embedding,

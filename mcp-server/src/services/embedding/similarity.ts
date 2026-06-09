@@ -5,6 +5,7 @@
  */
 
 import { EmbeddingError, EmbeddingErrorType } from './types.js';
+import { logger } from '../../utils/logger.js';
 
 /**
  * Calculate cosine similarity between two embeddings with robust error handling
@@ -57,7 +58,7 @@ export function calculateCosineSimilarity(a: number[], b: number[]): number {
 
     // Handle zero vectors
     if (normA === 0 || normB === 0) {
-      console.warn('⚠️  Zero vector detected in similarity calculation, returning 0');
+      logger.warn('⚠️  Zero vector detected in similarity calculation, returning 0');
       return 0;
     }
 
@@ -85,19 +86,19 @@ export function calculateCosineSimilarity(a: number[], b: number[]): number {
  */
 export function validateEmbedding(embedding: number[], expectedDimensions: number): boolean {
   if (!Array.isArray(embedding)) {
-    console.warn('⚠️  Embedding validation failed: not an array');
+    logger.warn('⚠️  Embedding validation failed: not an array');
     return false;
   }
 
   if (embedding.length !== expectedDimensions) {
-    console.warn(`⚠️  Embedding validation failed: wrong dimensions (got ${embedding.length}, expected ${expectedDimensions})`);
+    logger.warn(`⚠️  Embedding validation failed: wrong dimensions (got ${embedding.length}, expected ${expectedDimensions})`);
     return false;
   }
 
   const invalidValues = embedding.filter((val, idx) => {
     const isValid = typeof val === 'number' && !isNaN(val) && isFinite(val) && val >= -1 && val <= 1;
     if (!isValid) {
-      console.warn(`⚠️  Embedding validation failed: invalid value at index ${idx}: ${val} (type: ${typeof val})`);
+      logger.warn(`⚠️  Embedding validation failed: invalid value at index ${idx}: ${val} (type: ${typeof val})`);
     }
     return !isValid;
   });

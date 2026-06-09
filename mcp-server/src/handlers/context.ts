@@ -14,6 +14,7 @@ import { embeddingService } from '../services/embedding.js';
 import { dimensionalityReductionService } from '../services/dimensionality-reduction.js';
 import { projectHandler } from './project.js';
 import { logContextEvent, logHierarchicalMemorySearch } from '../middleware/eventLogger.js';
+import { logger } from '../utils/logger.js';
 
 export interface StoreContextRequest {
   projectId?: string;
@@ -90,7 +91,7 @@ class ContextHandler {
    */
   async storeContext(request: StoreContextRequest): Promise<ContextEntry> {
     if (process.env.AIDIS_DETAILED_LOGGING === 'true') {
-        console.log(`📝 Storing ${request.type} context: "${request.content.substring(0, 60)}..."`);
+        logger.info(`📝 Storing ${request.type} context: "${request.content.substring(0, 60)}..."`);
       }
 
     try {
@@ -117,8 +118,8 @@ class ContextHandler {
       ].filter(Boolean).join('\n');
 
       // Generate hybrid embedding
-      console.log('🔮 Generating hybrid embedding (title + tags + content)...');
-      console.log(`📋 Extracted title: "${extractedTitle}"`);
+      logger.info('🔮 Generating hybrid embedding (title + tags + content)...');
+      logger.info(`📋 Extracted title: "${extractedTitle}"`);
       const embeddingResult = await embeddingService.generateEmbedding({
         text: embeddingText
       });
@@ -137,11 +138,11 @@ class ContextHandler {
 
       // DEBUG: Track context creation calls to detect duplicates
       const callStack = new Error().stack;
-      console.error(`🔍 CONTEXT_STORE CALLED: "${extractedTitle}" - Stack: ${callStack?.split('\n')[2]?.trim()}`);
+      logger.error(`🔍 CONTEXT_STORE CALLED: "${extractedTitle}" - Stack: ${callStack?.split('\n')[2]?.trim()}`);
 
-      console.log(`🔍 DEBUG: About to insert context_type = "${contextData.context_type}" (type: ${typeof contextData.context_type})`);
-      console.log(`🔍 DEBUG: context_type length = ${contextData.context_type.length}`);
-      console.log(`🔍 DEBUG: context_type char codes = [${Array.from(contextData.context_type).map(c => c.charCodeAt(0)).join(',')}]`);
+      logger.info(`🔍 DEBUG: About to insert context_type = "${contextData.context_type}" (type: ${typeof contextData.context_type})`);
+      logger.info(`🔍 DEBUG: context_type length = ${contextData.context_type.length}`);
+      logger.info(`🔍 DEBUG: context_type char codes = [${Array.from(contextData.context_type).map(c => c.charCodeAt(0)).join(',')}]`);
 
       // Generate 3D coordinates for the vector
       let vectorCoords = { x: 0, y: 0, z: 0 };
@@ -174,7 +175,7 @@ class ContextHandler {
           vectorCoords = { x: fallback[0][0], y: fallback[0][1], z: fallback[0][2] };
         }
       } catch (coordError) {
-        console.warn('⚠️  Failed to generate coordinates, using default:', coordError);
+        logger.warn('⚠️  Failed to generate coordinates, using default', { metadata: { coordError } });
       }
 
       // Insert into database
@@ -203,9 +204,9 @@ class ContextHandler {
       ];
 
       if (process.env.AIDIS_DETAILED_LOGGING === 'true') {
-        console.log(`🔍 DEBUG: Executing SQL query with parameters:`);
-        console.log(`🔍 DEBUG: SQL: ${sqlQuery.replace(/\s+/g, ' ').trim()}`);
-        console.log(`🔍 DEBUG: Param $3 (context_type): "${sqlParams[2]}" (${typeof sqlParams[2]})`);
+        logger.info(`🔍 DEBUG: Executing SQL query with parameters:`);
+        logger.info(`🔍 DEBUG: SQL: ${sqlQuery.replace(/\s+/g, ' ').trim()}`);
+        logger.info(`🔍 DEBUG: Param $3 (context_type): "${sqlParams[2]}" (${typeof sqlParams[2]})`);
       }
       
       const result = await db.query(sqlQuery, sqlParams);
@@ -232,9 +233,9 @@ class ContextHandler {
       };
 
       if (process.env.AIDIS_DETAILED_LOGGING === 'true') {
-        console.log(`✅ Context stored successfully! ID: ${storedContext.id}`);
-        console.log(`🔍 Embedding: ${embeddingResult.dimensions}D vector (${embeddingResult.model})`);
-        console.log(`🏷️  Tags: [${storedContext.tags.join(', ')}]`);
+        logger.info(`✅ Context stored successfully! ID: ${storedContext.id}`);
+        logger.info(`🔍 Embedding: ${embeddingResult.dimensions}D vector (${embeddingResult.model})`);
+        logger.info(`🏷️  Tags: [${storedContext.tags.join(', ')}]`);
       }
       
       // Log the context creation event
@@ -250,7 +251,7 @@ class ContextHandler {
       return storedContext;
 
     } catch (error) {
-      console.error('❌ Failed to store context:', error);
+      logger.error('❌ Failed to store context', error as Error);
       throw new Error(`Context storage failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
@@ -274,7 +275,7 @@ class ContextHandler {
       // This enables hierarchical memory for all projects by default
       return flagValue !== 'false';
     } catch (error) {
-      console.error('Error checking hierarchical memory flag:', error);
+      logger.error('Error checking hierarchical memory flag', error as Error);
       return false;
     }
   }
@@ -314,7 +315,7 @@ class ContextHandler {
    * Supports hierarchical memory scoring when enabled for project
    */
   async searchContext(request: SearchContextRequest): Promise<SearchResult[]> {
-    console.log(`🔍 Searching contexts: "${request.query}"`);
+    logger.info(`🔍 Searching contexts: "${request.query}"`);
 
     // Instance #49: Start performance timing for observability
     const startTime = performance.now();
@@ -333,9 +334,9 @@ class ContextHandler {
 
       // Log scoring mode
       if (hierarchicalEnabled) {
-        console.log(`🧠 Hierarchical memory: ${isRecencyFocused ? 'RECENCY-FOCUSED' : 'BALANCED'}`);
+        logger.info(`🧠 Hierarchical memory: ${isRecencyFocused ? 'RECENCY-FOCUSED' : 'BALANCED'}`);
       } else {
-        console.log(`🧠 Hierarchical memory: disabled`);
+        logger.info(`🧠 Hierarchical memory: disabled`);
       }
 
       // Build search query with filters
@@ -458,7 +459,7 @@ class ContextHandler {
       }
       params.push(request.limit || 10);
 
-      console.log('🔍 Executing vector similarity search...');
+      logger.info('🔍 Executing vector similarity search...');
       const result = await db.query(sql, params);
 
       // Convert results and calculate similarities with substring boosting
@@ -550,9 +551,9 @@ class ContextHandler {
         ? results.filter(r => r.similarity! >= request.minSimilarity!)
         : results;
 
-      console.log(`✅ Found ${filtered.length} matching contexts`);
+      logger.info(`✅ Found ${filtered.length} matching contexts`);
       if (filtered.length > 0) {
-        console.log(`🎯 Top match: ${filtered[0].similarity}% similarity - "${filtered[0].content.substring(0, 60)}..."`);
+        logger.info(`🎯 Top match: ${filtered[0].similarity}% similarity - "${filtered[0].content.substring(0, 60)}..."`);
       }
 
       // Instance #49: Calculate query latency and log hierarchical memory search with observability data
@@ -577,7 +578,7 @@ class ContextHandler {
       return filtered;
 
     } catch (error) {
-      console.error('❌ Context search failed:', error);
+      logger.error('❌ Context search failed', error as Error);
       throw new Error(`Context search failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
@@ -611,7 +612,7 @@ class ContextHandler {
     const currentProject = await projectHandler.getCurrentProject();
 
     if (currentProject) {
-      console.log(`📋 Using current project: ${currentProject.name}`);
+      logger.info(`📋 Using current project: ${currentProject.name}`);
       return currentProject.id;
     }
 
@@ -636,14 +637,14 @@ class ContextHandler {
       const { SessionTracker } = await import('../services/sessionTracker.js');
       const activeSessionId = await SessionTracker.getActiveSession();
       if (activeSessionId) {
-        console.log(`📋 Using active session: ${activeSessionId.substring(0, 8)}... for context storage`);
+        logger.info(`📋 Using active session: ${activeSessionId.substring(0, 8)}... for context storage`);
         return activeSessionId;
       }
 
-      console.warn('⚠️  No active session found - context will be stored without session association');
+      logger.warn('⚠️  No active session found - context will be stored without session association');
       return null;
     } catch (error) {
-      console.warn('⚠️  Failed to get active session, storing context without session:', error);
+      logger.warn('⚠️  Failed to get active session, storing context without session', { metadata: { error } });
       return null; // Fallback to no session if session tracking fails
     }
   }
@@ -652,7 +653,7 @@ class ContextHandler {
    * Get recent contexts in chronological order (newest first)
    */
   async getRecentContext(projectId?: string, limit: number = 5): Promise<SearchResult[]> {
-    console.log(`📋 Getting ${limit} most recent contexts`);
+    logger.info(`📋 Getting ${limit} most recent contexts`);
 
     try {
       // Ensure we have a valid project
@@ -669,7 +670,7 @@ class ContextHandler {
         LIMIT $2
       `;
       
-      console.log('🔍 Executing recent contexts query...');
+      logger.info('🔍 Executing recent contexts query...');
       const result = await db.query(sql, [actualProjectId, limit]);
 
       // Convert results to SearchResult format (same as searchContext)
@@ -686,15 +687,15 @@ class ContextHandler {
         searchReason: 'Recent context (chronological order)'
       }));
 
-      console.log(`✅ Found ${results.length} recent contexts`);
+      logger.info(`✅ Found ${results.length} recent contexts`);
       if (results.length > 0) {
-        console.log(`📅 Most recent: ${results[0].createdAt} - "${results[0].content.substring(0, 60)}..."`);
+        logger.info(`📅 Most recent: ${results[0].createdAt} - "${results[0].content.substring(0, 60)}..."`);
       }
 
       return results;
 
     } catch (error) {
-      console.error('❌ Failed to get recent contexts:', error);
+      logger.error('❌ Failed to get recent contexts', error as Error);
       throw new Error(`Recent context retrieval failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }

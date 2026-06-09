@@ -6,6 +6,7 @@
  */
 
 import { UMAP } from 'umap-js';
+import { logger } from '../utils/logger.js';
 
 export interface CoordinateResult {
   x: number;
@@ -72,7 +73,7 @@ class DimensionalityReductionService {
   ): Promise<number[][]> {
     // Need at least nNeighbors + 1 samples for UMAP
     if (vectors.length < nNeighbors + 1) {
-      console.warn(
+      logger.warn(
         `Not enough samples for UMAP (${vectors.length} < ${nNeighbors + 1}). Using fallback.`
       );
       return this.fallbackReduce(vectors, dimensions);
@@ -90,7 +91,7 @@ class DimensionalityReductionService {
       const embedding = await umap.fitAsync(vectors);
       return embedding as number[][];
     } catch (error) {
-      console.error('UMAP reduction failed:', error);
+      logger.error('UMAP reduction failed', error as Error);
       return this.fallbackReduce(vectors, dimensions);
     }
   }
@@ -99,7 +100,7 @@ class DimensionalityReductionService {
    * Fallback: PCA-like reduction when UMAP fails
    */
   private fallbackReduce(vectors: number[][], dimensions: number): number[][] {
-    console.log('Using PCA-like fallback reduction');
+    logger.info('Using PCA-like fallback reduction');
     
     // Simple variance-based projection
     const result: number[][] = [];

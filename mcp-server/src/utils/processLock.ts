@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import process from 'process';
+import { logger } from './logger.js';
 
 const LOCK_FILE = process.env.AIDIS_LOCK_FILE || path.join(process.cwd(), 'aidis.pid');
 
@@ -34,7 +35,7 @@ class ProcessLock {
         } catch (err: any) {
           if (err.code === 'ESRCH') {
             // Process doesn't exist, remove stale lock file
-            console.warn(`Removing stale lock file for PID ${existingPid}`);
+            logger.warn(`Removing stale lock file for PID ${existingPid}`);
             fs.unlinkSync(LOCK_FILE);
           } else {
             throw err; // Re-throw if it's our error about already running
@@ -46,7 +47,7 @@ class ProcessLock {
       fs.writeFileSync(LOCK_FILE, process.pid.toString());
       this.locked = true;
       
-      console.log(`✅ Process lock acquired (PID: ${process.pid})`);
+      logger.info(`✅ Process lock acquired (PID: ${process.pid})`);
       
       const disableExitHandlers = process.env.AIDIS_DISABLE_PROCESS_EXIT_HANDLERS === 'true';
 
@@ -57,22 +58,22 @@ class ProcessLock {
         // SECURITY FIX: Only release lock, don't call process.exit()
         // Let main.ts handle graceful shutdown to avoid race conditions
         process.on('SIGINT', () => {
-          console.log('\n🔄 ProcessLock: Releasing lock on SIGINT...');
+          logger.info('\n🔄 ProcessLock: Releasing lock on SIGINT...');
           this.release();
           // DO NOT call process.exit() - let main.ts handle shutdown
         });
         process.on('SIGTERM', () => {
-          console.log('\n🔄 ProcessLock: Releasing lock on SIGTERM...');
+          logger.info('\n🔄 ProcessLock: Releasing lock on SIGTERM...');
           this.release();
           // DO NOT call process.exit() - let main.ts handle shutdown
         });
         process.on('uncaughtException', (error) => {
-          console.error('❌ Uncaught Exception:', error);
+          logger.error('❌ Uncaught Exception', error as Error);
           this.release();
           process.exit(1);
         });
         process.on('unhandledRejection', (reason, promise) => {
-          console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
+          logger.error('❌ Unhandled Rejection', undefined, { metadata: { promise, reason } });
           this.release();
           process.exit(1);
         });
@@ -91,9 +92,9 @@ class ProcessLock {
       try {
         fs.unlinkSync(LOCK_FILE);
         this.locked = false;
-        console.log('✅ Process lock released');
+        logger.info('✅ Process lock released');
       } catch (error) {
-        console.error('❌ Error releasing process lock:', error);
+        logger.error('❌ Error releasing process lock', error as Error);
       }
     }
   }

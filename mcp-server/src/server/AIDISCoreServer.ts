@@ -6,6 +6,7 @@
 import * as http from 'http';
 import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js';
 import { processLock } from '../utils/processLock.js';
+import { logger } from '../utils/logger.js';
 import { initializeDatabase, closeDatabase } from '../config/database.js';
 import { AIDIS_TOOL_DEFINITIONS } from '../config/toolDefinitions.js';
 import { validationMiddleware } from '../middleware/validation.js';
@@ -69,7 +70,7 @@ export class AIDISCoreServer {
       }));
 
     } catch (error: any) {
-      console.error('🚨 Tool HTTP Error:', error);
+      logger.error('🚨 Tool HTTP Error', error as Error);
       
       res.writeHead(500);
       res.end(JSON.stringify({
@@ -191,50 +192,50 @@ export class AIDISCoreServer {
   }
 
   async start(): Promise<void> {
-    console.log('🚀 Starting AIDIS Core HTTP Service...');
+    logger.info('🚀 Starting AIDIS Core HTTP Service...');
 
     try {
       processLock.acquire();
     } catch (error) {
-      console.error('❌ Cannot start: Another AIDIS Core instance is already running');
-      console.error(error);
+      logger.error('❌ Cannot start: Another AIDIS Core instance is already running');
+      logger.error('Process lock acquisition failed', error as Error);
       process.exit(1);
     }
-    
+
     try {
-      console.log('🔌 Initializing database connection with retry logic...');
+      logger.info('🔌 Initializing database connection with retry logic...');
       
       await RetryHandler.executeWithRetry(async () => {
         await this.circuitBreaker.execute(async () => {
           await initializeDatabase();
           this.dbHealthy = true;
-          console.log('✅ Database connection established');
+          logger.info('✅ Database connection established');
         });
       });
-      
-      console.log(`🌐 Starting AIDIS Core HTTP server on port ${HTTP_PORT}...`);
+
+      logger.info(`🌐 Starting AIDIS Core HTTP server on port ${HTTP_PORT}...`);
       this.httpServer?.listen(HTTP_PORT, () => {
-        console.log('✅ AIDIS Core HTTP Service is running!');
-        console.log(`🌐 Service URL: http://localhost:${HTTP_PORT}`);
-        console.log(`✅ Health endpoints:`);
-        console.log(`   🏥 Liveness:  http://localhost:${HTTP_PORT}/healthz`);
-        console.log(`   🎯 Readiness: http://localhost:${HTTP_PORT}/readyz`);
-        console.log(`   📋 Tools:     http://localhost:${HTTP_PORT}/mcp/tools`);
-        console.log(`   🔧 Execute:   POST http://localhost:${HTTP_PORT}/mcp/tools/{toolName}`);
+        logger.info('✅ AIDIS Core HTTP Service is running!');
+        logger.info(`🌐 Service URL: http://localhost:${HTTP_PORT}`);
+        logger.info(`✅ Health endpoints:`);
+        logger.info(`   🏥 Liveness:  http://localhost:${HTTP_PORT}/healthz`);
+        logger.info(`   🎯 Readiness: http://localhost:${HTTP_PORT}/readyz`);
+        logger.info(`   📋 Tools:     http://localhost:${HTTP_PORT}/mcp/tools`);
+        logger.info(`   🔧 Execute:   POST http://localhost:${HTTP_PORT}/mcp/tools/{toolName}`);
       });
-      
-      console.log('🔒 Enterprise Security Features:');
-      console.log(`   🔒 Process Singleton: ACTIVE (PID: ${process.pid})`);
-      console.log(`   🗄️  Database: ${this.dbHealthy ? 'Connected' : 'Disconnected'}`);
-      console.log(`   ⚡ Circuit Breaker: ${this.circuitBreaker.getState().toUpperCase()}`);
-      console.log(`   🔄 Retry Logic: ${MAX_RETRIES} attempts with exponential backoff`);
-      console.log(`   🐛 Debug: ${process.env.AIDIS_DEBUG || 'DISABLED'}`);
-      
-      console.log('🎯 Available tools: 27 total');
-      console.log('🚀 System Status: All systems READY');
-      
+
+      logger.info('🔒 Enterprise Security Features:');
+      logger.info(`   🔒 Process Singleton: ACTIVE (PID: ${process.pid})`);
+      logger.info(`   🗄️  Database: ${this.dbHealthy ? 'Connected' : 'Disconnected'}`);
+      logger.info(`   ⚡ Circuit Breaker: ${this.circuitBreaker.getState().toUpperCase()}`);
+      logger.info(`   🔄 Retry Logic: ${MAX_RETRIES} attempts with exponential backoff`);
+      logger.info(`   🐛 Debug: ${process.env.AIDIS_DEBUG || 'DISABLED'}`);
+
+      logger.info('🎯 Available tools: 27 total');
+      logger.info('🚀 System Status: All systems READY');
+
     } catch (error) {
-      console.error('❌ Failed to start AIDIS Core HTTP Service:', error);
+      logger.error('❌ Failed to start AIDIS Core HTTP Service', error as Error);
       this.dbHealthy = false;
       await this.gracefulShutdown('STARTUP_FAILURE');
       process.exit(1);
@@ -242,28 +243,28 @@ export class AIDISCoreServer {
   }
 
   async gracefulShutdown(signal: string): Promise<void> {
-    console.log(`\n📴 Received ${signal}, shutting down gracefully...`);
-    
+    logger.info(`\n📴 Received ${signal}, shutting down gracefully...`);
+
     try {
       if (this.httpServer) {
-        console.log('🌐 Closing HTTP server...');
+        logger.info('🌐 Closing HTTP server...');
         await new Promise<void>((resolve) => {
           this.httpServer!.close(() => {
-            console.log('✅ HTTP server closed');
+            logger.info('✅ HTTP server closed');
             resolve();
           });
         });
       }
-      
-      console.log('🔌 Closing database connections...');
+
+      logger.info('🔌 Closing database connections...');
       await closeDatabase();
-      console.log('✅ Database connections closed');
-      
+      logger.info('✅ Database connections closed');
+
       this.dbHealthy = false;
-      console.log('✅ Graceful shutdown completed');
-      
+      logger.info('✅ Graceful shutdown completed');
+
     } catch (error) {
-      console.error('❌ Error during shutdown:', error);
+      logger.error('❌ Error during shutdown', error as Error);
       throw error;
     }
   }

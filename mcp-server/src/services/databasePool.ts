@@ -1,4 +1,5 @@
 import { Pool, PoolConfig, PoolClient } from 'pg';
+import { logger } from '../utils/logger.js';
 
 /**
  * TR008-4: Optimized Database Connection Pool Manager
@@ -53,7 +54,7 @@ class DatabasePoolManager {
    */
   async initialize(): Promise<void> {
     if (this.isInitialized) {
-      console.log('📦 Database pool already initialized');
+      logger.info('📦 Database pool already initialized');
       return;
     }
 
@@ -89,13 +90,13 @@ class DatabasePoolManager {
 
     // Set up error handling
     this.pool.on('error', (err) => {
-      console.error('❌ Unexpected database pool error:', err);
+      logger.error('❌ Unexpected database pool error', err as Error);
       this.connectionErrors++;
       this.lastError = err.message;
     });
 
     this.pool.on('connect', (_client) => {
-      console.log('✅ New database client connected to pool');
+      logger.info('✅ New database client connected to pool');
     });
 
     this.pool.on('acquire', (client) => {
@@ -117,17 +118,17 @@ class DatabasePoolManager {
     try {
       const client = await this.pool.connect();
       const result = await client.query('SELECT NOW() as current_time, version() as version');
-      console.log('✅ Database pool initialized successfully');
-      console.log(`📊 Database: ${poolConfig.database}`);
-      console.log(`🏠 Host: ${poolConfig.host}:${poolConfig.port}`);
-      console.log(`📦 Pool Size: ${poolConfig.min}-${poolConfig.max} connections`);
-      console.log(`⏰ Current Time: ${result.rows[0].current_time}`);
+      logger.info('✅ Database pool initialized successfully');
+      logger.info(`📊 Database: ${poolConfig.database}`);
+      logger.info(`🏠 Host: ${poolConfig.host}:${poolConfig.port}`);
+      logger.info(`📦 Pool Size: ${poolConfig.min}-${poolConfig.max} connections`);
+      logger.info(`⏰ Current Time: ${result.rows[0].current_time}`);
       client.release();
 
       this.isInitialized = true;
       this.startMonitoring();
     } catch (error) {
-      console.error('❌ Failed to initialize database pool:', error);
+      logger.error('❌ Failed to initialize database pool', error as Error);
       throw error;
     }
   }
@@ -161,7 +162,7 @@ class DatabasePoolManager {
         return client;
       } catch (error) {
         lastError = error as Error;
-        console.warn(`⚠️  Database connection attempt ${attempt}/${retries} failed:`, lastError.message);
+        logger.warn(`⚠️  Database connection attempt ${attempt}/${retries} failed`, { metadata: { error: lastError.message } });
 
         if (attempt < retries) {
           // Exponential backoff
@@ -268,7 +269,7 @@ class DatabasePoolManager {
     }
 
     if (leaks.length > 0) {
-      console.warn('⚠️  Potential connection leaks detected:', leaks);
+      logger.warn('⚠️  Potential connection leaks detected', { metadata: { leaks } });
     }
   }
 
@@ -281,9 +282,9 @@ class DatabasePoolManager {
       const stats = this.getStats();
 
       if (stats.healthStatus === 'unhealthy') {
-        console.error('🚨 Database pool health check failed:', stats);
+        logger.error('🚨 Database pool health check failed', undefined, { metadata: { stats } });
       } else if (stats.healthStatus === 'degraded') {
-        console.warn('⚠️  Database pool health degraded:', stats);
+        logger.warn('⚠️  Database pool health degraded', { metadata: { stats } });
       }
 
       // Check for connection leaks
@@ -291,9 +292,11 @@ class DatabasePoolManager {
 
       // Log stats in development
       if (process.env.NODE_ENV === 'development') {
-        console.log('📊 Database Pool Stats:', {
-          ...stats,
-          activeConnections: this.activeConnections.size,
+        logger.info('📊 Database Pool Stats', {
+          metadata: {
+            ...stats,
+            activeConnections: this.activeConnections.size,
+          },
         });
       }
     }, 30000);
@@ -326,12 +329,12 @@ class DatabasePoolManager {
 
     try {
       await this.pool.end();
-      console.log('✅ Database pool connections closed gracefully');
+      logger.info('✅ Database pool connections closed gracefully');
       this.isInitialized = false;
       this.pool = null;
       this.activeConnections.clear();
     } catch (error) {
-      console.error('❌ Error closing database pool:', error);
+      logger.error('❌ Error closing database pool', error as Error);
       throw error;
     }
   }
@@ -360,13 +363,13 @@ export const poolHealthCheck = () => dbPool.healthCheck();
 
 // Handle graceful shutdown
 process.on('SIGINT', async () => {
-  console.log('\n🛑 Received SIGINT, closing database pool...');
+  logger.info('\n🛑 Received SIGINT, closing database pool...');
   await dbPool.close();
   process.exit(0);
 });
 
 process.on('SIGTERM', async () => {
-  console.log('\n🛑 Received SIGTERM, closing database pool...');
+  logger.info('\n🛑 Received SIGTERM, closing database pool...');
   await dbPool.close();
   process.exit(0);
 });

@@ -1,5 +1,6 @@
 import { Pool } from 'pg';
 import { db } from '../config/database.js';
+import { logger } from '../utils/logger.js';
 
 export interface Agent {
     id: string;
@@ -73,7 +74,7 @@ class AgentsHandler {
         capabilities: string[] = ['coding'],
         metadata: Record<string, any> = {}
     ): Promise<Agent> {
-        console.log(`🤖 Agent register request: "${name}"`);
+        logger.info(`🤖 Agent register request: "${name}"`);
         
         const client = await this.pool.connect();
         try {
@@ -95,7 +96,7 @@ class AgentsHandler {
                     [name, type, capabilities, metadata]
                 );
                 
-                console.log(`✅ Updated existing agent: ${name}`);
+                logger.info(`✅ Updated existing agent: ${name}`);
                 return this.mapAgent(result.rows[0]);
             } else {
                 // Create new agent
@@ -107,7 +108,7 @@ class AgentsHandler {
                     [name, type, capabilities, metadata]
                 );
                 
-                console.log(`✅ Registered new agent: ${name}`);
+                logger.info(`✅ Registered new agent: ${name}`);
                 return this.mapAgent(result.rows[0]);
             }
         } finally {
@@ -120,7 +121,7 @@ class AgentsHandler {
         status: Agent['status'],
         metadata?: Record<string, any>
     ): Promise<void> {
-        console.log(`🔄 Updating agent ${agentId} status to: ${status}`);
+        logger.info(`🔄 Updating agent ${agentId} status to: ${status}`);
         
         const client = await this.pool.connect();
         try {
@@ -130,7 +131,7 @@ class AgentsHandler {
                 const agentResult = await client.query('SELECT id FROM agents WHERE name = $1', [agentId]);
                 if (agentResult.rows.length > 0) {
                     agentUuid = agentResult.rows[0].id;
-                    console.log(`🔍 Resolved agent "${agentId}" to ID: ${agentUuid}`);
+                    logger.info(`🔍 Resolved agent "${agentId}" to ID: ${agentUuid}`);
                 } else {
                     throw new Error(`Agent "${agentId}" not found`);
                 }
@@ -148,14 +149,14 @@ class AgentsHandler {
             query += ` WHERE id = $${updateData.length}`;
             
             await client.query(query, updateData);
-            console.log(`✅ Updated agent status`);
+            logger.info(`✅ Updated agent status`);
         } finally {
             client.release();
         }
     }
 
     async listAgents(projectId?: string): Promise<Agent[]> {
-        console.log(`📋 Listing agents${projectId ? ` for project ${projectId}` : ''}`);
+        logger.info(`📋 Listing agents${projectId ? ` for project ${projectId}` : ''}`);
         
         const client = await this.pool.connect();
         try {
@@ -178,7 +179,7 @@ class AgentsHandler {
             query += ` ORDER BY last_seen DESC`;
             
             const result = await client.query(query, params);
-            console.log(`✅ Found ${result.rows.length} agents`);
+            logger.info(`✅ Found ${result.rows.length} agents`);
             return result.rows.map(row => this.mapAgent(row));
         } finally {
             client.release();
@@ -197,7 +198,7 @@ class AgentsHandler {
         dependencies: string[] = [],
         metadata: Record<string, any> = {}
     ): Promise<AgentTask> {
-        console.log(`📋 Creating task: "${title}"`);
+        logger.info(`📋 Creating task: "${title}"`);
         
         const client = await this.pool.connect();
         try {
@@ -209,9 +210,9 @@ class AgentsHandler {
                 const agentResult = await client.query('SELECT id FROM agents WHERE name = $1', [assignedTo]);
                 if (agentResult.rows.length > 0) {
                     assignedToId = agentResult.rows[0].id;
-                    console.log(`🔍 Resolved agent "${assignedTo}" to ID: ${assignedToId}`);
+                    logger.info(`🔍 Resolved agent "${assignedTo}" to ID: ${assignedToId}`);
                 } else {
-                    console.log(`⚠️  Agent "${assignedTo}" not found, leaving unassigned`);
+                    logger.warn(`⚠️  Agent "${assignedTo}" not found, leaving unassigned`);
                     assignedToId = undefined;
                 }
             }
@@ -220,7 +221,7 @@ class AgentsHandler {
                 const agentResult = await client.query('SELECT id FROM agents WHERE name = $1', [createdBy]);
                 if (agentResult.rows.length > 0) {
                     createdById = agentResult.rows[0].id;
-                    console.log(`🔍 Resolved creator "${createdBy}" to ID: ${createdById}`);
+                    logger.info(`🔍 Resolved creator "${createdBy}" to ID: ${createdById}`);
                 } else {
                     createdById = undefined;
                 }
@@ -235,7 +236,7 @@ class AgentsHandler {
                 [projectId, title, description, type, priority, assignedToId, createdById, tags, dependencies, metadata]
             );
             
-            console.log(`✅ Created task: ${result.rows[0].id}`);
+            logger.info(`✅ Created task: ${result.rows[0].id}`);
             return this.mapTask(result.rows[0]);
         } finally {
             client.release();
@@ -243,7 +244,7 @@ class AgentsHandler {
     }
 
     async joinProject(agentId: string, sessionId: string, projectId: string): Promise<void> {
-        console.log(`🔗 Agent ${agentId} joining project ${projectId} (session: ${sessionId})`);
+        logger.info(`🔗 Agent ${agentId} joining project ${projectId} (session: ${sessionId})`);
         
         const client = await this.pool.connect();
         try {
@@ -261,7 +262,7 @@ class AgentsHandler {
                      WHERE agent_id = $1 AND session_id = $2 AND project_id = $3`,
                     [agentId, sessionId, projectId]
                 );
-                console.log(`✅ Updated existing agent session`);
+                logger.info(`✅ Updated existing agent session`);
             } else {
                 // Create new session
                 await client.query(
@@ -269,7 +270,7 @@ class AgentsHandler {
                      VALUES ($1, $2, $3, 'active')`,
                     [agentId, sessionId, projectId]
                 );
-                console.log(`✅ Created new agent session`);
+                logger.info(`✅ Created new agent session`);
             }
 
             // Update agent last_seen
@@ -283,7 +284,7 @@ class AgentsHandler {
     }
 
     async leaveProject(agentId: string, sessionId: string, projectId: string): Promise<void> {
-        console.log(`👋 Agent ${agentId} leaving project ${projectId}`);
+        logger.info(`👋 Agent ${agentId} leaving project ${projectId}`);
         
         const client = await this.pool.connect();
         try {
@@ -293,14 +294,14 @@ class AgentsHandler {
                  WHERE agent_id = $1 AND session_id = $2 AND project_id = $3`,
                 [agentId, sessionId, projectId]
             );
-            console.log(`✅ Agent session marked as disconnected`);
+            logger.info(`✅ Agent session marked as disconnected`);
         } finally {
             client.release();
         }
     }
 
     async getActiveAgentSessions(projectId: string): Promise<any[]> {
-        console.log(`🔍 Getting active agent sessions for project ${projectId}`);
+        logger.info(`🔍 Getting active agent sessions for project ${projectId}`);
         
         const client = await this.pool.connect();
         try {
@@ -321,7 +322,7 @@ class AgentsHandler {
                 ORDER BY s.last_activity DESC
             `, [projectId]);
             
-            console.log(`✅ Found ${result.rows.length} active sessions`);
+            logger.info(`✅ Found ${result.rows.length} active sessions`);
             return result.rows;
         } finally {
             client.release();
@@ -329,7 +330,7 @@ class AgentsHandler {
     }
 
     async checkTaskConflicts(taskId: string, newAssignedTo: string): Promise<{ hasConflict: boolean; conflicts: any[] }> {
-        console.log(`🔍 Checking conflicts for task ${taskId} assignment to ${newAssignedTo}`);
+        logger.info(`🔍 Checking conflicts for task ${taskId} assignment to ${newAssignedTo}`);
         
         const client = await this.pool.connect();
         try {
@@ -400,7 +401,7 @@ class AgentsHandler {
                 }
             }
 
-            console.log(`✅ Found ${conflicts.length} potential conflicts`);
+            logger.info(`✅ Found ${conflicts.length} potential conflicts`);
             return {
                 hasConflict: conflicts.length > 0,
                 conflicts
@@ -411,7 +412,7 @@ class AgentsHandler {
     }
 
     async resolveTaskConflict(taskId: string, resolution: 'reassign' | 'split' | 'priority' | 'defer', metadata: Record<string, any> = {}): Promise<void> {
-        console.log(`🔧 Resolving task conflict for ${taskId} with resolution: ${resolution}`);
+        logger.info(`🔧 Resolving task conflict for ${taskId} with resolution: ${resolution}`);
         
         const client = await this.pool.connect();
         try {
@@ -454,7 +455,7 @@ class AgentsHandler {
                     break;
             }
             
-            console.log(`✅ Conflict resolved using ${resolution} strategy`);
+            logger.info(`✅ Conflict resolved using ${resolution} strategy`);
         } finally {
             client.release();
         }
@@ -471,7 +472,7 @@ class AgentsHandler {
         assignedTo?: string,
         metadata?: Record<string, any>
     ): Promise<void> {
-        console.log(`🔄 Updating task ${taskId} status to: ${status}`);
+        logger.info(`🔄 Updating task ${taskId} status to: ${status}`);
         
         const client = await this.pool.connect();
         try {
@@ -492,9 +493,9 @@ class AgentsHandler {
                     const agentResult = await client.query('SELECT id FROM agents WHERE name = $1', [assignedTo]);
                     if (agentResult.rows.length > 0) {
                         assignedToId = agentResult.rows[0].id;
-                        console.log(`🔍 Resolved agent "${assignedTo}" to ID: ${assignedToId}`);
+                        logger.info(`🔍 Resolved agent "${assignedTo}" to ID: ${assignedToId}`);
                     } else {
-                        console.log(`⚠️  Agent "${assignedTo}" not found, setting to null`);
+                        logger.warn(`⚠️  Agent "${assignedTo}" not found, setting to null`);
                         assignedToId = null;
                     }
                 }
@@ -515,7 +516,7 @@ class AgentsHandler {
             const query = `UPDATE agent_tasks SET ${updates.join(', ')} WHERE id = $${paramIndex}`;
             await client.query(query, params);
             
-            console.log(`✅ Updated task status`);
+            logger.info(`✅ Updated task status`);
         } finally {
             client.release();
         }
@@ -527,7 +528,7 @@ class AgentsHandler {
         status?: AgentTask['status'],
         type?: string
     ): Promise<AgentTask[]> {
-        console.log(`📋 Listing tasks for project ${projectId}`);
+        logger.info(`📋 Listing tasks for project ${projectId}`);
         
         const client = await this.pool.connect();
         try {
@@ -544,9 +545,9 @@ class AgentsHandler {
                     const agentResult = await client.query('SELECT id FROM agents WHERE name = $1', [assignedTo]);
                     if (agentResult.rows.length > 0) {
                         assignedToId = agentResult.rows[0].id;
-                        console.log(`🔍 Resolved filter agent "${assignedTo}" to ID: ${assignedToId}`);
+                        logger.info(`🔍 Resolved filter agent "${assignedTo}" to ID: ${assignedToId}`);
                     } else {
-                        console.log(`⚠️  Agent "${assignedTo}" not found for filtering`);
+                        logger.warn(`⚠️  Agent "${assignedTo}" not found for filtering`);
                         // Return empty results since agent doesn't exist
                         return [];
                     }
@@ -572,7 +573,7 @@ class AgentsHandler {
             query += ` ORDER BY priority DESC, created_at DESC`;
             
             const result = await client.query(query, params);
-            console.log(`✅ Found ${result.rows.length} tasks`);
+            logger.info(`✅ Found ${result.rows.length} tasks`);
             return result.rows.map(row => this.mapTask(row));
         } finally {
             client.release();
@@ -590,7 +591,7 @@ class AgentsHandler {
         taskRefs: string[] = [],
         metadata: Record<string, any> = {}
     ): Promise<AgentMessage> {
-        console.log(`💬 Sending message from ${fromAgentId}${toAgentId ? ` to ${toAgentId}` : ' (broadcast)'}`);
+        logger.info(`💬 Sending message from ${fromAgentId}${toAgentId ? ` to ${toAgentId}` : ' (broadcast)'}`);
         
         const client = await this.pool.connect();
         try {
@@ -602,7 +603,7 @@ class AgentsHandler {
                 const agentResult = await client.query('SELECT id FROM agents WHERE name = $1', [fromAgentId]);
                 if (agentResult.rows.length > 0) {
                     fromAgentUuid = agentResult.rows[0].id;
-                    console.log(`🔍 Resolved sender "${fromAgentId}" to ID: ${fromAgentUuid}`);
+                    logger.info(`🔍 Resolved sender "${fromAgentId}" to ID: ${fromAgentUuid}`);
                 } else {
                     throw new Error(`Sender agent "${fromAgentId}" not found`);
                 }
@@ -612,9 +613,9 @@ class AgentsHandler {
                 const agentResult = await client.query('SELECT id FROM agents WHERE name = $1', [toAgentId]);
                 if (agentResult.rows.length > 0) {
                     toAgentUuid = agentResult.rows[0].id;
-                    console.log(`🔍 Resolved recipient "${toAgentId}" to ID: ${toAgentUuid}`);
+                    logger.info(`🔍 Resolved recipient "${toAgentId}" to ID: ${toAgentUuid}`);
                 } else {
-                    console.log(`⚠️  Recipient agent "${toAgentId}" not found, sending as broadcast`);
+                    logger.warn(`⚠️  Recipient agent "${toAgentId}" not found, sending as broadcast`);
                     toAgentUuid = null;
                 }
             }
@@ -628,7 +629,7 @@ class AgentsHandler {
                 [projectId, fromAgentUuid, toAgentUuid, messageType, title, content, contextRefs, taskRefs, metadata]
             );
             
-            console.log(`✅ Message sent: ${result.rows[0].id}`);
+            logger.info(`✅ Message sent: ${result.rows[0].id}`);
             return this.mapMessage(result.rows[0]);
         } finally {
             client.release();
@@ -641,7 +642,7 @@ class AgentsHandler {
         messageType?: string,
         unreadOnly: boolean = false
     ): Promise<AgentMessage[]> {
-        console.log(`📨 Getting messages for project ${projectId}`);
+        logger.info(`📨 Getting messages for project ${projectId}`);
         
         const client = await this.pool.connect();
         try {
@@ -658,9 +659,9 @@ class AgentsHandler {
                     const agentResult = await client.query('SELECT id FROM agents WHERE name = $1', [agentId]);
                     if (agentResult.rows.length > 0) {
                         agentUuid = agentResult.rows[0].id;
-                        console.log(`🔍 Resolved message filter agent "${agentId}" to ID: ${agentUuid}`);
+                        logger.info(`🔍 Resolved message filter agent "${agentId}" to ID: ${agentUuid}`);
                     } else {
-                        console.log(`⚠️  Agent "${agentId}" not found for message filtering`);
+                        logger.warn(`⚠️  Agent "${agentId}" not found for message filtering`);
                         return [];
                     }
                 }
@@ -683,7 +684,7 @@ class AgentsHandler {
             query += ` ORDER BY created_at DESC`;
             
             const result = await client.query(query, params);
-            console.log(`✅ Found ${result.rows.length} messages`);
+            logger.info(`✅ Found ${result.rows.length} messages`);
             return result.rows.map(row => this.mapMessage(row));
         } finally {
             client.release();
@@ -698,7 +699,7 @@ class AgentsHandler {
         description?: string,
         metadata: Record<string, any> = {}
     ): Promise<AgentCollaboration> {
-        console.log(`🤝 Starting collaboration: "${title}" with ${agents.length} agents`);
+        logger.info(`🤝 Starting collaboration: "${title}" with ${agents.length} agents`);
         
         const client = await this.pool.connect();
         try {
@@ -711,7 +712,7 @@ class AgentsHandler {
                 [projectId, agents, title, type, description, metadata]
             );
             
-            console.log(`✅ Started collaboration: ${result.rows[0].id}`);
+            logger.info(`✅ Started collaboration: ${result.rows[0].id}`);
             return this.mapCollaboration(result.rows[0]);
         } finally {
             client.release();

@@ -11,6 +11,7 @@
  */
 
 import { db } from '../config/database.js';
+import { logger } from '../utils/logger.js';
 // Re-export types from shared types file (to avoid circular dependency with projectSwitchValidator)
 export type { ProjectInfo, CreateProjectRequest, SessionState } from '../types/project.js';
 // Import for internal use
@@ -25,7 +26,7 @@ class ProjectHandler {
    * List all projects with optional statistics
    */
   async listProjects(includeStats: boolean = true): Promise<ProjectInfo[]> {
-    console.log('📋 Listing all projects...');
+    logger.info('📋 Listing all projects...');
 
     try {
       let sql = `
@@ -67,11 +68,11 @@ class ProjectHandler {
         isActive: currentProjectId === row.id
       }));
 
-      console.log(`✅ Found ${projects.length} projects`);
+      logger.info(`✅ Found ${projects.length} projects`);
       return projects;
 
     } catch (error) {
-      console.error('❌ Failed to list projects:', error);
+      logger.error('❌ Failed to list projects', error as Error);
       throw new Error(`Failed to list projects: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
@@ -80,7 +81,7 @@ class ProjectHandler {
    * Create a new project
    */
   async createProject(request: CreateProjectRequest): Promise<ProjectInfo> {
-    console.log(`🆕 Creating new project: "${request.name}"`);
+    logger.info(`🆕 Creating new project: "${request.name}"`);
 
     try {
       // Validate name uniqueness
@@ -116,11 +117,11 @@ class ProjectHandler {
         contextCount: 0
       };
 
-      console.log(`✅ Created project: ${project.id}`);
+      logger.info(`✅ Created project: ${project.id}`);
       return project;
 
     } catch (error) {
-      console.error('❌ Failed to create project:', error);
+      logger.error('❌ Failed to create project', error as Error);
       throw new Error(`Failed to create project: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
@@ -129,7 +130,7 @@ class ProjectHandler {
    * Get project details by ID or name
    */
   async getProject(identifier: string): Promise<ProjectInfo | null> {
-    console.log(`🔍 Getting project: "${identifier}"`);
+    logger.info(`🔍 Getting project: "${identifier}"`);
 
     try {
       // Try by ID first (UUID format), then by name
@@ -171,11 +172,11 @@ class ProjectHandler {
         isActive: currentProjectId === row.id
       };
 
-      console.log(`✅ Found project: ${project.name} (${project.contextCount} contexts)`);
+      logger.info(`✅ Found project: ${project.name} (${project.contextCount} contexts)`);
       return project;
 
     } catch (error) {
-      console.error('❌ Failed to get project:', error);
+      logger.error('❌ Failed to get project', error as Error);
       throw new Error(`Failed to get project: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
@@ -184,7 +185,7 @@ class ProjectHandler {
    * Set the current active project for the session
    */
   setCurrentProject(projectId: string, sessionId: string = this.defaultSessionId, manualOverride: boolean = false): void {
-    console.log(`🔄 Setting current project to: ${projectId} (session: ${sessionId}, manual: ${manualOverride})`);
+    logger.info(`🔄 Setting current project to: ${projectId} (session: ${sessionId}, manual: ${manualOverride})`);
 
     const existing = this.sessionStates.get(sessionId) || {};
     this.sessionStates.set(sessionId, {
@@ -194,7 +195,7 @@ class ProjectHandler {
       manualOverride  // Store whether this was a manual switch
     });
 
-    console.log(`✅ Current project set for session ${sessionId}${manualOverride ? ' (manual override)' : ''}`);
+    logger.info(`✅ Current project set for session ${sessionId}${manualOverride ? ' (manual override)' : ''}`);
   }
 
   /**
@@ -202,10 +203,10 @@ class ProjectHandler {
    * Used when primary project changes to ensure sessions sync with new default
    */
   clearSessionCache(): void {
-    console.log('🗑️  Clearing all session caches');
+    logger.info('🗑️  Clearing all session caches');
     const sessionCount = this.sessionStates.size;
     this.sessionStates.clear();
-    console.log(`✅ Cleared ${sessionCount} session cache(s)`);
+    logger.info(`✅ Cleared ${sessionCount} session cache(s)`);
   }
 
   /**
@@ -228,7 +229,7 @@ class ProjectHandler {
 
     if (result.rows.length === 0) {
       // Clear invalid cached state
-      console.warn(`Clearing stale project cache for session ${sessionId}: project ${cachedId} no longer exists`);
+      logger.warn(`Clearing stale project cache for session ${sessionId}: project ${cachedId} no longer exists`);
       this.sessionStates.delete(sessionId);
       return null;
     }
@@ -253,7 +254,7 @@ class ProjectHandler {
    * Enhanced with TS012 validation framework
    */
   async switchProject(identifier: string, sessionId: string = this.defaultSessionId): Promise<ProjectInfo> {
-    console.log(`🔄 Switching to project: "${identifier}" (session: ${sessionId.substring(0, 8)}...)`);
+    logger.info(`🔄 Switching to project: "${identifier}" (session: ${sessionId.substring(0, 8)}...)`);
 
     // Basic validation for backwards compatibility
     const project = await this.getProject(identifier);
@@ -264,7 +265,7 @@ class ProjectHandler {
     // Mark as manual override so initializeSession() won't override this choice
     this.setCurrentProject(project.id, sessionId, true);
 
-    console.log(`✅ Switched to project: ${project.name}`);
+    logger.info(`✅ Switched to project: ${project.name}`);
     return { ...project, isActive: true };
   }
 
@@ -285,12 +286,12 @@ class ProjectHandler {
    * Initialize session with default project (if available)
    */
   async initializeSession(sessionId: string = this.defaultSessionId): Promise<ProjectInfo | null> {
-    console.log(`🔄 Initializing session: ${sessionId}`);
+    logger.info(`🔄 Initializing session: ${sessionId}`);
 
     // Get all projects first
     const projects = await this.listProjects(false);
     if (projects.length === 0) {
-      console.log('⚠️  No projects available');
+      logger.info('⚠️  No projects available');
       return null;
     }
 
@@ -301,7 +302,7 @@ class ProjectHandler {
     if (sessionState?.manualOverride && existing) {
       const manualProject = await this.getProject(existing);
       if (manualProject) {
-        console.log(`✅ Respecting manual project switch: ${manualProject.name}`);
+        logger.info(`✅ Respecting manual project switch: ${manualProject.name}`);
         return { ...manualProject, isActive: true };
       }
     }
@@ -310,18 +311,18 @@ class ProjectHandler {
     const primaryProject = projects.find(p => p.metadata && p.metadata.is_primary === true);
 
     if (primaryProject) {
-      console.log(`✅ Found primary project: ${primaryProject.name}`);
+      logger.info(`✅ Found primary project: ${primaryProject.name}`);
 
       // Check if we're already on the primary project
       if (existing === primaryProject.id) {
-        console.log(`✅ Already on primary project: ${primaryProject.name}`);
+        logger.info(`✅ Already on primary project: ${primaryProject.name}`);
         return { ...primaryProject, isActive: true };
       }
 
       // Switch from cached project to primary
       if (existing) {
         const old = await this.getProject(existing);
-        console.log(`🔄 Switching from ${old?.name} to primary project: ${primaryProject.name}`);
+        logger.info(`🔄 Switching from ${old?.name} to primary project: ${primaryProject.name}`);
       }
 
       this.setCurrentProject(primaryProject.id, sessionId);
@@ -332,7 +333,7 @@ class ProjectHandler {
     if (existing) {
       const project = await this.getProject(existing);
       if (project) {
-        console.log(`✅ Using cached project: ${project.name} (no primary set)`);
+        logger.info(`✅ Using cached project: ${project.name} (no primary set)`);
         return project;
       }
     }
@@ -340,15 +341,15 @@ class ProjectHandler {
     // Priority 3: Fall back to system defaults
     let defaultProject = projects.find(p => p.name === 'aidis-bootstrap');
     if (defaultProject) {
-      console.log(`✅ Using system default project: ${defaultProject.name}`);
+      logger.info(`✅ Using system default project: ${defaultProject.name}`);
     } else {
       // Priority 4: Use first available project
       defaultProject = projects[0];
-      console.log(`✅ Using first available project: ${defaultProject.name}`);
+      logger.info(`✅ Using first available project: ${defaultProject.name}`);
     }
 
     this.setCurrentProject(defaultProject.id, sessionId);
-    console.log(`✅ Session initialized with project: ${defaultProject.name}`);
+    logger.info(`✅ Session initialized with project: ${defaultProject.name}`);
 
     return { ...defaultProject, isActive: true };
   }
@@ -357,7 +358,7 @@ class ProjectHandler {
    * Update project details
    */
   async updateProject(projectId: string, updates: Partial<CreateProjectRequest>): Promise<ProjectInfo> {
-    console.log(`📝 Updating project: ${projectId}`);
+    logger.info(`📝 Updating project: ${projectId}`);
 
     try {
       // Build dynamic update query
@@ -433,11 +434,11 @@ class ProjectHandler {
         isActive: currentProjectId === row.id
       };
 
-      console.log(`✅ Updated project: ${project.name}`);
+      logger.info(`✅ Updated project: ${project.name}`);
       return project;
 
     } catch (error) {
-      console.error('❌ Failed to update project:', error);
+      logger.error('❌ Failed to update project', error as Error);
       throw new Error(`Failed to update project: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
