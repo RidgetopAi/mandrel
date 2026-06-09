@@ -47,7 +47,7 @@ describeStreaming('SSE Integration Tests', () => {
     app.use(express.json());
     
     // Mock auth middleware for testing - set user before routes
-    app.use((req: any, res, next) => {
+    app.use((req: any, _res, next) => {
       req.user = { id: testUserId, role: 'admin' };
       next();
     });
@@ -439,7 +439,7 @@ describeStreaming('SSE Integration Tests', () => {
     it('should reject non-admin users from clients endpoint', async () => {
       const regularUserApp = express();
       regularUserApp.use(express.json());
-      regularUserApp.use((req: any, res, next) => {
+      regularUserApp.use((req: any, _res, next) => {
         req.user = { id: 'regular-user', role: 'user' };
         next();
       });

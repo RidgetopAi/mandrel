@@ -15,9 +15,10 @@
     "sourceMap": true,
     "removeComments": true,
     "noImplicitAny": true,
-    "noImplicitReturns": false,
+    "noImplicitReturns": true,
     "noUnusedLocals": false,
-    "noUnusedParameters": false,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
     "exactOptionalPropertyTypes": false,
     "baseUrl": "./src",
     "paths": {
