@@ -5,10 +5,9 @@
 
 import { Router, Request, Response } from 'express';
 import { authenticateToken } from '../middleware/auth';
-import { validateBody, validateQuery, validationStats } from '../middleware/validation';
-import { SchemaRegistry, validateData, ValidationError } from '../validation/schemas';
+import { validationStats } from '../middleware/validation';
+import { SchemaRegistry, validateData } from '../validation/schemas';
 import { logger } from '../config/logger';
-import { z } from 'zod';
 
 const router = Router();
 

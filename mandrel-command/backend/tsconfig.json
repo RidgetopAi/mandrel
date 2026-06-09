@@ -16,7 +16,7 @@
     "removeComments": true,
     "noImplicitAny": true,
     "noImplicitReturns": true,
-    "noUnusedLocals": false,
+    "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
     "exactOptionalPropertyTypes": false,

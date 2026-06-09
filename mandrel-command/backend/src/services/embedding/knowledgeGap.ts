@@ -5,7 +5,6 @@
  */
 
 import { db } from '../../database/connection.js';
-import { resolveProjectId } from './core.js';
 import { logger } from '../../config/logger';
 import type { 
   EmbeddingScope, 
