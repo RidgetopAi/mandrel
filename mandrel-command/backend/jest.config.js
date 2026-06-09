@@ -1,8 +1,12 @@
 module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
-  roots: ['<rootDir>/src', '<rootDir>/'],
-  testMatch: ['**/*.test.ts', '**/test-*.ts'],
+  roots: ['<rootDir>/src'],
+  // Real suites are *.test.ts under src/. The previous '**/test-*.ts' pattern
+  // also matched test-setup.ts and compiled dist/test-*.d.ts files, which have
+  // no tests and were reported as failed suites.
+  testMatch: ['**/*.test.ts'],
+  testPathIgnorePatterns: ['/node_modules/', '/dist/'],
   transform: {
     '^.+\\.ts$': 'ts-jest',
   },

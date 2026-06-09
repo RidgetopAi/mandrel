@@ -12,7 +12,10 @@ const McpContentSchema = z.object({
   data: z.string().optional(),
   mimeType: z.string().optional(),
   resource: z.object({
-    uri: z.string(),
+    // uri is optional at the schema level so the content-specific check below
+    // produces the friendly "missing resource.uri" message (consistent with
+    // the text/image cases) instead of a generic Zod path error.
+    uri: z.string().optional(),
     name: z.string().optional(),
     description: z.string().optional(),
   }).optional(),

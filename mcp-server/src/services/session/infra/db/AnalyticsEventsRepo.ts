@@ -13,14 +13,15 @@ export const AnalyticsEventsRepo = {
     sessionId: string,
     eventType: 'session_start' | 'session_end',
     projectId?: string | null,
-    metadata: Record<string, any> = {}
+    metadata: Record<string, any> = {},
+    durationMs?: number | null
   ): Promise<string | null> {
     try {
       const sql = `
         INSERT INTO analytics_events (
-          actor, project_id, session_id, event_type, status, metadata, tags
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7)
-        RETURNING id
+          actor, project_id, session_id, event_type, status, metadata, tags, duration_ms
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        RETURNING event_id
       `;
 
       const status = eventType === 'session_start' ? 'open' : 'closed';
@@ -33,10 +34,11 @@ export const AnalyticsEventsRepo = {
         eventType,
         status,
         JSON.stringify(metadata),
-        tags
+        tags,
+        durationMs ?? null
       ]);
 
-      return result.rows[0]?.id || null;
+      return result.rows[0]?.event_id || null;
 
     } catch (error) {
       logger.error('Failed to insert session event', error instanceof Error ? error : new Error('Unknown error'), {
@@ -67,7 +69,7 @@ export const AnalyticsEventsRepo = {
         INSERT INTO analytics_events (
           actor, project_id, session_id, event_type, status, metadata, tags
         ) VALUES ($1, $2, $3, $4, $5, $6, $7)
-        RETURNING id
+        RETURNING event_id
       `;
 
       const result = await db.query(sql, [
@@ -80,7 +82,7 @@ export const AnalyticsEventsRepo = {
         options.tags || []
       ]);
 
-      return result.rows[0]?.id || null;
+      return result.rows[0]?.event_id || null;
 
     } catch (error) {
       logger.error('Failed to insert analytics event', error instanceof Error ? error : new Error('Unknown error'), {

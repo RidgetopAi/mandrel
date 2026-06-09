@@ -330,7 +330,11 @@ describe('SSE Error Scenarios and Recovery (Frontend)', () => {
         at: new Date().toISOString(),
       };
 
-      expect(() => es.simulateEvent('unknown', event)).not.toThrow();
+      // The client only registers listeners for known entity names, so an
+      // unrecognised entity reaches the cache-invalidation switch via a
+      // registered transport listener carrying an unknown `entity` in its
+      // payload. That path hits the default branch and warns (without throwing).
+      expect(() => es.simulateEvent('contexts', event)).not.toThrow();
       expect(console.warn).toHaveBeenCalledWith(
         'Unknown entity type for cache invalidation:',
         'unknown'
