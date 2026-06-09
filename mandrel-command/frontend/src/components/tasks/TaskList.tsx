@@ -3,6 +3,7 @@ import { Table, Tag, Button, Space, Modal, Popconfirm, Select, Input, Alert, mes
 import { EditOutlined, DeleteOutlined, EyeOutlined, UserOutlined, FolderOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import TaskForm from './TaskForm';
+import { logger } from '../../utils/logger';
 
 const { Search } = Input;
 const { Option } = Select;
@@ -160,7 +161,7 @@ const TaskList: React.FC<TaskListProps> = ({
         window.location.reload(); // Simple reload to refresh the list
       }
     } catch (error) {
-      console.error('Bulk move failed:', error);
+      logger.error('Bulk move failed:', error);
       message.error('Failed to move tasks');
     } finally {
       setMovingTasks(false);

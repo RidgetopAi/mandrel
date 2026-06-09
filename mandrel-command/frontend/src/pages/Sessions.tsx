@@ -33,6 +33,7 @@ import SessionEditModal from '../components/sessions/SessionEditModal';
 import StartSessionModal from '../components/sessions/StartSessionModal';
 import { sessionsClient } from '../api/sessionsClient';
 import type { Session } from '../types/session';
+import { logger } from '../utils/logger';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -61,7 +62,7 @@ const Sessions: React.FC = () => {
     const sessionsList = sessionsResponse?.sessions || [];
 
     // DIAGNOSTIC: Log raw data to debug 112 active issue
-    console.log('[Sessions] Raw sessions data received:', {
+    logger.log('[Sessions] Raw sessions data received:', {
       total: sessionsList.length,
       sampleEndedAt: sessionsList.slice(0, 3).map(s => ({
         title: s.title?.substring(0, 20),
@@ -103,10 +104,10 @@ const Sessions: React.FC = () => {
     const activeSessions = activeSessionsList.length;
 
     // Debug logging
-    console.log('[Stats] API total:', apiTotal);
-    console.log('[Stats] Sessions array length:', sessionsArray.length);
-    console.log('[Stats] Active sessions (no ended_at):', activeSessions);
-    console.log('[Stats] Sample ended_at values:', sessionsArray.slice(0, 5).map(s => ({
+    logger.log('[Stats] API total:', apiTotal);
+    logger.log('[Stats] Sessions array length:', sessionsArray.length);
+    logger.log('[Stats] Active sessions (no ended_at):', activeSessions);
+    logger.log('[Stats] Sample ended_at values:', sessionsArray.slice(0, 5).map(s => ({
       title: s.title?.substring(0, 20),
       ended_at: s.ended_at,
       has_ended: !!s.ended_at
@@ -142,7 +143,7 @@ const Sessions: React.FC = () => {
   // Handle error state
   useEffect(() => {
     if (error) {
-      console.error('Error loading sessions:', error);
+      logger.error('Error loading sessions:', error);
       message.error('Failed to load sessions');
     }
   }, [error]);
@@ -151,7 +152,7 @@ const Sessions: React.FC = () => {
   const fetchActiveSessions = useCallback(async () => {
     try {
       const active = await sessionsClient.getAllActiveSessions();
-      console.log(`[Sessions] Fetched ${active.length} active sessions:`, active.map(s => ({
+      logger.log(`[Sessions] Fetched ${active.length} active sessions:`, active.map(s => ({
         id: s.id?.substring(0, 8),
         title: s.title,
         started_at: s.started_at,
@@ -162,15 +163,15 @@ const Sessions: React.FC = () => {
       // Auto-select the first active session if only one exists
       if (active.length === 1) {
         setSelectedActiveSessionId(active[0].id);
-        console.log(`[Sessions] Auto-selected session: ${active[0].title}`);
+        logger.log(`[Sessions] Auto-selected session: ${active[0].title}`);
       } else if (active.length === 0) {
         setSelectedActiveSessionId(null);
-        console.log('[Sessions] No active sessions');
+        logger.log('[Sessions] No active sessions');
       } else {
-        console.log(`[Sessions] Multiple active sessions (${active.length}), user must select`);
+        logger.log(`[Sessions] Multiple active sessions (${active.length}), user must select`);
       }
     } catch (error) {
-      console.error('Failed to fetch active sessions:', error);
+      logger.error('Failed to fetch active sessions:', error);
     }
   }, []);
 
@@ -220,9 +221,9 @@ const Sessions: React.FC = () => {
           message.success('Session ended successfully!');
           await refetch(); // Refresh the sessions list
           await fetchActiveSessions(); // Manually refresh active sessions
-          console.log('Session ended:', endedSession);
+          logger.log('Session ended:', endedSession);
         } catch (error) {
-          console.error('Failed to end session:', error);
+          logger.error('Failed to end session:', error);
           message.error(`Failed to end session: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
       },
@@ -502,7 +503,7 @@ const Sessions: React.FC = () => {
             <Button
               icon={<ReloadOutlined />}
               onClick={() => {
-                console.log('[Sessions] Hard refresh triggered');
+                logger.log('[Sessions] Hard refresh triggered');
                 refetch();
               }}
               loading={loading}

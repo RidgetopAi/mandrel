@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { theme as antdTheme } from 'antd';
 import type { ThemeConfig } from 'antd';
+import { logger } from '../utils/logger';
 
 type ThemeMode = 'light' | 'dark';
 
@@ -84,7 +85,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
         return stored;
       }
     } catch (error) {
-      console.error('Failed to read theme from localStorage:', error);
+      logger.error('Failed to read theme from localStorage:', error);
     }
     return 'light';
   });
@@ -119,7 +120,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
           }
         }
       } catch (error) {
-        console.error('Failed to load theme preference:', error);
+        logger.error('Failed to load theme preference:', error);
       } finally {
         setIsInitialized(true);
       }
@@ -137,7 +138,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
     try {
       localStorage.setItem('app_theme', mode);
     } catch (error) {
-      console.error('Failed to save theme to localStorage:', error);
+      logger.error('Failed to save theme to localStorage:', error);
     }
 
     // Apply theme to document root

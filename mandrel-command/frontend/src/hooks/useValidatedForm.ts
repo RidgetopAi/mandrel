@@ -9,6 +9,7 @@ import { z } from 'zod';
 import { validateData, validatePartial, formatFieldErrors, type FormFieldError } from '../validation/schemas';
 import { useErrorHandler } from './useErrorHandler';
 import { mandrelApi } from '../api/mandrelApiClient';
+import { logger } from '../utils/logger';
 
 export interface ValidatedFormConfig<T> {
   schema: z.ZodSchema<T>;
@@ -137,7 +138,7 @@ export const useValidatedForm = <T extends Record<string, any>>(
 
       return isValid;
     } catch (error) {
-      console.warn('Field validation error:', error);
+      logger.warn('Field validation error:', error);
       return false;
     }
   }, [form, finalConfig.schema]);
@@ -205,7 +206,7 @@ export const useValidatedForm = <T extends Record<string, any>>(
       // For now, return success
       return { success: true };
     } catch (error) {
-      console.warn('Server validation error:', error);
+      logger.warn('Server validation error:', error);
       return {
         success: false,
         errors: { general: 'Server validation failed' },

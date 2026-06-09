@@ -5,6 +5,7 @@ import { LoginRequest } from '../api/generated/models/LoginRequest';
 import { User } from '../api/generated/models/User';
 import { useAuthStore } from '../stores/authStore';
 import { OpenAPI } from '../api/generated/core/OpenAPI';
+import { logger } from '../utils/logger';
 
 // Configure OpenAPI base settings
 if (process.env.REACT_APP_API_URL) {
@@ -55,7 +56,7 @@ export const useLogin = () => {
       queryClient.setQueryData(['auth', 'profile'], data.user);
     },
     onError: (error: any) => {
-      console.error('Login failed:', error);
+      logger.error('Login failed:', error);
       useAuthStore.getState().setError(error.body?.message || 'Login failed');
     },
   });
@@ -70,7 +71,7 @@ export const useLogout = () => {
         await AuthenticationService.postAuthLogout();
       } catch (error) {
         // Even if logout fails on server, clear local state
-        console.error('Logout error:', error);
+        logger.error('Logout error:', error);
       }
     },
     onSettled: () => {

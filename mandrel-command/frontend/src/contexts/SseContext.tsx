@@ -4,6 +4,7 @@ import { useAuthContext } from './AuthContext';
 import { useProjectContext } from './ProjectContext';
 import { startSse, SseHandle } from '../lib/sse';
 import { AidisEntity } from '../types/events';
+import { logger } from '../utils/logger';
 
 interface SseContextValue {
   isConnected: boolean;
@@ -45,7 +46,7 @@ export const SseProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     if (handle.unsupported) {
       setIsSupported(false);
-      console.warn('SSE not supported, falling back to polling');
+      logger.warn('SSE not supported, falling back to polling');
       // TODO: Enable React Query polling as fallback
     }
 

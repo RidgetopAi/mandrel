@@ -36,6 +36,7 @@ import type { Project, ProjectStats as ProjectStatsType } from '../types/project
 import type { Session } from '../types/session';
 import type { CreateProjectRequest, UpdateProjectRequest } from '../api/generated';
 import '../components/projects/projects.css';
+import { logger } from '../utils/logger';
 
 const { Title, Text } = Typography;
 const { Search } = Input;
@@ -110,7 +111,7 @@ const Projects: React.FC = () => {
           refetchAllData();
         } catch (error) {
           message.error('Failed to delete project');
-          console.error('Delete project error:', error);
+          logger.error('Delete project error:', error);
         }
       }
     });
@@ -138,7 +139,7 @@ const Projects: React.FC = () => {
       refetchAllData();
     } catch (error) {
       message.error(editingProject ? 'Failed to update project' : 'Failed to create project');
-      console.error('Form submit error:', error);
+      logger.error('Form submit error:', error);
     }
   };
 
@@ -148,7 +149,7 @@ const Projects: React.FC = () => {
   };
 
   const handleViewSession = (session: Session) => {
-    console.log('Navigating to session:', session.id);
+    logger.log('Navigating to session:', session.id);
     navigate(`/sessions/${session.id}`);
   };
 

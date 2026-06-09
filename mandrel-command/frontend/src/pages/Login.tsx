@@ -5,6 +5,7 @@ import { UserOutlined, LockOutlined, DatabaseOutlined } from '@ant-design/icons'
 import { useAuthContext } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { LoginRequest } from '../api/generated/models/LoginRequest';
+import { logger } from '../utils/logger';
 
 const { Title, Text } = Typography;
 
@@ -36,7 +37,7 @@ const Login: React.FC = () => {
       await login(values);
     } catch (error) {
       // Error handling is done in AuthContext
-      console.error('Login failed:', error);
+      logger.error('Login failed:', error);
     }
   };
 

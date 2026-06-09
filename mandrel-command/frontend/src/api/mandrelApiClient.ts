@@ -5,6 +5,7 @@
  */
 
 import { z } from 'zod';
+import { logger } from '../utils/logger';
 
 // ================================
 // CORE SCHEMAS & TYPES
@@ -113,7 +114,7 @@ export class MandrelApiClient {
           this.retryConfig.maxDelay
         );
 
-        console.warn(`API request failed (attempt ${attempt + 1}/${this.retryConfig.maxRetries + 1}). Retrying in ${delay}ms...`, {
+        logger.warn(`API request failed (attempt ${attempt + 1}/${this.retryConfig.maxRetries + 1}). Retrying in ${delay}ms...`, {
           operation: operationName,
           error: lastError.message,
           requestId: lastError.requestId
@@ -236,7 +237,7 @@ export class MandrelApiClient {
       if (options?.validateResponse !== false) {
         const validation = McpResponseSchema.safeParse(responseData);
         if (!validation.success) {
-          console.warn('Response validation failed:', validation.error.issues);
+          logger.warn('Response validation failed:', validation.error.issues);
           // Don't throw, just log warning for backward compatibility
         }
       }

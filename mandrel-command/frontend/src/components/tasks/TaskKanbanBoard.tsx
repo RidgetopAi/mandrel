@@ -31,6 +31,7 @@ import {
 } from '@ant-design/icons';
 import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
 import TaskForm from './TaskForm';
+import { logger } from '../../utils/logger';
 
 const { Text, Paragraph } = Typography;
 const { Search } = Input;
@@ -202,7 +203,7 @@ const TaskKanbanBoard: React.FC<TaskKanbanBoardProps> = ({
         await onUpdateTask(taskId, { status: newStatus });
       }
     } catch (error) {
-      console.error('Failed to update task status:', error);
+      logger.error('Failed to update task status:', error);
     }
   };
 

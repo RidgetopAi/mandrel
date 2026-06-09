@@ -8,6 +8,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { sessionRecovery } from '../services/sessionRecovery';
 import type { Session } from '../types/session';
+import { logger } from '../utils/logger';
 
 interface SessionRecoveryState {
   currentSession: Session | null;
@@ -52,7 +53,7 @@ export const useSessionRecovery = (): UseSessionRecoveryReturn => {
     // Initial sync
     if (!isInitialized) {
       setIsInitialized(true);
-      sessionRecovery.forceSync().catch(console.error);
+      sessionRecovery.forceSync().catch(logger.error);
     }
 
     return unsubscribe;
@@ -64,7 +65,7 @@ export const useSessionRecovery = (): UseSessionRecoveryReturn => {
     try {
       await sessionRecovery.forceSync();
     } catch (error) {
-      console.error('Force sync failed:', error);
+      logger.error('Force sync failed:', error);
     } finally {
       setState(prev => ({ ...prev, isLoading: false }));
     }
@@ -76,7 +77,7 @@ export const useSessionRecovery = (): UseSessionRecoveryReturn => {
     try {
       await sessionRecovery.reconnect();
     } catch (error) {
-      console.error('Reconnect failed:', error);
+      logger.error('Reconnect failed:', error);
     } finally {
       setState(prev => ({ ...prev, isLoading: false }));
     }

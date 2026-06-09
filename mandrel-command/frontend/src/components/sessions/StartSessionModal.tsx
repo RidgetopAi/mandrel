@@ -13,6 +13,7 @@ import {
 import { PlayCircleOutlined, CloseOutlined } from '@ant-design/icons';
 import { sessionsClient } from '../../api/sessionsClient';
 import { useProjects } from '../../hooks/useProjects';
+import { logger } from '../../utils/logger';
 
 const { Text } = Typography;
 const { TextArea } = Input;
@@ -64,12 +65,12 @@ const StartSessionModal: React.FC<StartSessionModalProps> = ({
       });
 
       message.success('Session started successfully!');
-      console.log('New session created:', newSession);
+      logger.log('New session created:', newSession);
 
       form.resetFields();
       onSuccess();
     } catch (error) {
-      console.error('Failed to start session:', error);
+      logger.error('Failed to start session:', error);
       message.error(`Failed to start session: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setLoading(false);

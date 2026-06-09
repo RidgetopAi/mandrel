@@ -8,6 +8,7 @@ import TaskList from '../components/tasks/TaskList';
 import TaskCardList from '../components/tasks/TaskCardList';
 import TaskForm from '../components/tasks/TaskForm';
 import TaskAnalytics from '../components/analytics/TaskAnalytics';
+import { logger } from '../utils/logger';
 // import TaskDependencyGraph from '../components/tasks/TaskDependencyGraph';
 // Define types locally for compatibility
 interface Task {
@@ -61,7 +62,7 @@ const Tasks: React.FC = () => {
       });
       setTasks(response.data.tasks || []);
     } catch (error) {
-      console.error('Failed to load tasks:', error);
+      logger.error('Failed to load tasks:', error);
       notification.error({
         message: 'Loading Error',
         description: 'Failed to load tasks.'
@@ -78,7 +79,7 @@ const Tasks: React.FC = () => {
         await loadTasks();
       }
     } catch (error) {
-      console.error('Failed to load initial data:', error);
+      logger.error('Failed to load initial data:', error);
       notification.error({
         message: 'Loading Error',
         description: 'Failed to load initial data.'
@@ -105,7 +106,7 @@ const Tasks: React.FC = () => {
   // Listen for SSE task updates
   useEffect(() => {
     const handleTaskUpdate = () => {
-      console.log('SSE task update event received, reloading tasks...');
+      logger.log('SSE task update event received, reloading tasks...');
       loadTasks();
     };
 
@@ -160,7 +161,7 @@ const Tasks: React.FC = () => {
         description: `Task "${response.data.task.title}" has been created successfully.`
       });
     } catch (error) {
-      console.error('Failed to create task:', error);
+      logger.error('Failed to create task:', error);
       notification.error({
         message: 'Creation Error',
         description: 'Failed to create task.'
@@ -175,7 +176,7 @@ const Tasks: React.FC = () => {
       await apiService.put(`/tasks/${taskId}`, updates);
       // Updates will be handled via WebSocket
     } catch (error) {
-      console.error('Failed to update task:', error);
+      logger.error('Failed to update task:', error);
       notification.error({
         message: 'Update Error',
         description: 'Failed to update task.'
@@ -188,7 +189,7 @@ const Tasks: React.FC = () => {
       await apiService.delete(`/tasks/${taskId}`);
       // Deletion will be handled via WebSocket
     } catch (error) {
-      console.error('Failed to delete task:', error);
+      logger.error('Failed to delete task:', error);
       notification.error({
         message: 'Deletion Error',
         description: 'Failed to delete task.'
@@ -201,7 +202,7 @@ const Tasks: React.FC = () => {
       await apiService.post('/tasks/bulk-update', { updates });
       // Updates will be handled via WebSocket (tasks_bulk_updated event)
     } catch (error) {
-      console.error('Failed to bulk update tasks:', error);
+      logger.error('Failed to bulk update tasks:', error);
       notification.error({
         message: 'Update Error',
         description: 'Failed to update task status.'

@@ -28,6 +28,7 @@ import { useProject, useProjectSessions } from '../hooks/useProjects';
 import SessionList from '../components/projects/SessionList';
 import type { Session } from '../types/session';
 import { useTheme } from '../contexts/ThemeContext';
+import { logger } from '../utils/logger';
 
 const { Title, Text, Paragraph } = Typography;
 const { TabPane } = Tabs;
@@ -57,7 +58,7 @@ const ProjectDetail: React.FC = () => {
   // Handle errors
   React.useEffect(() => {
     if (projectError) {
-      console.error('Load project error:', projectError);
+      logger.error('Load project error:', projectError);
       message.error('Failed to load project details');
       navigate('/projects');
     }
@@ -65,7 +66,7 @@ const ProjectDetail: React.FC = () => {
 
   React.useEffect(() => {
     if (sessionsError) {
-      console.error('Load sessions error:', sessionsError);
+      logger.error('Load sessions error:', sessionsError);
       message.error('Failed to load project sessions');
     }
   }, [sessionsError]);

@@ -20,6 +20,7 @@ import {
 import type { ColumnsType } from 'antd/es/table';
 import { apiService } from '../../services/api';
 import SessionDetailView from './SessionDetailView';
+import { logger } from '../../utils/logger';
 
 const { Title, Text } = Typography;
 
@@ -68,7 +69,7 @@ const SessionSummaries: React.FC<SessionSummariesProps> = ({
       setError(null);
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to load session summaries');
-      console.error('Failed to fetch session summaries:', err);
+      logger.error('Failed to fetch session summaries:', err);
     } finally {
       setLoading(false);
     }

@@ -13,6 +13,7 @@ import {
 } from '@ant-design/icons';
 import { apiService } from '../../services/api';
 import dayjs from 'dayjs';
+import { logger } from '../../utils/logger';
 
 /**
  * TaskAnalytics Component
@@ -121,7 +122,7 @@ const TaskAnalytics: React.FC<TaskAnalyticsProps> = ({
         setSessionAnalytics(null);
       }
     } catch (error) {
-      console.error('Failed to load analytics data:', error);
+      logger.error('Failed to load analytics data:', error);
       notification.error({
         message: 'Loading Error',
         description: 'Failed to load task analytics data.'

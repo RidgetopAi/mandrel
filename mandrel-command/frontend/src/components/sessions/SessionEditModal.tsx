@@ -17,6 +17,7 @@ import type { Session, UpdateSessionRequest } from '../../types/session';
 import { useUpdateSession, useProjects } from '../../hooks/useProjects';
 import { sessionsClient } from '../../api/sessionsClient';
 import GitSyncModal from './GitSyncModal';
+import { logger } from '../../utils/logger';
 
 const { Text, Title } = Typography;
 const { TextArea } = Input;
@@ -120,7 +121,7 @@ const SessionEditModal: React.FC<SessionEditModalProps> = ({
           onClose();
         },
         onError: (error: any) => {
-          console.error('Failed to update session:', error);
+          logger.error('Failed to update session:', error);
           message.error(error.message || 'Failed to update session');
         }
       }
@@ -148,7 +149,7 @@ const SessionEditModal: React.FC<SessionEditModalProps> = ({
         setSyncResult(`❌ ${result.error || 'Failed to sync files'}`);
       }
     } catch (error) {
-      console.error('File sync error:', error);
+      logger.error('File sync error:', error);
       message.error('Failed to sync files from git');
       setSyncResult(`❌ ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {

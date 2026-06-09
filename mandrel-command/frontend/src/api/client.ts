@@ -4,6 +4,7 @@
  */
 
 import { OpenAPI } from './generated';
+import { logger } from '../utils/logger';
 
 const resolvedBase =
   process.env.REACT_APP_API_BASE_URL ||
@@ -39,7 +40,7 @@ OpenAPI.HEADERS = async () => {
       }
     }
   } catch (error) {
-    console.warn('Failed to attach project header for OpenAPI client:', error);
+    logger.warn('Failed to attach project header for OpenAPI client:', error);
   }
 
   return headers;

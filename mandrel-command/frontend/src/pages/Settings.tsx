@@ -7,6 +7,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useSettings } from '../hooks/useSettings';
 import useFeatureFlag from '../hooks/useFeatureFlag';
 import { useQueryClient } from '@tanstack/react-query';
+import { logger } from '../utils/logger';
 
 const { Title, Text } = Typography;
 
@@ -66,7 +67,7 @@ const Settings: React.FC = () => {
         message.error(data.message || 'Failed to update profile');
       }
     } catch (error) {
-      console.error('Failed to save profile:', error);
+      logger.error('Failed to save profile:', error);
       message.error('Failed to save profile. Please try again.');
     } finally {
       setIsSavingProfile(false);
@@ -79,7 +80,7 @@ const Settings: React.FC = () => {
         await setDefaultProject(projectName);
         message.success(`Default project set to: ${projectName}`);
       } catch (error) {
-        console.error('Failed to set default project:', error);
+        logger.error('Failed to set default project:', error);
         message.error('Failed to set default project in backend. Local settings updated.');
       }
     } else {
@@ -115,7 +116,7 @@ const Settings: React.FC = () => {
         message.error(data.message || 'Failed to update theme');
       }
     } catch (error) {
-      console.error('Failed to update theme:', error);
+      logger.error('Failed to update theme:', error);
       // Revert theme on error
       setThemeMode(checked ? 'light' : 'dark');
       message.error('Failed to update theme. Please try again.');
@@ -158,7 +159,7 @@ const Settings: React.FC = () => {
         }
       }
     } catch (error) {
-      console.error('Failed to change password:', error);
+      logger.error('Failed to change password:', error);
       message.error('Failed to change password. Please try again.');
     } finally {
       setIsSavingPassword(false);
@@ -194,7 +195,7 @@ const Settings: React.FC = () => {
             message.error(data.message || 'Failed to revoke sessions');
           }
         } catch (error) {
-          console.error('Failed to revoke sessions:', error);
+          logger.error('Failed to revoke sessions:', error);
           message.error('Failed to revoke sessions. Please try again.');
         }
       },

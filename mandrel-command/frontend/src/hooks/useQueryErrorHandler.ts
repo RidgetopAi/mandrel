@@ -5,6 +5,7 @@
 
 import { useCallback } from 'react';
 import { reportError as sentryReportError, addBreadcrumb } from '../config/sentry';
+import { logger } from '../utils/logger';
 
 interface QueryErrorContext {
   queryKey?: string;
@@ -15,7 +16,7 @@ interface QueryErrorContext {
 export const useQueryErrorHandler = () => {
   const handleQueryError = useCallback((error: any, context?: QueryErrorContext) => {
     // Log for development debugging
-    console.error('React Query Error:', error, context);
+    logger.error('React Query Error:', error, context);
 
     // Add breadcrumb for debugging
     addBreadcrumb(
@@ -71,7 +72,7 @@ export const globalQueryErrorHandler = (error: any) => {
     return;
   }
 
-  console.error('Global React Query Error:', error);
+  logger.error('Global React Query Error:', error);
 
   // Report unexpected errors to Sentry
   addBreadcrumb('Global React Query Error', 'http', {

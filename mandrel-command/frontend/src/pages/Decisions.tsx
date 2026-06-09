@@ -14,6 +14,7 @@ import { DecisionApi } from '../services/decisionApi';
 import DecisionCard from '../components/decisions/DecisionCard';
 import DecisionFilters from '../components/decisions/DecisionFilters';
 import DecisionDetail from '../components/decisions/DecisionDetail';
+import { logger } from '../utils/logger';
 
 const { Title, Text } = Typography;
 
@@ -86,7 +87,7 @@ const Decisions: React.FC = () => {
 
   useEffect(() => {
     if (decisionsError) {
-      console.error('Failed to load decisions:', decisionsError);
+      logger.error('Failed to load decisions:', decisionsError);
       setError('Failed to load decisions. Please try again.');
       message.error('Failed to load decisions');
     } else {
@@ -116,7 +117,7 @@ const Decisions: React.FC = () => {
 
   useEffect(() => {
     if (statsError) {
-      console.error('Failed to load decision stats:', statsError);
+      logger.error('Failed to load decision stats:', statsError);
     }
   }, [statsError]);
 
@@ -139,13 +140,13 @@ const Decisions: React.FC = () => {
   };
 
   const handleDecisionView = (decision: any) => {
-    console.log('👁️ [Decisions] View decision:', { id: decision.id, idType: typeof decision.id, title: decision.title });
+    logger.log('👁️ [Decisions] View decision:', { id: decision.id, idType: typeof decision.id, title: decision.title });
     setCurrentDecision(decision);
     setShowDetail(true);
   };
 
   const handleDecisionEdit = (decision: any) => {
-    console.log('✏️ [Decisions] Edit decision:', { id: decision.id, idType: typeof decision.id, title: decision.title });
+    logger.log('✏️ [Decisions] Edit decision:', { id: decision.id, idType: typeof decision.id, title: decision.title });
     setCurrentDecision(decision);
     setShowDetail(true);
   };
@@ -164,7 +165,7 @@ const Decisions: React.FC = () => {
           refetchDecisions();
           refetchStats();
         } catch (err) {
-          console.error('Failed to delete decision:', err);
+          logger.error('Failed to delete decision:', err);
           message.error('Failed to delete decision');
         }
       }
@@ -179,7 +180,7 @@ const Decisions: React.FC = () => {
     };
 
     if (navigator.share) {
-      navigator.share(shareData).catch(console.error);
+      navigator.share(shareData).catch(logger.error);
     } else {
       navigator.clipboard.writeText(shareData.text);
       message.success('Decision details copied to clipboard');

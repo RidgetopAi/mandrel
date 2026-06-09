@@ -15,6 +15,7 @@ import {
 } from '@ant-design/icons';
 import type { Session, UpdateSessionRequest } from '../../types/session';
 import { useUpdateSession } from '../../hooks/useProjects';
+import { logger } from '../../utils/logger';
 
 const { Text, Paragraph } = Typography;
 const { TextArea } = Input;
@@ -78,7 +79,7 @@ const SessionInlineEdit: React.FC<SessionInlineEditProps> = ({
           setEditing(false);
         },
         onError: (error: any) => {
-          console.error(`Failed to update session ${field}:`, error);
+          logger.error(`Failed to update session ${field}:`, error);
           message.error(error.message || `Failed to update session ${field}`);
         }
       }

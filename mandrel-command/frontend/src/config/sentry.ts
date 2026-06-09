@@ -4,6 +4,7 @@
  */
 
 import * as Sentry from '@sentry/react';
+import { logger } from '../utils/logger';
 
 // Sentry configuration
 export const initSentry = () => {
@@ -15,7 +16,7 @@ export const initSentry = () => {
     !!process.env.REACT_APP_SENTRY_DSN;
 
   if (!shouldInitSentry) {
-    console.log('Sentry disabled (not enabled or missing DSN)');
+    logger.log('Sentry disabled (not enabled or missing DSN)');
     return;
   }
 
@@ -105,7 +106,7 @@ export const initSentry = () => {
     username: 'developer',
   });
 
-  console.log('Sentry initialized successfully');
+  logger.log('Sentry initialized successfully');
 };
 
 // Enhanced error reporting functions

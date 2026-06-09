@@ -1,5 +1,6 @@
 import type { ErrorInfo } from 'react';
 import { reportError as sentryReportError, addBreadcrumb } from '../config/sentry';
+import { logger } from '../utils/logger';
 
 export interface ErrorReportContext {
   componentStack?: string;
@@ -26,7 +27,7 @@ export const reportError = async (
 
   // Always log locally for immediate debugging visibility
   // eslint-disable-next-line no-console
-  console.error('AIDIS UI Error Captured', payload);
+  logger.error('AIDIS UI Error Captured', payload);
 
   // QA Finding #3: Report to Sentry with enhanced context
   try {
@@ -50,7 +51,7 @@ export const reportError = async (
     });
   } catch (sentryError) {
     // eslint-disable-next-line no-console
-    console.warn('Failed to report error to Sentry:', sentryError);
+    logger.warn('Failed to report error to Sentry:', sentryError);
   }
 
   if (!REPORT_ENDPOINT) {
@@ -74,6 +75,6 @@ export const reportError = async (
     });
   } catch (networkError) {
     // eslint-disable-next-line no-console
-    console.warn('Failed to report UI error', networkError);
+    logger.warn('Failed to report UI error', networkError);
   }
 };

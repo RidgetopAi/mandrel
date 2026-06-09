@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { Form, Input, Select, Button, Modal } from 'antd';
+import { logger } from '../../utils/logger';
 
 const { TextArea } = Input;
 const { Option } = Select;
@@ -88,7 +89,7 @@ const TaskForm: React.FC<TaskFormProps> = ({
       
       onSubmit(taskData);
     } catch (error) {
-      console.error('Form validation error:', error);
+      logger.error('Form validation error:', error);
     }
   };
 

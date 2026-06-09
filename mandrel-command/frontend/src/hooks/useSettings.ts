@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { UserSettings } from '../types/settings';
+import { logger } from '../utils/logger';
 
 const SETTINGS_STORAGE_KEY = 'aidis_user_settings';
 
@@ -23,7 +24,7 @@ export const useSettings = (): UseSettingsReturn => {
         };
       }
     } catch (error) {
-      console.warn('Failed to load user settings from localStorage:', error);
+      logger.warn('Failed to load user settings from localStorage:', error);
     }
     return { defaultProject: undefined };
   });
@@ -31,15 +32,15 @@ export const useSettings = (): UseSettingsReturn => {
   // Save settings to localStorage whenever they change
   useEffect(() => {
     try {
-      console.log('🔧 useSettings: saving to localStorage:', SETTINGS_STORAGE_KEY, settings);
+      logger.log('🔧 useSettings: saving to localStorage:', SETTINGS_STORAGE_KEY, settings);
       localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
     } catch (error) {
-      console.error('Failed to save user settings to localStorage:', error);
+      logger.error('Failed to save user settings to localStorage:', error);
     }
   }, [settings]);
 
   const setDefaultProject = useCallback(async (projectName: string | null) => {
-    console.log('🔧 useSettings: setDefaultProject called with:', projectName);
+    logger.log('🔧 useSettings: setDefaultProject called with:', projectName);
 
     // If setting a project as default, update backend metadata
     if (projectName) {
@@ -73,17 +74,17 @@ export const useSettings = (): UseSettingsReturn => {
 
           if (!response.ok) {
             const errorText = await response.text();
-            console.error('Failed to set project as primary in backend:', errorText);
+            logger.error('Failed to set project as primary in backend:', errorText);
             throw new Error(`Backend error: ${errorText}`);
           }
 
-          console.log('✅ Successfully set project as primary in backend:', projectName);
+          logger.log('✅ Successfully set project as primary in backend:', projectName);
         } else {
-          console.warn('⚠️ Could not find project ID for:', projectName);
+          logger.warn('⚠️ Could not find project ID for:', projectName);
           throw new Error(`Project "${projectName}" not found`);
         }
       } catch (error) {
-        console.error('Failed to update backend primary project:', error);
+        logger.error('Failed to update backend primary project:', error);
         // Re-throw the error so the UI can show it to the user
         throw error;
       }
@@ -95,7 +96,7 @@ export const useSettings = (): UseSettingsReturn => {
         ...prev,
         defaultProject: projectName || undefined
       };
-      console.log('🔧 useSettings: updating settings from', prev, 'to', newSettings);
+      logger.log('🔧 useSettings: updating settings from', prev, 'to', newSettings);
       return newSettings;
     });
   }, []);

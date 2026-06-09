@@ -1,4 +1,5 @@
 import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
+import { logger } from '../utils/logger';
 
 const UNASSIGNED_PROJECT_ID = '00000000-0000-0000-0000-000000000000';
 
@@ -61,7 +62,7 @@ class ApiClient {
         return config;
       },
       (error) => {
-        console.error('Request interceptor error:', error);
+        logger.error('Request interceptor error:', error);
         return Promise.reject(error);
       }
     );
@@ -70,7 +71,7 @@ class ApiClient {
     this._instance.interceptors.response.use(
       (response) => response,
       (error) => {
-        console.error('API Response Error:', error.response?.data || error.message);
+        logger.error('API Response Error:', error.response?.data || error.message);
         
         if (error.response?.status === 401) {
           // Token expired or invalid
