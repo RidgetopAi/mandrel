@@ -25,6 +25,8 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      # Auto-provision required extensions on first init of a fresh data volume.
+      - ./mcp-server/database/init/00-extensions.sql:/docker-entrypoint-initdb.d/00-extensions.sql:ro
     networks:
       - mandrel-network
     healthcheck:
@@ -63,8 +65,13 @@ services:
       DATABASE_NAME: ${POSTGRES_DB:-mandrel}
       DATABASE_USER: ${POSTGRES_USER:-mandrel}
       DATABASE_PASSWORD: ${POSTGRES_PASSWORD:-mandrel_dev_password}
+      DATABASE_SSL: ${DATABASE_SSL:-false}
       REDIS_HOST: redis
       REDIS_PORT: 6379
+      # Required by dotenv-safe validation (.env.example): REDIS_URL + log levels.
+      REDIS_URL: redis://redis:6379
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      DB_LOG_LEVEL: ${DB_LOG_LEVEL:-info}
       MCP_HTTP_PORT: 8080
     depends_on:
       postgres:
@@ -92,13 +99,32 @@ services:
     environment:
       NODE_ENV: production
       PORT: 5000
+      LOG_DIR: /app/logs
       DATABASE_HOST: postgres
       DATABASE_PORT: 5432
       DATABASE_NAME: ${POSTGRES_DB:-mandrel}
       DATABASE_USER: ${POSTGRES_USER:-mandrel}
       DATABASE_PASSWORD: ${POSTGRES_PASSWORD:-mandrel_dev_password}
+      DATABASE_SSL: ${DATABASE_SSL:-false}
       MCP_SERVER_URL: http://mcp-server:8080
       JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
+      # All keys below are required to exist by the backend's dotenv-safe validation
+      # (.env.example); missing keys cause process.exit(1) in production.
+      MANDREL_JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
+      JWT_EXPIRES_IN: 24h
+      BCRYPT_ROUNDS: "12"
+      MANDREL_HTTP_PORT: 5000
+      MANDREL_MCP_PORT: 8080
+      CORS_ORIGIN: http://localhost:13000,http://localhost:3000
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      DB_LOG_LEVEL: ${DB_LOG_LEVEL:-info}
+      ENABLE_LOG_ROTATION: "true"
+      LOG_MAX_FILE_SIZE: 20m
+      LOG_MAX_FILES: 14d
+      FEATURE_FLAG_PHASE1_FEATURE_FLAGS: "false"
+      FEATURE_FLAG_PHASE1_CONTRACT_TESTS: "false"
+      FEATURE_FLAG_PHASE1_REACT_ERROR_BOUNDARIES: "false"
+      FRONTEND_URL: http://localhost:13000
     depends_on:
       postgres:
         condition: service_healthy
@@ -108,7 +134,8 @@ services:
       - mandrel-network
     healthcheck:
       <<: *healthcheck-defaults
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5000/health"]
+      # Backend mounts routes under /api, so health lives at /api/health (not /health).
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5000/api/health"]
     volumes:
       - command_logs:/app/logs
       - command_uploads:/app/uploads
