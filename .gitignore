@@ -202,3 +202,6 @@ config/environments/.env.development
 
 # Playwright CLI session artifacts (local)
 .playwright-cli/
+
+# Local-only port/dev overrides (never commit)
+docker-compose.override.yml
