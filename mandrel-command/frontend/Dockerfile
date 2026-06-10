@@ -6,8 +6,8 @@ FROM node:22-alpine AS deps
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
-# Copy package files for dependency resolution
-COPY package*.json ./
+# Copy package files for dependency resolution (.npmrc sets legacy-peer-deps for CRA5+TS5)
+COPY package*.json .npmrc ./
 # Install dependencies with cache optimization
 RUN npm ci --ignore-scripts && \
     npm cache clean --force
@@ -18,7 +18,7 @@ WORKDIR /app
 
 # Copy dependencies from deps stage
 COPY --from=deps /app/node_modules ./node_modules
-COPY package*.json ./
+COPY package*.json .npmrc ./
 
 # Copy source code
 COPY . .
@@ -45,77 +45,8 @@ RUN apk add --no-cache \
 # Copy built React app to nginx html directory
 COPY --from=builder /app/build /usr/share/nginx/html
 
-# Create optimized nginx configuration
-RUN echo 'server {
-    listen 3000;
-    server_name localhost;
-
-    # Enable compression
-    gzip on;
-    gzip_vary on;
-    gzip_min_length 1024;
-    gzip_proxied any;
-    gzip_comp_level 6;
-    gzip_types
-        text/plain
-        text/css
-        text/xml
-        text/javascript
-        application/json
-        application/javascript
-        application/xml+rss
-        application/atom+xml
-        image/svg+xml;
-
-    # Root location with cache headers
-    location / {
-        root /usr/share/nginx/html;
-        index index.html index.htm;
-        try_files $uri $uri/ /index.html;
-
-        # Cache static assets
-        location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
-            expires 1y;
-            add_header Cache-Control "public, immutable";
-            add_header X-Content-Type-Options "nosniff";
-        }
-
-        # No cache for HTML files
-        location ~* \.html$ {
-            add_header Cache-Control "no-cache, no-store, must-revalidate";
-            add_header Pragma "no-cache";
-            add_header Expires "0";
-        }
-    }
-
-    # API proxy with optimizations
-    location /api {
-        proxy_pass http://mandrel-command-backend:5000;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection upgrade;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_cache_bypass $http_upgrade;
-
-        # Timeouts
-        proxy_connect_timeout 30s;
-        proxy_send_timeout 30s;
-        proxy_read_timeout 30s;
-    }
-
-    # Security headers
-    add_header X-Frame-Options "SAMEORIGIN" always;
-    add_header X-Content-Type-Options "nosniff" always;
-    add_header X-XSS-Protection "1; mode=block" always;
-    add_header Referrer-Policy "no-referrer-when-downgrade" always;
-    add_header Content-Security-Policy "default-src '\''self'\''; script-src '\''self'\'' '\''unsafe-inline'\''; style-src '\''self'\'' '\''unsafe-inline'\'';" always;
-}' > /etc/nginx/conf.d/default.conf
-
-# Remove default nginx config
-RUN rm -f /etc/nginx/conf.d/default.conf.dpkg-dist
+# Install the nginx site config from a real file (listen 3000, SPA fallback, gzip)
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 # Create non-root user and adjust permissions
 RUN addgroup -g 1001 -S aidis && \
@@ -137,5 +68,6 @@ EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
     CMD wget --no-verbose --tries=1 --spider http://localhost:3000 || exit 1
 
-# Start nginx with optimized worker processes
-CMD ["nginx", "-g", "daemon off; worker_processes auto;"]
+# Start nginx in the foreground. (Do NOT set worker_processes here: the base
+# nginx.conf already defines it, and a duplicate via -g is a fatal config error.)
+CMD ["nginx", "-g", "daemon off;"]

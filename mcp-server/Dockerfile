@@ -2,17 +2,26 @@
 # Optimized for minimal image size with efficient layer caching
 
 # Stage 1: Dependencies stage
-FROM node:22-alpine AS deps
-RUN apk add --no-cache libc6-compat
+# Use Debian-slim (glibc) NOT alpine: the embedding stack (@xenova/transformers ->
+# onnxruntime-node) ships a prebuilt glibc native binary that does not run reliably
+# on alpine/musl (Ort::Exception at load). glibc base avoids that entirely.
+FROM node:22-slim AS deps
 WORKDIR /app
 
 # Copy package files for dependency resolution
 COPY package*.json ./
-# Install only production dependencies
+# Install only production dependencies. --ignore-scripts is kept for safety, but
+# sharp (transitive via @xenova/transformers) needs its native binary installed,
+# which its install script normally fetches. Run that script explicitly afterward.
 RUN npm ci --only=production --ignore-scripts && \
+    npm rebuild sharp && \
     npm cache clean --force
 
- 
+# Stage 2: Builder stage
+# The server runs via tsx (runtime TS), so the "build" here is just dependency
+# resolution + TS validation; the artifact the runner needs is the src/ tree.
+FROM node:22-alpine AS builder
+RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
 # Copy package files
@@ -26,19 +35,21 @@ COPY . .
 # Validate TypeScript (but don't compile since we use tsx)
 RUN npx tsc --noEmit || echo "TypeScript validation completed"
 
-# Stage 3: Production runtime
-FROM node:22-alpine AS runner
+# Stage 3: Production runtime (Debian-slim/glibc so onnxruntime-node runs natively)
+FROM node:22-slim AS runner
 
 # Install minimal system dependencies
-RUN apk add --no-cache \
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
     dumb-init \
     wget \
     curl \
-    && rm -rf /var/cache/apk/*
+    ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
 
 # Create non-root user for security
-RUN addgroup -g 1001 -S aidis && \
-    adduser -S aidis -u 1001
+RUN groupadd -g 1001 aidis && \
+    useradd -r -u 1001 -g aidis aidis
 
 WORKDIR /app
 
@@ -52,9 +63,17 @@ RUN npm install -g tsx@latest && \
 
 # Copy source code for tsx runtime compilation
 COPY --from=builder /app/src ./src
+# Copy migration runner + SQL files so the container self-provisions its schema,
+# and .env.example which dotenv-safe validates required env vars against.
+COPY --from=builder /app/scripts ./scripts
+COPY --from=builder /app/database ./database
+COPY --from=builder /app/.env.example ./.env.example
+# Container entrypoint: run idempotent migrations, then start the server.
+COPY --from=builder /app/docker-entrypoint.sh ./docker-entrypoint.sh
 
 # Create necessary directories and set permissions
 RUN mkdir -p /app/logs /app/data /app/temp && \
+    chmod +x /app/docker-entrypoint.sh && \
     chown -R aidis:aidis /app
 
 # Switch to non-root user
@@ -74,11 +93,10 @@ ENV NODE_ENV=production \
     AIDIS_LOG_LEVEL=info \
     AIDIS_SKIP_DATABASE=false \
     NODE_OPTIONS="--max-old-space-size=256" \
-    NPM_CONFIG_LOGLEVEL=warn \
-    TSX_TSCONFIG_PATH=/app/src/tsconfig.json
+    NPM_CONFIG_LOGLEVEL=warn
 
 # Use dumb-init for proper signal handling
 ENTRYPOINT ["dumb-init", "--"]
 
-# Start with tsx for runtime TypeScript compilation
-CMD ["tsx", "src/main.ts"]
+# Run idempotent migrations, then exec the server (see docker-entrypoint.sh)
+CMD ["./docker-entrypoint.sh"]

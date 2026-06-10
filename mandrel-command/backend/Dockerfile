@@ -24,8 +24,8 @@ RUN npm ci --ignore-scripts
 # Copy source code
 COPY . .
 
-# Build TypeScript application
-RUN npm run build || (echo "Build failed, using source files" && mkdir -p dist && cp -r src/* dist/ 2>/dev/null || true)
+# Build TypeScript application (compiles src -> dist; start runs node dist/server.js)
+RUN npm run build
 
 # Stage 3: Production runtime
 FROM node:22-alpine AS runner
@@ -48,8 +48,9 @@ COPY --from=deps /app/package*.json ./
 
 # Copy built application
 COPY --from=builder /app/dist ./dist
-# Fallback: copy source if build failed
-COPY --from=builder /app/src ./src 2>/dev/null || true
+# .env.example is required at runtime: dotenv-safe validates process.env against it
+# (its absence throws and triggers process.exit(1) in production).
+COPY --from=builder /app/.env.example ./.env.example
 
 # Create necessary directories with proper permissions
 RUN mkdir -p /app/logs /app/uploads /app/data && \

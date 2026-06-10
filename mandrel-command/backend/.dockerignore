@@ -29,8 +29,8 @@ coverage/
 # Development tools and configs
 .eslintrc*
 .prettierrc*
-tsconfig.json
-tsconfig.*.json
+# tsconfig.json / tsconfig.*.json are REQUIRED by the builder stage (npm run build -> tsc).
+# Without them tsc has no config/inputs, prints help, and exits non-zero.
 jest.config.*
 nodemon.json
 .editorconfig
