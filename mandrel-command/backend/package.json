@@ -1,6 +1,6 @@
 {
   "name": "mandrel-command-backend",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "Mandrel Command Backend - REST API server",
   "main": "dist/server.js",
   "scripts": {
@@ -47,7 +47,8 @@
     "swagger-ui-express": "^5.0.1",
     "uuid": "^11.1.0",
     "winston": "^3.11.0",
-    "winston-daily-rotate-file": "^5.0.0"
+    "winston-daily-rotate-file": "^5.0.0",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@types/cors": "^2.8.0",
