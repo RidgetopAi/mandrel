@@ -28,9 +28,29 @@ import { registerMcpHandlers, type McpHandlerDeps } from './registerMcpHandlers.
 const MCP_SESSION_HEADER = 'mcp-session-id';
 const JSONRPC_INVALID_REQUEST = -32600;
 
+// Bounds on the per-session transport map. Even an AUTHENTICATED caller must not be
+// able to grow memory without limit by spamming `initialize`. We cap the number of
+// live sessions and evict idle ones, so memory stays bounded on the public endpoint.
+const DEFAULT_MAX_SESSIONS = 100;
+const DEFAULT_SESSION_IDLE_MS = 30 * 60 * 1000; // 30 minutes
+
+function resolveMaxSessions(): number {
+  const raw = process.env.MCP_MAX_SESSIONS;
+  const n = raw ? Number(raw) : NaN;
+  return Number.isFinite(n) && n > 0 ? Math.floor(n) : DEFAULT_MAX_SESSIONS;
+}
+
+function resolveSessionIdleMs(): number {
+  const raw = process.env.MCP_SESSION_IDLE_MS;
+  const n = raw ? Number(raw) : NaN;
+  return Number.isFinite(n) && n > 0 ? Math.floor(n) : DEFAULT_SESSION_IDLE_MS;
+}
+
 interface SessionEntry {
   transport: StreamableHTTPServerTransport;
   server: Server;
+  /** Epoch ms of the last request seen on this session; drives idle eviction + LRU. */
+  lastActivity: number;
 }
 
 /**
@@ -52,19 +72,83 @@ function resolveAllowedHosts(): string[] {
  * Manages per-session Streamable HTTP MCP transports and exposes Express handlers.
  */
 export class RemoteMcpTransport {
+  // Insertion-ordered Map; we use the JS Map iteration order + lastActivity to evict
+  // the least-recently-used entry when the cap is hit.
   private sessions = new Map<string, SessionEntry>();
   private readonly allowedHosts: string[];
+  private readonly maxSessions: number;
+  private readonly sessionIdleMs: number;
 
   constructor(private readonly deps: McpHandlerDeps) {
     this.allowedHosts = resolveAllowedHosts();
+    this.maxSessions = resolveMaxSessions();
+    this.sessionIdleMs = resolveSessionIdleMs();
     logger.info(
-      `🌐 Remote MCP transport configured (DNS-rebinding protection on; allowedHosts=${this.allowedHosts.join(',')})`
+      `🌐 Remote MCP transport configured (DNS-rebinding protection on; allowedHosts=${this.allowedHosts.join(',')}; ` +
+      `maxSessions=${this.maxSessions}; sessionIdleMs=${this.sessionIdleMs})`
     );
   }
 
   /** Number of live HTTP MCP sessions (for diagnostics/tests). */
   public sessionCount(): number {
     return this.sessions.size;
+  }
+
+  /** Mark a session as just-active (touch) so it survives LRU/idle eviction. */
+  private touch(sessionId: string): void {
+    const entry = this.sessions.get(sessionId);
+    if (entry) entry.lastActivity = Date.now();
+  }
+
+  /**
+   * Evict sessions that have been idle longer than the configured TTL. Closing the
+   * SDK transport triggers onclose → cleanupSession, which removes the map entry.
+   */
+  private evictIdleSessions(now: number): void {
+    for (const [sid, entry] of this.sessions) {
+      if (now - entry.lastActivity > this.sessionIdleMs) {
+        logger.debug(`♻️  Evicting idle MCP HTTP session ${sid.substring(0, 8)}… (idle > ${this.sessionIdleMs}ms)`);
+        this.evictSession(sid, entry);
+      }
+    }
+  }
+
+  /**
+   * Enforce the max-session cap. If still at/over the cap after idle eviction, evict
+   * the least-recently-used session(s) until there is room for one more.
+   */
+  private enforceSessionCap(): void {
+    const now = Date.now();
+    this.evictIdleSessions(now);
+
+    while (this.sessions.size >= this.maxSessions) {
+      // Find the least-recently-used live session.
+      let lruSid: string | undefined;
+      let lruEntry: SessionEntry | undefined;
+      for (const [sid, entry] of this.sessions) {
+        if (!lruEntry || entry.lastActivity < lruEntry.lastActivity) {
+          lruSid = sid;
+          lruEntry = entry;
+        }
+      }
+      if (!lruSid || !lruEntry) break;
+      logger.debug(
+        `♻️  Evicting LRU MCP HTTP session ${lruSid.substring(0, 8)}… ` +
+        `(cap=${this.maxSessions} reached; live=${this.sessions.size})`
+      );
+      this.evictSession(lruSid, lruEntry);
+    }
+  }
+
+  /**
+   * Evict a single session: remove it from the map FIRST (so transport.onclose's
+   * cleanupSession is a no-op) and close its SDK transport to free resources.
+   */
+  private evictSession(sessionId: string, entry: SessionEntry): void {
+    this.sessions.delete(sessionId);
+    // Close asynchronously; we don't await inside the hot path. Errors are swallowed
+    // since the entry is already gone from the map.
+    void Promise.resolve(entry.transport.close()).catch(() => { /* already evicted */ });
   }
 
   /**
@@ -79,6 +163,7 @@ export class RemoteMcpTransport {
       // Existing session → reuse its transport.
       if (sessionId && this.sessions.has(sessionId)) {
         const entry = this.sessions.get(sessionId)!;
+        this.touch(sessionId);
         await entry.transport.handleRequest(req, res, req.body);
         return;
       }
@@ -125,6 +210,7 @@ export class RemoteMcpTransport {
 
     try {
       const entry = this.sessions.get(sessionId)!;
+      this.touch(sessionId);
       await entry.transport.handleRequest(req, res, req.body);
     } catch (error) {
       logger.error('Error handling MCP session request (GET/DELETE)', error as Error);
@@ -151,8 +237,11 @@ export class RemoteMcpTransport {
       enableDnsRebindingProtection: true,
       allowedHosts: this.allowedHosts,
       onsessioninitialized: (sid: string) => {
+        // Bound the map BEFORE inserting: evict idle/LRU sessions so an authenticated
+        // caller spamming `initialize` cannot grow memory without limit.
+        this.enforceSessionCap();
         // Store under the SDK-generated id so subsequent requests resolve.
-        this.sessions.set(sid, { transport, server });
+        this.sessions.set(sid, { transport, server, lastActivity: Date.now() });
         logger.info(`🟢 MCP HTTP session initialized: ${sid.substring(0, 8)}… (live=${this.sessions.size})`);
       },
       onsessionclosed: (sid: string) => {
