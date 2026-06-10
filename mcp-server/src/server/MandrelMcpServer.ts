@@ -25,21 +25,18 @@ import { ErrorHandler } from '../utils/errorHandler.js';
 import { CircuitBreaker, RetryHandler } from '../utils/resilience.js';
 import { HealthServer } from './healthServer.js';
 import { backgroundServices } from '../services/backgroundServices.js';
+import { registerMcpHandlers, type McpHandlerDeps } from './registerMcpHandlers.js';
+import { RemoteMcpTransport } from './remoteMcpTransport.js';
 
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import {
-  CallToolRequestSchema,
   ErrorCode,
-  ListResourcesRequestSchema,
-  ListToolsRequestSchema,
   McpError,
-  ReadResourceRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
 
 import { initializeDatabase, closeDatabase } from '../config/database.js';
 import { dbPool } from '../services/databasePool.js';
-import { AIDIS_TOOL_DEFINITIONS } from '../config/toolDefinitions.js';
 import { validationMiddleware } from '../middleware/validation.js';
 import { SessionTracker, ensureActiveSession } from '../services/sessionTracker.js';
 import { ActiveSessionStore } from '../services/session/index.js';
@@ -70,6 +67,7 @@ export default class MandrelMcpServer {
   private healthServer: HealthServer;
   // private v2McpRouter: V2McpRouter; // Disabled - using direct integration
   private circuitBreaker: CircuitBreaker;
+  private remoteMcp: RemoteMcpTransport;
 
   constructor() {
     this.circuitBreaker = new CircuitBreaker();
@@ -89,12 +87,25 @@ export default class MandrelMcpServer {
       }
     );
 
-    this.setupHandlers();
+    // Shared MCP handler dependencies — used by BOTH the stdio Server and each
+    // per-session HTTP Server so tool logic lives in exactly one place (DRY).
+    const handlerDeps: McpHandlerDeps = {
+      executeMcpTool: this.executeMcpTool.bind(this),
+      deserializeParameters: this.deserializeParameters.bind(this),
+      getServerStatus: this.getServerStatus.bind(this),
+    };
 
-    // Initialize health server with MCP tool executor
+    // Register handlers on the long-lived stdio Server (connectionId defaults to stdio)
+    registerMcpHandlers(this.server, handlerDeps);
+
+    // Remote Streamable HTTP transport reuses the SAME handler registration per session
+    this.remoteMcp = new RemoteMcpTransport(handlerDeps);
+
+    // Initialize health server with MCP tool executor + remote transport mount
     this.healthServer = new HealthServer(
       this.executeMcpTool.bind(this),
-      this.deserializeParameters.bind(this)
+      this.deserializeParameters.bind(this),
+      this.remoteMcp
     );
   }
 
@@ -188,76 +199,8 @@ export default class MandrelMcpServer {
     return await routeExecutor(toolName, validatedArgs, { connectionId });
   }
 
-  /**
-   * Set up all MCP request handlers
-   */
-  private setupHandlers(): void {
-    // Handle tool listing requests - shows what tools are available
-    // Filter out disabled tools (Token Optimization 2025-10-01)
-    const DISABLED_TOOLS = [
-      'code_analyze', 'code_components', 'code_dependencies', 'code_impact', 'code_stats',
-      'complexity_analyze', 'complexity_insights', 'complexity_manage'
-    ];
-
-    this.server.setRequestHandler(ListToolsRequestSchema, async () => {
-      return {
-        tools: AIDIS_TOOL_DEFINITIONS.filter(tool => !DISABLED_TOOLS.includes(tool.name))
-      };
-    });
-
-    // Handle tool execution requests - actually runs the tools
-    this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
-      const { name, arguments: rawArgs } = request.params;
-
-      try {
-        // Fix array parameter deserialization for Claude Code compatibility
-        const args = this.deserializeParameters(rawArgs || {});
-
-        // Use shared tool execution logic
-        return await this.executeMcpTool(name, args);
-      } catch (error) {
-        logger.error(`Error executing tool ${name}`, error as Error);
-        throw new McpError(
-          ErrorCode.InternalError,
-          `Failed to execute tool: ${error instanceof Error ? error.message : 'Unknown error'}`
-        );
-      }
-    });
-
-    // Handle resource listing (we'll use this later for documentation, configs, etc.)
-    this.server.setRequestHandler(ListResourcesRequestSchema, async () => {
-      return {
-        resources: [
-          {
-            uri: 'aidis://status',
-            mimeType: 'application/json',
-            name: 'AIDIS Server Status',
-            description: 'Current server status and configuration',
-          },
-        ],
-      };
-    });
-
-    // Handle resource reading
-    this.server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
-      const { uri } = request.params;
-
-      if (uri === 'aidis://status') {
-        const status = await this.getServerStatus();
-        return {
-          contents: [
-            {
-              uri,
-              mimeType: 'application/json',
-              text: JSON.stringify(status, null, 2),
-            },
-          ],
-        };
-      }
-
-      throw new McpError(ErrorCode.InvalidRequest, `Unknown resource: ${uri}`);
-    });
-  }
+  // MCP request-handler registration extracted to server/registerMcpHandlers.ts so the
+  // stdio Server and every per-session HTTP Server share ONE handler definition (DRY).
 
   /**
    * Deserialize parameters that may have been JSON-stringified by MCP transport layer
@@ -548,6 +491,17 @@ export default class MandrelMcpServer {
         logger.info('✅ Background services stopped gracefully');
       } catch (error) {
         logger.warn('⚠️  Failed to stop background services', { metadata: { error } });
+      }
+
+      // Close any live remote MCP HTTP sessions before tearing down the server
+      if (this.remoteMcp) {
+        logger.info('🌐 Closing remote MCP HTTP sessions...');
+        try {
+          await this.remoteMcp.closeAll();
+          logger.info('✅ Remote MCP HTTP sessions closed');
+        } catch (error) {
+          logger.warn('⚠️  Failed to close remote MCP sessions', { metadata: { error } });
+        }
       }
 
       // Close health check server
