@@ -88,8 +88,11 @@ const dbConfig: PoolConfig = {
   idleTimeoutMillis: 30000, // How long to keep idle connections
   connectionTimeoutMillis: 2000, // How long to wait for connection
   
-  // Enable SSL in production
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+  // SSL is env-controlled (default OFF). Honor DATABASE_SSL / DB_SSL so the
+  // internal no-SSL container postgres connects, while prod can still enable it.
+  ssl: ((process.env.DATABASE_SSL ?? process.env.DB_SSL ?? '').toLowerCase() === 'true')
+    ? { rejectUnauthorized: false }
+    : false,
 };
 
 // Create the connection pool

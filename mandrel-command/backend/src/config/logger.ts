@@ -2,7 +2,10 @@ import winston from 'winston';
 import DailyRotateFile from 'winston-daily-rotate-file';
 import path from 'path';
 
-const logsDir = path.join(__dirname, '../../../logs');
+// Log directory is env-overridable (LOG_DIR). Default keeps prior behavior for
+// local/dev; the container sets LOG_DIR=/app/logs (a writable, mounted volume)
+// to avoid resolving to '/logs' which the non-root container user can't create.
+const logsDir = process.env.LOG_DIR || path.join(__dirname, '../../../logs');
 
 /**
  * Log levels configuration
