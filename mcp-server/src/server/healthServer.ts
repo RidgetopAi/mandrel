@@ -11,6 +11,8 @@ import { dbPool, poolHealthCheck } from '../services/databasePool.js';
 import { AIDIS_TOOL_DEFINITIONS } from '../config/toolDefinitions.js';
 import { ProjectController } from '../api/controllers/projectController.js';
 import createSessionRouter from '../api/v2/sessionRoutes.js';
+import { bearerAuth } from '../middleware/bearerAuth.js';
+import type { RemoteMcpTransport } from './remoteMcpTransport.js';
 
 /**
  * HTTP Health Check Server
@@ -29,14 +31,17 @@ export class HealthServer {
   private mcpToolExecutor?: (toolName: string, args: any, context?: McpExecutorContext) => Promise<any>;
   private parameterDeserializer?: (args: any) => any;
   private projectController: ProjectController;
+  private remoteMcp?: RemoteMcpTransport;
 
   constructor(
     mcpToolExecutor?: (toolName: string, args: any, context?: McpExecutorContext) => Promise<any>,
-    parameterDeserializer?: (args: any) => any
+    parameterDeserializer?: (args: any) => any,
+    remoteMcp?: RemoteMcpTransport
   ) {
     this.app = express();
     this.mcpToolExecutor = mcpToolExecutor;
     this.parameterDeserializer = parameterDeserializer;
+    this.remoteMcp = remoteMcp;
     this.projectController = new ProjectController();
     this.setupMiddleware();
     this.setupRoutes();
@@ -90,7 +95,18 @@ export class HealthServer {
     this.app.get('/health/database', this.handleDatabaseHealthCheckExpress.bind(this));
     this.app.get('/health/embeddings', this.handleEmbeddingsHealthCheckExpress.bind(this));
 
-    // MCP tool endpoints
+    // Remote Streamable HTTP MCP transport (NEW — bearer-auth guarded).
+    // Mounted on EXACT path '/mcp' so it does NOT intercept the unauthenticated
+    // on-box bridge at '/mcp/tools/*' below.
+    if (this.remoteMcp) {
+      const auth = bearerAuth();
+      this.app.post('/mcp', auth, this.remoteMcp.handlePost);
+      this.app.get('/mcp', auth, this.remoteMcp.handleSessionRequest);
+      this.app.delete('/mcp', auth, this.remoteMcp.handleSessionRequest);
+      logger.info('🌐 Remote MCP transport mounted: POST/GET/DELETE /mcp (Bearer-auth required)');
+    }
+
+    // MCP tool endpoints (on-box bridge — intentionally UNAUTHENTICATED for local agents)
     this.app.get('/mcp/tools/schemas', this.handleToolSchemasExpress.bind(this));
     this.app.get('/mcp/tools', this.handleToolListExpress.bind(this));
     this.app.post('/mcp/tools/:toolName', this.handleMcpToolExpress.bind(this));
@@ -290,7 +306,7 @@ export class HealthServer {
     }
 
     try {
-      const toolName = req.params.toolName;
+      const toolName = String(req.params.toolName);
       const rawArgs = req.body.arguments || req.body.args || {};
       const args = this.parameterDeserializer ? this.parameterDeserializer(rawArgs) : rawArgs;
 
