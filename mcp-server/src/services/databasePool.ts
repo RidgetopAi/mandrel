@@ -82,8 +82,11 @@ class DatabasePoolManager {
       statement_timeout: 30000, // 30 seconds
       query_timeout: 30000,
 
-      // Enable SSL in production
-      ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+      // SSL is env-controlled (default OFF). Honor DATABASE_SSL / DB_SSL so the
+      // internal no-SSL container postgres connects, while prod can still enable it.
+      ssl: ((process.env.DATABASE_SSL ?? process.env.DB_SSL ?? '').toLowerCase() === 'true')
+        ? { rejectUnauthorized: false }
+        : false,
     };
 
     this.pool = new Pool(poolConfig);

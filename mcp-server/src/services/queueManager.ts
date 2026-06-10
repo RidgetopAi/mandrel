@@ -8,9 +8,29 @@ import { logger } from '../utils/logger.js';
  * Based on TR004-4 audit findings: Feature flags polling, git tracking, metrics collection
  */
 
+// Redis connection is env-driven so it works both locally (localhost) and in
+// containers (service hostname). Honors REDIS_URL, else REDIS_HOST/REDIS_PORT.
+function resolveRedisHostPort(): { host: string; port: number } {
+  const url = process.env.REDIS_URL;
+  if (url) {
+    try {
+      const u = new URL(url);
+      return { host: u.hostname, port: u.port ? parseInt(u.port, 10) : 6379 };
+    } catch {
+      // fall through to host/port vars
+    }
+  }
+  return {
+    host: process.env.REDIS_HOST || 'localhost',
+    port: parseInt(process.env.REDIS_PORT || '6379', 10),
+  };
+}
+
+const { host: REDIS_HOST, port: REDIS_PORT } = resolveRedisHostPort();
+
 const REDIS_CONFIG = {
-  host: 'localhost',
-  port: 6379,
+  host: REDIS_HOST,
+  port: REDIS_PORT,
   maxRetriesPerRequest: null, // Required by BullMQ
   retryDelayOnFailover: 100,
   enableReadyCheck: false,
