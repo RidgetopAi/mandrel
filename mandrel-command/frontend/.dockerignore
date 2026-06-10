@@ -36,8 +36,8 @@ __tests__/
 # Development tools and configs
 .eslintrc*
 .prettierrc*
-tsconfig.json
-tsconfig.*.json
+# tsconfig.json is REQUIRED: react-scripts uses it to detect a TS project and
+# enable .ts/.tsx module resolution. Without it, webpack can't resolve ./App (.tsx).
 jest.config.*
 .editorconfig
 lighthouse/
