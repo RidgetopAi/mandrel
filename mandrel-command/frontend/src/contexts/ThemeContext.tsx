@@ -101,7 +101,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
           return;
         }
 
-        const apiBaseUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+        const apiBaseUrl = process.env.REACT_APP_API_URL || '/api';
         const response = await fetch(`${apiBaseUrl}/auth/profile`, {
           headers: {
             'Authorization': `Bearer ${token}`,

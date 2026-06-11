@@ -133,7 +133,7 @@ const TaskList: React.FC<TaskListProps> = ({
     setMovingTasks(true);
     try {
       const token = localStorage.getItem('aidis_token');
-      const response = await fetch('http://localhost:5000/api/tasks/bulk/move', {
+      const response = await fetch('/api/tasks/bulk/move', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
