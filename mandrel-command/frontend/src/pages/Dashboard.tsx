@@ -20,10 +20,6 @@ import { useAuthContext } from '../contexts/AuthContext';
 import { useProjectContext } from '../contexts/ProjectContext';
 import { useDashboardStats } from '../hooks/useDashboardStats';
 import ProjectInsights from '../components/analytics/ProjectInsights';
-import SystemMonitoring from '../components/analytics/SystemMonitoring';
-import MonitoringStats from '../components/analytics/MonitoringStats';
-import MonitoringAlerts from '../components/analytics/MonitoringAlerts';
-import MonitoringTrends from '../components/analytics/MonitoringTrends';
 import SessionSummaries from '../components/analytics/SessionSummaries';
 
 const { Title, Text } = Typography;
@@ -157,22 +153,6 @@ const Dashboard: React.FC = () => {
 
       {/* Session Analytics */}
       <SessionSummaries projectId={currentProject?.id} limit={10} />
-
-      {/* System Monitoring */}
-      <SystemMonitoring />
-
-      {/* Monitoring Insights */}
-      <Row gutter={[24, 24]}>
-        <Col xs={24} xl={8}>
-          <MonitoringStats />
-        </Col>
-        <Col xs={24} xl={8}>
-          <MonitoringAlerts limit={10} />
-        </Col>
-        <Col xs={24} xl={8}>
-          <MonitoringTrends />
-        </Col>
-      </Row>
     </Space>
   );
 };
