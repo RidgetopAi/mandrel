@@ -155,11 +155,11 @@ export class SessionDetailService {
           created_at,
           relevance_score
         FROM contexts
-        WHERE session_id = $1
+        WHERE session_id = $1 AND project_id = $2
         ORDER BY created_at DESC
       `;
-      
-      const contextsResult = await pool.query(contextsQuery, [sessionId]);
+
+      const contextsResult = await pool.query(contextsQuery, [sessionId, session.project_id]);
       
       // Get decisions made during this session
       const decisionsQuery = `
@@ -354,7 +354,7 @@ export class SessionDetailService {
             s.started_at,
             s.ended_at,
             s.tokens_used as total_tokens,
-            COALESCE((SELECT COUNT(*) FROM contexts c WHERE c.session_id = s.id), 0) as contexts_created,
+            COALESCE((SELECT COUNT(*) FROM contexts c WHERE c.session_id = s.id AND c.project_id = s.project_id), 0) as contexts_created,
             COALESCE((SELECT COUNT(*) FROM technical_decisions td WHERE td.session_id = s.id), 0) as decisions_created,
             0 as tasks_created, -- Agent sessions don't track tasks directly
             EXTRACT(EPOCH FROM (COALESCE(s.ended_at, CURRENT_TIMESTAMP) - s.started_at)) / 60 as duration_minutes,

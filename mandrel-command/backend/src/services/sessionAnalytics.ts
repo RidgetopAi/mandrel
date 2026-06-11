@@ -63,7 +63,7 @@ export class SessionAnalyticsService {
             EXTRACT(EPOCH FROM (COALESCE(s.ended_at, CURRENT_TIMESTAMP) - s.started_at)) / 60 as duration_minutes,
             COUNT(c.id) as context_count
           FROM sessions s
-          LEFT JOIN contexts c ON s.id = c.session_id
+          LEFT JOIN contexts c ON s.id = c.session_id AND c.project_id = s.project_id
           ${whereClause}
           GROUP BY s.id, s.project_id, s.started_at, s.ended_at, tokens_used
         )
@@ -127,7 +127,7 @@ export class SessionAnalyticsService {
       COUNT(c.id) as total_contexts,
       COALESCE(SUM(s.tasks_created), 0) as total_tasks_created
       FROM sessions s
-      LEFT JOIN contexts c ON s.id = c.session_id
+      LEFT JOIN contexts c ON s.id = c.session_id AND c.project_id = s.project_id
       WHERE s.started_at >= CURRENT_DATE - INTERVAL '${days} days'
       ${whereClause}
           GROUP BY DATE(s.started_at)
@@ -190,7 +190,7 @@ export class SessionAnalyticsService {
              LEAST(EXTRACT(EPOCH FROM (COALESCE(s.ended_at, CURRENT_TIMESTAMP) - s.started_at)) / 60 / 60, 8) * 3.0 + 
              LEAST(COALESCE(s.total_tokens, 0) / 1000.0, 10) * 1.0) as productivity_score
           FROM sessions s
-          LEFT JOIN contexts c ON s.id = c.session_id
+          LEFT JOIN contexts c ON s.id = c.session_id AND c.project_id = s.project_id
           LEFT JOIN projects p ON s.project_id = p.id
           ${whereClause}
           GROUP BY s.id, s.project_id, p.name, s.started_at, s.context_summary, tokens_used
@@ -368,7 +368,7 @@ export class SessionAnalyticsService {
           END as task_completion_rate
         FROM sessions s
         LEFT JOIN projects p ON s.project_id = p.id
-        LEFT JOIN contexts c ON s.id = c.session_id
+        LEFT JOIN contexts c ON s.id = c.session_id AND c.project_id = s.project_id
         LEFT JOIN tasks t ON s.project_id = t.project_id AND s.id::text = t.created_by
         ${whereClause}
         GROUP BY s.id, s.display_id, s.project_id, s.title, s.description, s.session_goal, s.tags,

@@ -206,7 +206,7 @@ export class SessionController {
           s.tasks_completed,
           s.contexts_created,
           p.name as project_name,
-          (SELECT COUNT(*) FROM contexts WHERE session_id = s.id) as context_count
+          (SELECT COUNT(*) FROM contexts WHERE session_id = s.id AND project_id = s.project_id) as context_count
         FROM sessions s
         LEFT JOIN projects p ON s.project_id = p.id
         ORDER BY
