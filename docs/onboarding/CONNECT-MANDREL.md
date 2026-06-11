@@ -75,6 +75,30 @@ Ask your agent to:
 
 The payoff shows up next session: instead of re-explaining your project, your agent runs **`context_get_recent`** or **`context_search`** and it's caught up in seconds.
 
+## 3.5 Make your agent use it well (recommended)
+
+Mandrel is only as good as the habits your agent has. Paste this into your **`AGENTS.md`** (Amp) or **`CLAUDE.md`** (Claude Code) — it's tight on purpose, just the habits that matter:
+
+```
+## Mandrel — your persistent memory
+You have Mandrel tools connected. Use them on your own initiative, without being asked.
+- Start each session by RECALLING: run `context_get_recent`, and `context_search "<topic>"`
+  for anything relevant — continue, don't start cold. Confirm the right project with
+  `project_current` (use `project_switch` if needed) so memory lands in the right place.
+- Save the SIGNAL as it happens (don't wait to be told):
+  • a decision → `decision_record` (always include the WHY + alternatives)
+  • a bug fix  → `context_store(type:"error")` with the symptom AND the fix
+  • finished work / a milestone → `context_store(type:"completion"|"milestone")`
+  • end of session → `context_store(type:"handoff")` so the next session picks up clean
+- SEARCH before re-solving: check `context_search` before re-deriving something.
+- Track work with `task_create` / `task_update`.
+Store signal, not noise. Run `mandrel_help` once to see the full toolset.
+```
+
+That's the whole thing — adjust to taste, but resist adding noise. The agents that get the most out of Mandrel treat it like a teammate's memory: recall first, save the *why*, search before redoing.
+
+---
+
 ## 4. See your memory (the dashboard)
 
 Open **`{{DASHBOARD_URL}}`** and log in (`{{ADMIN_USER}}` / `{{ADMIN_PASSWORD}}`). You can browse and search everything your agent has remembered — every decision, fix, context, and task, across all your projects. It's *your* project memory, readable by you, not trapped inside a chat.
