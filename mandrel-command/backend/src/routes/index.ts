@@ -17,6 +17,7 @@ import openApiRoutes from './openapi';
 import embeddingRoutes from './embedding';
 import eventsRoutes from './events';
 import gitRoutes from './git';
+import { authenticateToken } from '../middleware/auth';
 import { logger } from '../config/logger';
 
 const router = Router();
@@ -43,7 +44,12 @@ router.use('/git', gitRoutes);
 
 // MCP Proxy Routes - Forward session file endpoints to MCP server
 // This eliminates hard-coded localhost:8080 in frontend for OSS deployment
-const MCP_BASE = `http://localhost:${process.env.MANDREL_MCP_PORT || process.env.AIDIS_MCP_PORT || '8080'}`;
+// Prefer an explicit MCP base URL (needed in containerized deploys where the MCP
+// server is a sibling container reachable by service name, NOT localhost). Fall
+// back to host:port form for same-namespace/dev deploys.
+const MCP_BASE =
+  process.env.MANDREL_MCP_URL ||
+  `http://localhost:${process.env.MANDREL_MCP_PORT || process.env.AIDIS_MCP_PORT || '8080'}`;
 
 // Deprecation warning for AIDIS_MCP_PORT
 if (process.env.AIDIS_MCP_PORT && !process.env.MANDREL_MCP_PORT) {
@@ -97,6 +103,118 @@ router.post('/v2/sessions/:sessionId/sync-files', async (req: Request, res: Resp
     res.status(response.status).json(data);
   } catch (error) {
     logger.error('MCP proxy error (POST sync-files)', { error });
+    res.status(503).json({
+      success: false,
+      error: 'MCP service unavailable',
+      message: error instanceof Error ? error.message : 'Failed to proxy request to MCP server'
+    });
+  }
+});
+
+/**
+ * Proxy POST /api/v2/sessions/start to MCP server (authenticated)
+ * Closes the unauthenticated /api/v2 gap on the browser path: the public route
+ * requires a logged-in user, then forwards to the (unauth) MCP REST endpoint.
+ */
+router.post('/v2/sessions/start', authenticateToken, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const url = `${MCP_BASE}/api/v2/sessions/start`;
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(req.body || {}),
+    });
+
+    const data = await response.json();
+    res.status(response.status).json(data);
+  } catch (error) {
+    logger.error('MCP proxy error (POST sessions/start)', { error });
+    res.status(503).json({
+      success: false,
+      error: 'MCP service unavailable',
+      message: error instanceof Error ? error.message : 'Failed to proxy request to MCP server'
+    });
+  }
+});
+
+/**
+ * Proxy GET /api/v2/sessions/active to MCP server (authenticated)
+ */
+router.get('/v2/sessions/active', authenticateToken, async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const url = `${MCP_BASE}/api/v2/sessions/active`;
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    const data = await response.json();
+    res.status(response.status).json(data);
+  } catch (error) {
+    logger.error('MCP proxy error (GET sessions/active)', { error });
+    res.status(503).json({
+      success: false,
+      error: 'MCP service unavailable',
+      message: error instanceof Error ? error.message : 'Failed to proxy request to MCP server'
+    });
+  }
+});
+
+/**
+ * Proxy POST /api/v2/sessions/:sessionId/end to MCP server (authenticated)
+ */
+router.post('/v2/sessions/:sessionId/end', authenticateToken, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { sessionId } = req.params;
+    const url = `${MCP_BASE}/api/v2/sessions/${sessionId}/end`;
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(req.body || {}),
+    });
+
+    const data = await response.json();
+    res.status(response.status).json(data);
+  } catch (error) {
+    logger.error('MCP proxy error (POST sessions/end)', { error });
+    res.status(503).json({
+      success: false,
+      error: 'MCP service unavailable',
+      message: error instanceof Error ? error.message : 'Failed to proxy request to MCP server'
+    });
+  }
+});
+
+/**
+ * Proxy GET /api/v2/sessions (list) to MCP server (authenticated)
+ * Forwards the query string (e.g. ?limit=100).
+ */
+router.get('/v2/sessions', authenticateToken, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const queryIndex = req.originalUrl.indexOf('?');
+    const queryString = queryIndex >= 0 ? req.originalUrl.slice(queryIndex) : '';
+    const url = `${MCP_BASE}/api/v2/sessions${queryString}`;
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    const data = await response.json();
+    res.status(response.status).json(data);
+  } catch (error) {
+    logger.error('MCP proxy error (GET sessions list)', { error });
     res.status(503).json({
       success: false,
       error: 'MCP service unavailable',

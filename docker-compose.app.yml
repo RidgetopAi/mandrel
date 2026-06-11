@@ -41,6 +41,9 @@ services:
       MANDREL_JWT_SECRET: "${JWT_SECRET}"
       CORS_ORIGIN: "https://app.mandrel.ridgetopai.net"
       FRONTEND_URL: "https://app.mandrel.ridgetopai.net"
+      # MCP server is a sibling container here, reachable by service name (NOT
+      # localhost, which is the backend itself). Used by the /api/v2/sessions/* proxies.
+      MANDREL_MCP_URL: "http://mcp-server:8080"
 
   mandrel-command-frontend:
     container_name: mandrel-app-command-frontend
