@@ -217,3 +217,6 @@ docker-compose.override.yml
 # Command UI frontend logo assets — versioned brand artifact (overrides *.png/*.svg ignore)
 !mandrel-command/frontend/public/assets/
 !mandrel-command/frontend/public/assets/**
+
+# Per-customer instance overrides stay LOCAL (do not leak tester handles to the public repo)
+docker-compose.brian.yml
