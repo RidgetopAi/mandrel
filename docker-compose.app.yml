@@ -1,0 +1,31 @@
+# docker-compose.app.yml — overrides for the PUBLIC "app" instance (app.mandrel.ridgetopai.net)
+#
+# This is the first hosted, remotely-connectable Mandrel instance. It is ISOLATED from
+# Brian's personal prod Mandrel (/opt/mandrel, bare systemd): own container names, own
+# volumes (namespaced by the `mandrel-app` project), localhost-only host ports.
+#
+# Bring up (only the 3 services the MCP endpoint needs):
+#   docker compose -f docker-compose.yml -f docker-compose.app.yml \
+#     --env-file /root/.mandrel-app.env -p mandrel-app up -d --build postgres redis mcp-server
+#
+# Secrets (MCP_AUTH_TOKEN) live ONLY in /root/.mandrel-app.env (mode 600) — never committed.
+# nginx terminates TLS for app.mandrel.ridgetopai.net and proxies to 127.0.0.1:18080.
+
+services:
+  postgres:
+    container_name: mandrel-app-postgres
+    ports: !override
+      - "127.0.0.1:15432:5432"
+
+  redis:
+    container_name: mandrel-app-redis
+    ports: !override
+      - "127.0.0.1:16379:6379"
+
+  mcp-server:
+    container_name: mandrel-app-mcp-server
+    ports: !override
+      - "127.0.0.1:18080:8080"
+    environment:
+      MCP_AUTH_TOKEN: "${MCP_AUTH_TOKEN:?set MCP_AUTH_TOKEN in /root/.mandrel-app.env}"
+      MCP_ALLOWED_HOSTS: "${MCP_ALLOWED_HOSTS:-app.mandrel.ridgetopai.net}"
