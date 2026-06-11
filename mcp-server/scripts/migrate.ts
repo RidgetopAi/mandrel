@@ -137,6 +137,49 @@ class MigrationRunner {
   }
 
   /**
+   * Fresh-DB ONLY: seed the operational `dual_write_config` feature-flag rows.
+   *
+   * The legacy P2.3 dual-write trigger fires on writes to these 5 tables and, if a
+   * table has NO config row, `record_dual_write_failure()` hits an ambiguous
+   * `max_failures` and raises — 500-ing the very first write to that table on an
+   * otherwise-clean fresh DB. The consolidated baseline carries the table's SCHEMA
+   * but not its DATA rows, so we seed them here.
+   *
+   * Values mirror prod's post-cutover config rows (verified against prod
+   * 2026-06-11): all five tables present with enabled=FALSE and emergency_stop=
+   * FALSE; every other column uses the table's own DEFAULTs, which already match
+   * prod (sync_mode='async', max_failures=5, failure_count=0,
+   * performance_threshold_ms=1000). So the dual-write path is fully wired but
+   * INERT on a fresh instance — exactly prod's steady state.
+   *
+   * Idempotent via ON CONFLICT DO NOTHING (PK is table_name). Runs ONLY on the
+   * fresh path so existing/already-baselined DBs (whose real rows we must not
+   * clobber) are never touched.
+   */
+  private async seedDualWriteConfig(): Promise<void> {
+    const triggerTables = [
+      'projects',
+      'sessions',
+      'contexts',
+      'analytics_events',
+      'tasks',
+    ];
+
+    const result = await db.query(
+      `INSERT INTO dual_write_config (table_name, enabled, emergency_stop)
+       SELECT t, FALSE, FALSE
+       FROM unnest($1::text[]) AS t
+       ON CONFLICT (table_name) DO NOTHING`,
+      [triggerTables]
+    );
+
+    console.log(
+      `🌱 Seeded dual_write_config (${result.rowCount}/${triggerTables.length} ` +
+      `rows inserted; enabled=FALSE, emergency_stop=FALSE) — dual-write path inert on fresh DB.`
+    );
+  }
+
+  /**
    * Get list of migration files
    */
   private async getMigrationFiles(): Promise<Migration[]> {
@@ -214,6 +257,12 @@ class MigrationRunner {
         // Fresh DB: install the prod-snapshot baseline and stamp the historical
         // incremental migrations (000..BASELINE_THROUGH) as already-applied.
         await this.applyBaseline(allMigrations);
+
+        // Fresh DB: seed operational dual_write_config rows so the legacy P2.3
+        // dual-write trigger is inert (not absent) and the first write to each of
+        // the 5 trigger tables does not 500. Fresh path ONLY — never touches
+        // existing/already-baselined DBs.
+        await this.seedDualWriteConfig();
       } else {
         // Existing DB: ensure the tracking table exists (no-op if it already
         // does) and proceed with the normal incremental path. An already-
