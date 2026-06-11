@@ -12,6 +12,7 @@
 
 import { db } from '../config/database.js';
 import { logger } from '../utils/logger.js';
+import { ActiveSessionStore } from '../services/session/state/ActiveSessionStore.js';
 // Re-export types from shared types file (to avoid circular dependency with projectSwitchValidator)
 export type { ProjectInfo, CreateProjectRequest, SessionState } from '../types/project.js';
 // Import for internal use
@@ -265,8 +266,58 @@ class ProjectHandler {
     // Mark as manual override so initializeSession() won't override this choice
     this.setCurrentProject(project.id, sessionId, true);
 
+    // ROOT FIX (b6c18866): keep the connection's session DB row in sync with its
+    // current project. Previously project_switch only mutated the in-memory
+    // sessionStates map, so a session's stored project_id diverged from the
+    // project its newly-stored contexts landed in (cross-project misattribution).
+    // Scope STRICTLY to THIS connection's own active session — never global.
+    await this.syncSessionProject(sessionId, project.id);
+
     logger.info(`✅ Switched to project: ${project.name}`);
     return { ...project, isActive: true };
+  }
+
+  /**
+   * Sync the DB `sessions` row to the current project for a SINGLE connection's
+   * active session only (per-connection isolation — b6c18866).
+   *
+   * `connectionId` is the key used throughout the project handler (the route layer
+   * passes context.connectionId as `sessionId`). The DB session that belongs to that
+   * connection is resolved via ActiveSessionStore — which is itself connection-scoped.
+   * If the connection has no bound DB session (e.g. internal/default callers), this is
+   * a no-op: there is nothing to keep in sync, and we MUST NOT touch any other row.
+   *
+   * The UPDATE is always pinned to `WHERE id = <that one session id>`, so switching
+   * project on connection A can never alter connection B's session row.
+   */
+  private async syncSessionProject(connectionId: string, projectId: string): Promise<void> {
+    try {
+      const activeSessionId = ActiveSessionStore.get(connectionId);
+      if (!activeSessionId) {
+        logger.info(
+          `ℹ️  No active DB session bound to connection ${connectionId.substring(0, 8)}...; skipping session project sync`
+        );
+        return;
+      }
+
+      const result = await db.query(
+        `UPDATE sessions SET project_id = $1 WHERE id = $2`,
+        [projectId, activeSessionId]
+      );
+
+      if (result.rowCount && result.rowCount > 0) {
+        logger.info(
+          `✅ Synced session ${activeSessionId.substring(0, 8)}... project_id → ${projectId} (connection ${connectionId.substring(0, 8)}...)`
+        );
+      } else {
+        logger.warn(
+          `⚠️  Session ${activeSessionId.substring(0, 8)}... not found while syncing project (already ended?)`
+        );
+      }
+    } catch (error) {
+      // Never let a sync failure break the user-facing switch; log and move on.
+      logger.error('❌ Failed to sync session project_id during switch', error as Error);
+    }
   }
 
   // Note: switchProjectWithValidation moved to projectSwitchValidator.ts to avoid circular dependency
