@@ -1,4 +1,5 @@
-import React, { Suspense, lazy } from 'react';
+import React, { Suspense } from 'react';
+import { lazyWithRetry } from './utils/lazyWithRetry';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ConfigProvider } from 'antd';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -16,20 +17,20 @@ import MandrelApiErrorBoundary from './components/error/MandrelApiErrorBoundary'
 import LoadingState from './components/common/LoadingState';
 import './App.css';
 
-const Login = lazy(() => import('./pages/Login'));
-const Dashboard = lazy(() => import('./pages/Dashboard'));
-const Contexts = lazy(() => import('./pages/Contexts'));
-const Tasks = lazy(() => import('./pages/Tasks'));
-const Decisions = lazy(() => import('./pages/Decisions'));
-const Embedding = lazy(() => import('./pages/Embedding'));
-const Projects = lazy(() => import('./pages/Projects'));
-const ProjectDetail = lazy(() => import('./pages/ProjectDetail'));
-const Sessions = lazy(() => import('./pages/Sessions'));
-const SessionDetail = lazy(() => import('./pages/SessionDetail'));
-const Analytics = lazy(() => import('./pages/Analytics'));
-const Surveyor = lazy(() => import('./pages/Surveyor'));
-const Settings = lazy(() => import('./pages/Settings'));
-const Profile = lazy(() => import('./pages/Profile'));
+const Login = lazyWithRetry(() => import('./pages/Login'));
+const Dashboard = lazyWithRetry(() => import('./pages/Dashboard'));
+const Contexts = lazyWithRetry(() => import('./pages/Contexts'));
+const Tasks = lazyWithRetry(() => import('./pages/Tasks'));
+const Decisions = lazyWithRetry(() => import('./pages/Decisions'));
+const Embedding = lazyWithRetry(() => import('./pages/Embedding'));
+const Projects = lazyWithRetry(() => import('./pages/Projects'));
+const ProjectDetail = lazyWithRetry(() => import('./pages/ProjectDetail'));
+const Sessions = lazyWithRetry(() => import('./pages/Sessions'));
+const SessionDetail = lazyWithRetry(() => import('./pages/SessionDetail'));
+const Analytics = lazyWithRetry(() => import('./pages/Analytics'));
+const Surveyor = lazyWithRetry(() => import('./pages/Surveyor'));
+const Settings = lazyWithRetry(() => import('./pages/Settings'));
+const Profile = lazyWithRetry(() => import('./pages/Profile'));
 
 // React Query client configuration
 export const queryClient = new QueryClient({
