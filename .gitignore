@@ -209,3 +209,7 @@ docker-compose.override.yml
 # Schematic — versioned with the code it maps (overrides the docs/ ignore)
 !docs/schematic/
 !docs/schematic/**
+
+# Onboarding docs — versioned product artifact (overrides docs/ ignore)
+!docs/onboarding/
+!docs/onboarding/**
