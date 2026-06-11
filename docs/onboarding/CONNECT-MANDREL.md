@@ -105,6 +105,12 @@ Open **`{{DASHBOARD_URL}}`** and log in (`{{ADMIN_USER}}` / `{{ADMIN_PASSWORD}}`
 
 ---
 
+## Security & privacy (short version)
+
+You get your **own private instance** — own container, own database, own token. Not multi-tenant; your data is physically isolated, not mixed with anyone else's. Your agent connects with a token over HTTPS (fail-closed, no token = no access); the dashboard has its own login. **Embeddings run locally** on your instance, so your code isn't sent to a third-party AI to be indexed — and as the operator we see **stats, not content** (counts and health, never your data). It's early — no SSO/MFA/compliance yet, straight up — but your data is **private and isolated today**. Full details in `AUTH.md`, or just ask.
+
+---
+
 ## Troubleshooting
 
 - **Not connected / "failed to fetch":** double-check the URL ends in `/mcp` and the token is pasted exactly (no extra spaces or line breaks).
