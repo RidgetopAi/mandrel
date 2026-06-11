@@ -531,7 +531,10 @@ export const SessionRepo = {
   async countContexts(sessionId: string): Promise<number> {
     try {
       const result = await db.query(
-        'SELECT COUNT(*) as count FROM contexts WHERE session_id = $1',
+        `SELECT COUNT(*) as count
+         FROM contexts c
+         JOIN sessions s ON s.id = c.session_id
+         WHERE c.session_id = $1 AND c.project_id = s.project_id`,
         [sessionId]
       );
       return parseInt(result.rows[0]?.count || '0');
