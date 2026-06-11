@@ -21,6 +21,22 @@ interface Migration {
   number: number;
 }
 
+/**
+ * Consolidated golden-image baseline (rebaseline, 2026-06-11).
+ *
+ * 000_baseline_schema.sql is a cleaned schema-only snapshot of PROD and is the
+ * single source of truth for a FRESH database's schema. The historical
+ * incremental migrations (001..BASELINE_THROUGH) are RETAINED in the tree for
+ * history but no longer reproduce the real schema, so on a fresh DB they are
+ * STAMPED as already-applied (never re-run) once the baseline is installed.
+ *
+ * Migrations numbered ABOVE BASELINE_THROUGH (e.g. 043+) are NOT folded into the
+ * baseline and continue to run normally on top of it — both on fresh builds and
+ * on existing (already-baselined) instances.
+ */
+const BASELINE_FILE = '000_baseline_schema.sql';
+const BASELINE_THROUGH = 42; // highest migration number folded into the baseline
+
 class MigrationRunner {
   private migrationsPath: string;
 
@@ -29,7 +45,23 @@ class MigrationRunner {
   }
 
   /**
-   * Create migrations tracking table if it doesn't exist
+   * Whether the _aidis_migrations tracking table already exists. Its absence is
+   * how we detect a brand-new, never-provisioned database (fresh-volume boot).
+   */
+  private async migrationsTableExists(): Promise<boolean> {
+    const result = await db.query(
+      "SELECT to_regclass('public._aidis_migrations') IS NOT NULL AS exists"
+    );
+    return result.rows[0]?.exists === true;
+  }
+
+  /**
+   * Create migrations tracking table if it doesn't exist.
+   *
+   * NOTE: on a fresh DB the baseline (000_baseline_schema.sql) creates the real
+   * prod _aidis_migrations (with its sequence/PK/unique/index) itself, so this
+   * is only used on the NON-fresh path (existing DBs that predate the baseline,
+   * or as a no-op safety net). The IF NOT EXISTS guards keep it harmless.
    */
   private async createMigrationsTable(): Promise<void> {
     const sql = `
@@ -40,13 +72,68 @@ class MigrationRunner {
         applied_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
         checksum VARCHAR(64)
       );
-      
-      CREATE INDEX IF NOT EXISTS idx_migrations_number 
+
+      CREATE INDEX IF NOT EXISTS idx_migrations_number
       ON _aidis_migrations(migration_number);
     `;
-    
+
     await db.query(sql);
     console.log('✅ Migration tracking table ready');
+  }
+
+  /**
+   * Record a migration filename as applied WITHOUT running its SQL (used to
+   * "stamp" the historical incremental migrations after the consolidated
+   * baseline has been installed on a fresh DB, so they never run on top of it).
+   */
+  private async stampMigration(migration: Migration): Promise<void> {
+    await db.query(
+      `INSERT INTO _aidis_migrations (filename, migration_number)
+       VALUES ($1, $2)
+       ON CONFLICT (filename) DO NOTHING`,
+      [migration.filename, migration.number]
+    );
+  }
+
+  /**
+   * Fresh-DB rebaseline path: apply the consolidated baseline, then stamp the
+   * baseline itself plus every historical migration up to BASELINE_THROUGH as
+   * already-applied. Returns the set of filenames now considered applied so the
+   * caller can skip them in the normal pending loop.
+   */
+  private async applyBaseline(allMigrations: Migration[]): Promise<Set<string>> {
+    const baseline = allMigrations.find(m => m.filename === BASELINE_FILE);
+    if (!baseline) {
+      throw new Error(
+        `Fresh database detected but baseline ${BASELINE_FILE} is missing from ` +
+        `${this.migrationsPath}. Cannot provision schema.`
+      );
+    }
+
+    console.log(`🌱 Fresh database detected — installing consolidated baseline: ${BASELINE_FILE}`);
+    await db.query(baseline.content);
+    console.log(`✅ Baseline schema installed`);
+
+    // The baseline itself creates the real _aidis_migrations table but does not
+    // insert its own tracking row, so stamp it now along with the superseded
+    // incremental migrations (<= BASELINE_THROUGH).
+    const stamped = new Set<string>();
+    await this.stampMigration(baseline);
+    stamped.add(baseline.filename);
+
+    const superseded = allMigrations.filter(
+      m => m.filename !== BASELINE_FILE && m.number <= BASELINE_THROUGH
+    );
+    for (const m of superseded) {
+      await this.stampMigration(m);
+      stamped.add(m.filename);
+    }
+    console.log(
+      `📌 Stamped baseline + ${superseded.length} historical migrations ` +
+      `(<= ${String(BASELINE_THROUGH).padStart(3, '0')}) as applied.`
+    );
+
+    return stamped;
   }
 
   /**
@@ -115,18 +202,33 @@ class MigrationRunner {
     try {
       // Initialize database connection
       await initializeDatabase();
-      
-      // Create migrations tracking table
-      await this.createMigrationsTable();
-      
-      // Get all migrations and applied migrations
+
+      // Detect a fresh (never-provisioned) database BEFORE creating any tracking
+      // table, so we can install the consolidated baseline on the fresh path.
+      const isFreshDb = !(await this.migrationsTableExists());
+
+      // Get all migration files up front (needed by both the fresh and normal paths).
       const allMigrations = await this.getMigrationFiles();
+
+      if (isFreshDb) {
+        // Fresh DB: install the prod-snapshot baseline and stamp the historical
+        // incremental migrations (000..BASELINE_THROUGH) as already-applied.
+        await this.applyBaseline(allMigrations);
+      } else {
+        // Existing DB: ensure the tracking table exists (no-op if it already
+        // does) and proceed with the normal incremental path. An already-
+        // baselined DB will have 000..BASELINE_THROUGH stamped, so they're skipped.
+        await this.createMigrationsTable();
+      }
+
+      // Get list of already applied migrations (now includes anything just stamped).
       const appliedMigrations = await this.getAppliedMigrations();
-      
+
       console.log(`📋 Found ${allMigrations.length} migration files`);
       console.log(`📋 ${appliedMigrations.size} migrations already applied\n`);
-      
-      // Find pending migrations
+
+      // Find pending migrations (e.g. 043+ on a fresh build, or any genuinely
+      // unapplied file on an existing instance).
       const pendingMigrations = allMigrations.filter(
         migration => !appliedMigrations.has(migration.filename)
       );

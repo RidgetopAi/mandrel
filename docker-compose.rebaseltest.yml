@@ -1,0 +1,36 @@
+# docker-compose.rebaseltest.yml — THROWAWAY override for proving the schema rebaseline.
+#
+# Brings up an isolated, fresh-volume stack (project `mandrel-rebaseltest`) on unique
+# high ports so it NEVER collides with prod (host 5432/8080/5000) or the live app
+# instance (mandrel-app-* on 15432/18080/15000/...). Used only to verify that a brand-
+# new DB self-provisions prod's COMPLETE schema from the consolidated baseline.
+#
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.rebaseltest.yml \
+#     --env-file /root/.mandrel-rebaseltest.env -p mandrel-rebaseltest up -d --build \
+#     postgres redis mcp-server
+#
+# Tear down (also drop volumes):
+#   docker compose -f docker-compose.yml -f docker-compose.rebaseltest.yml \
+#     -p mandrel-rebaseltest down -v
+#
+# This file is NOT part of any production path; it exists for the rebaseline proof.
+
+services:
+  postgres:
+    container_name: !reset null
+    ports: !override
+      - "127.0.0.1:${P1_PG_PORT:-15440}:5432"
+
+  redis:
+    container_name: !reset null
+    ports: !override
+      - "127.0.0.1:${P1_REDIS_PORT:-16390}:6379"
+
+  mcp-server:
+    container_name: !reset null
+    ports: !override
+      - "127.0.0.1:${P1_MCP_PORT:-18090}:8080"
+    environment:
+      MCP_AUTH_TOKEN: "${MCP_AUTH_TOKEN:?set MCP_AUTH_TOKEN in env file}"
+      MCP_ALLOWED_HOSTS: "${MCP_ALLOWED_HOSTS:-localhost,127.0.0.1}"
