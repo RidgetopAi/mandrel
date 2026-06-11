@@ -46,7 +46,7 @@ export const useSettings = (): UseSettingsReturn => {
     if (projectName) {
       try {
         // Get API base URL from environment or use default
-        const apiBaseUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+        const apiBaseUrl = process.env.REACT_APP_API_URL || '/api';
 
         // Find project ID by name - use AIDIS Command backend API
         const projectsResponse = await fetch(`${apiBaseUrl}/projects`, {

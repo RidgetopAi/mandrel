@@ -24,7 +24,7 @@ const Settings: React.FC = () => {
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [isSavingPassword, setIsSavingPassword] = useState(false);
 
-  const apiBaseUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+  const apiBaseUrl = process.env.REACT_APP_API_URL || '/api';
   const token = localStorage.getItem('aidis_token') || '';
 
   // Sync form field with theme mode
