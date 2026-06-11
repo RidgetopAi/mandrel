@@ -77,7 +77,14 @@ export class MandrelApiClient {
     timeout?: number;
     retryConfig?: Partial<RetryConfig>;
   }) {
-    this.baseUrl = config?.baseUrl || process.env.REACT_APP_MCP_URL || 'http://localhost:8080';
+    // Host-agnostic base URL. Only honor an explicit absolute http(s) REACT_APP_MCP_URL;
+    // otherwise default to same-origin ('' / relative) so the browser never makes a
+    // loopback fetch to localhost:8080 (which triggers the "Private Network Access"
+    // prompt on a hosted browser). V2 calls then hit same-origin /v2/mcp/* and fall
+    // back to the authenticated backend. Mirrors sessionsClient.ts / client.ts.
+    const envMcpUrl = process.env.REACT_APP_MCP_URL;
+    const absoluteEnvUrl = envMcpUrl && /^https?:\/\//.test(envMcpUrl) ? envMcpUrl : '';
+    this.baseUrl = config?.baseUrl || absoluteEnvUrl || '';
     this.timeout = config?.timeout || 30000;
     this.retryConfig = { ...DEFAULT_RETRY_CONFIG, ...config?.retryConfig };
   }

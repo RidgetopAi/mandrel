@@ -76,7 +76,7 @@ export async function resolveProjectForSession(sessionId: string = 'default-sess
     const projectParams = [
       newProjectId,
       'Personal Project',
-      'Auto-created personal project for session management (TS010)',
+      'Auto-created personal project for session management',
       JSON.stringify({
         auto_created: true,
         created_for: 'ts010_session_management',

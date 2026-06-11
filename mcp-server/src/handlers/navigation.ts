@@ -65,22 +65,22 @@ class NavigationHandler {
    */
   private readonly toolExamples = {
     // System Health
-    'aidis_ping': [
+    'mandrel_ping': [
       {
         title: 'Test basic connectivity',
-        example: `aidis_ping()`
+        example: `mandrel_ping()`
       },
       {
         title: 'Test with custom message',
-        example: `aidis_ping({
+        example: `mandrel_ping({
   message: "Health check from agent"
 })`
       }
     ],
-    'aidis_status': [
+    'mandrel_status': [
       {
         title: 'Get server health report',
-        example: `aidis_status()`
+        example: `mandrel_status()`
       }
     ],
 
@@ -363,7 +363,7 @@ class NavigationHandler {
     const totalTools = Object.values(this.toolCatalog).reduce((sum, tools) => sum + tools.length, 0);
     const totalCategories = Object.keys(this.toolCatalog).length;
 
-    let helpText = '🚀 **AIDIS - AI Development Intelligence System**\n\n';
+    let helpText = '🚀 **Mandrel**\n\n';
     helpText += `**${totalTools} Tools Available Across ${totalCategories} Categories:**\n\n`;
 
     for (const [category, tools] of Object.entries(this.toolCatalog)) {
@@ -376,9 +376,9 @@ class NavigationHandler {
     }
 
     helpText += '💡 **Quick Start:**\n';
-    helpText += '• `aidis_explain <toolname>` - Get detailed help for any tool\n';
-    helpText += '• `aidis_examples <toolname>` - See usage examples\n';
-    helpText += '• `aidis_ping` - Test connectivity\n';
+    helpText += '• `mandrel_explain <toolname>` - Get detailed help for any tool\n';
+    helpText += '• `mandrel_examples <toolname>` - See usage examples\n';
+    helpText += '• `mandrel_ping` - Test connectivity\n';
     helpText += '• `project_current` - Check current project\n\n';
     
     helpText += '🎯 **Popular Workflows:**\n';
@@ -422,7 +422,7 @@ class NavigationHandler {
         content: [
           {
             type: 'text',
-            text: `❌ Tool "${toolName}" not found.\n\nUse \`aidis_help\` to see all available tools.`
+            text: `❌ Tool "${toolName}" not found.\n\nUse \`mandrel_help\` to see all available tools.`
           }
         ]
       };
@@ -446,7 +446,7 @@ class NavigationHandler {
       explanation += this.formatSchemaParameters(toolDef.inputSchema, requiredFields);
     }
 
-    explanation += `💡 **Quick Tip:** Use \`aidis_examples ${toolName}\` to see usage examples.`;
+    explanation += `💡 **Quick Tip:** Use \`mandrel_examples ${toolName}\` to see usage examples.`;
 
     return {
       content: [
@@ -484,7 +484,7 @@ class NavigationHandler {
         content: [
           {
             type: 'text',
-            text: `❌ Tool "${toolName}" not found.\n\n**Available tools:**\n${allTools.map(t => `• ${t}`).join('\n')}\n\nUse \`aidis_help\` to see all tools organized by category.`
+            text: `❌ Tool "${toolName}" not found.\n\n**Available tools:**\n${allTools.map(t => `• ${t}`).join('\n')}\n\nUse \`mandrel_help\` to see all tools organized by category.`
           }
         ]
       };
@@ -497,7 +497,7 @@ class NavigationHandler {
         content: [
           {
             type: 'text',
-            text: `📝 No examples available yet for "${toolName}".\n\nUse \`aidis_explain ${toolName}\` for parameter documentation.`
+            text: `📝 No examples available yet for "${toolName}".\n\nUse \`mandrel_explain ${toolName}\` for parameter documentation.`
           }
         ]
       };
@@ -513,8 +513,8 @@ class NavigationHandler {
     });
 
     exampleText += `💡 **Related Commands:**\n`;
-    exampleText += `• \`aidis_explain ${toolName}\` - Get detailed parameter documentation\n`;
-    exampleText += `• \`aidis_help\` - See all available tools by category`;
+    exampleText += `• \`mandrel_explain ${toolName}\` - Get detailed parameter documentation\n`;
+    exampleText += `• \`mandrel_help\` - See all available tools by category`;
 
     return {
       content: [
