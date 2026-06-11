@@ -1,15 +1,17 @@
 # docker-compose.app.yml — overrides for the PUBLIC "app" instance (app.mandrel.ridgetopai.net)
 #
-# This is the first hosted, remotely-connectable Mandrel instance. It is ISOLATED from
-# Brian's personal prod Mandrel (/opt/mandrel, bare systemd): own container names, own
-# volumes (namespaced by the `mandrel-app` project), localhost-only host ports.
+# This is the first hosted instance. It is ISOLATED from Brian's personal prod Mandrel
+# (/opt/mandrel, bare systemd): own container names, own volumes (namespaced by the
+# `mandrel-app` project), localhost-only host ports.
 #
-# Bring up (only the 3 services the MCP endpoint needs):
+# Full product unit = MCP server + Command UI. Bring up:
 #   docker compose -f docker-compose.yml -f docker-compose.app.yml \
-#     --env-file /root/.mandrel-app.env -p mandrel-app up -d --build postgres redis mcp-server
+#     --env-file /root/.mandrel-app.env -p mandrel-app up -d --build \
+#     postgres redis mcp-server mandrel-command-backend mandrel-command-frontend
 #
-# Secrets (MCP_AUTH_TOKEN) live ONLY in /root/.mandrel-app.env (mode 600) — never committed.
-# nginx terminates TLS for app.mandrel.ridgetopai.net and proxies to 127.0.0.1:18080.
+# nginx (app.mandrel.ridgetopai.net): / -> frontend:13000 (serves UI + proxies /api -> backend),
+# /mcp -> mcp-server:18080. Secrets (MCP_AUTH_TOKEN, JWT_SECRET) live ONLY in
+# /root/.mandrel-app.env (mode 600) — never committed.
 
 services:
   postgres:
@@ -29,3 +31,18 @@ services:
     environment:
       MCP_AUTH_TOKEN: "${MCP_AUTH_TOKEN:?set MCP_AUTH_TOKEN in /root/.mandrel-app.env}"
       MCP_ALLOWED_HOSTS: "${MCP_ALLOWED_HOSTS:-app.mandrel.ridgetopai.net}"
+
+  mandrel-command-backend:
+    container_name: mandrel-app-command-backend
+    ports: !override
+      - "127.0.0.1:15000:5000"
+    environment:
+      JWT_SECRET: "${JWT_SECRET:?set JWT_SECRET in /root/.mandrel-app.env}"
+      MANDREL_JWT_SECRET: "${JWT_SECRET}"
+      CORS_ORIGIN: "https://app.mandrel.ridgetopai.net"
+      FRONTEND_URL: "https://app.mandrel.ridgetopai.net"
+
+  mandrel-command-frontend:
+    container_name: mandrel-app-command-frontend
+    ports: !override
+      - "127.0.0.1:13000:3000"
