@@ -144,7 +144,7 @@ const Login: React.FC = () => {
             </Form.Item>
           </Form>
 
-          {/* Demo Credentials */}
+          {/* Welcome */}
           <div
             style={{
               backgroundColor: themeMode === 'dark' ? '#1f1f1f' : '#f6f6f6',
@@ -153,11 +153,9 @@ const Login: React.FC = () => {
               fontSize: '12px',
             }}
           >
-            <Text strong>Demo Credentials:</Text>
+            <Text strong>Welcome to Mandrel Command</Text>
             <br />
-            <Text type="secondary">Username: admin</Text>
-            <br />
-            <Text type="secondary">Password: admin123!</Text>
+            <Text type="secondary">Sign in to your workspace.</Text>
           </div>
 
           {/* Footer */}
