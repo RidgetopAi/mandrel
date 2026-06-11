@@ -63,11 +63,15 @@ export async function routeExecutor(toolName: string, args: any, context?: Route
       case 'context_stats':
         return await contextRoutes.handleStats(args, context);
 
-      // Project Management (6 tools) - pass context for session isolation
+      // Project Management (8 tools) - pass context for session isolation
       case 'project_list':
         return await projectRoutes.handleList(args, context);
       case 'project_create':
         return await projectRoutes.handleCreate(args);
+      case 'project_update':
+        return await projectRoutes.handleUpdate(args);
+      case 'project_delete':
+        return await projectRoutes.handleDelete(args, context);
       case 'project_switch':
         return await projectRoutes.handleSwitch(args, context);
       case 'project_current':

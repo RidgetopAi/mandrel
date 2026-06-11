@@ -6,14 +6,14 @@
  * 2. mandrel_explain - Detailed tool documentation
  * 3. mandrel_examples - Usage examples and patterns
  *
- * This transforms Mandrel from "27 mysterious tools" into a discoverable, learnable system.
+ * This transforms Mandrel from a flat list of mysterious tools into a discoverable, learnable system.
  */
 
 import { AIDIS_TOOL_DEFINITIONS } from '../config/toolDefinitions.js';
 
 class NavigationHandler {
   /**
-   * All 27 Mandrel tools organized by category with descriptions 
+   * All Mandrel tools organized by category with descriptions
    */
   private readonly toolCatalog = {
     'System Health': [
@@ -33,7 +33,9 @@ class NavigationHandler {
     ],
     'Project Management': [
       { name: 'project_list', description: 'List all available projects with statistics' },
-      { name: 'project_create', description: 'Create a new project' },
+      { name: 'project_create', description: 'Create a new project (name, optional description and status)' },
+      { name: 'project_update', description: 'Update a project\'s name, description, or status (by id or name)' },
+      { name: 'project_delete', description: 'Delete a project (by id or name); refuses non-empty projects without confirm' },
       { name: 'project_switch', description: 'Switch to a different project (sets as current)' },
       { name: 'project_current', description: 'Get the currently active project information' },
       { name: 'project_info', description: 'Get detailed information about a specific project' },
@@ -192,6 +194,7 @@ class NavigationHandler {
         example: `project_create({
   name: "my-web-app",
   description: "React/Node.js web application",
+  status: "active",
   gitRepoUrl: "https://github.com/user/my-web-app",
   rootDirectory: "/home/user/projects/my-web-app"
 })`
@@ -228,6 +231,45 @@ class NavigationHandler {
         title: 'Get project details by name',
         example: `project_info({
   project: "my-web-app"
+})`
+      }
+    ],
+    'project_update': [
+      {
+        title: 'Update description and status',
+        example: `project_update({
+  project: "my-web-app",
+  description: "Now in maintenance mode",
+  status: "paused"
+})`
+      },
+      {
+        title: 'Rename a project (by id or name)',
+        example: `project_update({
+  project: "old-name",
+  name: "new-name"
+})`
+      },
+      {
+        title: 'Archive a finished project',
+        example: `project_update({
+  project: "legacy-prototype",
+  status: "archived"
+})`
+      }
+    ],
+    'project_delete': [
+      {
+        title: 'Delete an empty project',
+        example: `project_delete({
+  project: "throwaway-test"
+})`
+      },
+      {
+        title: 'Delete a non-empty project (must confirm cascade)',
+        example: `project_delete({
+  project: "old-project",
+  confirm: true
 })`
       }
     ],

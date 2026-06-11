@@ -74,6 +74,7 @@ class ProjectRoutes {
       const project = await projectHandler.createProject({
         name: args.name,
         description: args.description,
+        status: args.status,
         gitRepoUrl: args.gitRepoUrl,
         rootDirectory: args.rootDirectory,
         metadata: args.metadata
@@ -268,6 +269,146 @@ class ProjectRoutes {
       };
     } catch (error) {
       return formatMcpError(error as Error, 'project_info');
+    }
+  }
+
+  /**
+   * Handle project update requests (name, description, status, etc.)
+   * Identifies the project by id or name (like project_switch).
+   */
+  async handleUpdate(args: any): Promise<McpResponse> {
+    try {
+      logger.info(`📝 Project update request: "${args.project}"`);
+
+      // Resolve project by id or name first.
+      const existing = await projectHandler.getProject(args.project);
+      if (!existing) {
+        return {
+          content: [{
+            type: 'text',
+            text: `❌ Project "${args.project}" not found\n\n` +
+                  `💡 List all projects with: project_list`
+          }],
+        };
+      }
+
+      // Guard against renaming onto an existing project's name.
+      if (args.name !== undefined && args.name !== existing.name) {
+        const collision = await projectHandler.getProject(args.name);
+        if (collision && collision.id !== existing.id) {
+          return {
+            content: [{
+              type: 'text',
+              text: `❌ Cannot rename to "${args.name}": a project with that name already exists\n\n` +
+                    `💡 Choose a different name or list projects with: project_list`
+            }],
+          };
+        }
+      }
+
+      // Build the set of fields actually provided.
+      const updates: Record<string, any> = {};
+      if (args.name !== undefined) updates.name = args.name;
+      if (args.description !== undefined) updates.description = args.description;
+      if (args.status !== undefined) updates.status = args.status;
+      if (args.gitRepoUrl !== undefined) updates.gitRepoUrl = args.gitRepoUrl;
+      if (args.rootDirectory !== undefined) updates.rootDirectory = args.rootDirectory;
+      if (args.metadata !== undefined) updates.metadata = args.metadata;
+
+      if (Object.keys(updates).length === 0) {
+        return {
+          content: [{
+            type: 'text',
+            text: `❌ No update fields provided\n\n` +
+                  `💡 Provide at least one of: name, description, status, gitRepoUrl, rootDirectory, metadata`
+          }],
+        };
+      }
+
+      const project = await projectHandler.updateProject(existing.id, updates);
+
+      return {
+        content: [{
+          type: 'text',
+          text: `✅ Project updated successfully!\n\n` +
+                `📝 Name: ${project.name}\n` +
+                `📄 Description: ${project.description || 'None'}\n` +
+                `📊 Status: ${project.status}\n` +
+                `🔗 Git Repo: ${project.gitRepoUrl || 'None'}\n` +
+                `📁 Root Directory: ${project.rootDirectory || 'None'}\n` +
+                `⏰ Updated: ${project.updatedAt.toISOString()}\n` +
+                `🆔 ID: ${project.id}`
+        }],
+      };
+    } catch (error) {
+      return formatMcpError(error as Error, 'project_update');
+    }
+  }
+
+  /**
+   * Handle project delete requests.
+   *
+   * DESTRUCTIVE: every project FK is ON DELETE CASCADE, so deletion wipes all
+   * owned contexts/decisions/tasks/sessions. The handler delegates the safety
+   * policy (refuse non-empty without confirm; refuse active/last project) to
+   * projectHandler.deleteProject and formats the outcome.
+   */
+  async handleDelete(args: any, context?: RouteContext): Promise<McpResponse> {
+    try {
+      logger.info(`🗑️  Project delete request: "${args.project}" (confirm=${args.confirm === true})`);
+
+      // Resolve first so we can compare against the active project for THIS session.
+      const existing = await projectHandler.getProject(args.project);
+      if (!existing) {
+        return {
+          content: [{
+            type: 'text',
+            text: `❌ Project "${args.project}" not found\n\n` +
+                  `💡 List all projects with: project_list`
+          }],
+        };
+      }
+
+      // Connection-scoped active-project guard (the handler also checks the
+      // default-session current project; this catches per-connection switches).
+      const sessionId = this.getSessionId(context);
+      const sessionCurrentId = await projectHandler.getCurrentProjectId(sessionId);
+      if (sessionCurrentId === existing.id) {
+        const counts = await projectHandler.getProjectChildCounts(existing.id);
+        return {
+          content: [{
+            type: 'text',
+            text: `❌ Refusing to delete "${existing.name}": it is the active project for this session.\n\n` +
+                  `Owned data: ${counts.contexts} contexts, ${counts.decisions} decisions, ` +
+                  `${counts.tasks} tasks, ${counts.sessions} sessions.\n` +
+                  `💡 Switch to another project first: project_switch <other-project>`
+          }],
+        };
+      }
+
+      const result = await projectHandler.deleteProject(args.project, args.confirm === true);
+
+      if (!result.deleted) {
+        const c = result.counts;
+        return {
+          content: [{
+            type: 'text',
+            text: `${result.message}\n\n` +
+                  `📊 Owned data — Contexts: ${c.contexts} | Decisions: ${c.decisions} | ` +
+                  `Tasks: ${c.tasks} | Sessions: ${c.sessions} (Total: ${c.total})`
+          }],
+        };
+      }
+
+      return {
+        content: [{
+          type: 'text',
+          text: `${result.message}\n\n` +
+                `🆔 Deleted project ID: ${result.projectId}`
+        }],
+      };
+    } catch (error) {
+      return formatMcpError(error as Error, 'project_delete');
     }
   }
 

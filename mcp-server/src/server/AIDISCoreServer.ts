@@ -126,6 +126,10 @@ export class AIDISCoreServer {
         return await projectHandlers.handleProjectCurrent(validatedArgs);
       case 'project_info':
         return await projectHandlers.handleProjectInfo(validatedArgs);
+      case 'project_update':
+        return await projectHandlers.handleProjectUpdate(validatedArgs);
+      case 'project_delete':
+        return await projectHandlers.handleProjectDelete(validatedArgs);
 
       // Decision handlers
       case 'decision_record':
@@ -231,7 +235,7 @@ export class AIDISCoreServer {
       logger.info(`   🔄 Retry Logic: ${MAX_RETRIES} attempts with exponential backoff`);
       logger.info(`   🐛 Debug: ${process.env.AIDIS_DEBUG || 'DISABLED'}`);
 
-      logger.info('🎯 Available tools: 27 total');
+      logger.info(`🎯 Available tools: ${AIDIS_TOOL_DEFINITIONS.length} total`);
       logger.info('🚀 System Status: All systems READY');
 
     } catch (error) {

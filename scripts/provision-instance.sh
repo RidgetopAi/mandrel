@@ -215,7 +215,21 @@ if [[ -f "${ADMIN_ENV_FILE}" ]]; then
   log "admin env exists; re-asserting admin row from stored password"
   ADMIN_PASSWORD="$(grep '^ADMIN_PASSWORD=' "${ADMIN_ENV_FILE}" | cut -d= -f2-)"
 else
-  ADMIN_PASSWORD="$(openssl rand -base64 18 | tr -dc 'A-Za-z0-9' | head -c 24)"
+  # Generate an admin password that satisfies the dashboard's own reset policy
+  # (UserService.validatePasswordStrength: >=8 AND upper AND lower AND digit AND special),
+  # so the credential we hand out would itself pass a dashboard password change.
+  # Specials restricted to a sed/shell-safe subset (NO # & \, which would break the
+  # `sed s#{{ADMIN_PASSWORD}}#...#` substitution below) — all still within the policy's
+  # allowed special set !@#$%^&*(),.?":{}|<>. Inject one guaranteed char per class, then
+  # shuffle so the guaranteed chars aren't in fixed positions. 20 random alnum carry the entropy.
+  _rand_one() { openssl rand -base64 64 | tr -dc "$1" | head -c1; }
+  ADMIN_PASSWORD="$(
+    {
+      openssl rand -base64 48 | tr -dc 'A-Za-z0-9' | head -c 20
+      _rand_one 'A-Z'; _rand_one 'a-z'; _rand_one '0-9'
+      printf '%s' '!@%^*' | fold -w1 | shuf | head -c1
+    } | fold -w1 | shuf | tr -d '\n'
+  )"
 fi
 ADMIN_USER="admin"
 ADMIN_EMAIL="admin@${DOMAIN}"
@@ -230,8 +244,12 @@ HASH="$(docker exec -e PW="${ADMIN_PASSWORD}" "${BACKEND_CONTAINER}" \
 # NOTE: -i is REQUIRED so the heredoc reaches psql's stdin inside the container.
 docker exec -i "mandrel-${H}-postgres" psql -U mandrel -d mandrel -v ON_ERROR_STOP=1 -q \
   -v ADMIN_USER_V="${ADMIN_USER}" -v ADMIN_EMAIL_V="${ADMIN_EMAIL}" -v HASH_V="${HASH}" <<'SQL'
-INSERT INTO admin_users (username, email, password_hash, role, is_active)
-VALUES (:'ADMIN_USER_V', :'ADMIN_EMAIL_V', :'HASH_V', 'admin', true)
+-- New admin (INSERT path) is flagged must_change_password = true so first dashboard
+-- login forces a password change. On re-assert of an EXISTING admin (ON CONFLICT
+-- DO UPDATE) we deliberately do NOT touch must_change_password, so a grandfathered
+-- admin's flag is preserved (never reset to true by a provisioner re-run).
+INSERT INTO admin_users (username, email, password_hash, role, is_active, must_change_password)
+VALUES (:'ADMIN_USER_V', :'ADMIN_EMAIL_V', :'HASH_V', 'admin', true, true)
 ON CONFLICT (username) DO UPDATE
   SET password_hash = EXCLUDED.password_hash,
       email         = EXCLUDED.email,

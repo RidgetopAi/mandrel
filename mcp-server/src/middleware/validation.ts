@@ -71,16 +71,40 @@ const contextSchemas = {
   stats: z.object({})
 };
 
+// Allowed project status values — must match the DB CHECK constraint on projects.status
+const projectStatusEnum = z.enum(['active', 'archived', 'completed', 'paused']);
+
 // Project Management Schemas
 const projectSchemas = {
   create: z.object({
     name: baseName,
     description: baseDescription,
+    status: projectStatusEnum.optional(),
     gitRepoUrl: z.string().optional(),
     rootDirectory: z.string().optional(),
     metadata: baseMetadata
   }),
-  
+
+  update: z.object({
+    project: z.string().min(1).max(255), // project id or name to update
+    name: baseName.optional(),
+    description: z.string().max(2000).nullable().optional(),
+    status: projectStatusEnum.optional(),
+    gitRepoUrl: z.string().optional(),
+    rootDirectory: z.string().optional(),
+    metadata: baseMetadata
+  }).refine(
+    data => data.name !== undefined || data.description !== undefined ||
+            data.status !== undefined || data.gitRepoUrl !== undefined ||
+            data.rootDirectory !== undefined || data.metadata !== undefined,
+    { message: 'At least one field to update must be provided (name, description, status, gitRepoUrl, rootDirectory, metadata)' }
+  ),
+
+  delete: z.object({
+    project: z.string().min(1).max(255), // project id or name to delete
+    confirm: z.boolean().optional().default(false)
+  }),
+
   switch: z.object({
     project: z.union([
       z.string().uuid(), // Project ID
@@ -368,6 +392,8 @@ const validationSchemas = {
   
   // Project Management
   project_create: projectSchemas.create,
+  project_update: projectSchemas.update,
+  project_delete: projectSchemas.delete,
   project_switch: projectSchemas.switch,
   project_info: projectSchemas.info,
   project_list: projectSchemas.list,

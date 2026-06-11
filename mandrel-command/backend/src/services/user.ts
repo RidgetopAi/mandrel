@@ -17,7 +17,7 @@ export interface PasswordUpdateData {
 export class UserService {
   static async getAllUsers(): Promise<Omit<User, 'password_hash'>[]> {
     const result = await pool.query(`
-      SELECT id, username, email, role, theme, is_active, created_at, updated_at, last_login
+      SELECT id, username, email, role, theme, is_active, must_change_password, created_at, updated_at, last_login
       FROM admin_users
       ORDER BY created_at DESC
     `);
@@ -26,7 +26,7 @@ export class UserService {
 
   static async getUserById(id: string): Promise<Omit<User, 'password_hash'> | null> {
     const result = await pool.query(`
-      SELECT id, username, email, role, theme, is_active, created_at, updated_at, last_login
+      SELECT id, username, email, role, theme, is_active, must_change_password, created_at, updated_at, last_login
       FROM admin_users
       WHERE id = $1
     `, [id]);
@@ -74,7 +74,7 @@ export class UserService {
       UPDATE admin_users
       SET ${fields.join(', ')}
       WHERE id = $${paramIndex}
-      RETURNING id, username, email, role, theme, is_active, created_at, updated_at, last_login
+      RETURNING id, username, email, role, theme, is_active, must_change_password, created_at, updated_at, last_login
     `;
 
     const result = await pool.query(query, values);
@@ -107,9 +107,10 @@ export class UserService {
     // Hash new password
     const newHash = await AuthService.hashPassword(passwordData.newPassword);
 
-    // Update password
+    // Update password and clear the force-change flag (a successful, policy-compliant
+    // change satisfies the first-login requirement, so normal access resumes).
     await pool.query(
-      'UPDATE admin_users SET password_hash = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+      'UPDATE admin_users SET password_hash = $1, must_change_password = false, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
       [newHash, userId]
     );
 

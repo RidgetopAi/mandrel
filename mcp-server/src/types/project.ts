@@ -23,9 +23,26 @@ export interface ProjectInfo {
 export interface CreateProjectRequest {
   name: string;
   description?: string;
+  status?: string;
   gitRepoUrl?: string;
   rootDirectory?: string;
   metadata?: Record<string, any>;
+}
+
+export interface ProjectChildCounts {
+  contexts: number;
+  decisions: number;
+  tasks: number;
+  sessions: number;
+  total: number;
+}
+
+export interface DeleteProjectResult {
+  deleted: boolean;
+  projectId?: string;
+  projectName: string;
+  counts: ProjectChildCounts;
+  message: string;
 }
 
 export interface SessionState {

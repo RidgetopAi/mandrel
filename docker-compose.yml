@@ -107,6 +107,7 @@ services:
       DATABASE_PASSWORD: ${POSTGRES_PASSWORD:-mandrel_dev_password}
       DATABASE_SSL: ${DATABASE_SSL:-false}
       MCP_SERVER_URL: http://mcp-server:8080
+      MANDREL_MCP_URL: http://mcp-server:8080
       JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
       # All keys below are required to exist by the backend's dotenv-safe validation
       # (.env.example); missing keys cause process.exit(1) in production.

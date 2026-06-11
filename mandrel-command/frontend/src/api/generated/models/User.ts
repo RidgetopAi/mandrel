@@ -35,5 +35,9 @@ export type User = {
      * Last login timestamp
      */
     last_login?: string;
+    /**
+     * When true, the user must set a new password on first login before using the app
+     */
+    must_change_password?: boolean;
 };
 
