@@ -32,7 +32,15 @@ export function startSse(options: SseOptions): SseHandle {
   if (projectId) params.set('projectId', projectId);
   if (entities?.length) params.set('entities', entities.join(','));
 
-  const apiBase = process.env.REACT_APP_API_URL?.replace('/api', '') || 'http://localhost:5000';
+  // Host-agnostic base URL. If REACT_APP_API_URL is configured as an absolute
+  // http(s) URL, use it (stripping a trailing /api). Otherwise default to
+  // same-origin: an empty base yields a relative `/api/...` URL that resolves
+  // against the current origin and is routed to the backend by nginx. This lets
+  // the same golden image serve any customer subdomain with zero per-instance config.
+  const configuredApiUrl = process.env.REACT_APP_API_URL;
+  const apiBase = configuredApiUrl && /^https?:\/\//i.test(configuredApiUrl)
+    ? configuredApiUrl.replace(/\/api$/, '')
+    : '';
   const url = `${apiBase}/api/events?${params.toString()}`;
 
   logger.log('Starting SSE connection:', { projectId, entities, url: url.replace(/token=[^&]+/, 'token=***') });

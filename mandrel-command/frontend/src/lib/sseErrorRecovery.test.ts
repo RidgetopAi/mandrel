@@ -427,7 +427,7 @@ describe('SSE Error Scenarios and Recovery (Frontend)', () => {
       expect(es.url).toContain('entities=tasks%2Ccontexts');
     });
 
-    it('should use default API URL when env var not set', () => {
+    it('should use same-origin (relative) URL when env var not set', () => {
       delete process.env.REACT_APP_API_URL;
 
       const options: SseOptions = {
@@ -438,10 +438,12 @@ describe('SSE Error Scenarios and Recovery (Frontend)', () => {
       startSse(options);
 
       const es = MockEventSource.getLastInstance()!;
-      expect(es.url).toContain('http://localhost:5000/api/events');
+      // Same-origin: empty base yields a relative /api/events URL.
+      expect(es.url).toMatch(/^\/api\/events\?/);
+      expect(es.url).not.toContain('http://localhost:5000');
     });
 
-    it('should strip /api from REACT_APP_API_URL', () => {
+    it('should strip trailing /api from an absolute REACT_APP_API_URL', () => {
       process.env.REACT_APP_API_URL = 'http://example.com/api';
 
       const options: SseOptions = {
@@ -454,6 +456,8 @@ describe('SSE Error Scenarios and Recovery (Frontend)', () => {
       const es = MockEventSource.getLastInstance()!;
       expect(es.url).toContain('http://example.com/api/events');
       expect(es.url).not.toContain('/api/api/');
+
+      delete process.env.REACT_APP_API_URL;
     });
   });
 

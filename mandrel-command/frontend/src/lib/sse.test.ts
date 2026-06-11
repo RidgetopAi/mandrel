@@ -357,7 +357,7 @@ describe('SSE Client', () => {
       expect(url).not.toContain('entities');
     });
 
-    it('should use REACT_APP_API_URL from env if available', () => {
+    it('should use absolute REACT_APP_API_URL from env if available (trailing /api stripped)', () => {
       process.env.REACT_APP_API_URL = 'http://example.com:8080/api';
 
       startSse({
@@ -367,11 +367,12 @@ describe('SSE Client', () => {
 
       const url = ((window as any).EventSource as jest.Mock).mock.calls[0][0];
       expect(url).toContain('http://example.com:8080/api/events');
+      expect(url).not.toContain('/api/api/');
 
       delete process.env.REACT_APP_API_URL;
     });
 
-    it('should fall back to localhost:5000 if env not set', () => {
+    it('should use same-origin (relative) URL if env not set', () => {
       delete process.env.REACT_APP_API_URL;
 
       startSse({
@@ -380,7 +381,24 @@ describe('SSE Client', () => {
       });
 
       const url = ((window as any).EventSource as jest.Mock).mock.calls[0][0];
-      expect(url).toContain('http://localhost:5000/api/events');
+      // Empty base => relative URL rooted at /api, resolved against current origin.
+      expect(url).toMatch(/^\/api\/events\?/);
+      expect(url).not.toContain('http://localhost:5000');
+    });
+
+    it('should use same-origin (relative) URL when env is a relative path', () => {
+      process.env.REACT_APP_API_URL = '/api';
+
+      startSse({
+        token: 'test-token',
+        queryClient,
+      });
+
+      const url = ((window as any).EventSource as jest.Mock).mock.calls[0][0];
+      expect(url).toMatch(/^\/api\/events\?/);
+      expect(url).not.toContain('http://localhost:5000');
+
+      delete process.env.REACT_APP_API_URL;
     });
   });
 });
