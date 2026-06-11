@@ -80,7 +80,7 @@ const Dashboard: React.FC = () => {
           {getGreeting()}, {user?.username || 'User'}! 👋
         </Title>
         <Text type="secondary">
-          Welcome to AIDIS Command - Your AI Development Intelligence System
+          Welcome to Mandrel Command - Your AI Development Intelligence System
         </Text>
       </div>
 
