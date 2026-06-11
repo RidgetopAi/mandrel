@@ -220,3 +220,6 @@ docker-compose.override.yml
 
 # Per-customer instance overrides stay LOCAL (do not leak tester handles to the public repo)
 docker-compose.brian.yml
+docker-compose.neko-trappings.yml
+docker-compose.dmclark.yml
+docker-compose.tomobobo.yml
