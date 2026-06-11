@@ -18,6 +18,41 @@ export class McpService {
   private static readonly REQUEST_TIMEOUT = 10000; // 10 seconds
 
   /**
+   * Resolve the MCP server hostname + port.
+   *
+   * Prefer an explicit MCP base URL (MANDREL_MCP_URL) — required in containerized
+   * deploys where the MCP server is a sibling container reachable by service name
+   * (e.g. http://mcp-server:8080), NOT localhost. Fall back to host:port form for
+   * same-namespace/dev deploys. This mirrors the MCP_BASE logic in routes/index.ts.
+   */
+  private static resolveMcpTarget(): { hostname: string; port: number } {
+    const url = process.env.MANDREL_MCP_URL || process.env.AIDIS_MCP_URL;
+    if (url) {
+      try {
+        const parsed = new URL(url);
+        return {
+          hostname: parsed.hostname,
+          port: parseInt(parsed.port, 10) || 8080
+        };
+      } catch {
+        logger.warn(`[MCP] Invalid MANDREL_MCP_URL "${url}", falling back to host:port`);
+      }
+    }
+
+    const port = parseInt(
+      (process.env.MANDREL_MCP_PORT || process.env.AIDIS_MCP_PORT || process.env.AIDIS_MCP_HOST_PORT || '8080') as string,
+      10
+    ) || 8080;
+
+    // Log deprecation warning if old var is used
+    if (process.env.AIDIS_MCP_PORT && !process.env.MANDREL_MCP_PORT) {
+      logger.warn('⚠️  AIDIS_MCP_PORT is deprecated. Use MANDREL_MCP_PORT instead.');
+    }
+
+    return { hostname: 'localhost', port };
+  }
+
+  /**
    * Call an AIDIS MCP tool via HTTP endpoint
    */
   static async callTool(toolName: string, params: any): Promise<McpResult> {
@@ -45,17 +80,14 @@ export class McpService {
   private static async makeRequest(toolName: string, params: any): Promise<any> {
     return new Promise((resolve, reject) => {
       const postData = JSON.stringify({ arguments: params });
-      
-      // MCP server port - MANDREL_MCP_PORT is the MCP server, NOT MANDREL_HTTP_PORT (which is the backend)
-      const mcpPort = process.env.MANDREL_MCP_PORT || process.env.AIDIS_MCP_PORT || process.env.AIDIS_MCP_HOST_PORT || 8080;
 
-      // Log deprecation warning if old var is used
-      if (process.env.AIDIS_MCP_PORT && !process.env.MANDREL_MCP_PORT) {
-        logger.warn('⚠️  AIDIS_MCP_PORT is deprecated. Use MANDREL_MCP_PORT instead.');
-      }
-      
+      // Resolve MCP target (prefers MANDREL_MCP_URL service name in containers,
+      // falls back to localhost:MANDREL_MCP_PORT for dev). MANDREL_MCP_PORT is the
+      // MCP server, NOT MANDREL_HTTP_PORT (which is the backend).
+      const { hostname, port: mcpPort } = McpService.resolveMcpTarget();
+
       const options = {
-        hostname: 'localhost',
+        hostname,
         port: mcpPort,
         path: `/mcp/tools/${toolName}`,
         method: 'POST',
@@ -127,7 +159,7 @@ export class McpService {
 
       req.on('error', (error: NodeJS.ErrnoException) => {
         const errorDetails = error.code ? `${error.code}: ${error.message}` : error.message || 'Unknown socket error';
-        logger.error(`[MCP] Tool call connection error to localhost:${mcpPort}/mcp/tools/${toolName}`, {
+        logger.error(`[MCP] Tool call connection error to ${hostname}:${mcpPort}/mcp/tools/${toolName}`, {
           code: error.code,
           message: error.message,
           syscall: error.syscall,
@@ -443,11 +475,12 @@ export class McpService {
     return new Promise((resolve, reject) => {
       const postData = body ? JSON.stringify(body) : '';
 
-      // MCP server port - MANDREL_MCP_PORT is the MCP server, NOT MANDREL_HTTP_PORT (which is the backend)
-      const mcpPort = process.env.MANDREL_MCP_PORT || process.env.AIDIS_MCP_PORT || 8080;
-      
+      // Resolve MCP target (prefers MANDREL_MCP_URL service name in containers,
+      // falls back to localhost:MANDREL_MCP_PORT for dev).
+      const { hostname, port: mcpPort } = McpService.resolveMcpTarget();
+
       const options = {
-        hostname: 'localhost',
+        hostname,
         port: mcpPort,
         path: path,
         method: method,
@@ -480,7 +513,7 @@ export class McpService {
 
       req.on('error', (error: NodeJS.ErrnoException) => {
         const errorDetails = error.code ? `${error.code}: ${error.message}` : error.message || 'Unknown socket error';
-        logger.error(`[MCP] REST API connection error to localhost:${mcpPort}${path}`, {
+        logger.error(`[MCP] REST API connection error to ${hostname}:${mcpPort}${path}`, {
           code: error.code,
           message: error.message,
           syscall: error.syscall,

@@ -11,6 +11,10 @@ export interface User {
   updated_at: Date;
   last_login?: Date;
   password_hash?: string;
+  // When true, the user is forced to set a new password on first dashboard login
+  // before they can use the app. New provisions are flagged true; existing admins
+  // are grandfathered (false). Cleared on a successful policy-compliant change.
+  must_change_password?: boolean;
 }
 
 export interface UserSession {

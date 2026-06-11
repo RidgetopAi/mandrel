@@ -16,7 +16,7 @@ import { ActiveSessionStore } from '../services/session/state/ActiveSessionStore
 // Re-export types from shared types file (to avoid circular dependency with projectSwitchValidator)
 export type { ProjectInfo, CreateProjectRequest, SessionState } from '../types/project.js';
 // Import for internal use
-import type { ProjectInfo, CreateProjectRequest, SessionState } from '../types/project.js';
+import type { ProjectInfo, CreateProjectRequest, SessionState, ProjectChildCounts, DeleteProjectResult } from '../types/project.js';
 
 class ProjectHandler {
   // In-memory session state (in production, this could be Redis/database)
@@ -91,14 +91,15 @@ class ProjectHandler {
         throw new Error(`Project with name "${request.name}" already exists`);
       }
 
-      // Insert new project
+      // Insert new project (status defaults to 'active' at the DB level when omitted)
       const result = await db.query(`
-        INSERT INTO projects (name, description, git_repo_url, root_directory, metadata)
-        VALUES ($1, $2, $3, $4, $5)
+        INSERT INTO projects (name, description, status, git_repo_url, root_directory, metadata)
+        VALUES ($1, $2, COALESCE($3, 'active'), $4, $5, $6)
         RETURNING *
       `, [
         request.name,
         request.description || null,
+        request.status || null,
         request.gitRepoUrl || null,
         request.rootDirectory || null,
         JSON.stringify(request.metadata || {})
@@ -429,6 +430,12 @@ class ProjectHandler {
         paramIndex++;
       }
 
+      if (updates.status !== undefined) {
+        updateFields.push(`status = $${paramIndex}`);
+        values.push(updates.status);
+        paramIndex++;
+      }
+
       if (updates.gitRepoUrl !== undefined) {
         updateFields.push(`git_repo_url = $${paramIndex}`);
         values.push(updates.gitRepoUrl);
@@ -492,6 +499,116 @@ class ProjectHandler {
       logger.error('❌ Failed to update project', error as Error);
       throw new Error(`Failed to update project: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
+  }
+
+  /**
+   * Count the user-owned child rows a project owns. Used by deleteProject to
+   * make the blast radius explicit BEFORE any destructive action.
+   *
+   * IMPORTANT (b... FK audit): every project FK is ON DELETE CASCADE, so deleting
+   * a project silently wipes all of these. We surface the counts so a caller must
+   * knowingly opt in (confirm: true) before that happens.
+   */
+  async getProjectChildCounts(projectId: string): Promise<ProjectChildCounts> {
+    const [contexts, decisions, tasks, sessions] = await Promise.all([
+      db.query('SELECT COUNT(*)::int AS n FROM contexts WHERE project_id = $1', [projectId]),
+      db.query('SELECT COUNT(*)::int AS n FROM technical_decisions WHERE project_id = $1', [projectId]),
+      db.query('SELECT COUNT(*)::int AS n FROM tasks WHERE project_id = $1', [projectId]),
+      db.query('SELECT COUNT(*)::int AS n FROM sessions WHERE project_id = $1', [projectId]),
+    ]);
+
+    const c = contexts.rows[0].n as number;
+    const d = decisions.rows[0].n as number;
+    const t = tasks.rows[0].n as number;
+    const s = sessions.rows[0].n as number;
+
+    return { contexts: c, decisions: d, tasks: t, sessions: s, total: c + d + t + s };
+  }
+
+  /**
+   * Delete a project (by id or name).
+   *
+   * SAFETY POLICY (deliberate):
+   *  - All project FKs are ON DELETE CASCADE, so deletion silently removes every
+   *    context/decision/task/session (and more) the project owns. We therefore:
+   *  - REFUSE to delete a non-empty project unless `confirm === true`, returning the
+   *    exact child counts the caller would lose (no mutation on the refusal path).
+   *  - REFUSE to delete the currently-active project (avoids pulling it out from
+   *    under a live connection).
+   *  - REFUSE to delete the last remaining project.
+   * An empty project (no children) deletes without requiring confirm.
+   */
+  async deleteProject(identifier: string, confirm: boolean = false): Promise<DeleteProjectResult> {
+    logger.info(`🗑️  Delete requested for project: "${identifier}" (confirm=${confirm})`);
+
+    const project = await this.getProject(identifier);
+    if (!project) {
+      throw new Error(`Project "${identifier}" not found`);
+    }
+
+    const counts = await this.getProjectChildCounts(project.id);
+
+    // Guard: never delete the last remaining project.
+    const allProjects = await this.listProjects(false);
+    if (allProjects.length <= 1) {
+      return {
+        deleted: false,
+        projectName: project.name,
+        counts,
+        message:
+          `❌ Refusing to delete "${project.name}": it is the last remaining project. ` +
+          `At least one project must exist.`,
+      };
+    }
+
+    // Guard: never delete the currently-active project out from under a connection.
+    const currentProjectId = await this.getCurrentProjectId();
+    if (currentProjectId === project.id) {
+      return {
+        deleted: false,
+        projectId: project.id,
+        projectName: project.name,
+        counts,
+        message:
+          `❌ Refusing to delete "${project.name}": it is the currently active project. ` +
+          `Switch to another project first (project_switch), then delete.`,
+      };
+    }
+
+    // Guard: refuse non-empty deletes without explicit confirmation. NO mutation here.
+    if (counts.total > 0 && !confirm) {
+      return {
+        deleted: false,
+        projectId: project.id,
+        projectName: project.name,
+        counts,
+        message:
+          `⚠️  Refusing to delete non-empty project "${project.name}" without confirmation.\n` +
+          `Deleting it will CASCADE-DELETE: ${counts.contexts} contexts, ` +
+          `${counts.decisions} decisions, ${counts.tasks} tasks, ${counts.sessions} sessions ` +
+          `(${counts.total} owned records total).\n` +
+          `Re-run with { confirm: true } to permanently delete the project and all of the above.`,
+      };
+    }
+
+    // Perform the delete. FKs cascade automatically.
+    await db.query('DELETE FROM projects WHERE id = $1', [project.id]);
+
+    const lostSummary =
+      counts.total > 0
+        ? ` Cascade-removed ${counts.contexts} contexts, ${counts.decisions} decisions, ` +
+          `${counts.tasks} tasks, ${counts.sessions} sessions.`
+        : '';
+
+    logger.info(`✅ Deleted project: ${project.name} (${project.id})${lostSummary}`);
+
+    return {
+      deleted: true,
+      projectId: project.id,
+      projectName: project.name,
+      counts,
+      message: `✅ Deleted project "${project.name}".${lostSummary}`,
+    };
   }
 }
 

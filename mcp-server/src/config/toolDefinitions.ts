@@ -25,7 +25,7 @@ export interface ToolDefinition {
 }
 
 /**
- * Complete array of all 27 AIDIS tool definitions
+ * Complete array of all AIDIS/Mandrel tool definitions
  * Changes:
  * - 8 session analytics tools migrated to REST API (2025-10-05)
  * - 2 pattern detection tools removed (2025-10-24) - deprecated stub implementations
@@ -167,9 +167,81 @@ export const AIDIS_TOOL_DEFINITIONS: ToolDefinition[] = [
                 name: {
                   type: 'string',
                   description: 'Unique project name'
+                },
+                description: {
+                  type: 'string',
+                  description: 'Optional human-readable description of the project'
+                },
+                status: {
+                  type: 'string',
+                  enum: ['active', 'archived', 'completed', 'paused'],
+                  description: 'Optional initial status (default: active)'
+                },
+                gitRepoUrl: {
+                  type: 'string',
+                  description: 'Optional git repository URL'
+                },
+                rootDirectory: {
+                  type: 'string',
+                  description: 'Optional root directory path'
                 }
               },
               required: ['name'],
+              additionalProperties: true
+            },
+          },
+          {
+            name: 'project_update',
+            description: 'Update an existing project (name, description, and/or status) identified by id or name',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                project: {
+                  type: 'string',
+                  description: 'Project ID or name to update'
+                },
+                name: {
+                  type: 'string',
+                  description: 'New project name (must be unique)'
+                },
+                description: {
+                  type: 'string',
+                  description: 'New description (pass empty string to clear)'
+                },
+                status: {
+                  type: 'string',
+                  enum: ['active', 'archived', 'completed', 'paused'],
+                  description: 'New status'
+                },
+                gitRepoUrl: {
+                  type: 'string',
+                  description: 'New git repository URL'
+                },
+                rootDirectory: {
+                  type: 'string',
+                  description: 'New root directory path'
+                }
+              },
+              required: ['project'],
+              additionalProperties: true
+            },
+          },
+          {
+            name: 'project_delete',
+            description: 'Delete a project (by id or name). DESTRUCTIVE: cascade-deletes all owned contexts, decisions, tasks, and sessions. Refuses non-empty projects unless confirm:true.',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                project: {
+                  type: 'string',
+                  description: 'Project ID or name to delete'
+                },
+                confirm: {
+                  type: 'boolean',
+                  description: 'Must be true to delete a non-empty project (acknowledges cascade-deletion of all owned data). Default: false'
+                }
+              },
+              required: ['project'],
               additionalProperties: true
             },
           },

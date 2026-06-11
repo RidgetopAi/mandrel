@@ -17,6 +17,7 @@ import openApiRoutes from './openapi';
 import embeddingRoutes from './embedding';
 import eventsRoutes from './events';
 import gitRoutes from './git';
+import feedbackRoutes from './feedback';
 import { authenticateToken } from '../middleware/auth';
 import { logger } from '../config/logger';
 
@@ -41,6 +42,7 @@ router.use('/type-safety', typeSafetyRoutes);
 router.use('/embedding', embeddingRoutes);
 router.use('/', eventsRoutes);
 router.use('/git', gitRoutes);
+router.use('/feedback', feedbackRoutes);
 
 // MCP Proxy Routes - Forward session file endpoints to MCP server
 // This eliminates hard-coded localhost:8080 in frontend for OSS deployment

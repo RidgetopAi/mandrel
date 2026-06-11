@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { globalQueryErrorHandler } from './hooks/useQueryErrorHandler';
 import { AuthProvider } from './contexts/AuthContext';
 import { ProjectProvider } from './contexts/ProjectContext';
+import { SettingsProvider } from './contexts/SettingsContext';
 import { FeatureFlagProvider } from './contexts/FeatureFlagContext';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import { SseProvider } from './contexts/SseContext';
@@ -31,6 +32,7 @@ const Analytics = lazyWithRetry(() => import('./pages/Analytics'));
 const Surveyor = lazyWithRetry(() => import('./pages/Surveyor'));
 const Settings = lazyWithRetry(() => import('./pages/Settings'));
 const Profile = lazyWithRetry(() => import('./pages/Profile'));
+const Feedback = lazyWithRetry(() => import('./pages/Feedback'));
 
 // React Query client configuration
 export const queryClient = new QueryClient({
@@ -66,6 +68,7 @@ const AppContent: React.FC = () => {
         <GlobalErrorBoundary>
           <Router>
             <AuthProvider>
+              <SettingsProvider>
               <FeatureFlagProvider>
               <MandrelApiErrorBoundary
                 componentName="ProjectProvider"
@@ -104,6 +107,7 @@ const AppContent: React.FC = () => {
                       <Route path="surveyor" element={<SectionErrorBoundary section="Surveyor"><Surveyor /></SectionErrorBoundary>} />
                       <Route path="settings" element={<SectionErrorBoundary section="Settings"><Settings /></SectionErrorBoundary>} />
                       <Route path="profile" element={<SectionErrorBoundary section="Profile"><Profile /></SectionErrorBoundary>} />
+                      <Route path="feedback" element={<SectionErrorBoundary section="Feedback"><Feedback /></SectionErrorBoundary>} />
 
                       {/* Catch all - redirect to dashboard */}
                       <Route path="*" element={<Navigate to="/dashboard" replace />} />
@@ -113,7 +117,8 @@ const AppContent: React.FC = () => {
                 </ProjectProvider>
               </MandrelApiErrorBoundary>
             </FeatureFlagProvider>
-          </AuthProvider>
+              </SettingsProvider>
+            </AuthProvider>
         </Router>
       </GlobalErrorBoundary>
       </QueryClientProvider>

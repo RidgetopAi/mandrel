@@ -198,7 +198,7 @@ router.patch('/preferences', authenticateToken, async (req: AuthenticatedRequest
 
     // Update theme preference
     const result = await pool.query(
-      'UPDATE admin_users SET theme = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING id, username, email, role, theme, is_active, created_at, updated_at, last_login',
+      'UPDATE admin_users SET theme = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING id, username, email, role, theme, is_active, must_change_password, created_at, updated_at, last_login',
       [theme, userId]
     );
 
