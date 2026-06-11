@@ -7,10 +7,24 @@ import type { UpdateSession } from './generated/models/UpdateSession';
 
 // Base URL for REST API endpoints (not in generated client)
 // Configurable via REACT_APP_MCP_URL environment variable
-// Defaults to localhost:8080 for development
-// Note: We append /api/v2 to the base URL since mandrelApiClient uses the root
-const MCP_BASE_URL = process.env.REACT_APP_MCP_URL || 'http://localhost:8080';
+// Defaults to '' (same-origin) so REST_API_BASE is the relative '/api/v2', which
+// nginx routes to the AUTHENTICATED backend proxy. This makes these calls work
+// from a hosted browser (no cross-origin to localhost:8080).
+const MCP_BASE_URL = process.env.REACT_APP_MCP_URL || '';
 const REST_API_BASE = `${MCP_BASE_URL}/api/v2`;
+
+// Build headers for the REST API fetch calls, including the JWT the OpenAPI client
+// uses (localStorage 'aidis_token'), so the authenticated backend proxy accepts them.
+const restHeaders = (): Record<string, string> => {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+  const token = localStorage.getItem('aidis_token');
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  return headers;
+};
 
 const ensureSuccess = <T extends ApiSuccessResponse>(response: T, failureMessage: string): T => {
   if (!response.success) {
@@ -78,9 +92,7 @@ export const sessionsClient = {
   async syncFilesFromGit(sessionId: string): Promise<FileSyncResponse> {
     const response = await fetch(`${REST_API_BASE}/sessions/${sessionId}/sync-files`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: restHeaders(),
     });
 
     if (!response.ok) {
@@ -97,9 +109,7 @@ export const sessionsClient = {
   async getSessionFiles(sessionId: string): Promise<SessionFile[]> {
     const response = await fetch(`${REST_API_BASE}/sessions/${sessionId}/files`, {
       method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: restHeaders(),
     });
 
     if (!response.ok) {
@@ -117,9 +127,7 @@ export const sessionsClient = {
   async getActiveSession(): Promise<SessionDetail | null> {
     const response = await fetch(`${REST_API_BASE}/sessions/active`, {
       method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: restHeaders(),
     });
 
     if (!response.ok) {
@@ -137,9 +145,7 @@ export const sessionsClient = {
   async getAllActiveSessions(): Promise<Session[]> {
     const response = await fetch(`${REST_API_BASE}/sessions?limit=100`, {
       method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: restHeaders(),
     });
 
     if (!response.ok) {
@@ -168,9 +174,7 @@ export const sessionsClient = {
   }): Promise<SessionDetail> {
     const response = await fetch(`${REST_API_BASE}/sessions/start`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: restHeaders(),
       body: JSON.stringify(params || {}),
     });
 
@@ -193,9 +197,7 @@ export const sessionsClient = {
   async endSession(sessionId: string): Promise<SessionDetail> {
     const response = await fetch(`${REST_API_BASE}/sessions/${sessionId}/end`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: restHeaders(),
     });
 
     if (!response.ok) {
