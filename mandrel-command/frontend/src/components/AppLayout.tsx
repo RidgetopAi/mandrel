@@ -223,9 +223,9 @@ const AppLayout: React.FC = () => {
               style={{ fontSize: '16px', width: 64, height: 64 }}
             />
             <img
-              src="/assets/ridgetopai-logo.jpg"
-              alt="RidgetopAI Logo"
-              style={{ height: '56px', objectFit: 'contain', display: 'block' }}
+              src="/assets/ridgetopai-logo.svg"
+              alt="Mandrel"
+              style={{ height: '32px', objectFit: 'contain', display: 'block' }}
             />
           </Space>
 
