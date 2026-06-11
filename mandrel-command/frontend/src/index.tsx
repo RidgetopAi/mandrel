@@ -2,11 +2,21 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import { initSentry } from './config/sentry';
+import {
+  installChunkErrorAutoReload,
+  clearChunkReloadGuard,
+} from './utils/lazyWithRetry';
 import './api/client';
 import './index.css';
 
 // Initialize Sentry for error reporting and performance monitoring
 initSentry();
+
+// Self-heal stale code-split chunks after a redeploy:
+// install a global ChunkLoadError net, and clear the one-time reload guard now
+// that the app bundle loaded successfully (so a future redeploy can self-heal again).
+installChunkErrorAutoReload();
+clearChunkReloadGuard();
 
 const root = ReactDOM.createRoot(
   document.getElementById('root') as HTMLElement
