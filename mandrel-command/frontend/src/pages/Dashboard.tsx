@@ -51,7 +51,7 @@ const Dashboard: React.FC = () => {
             {getGreeting()}, {user?.username || 'User'}! 👋
           </Title>
           <Text type="secondary">
-            Welcome to Mandrel Command - Your Development Intelligence System
+            Welcome to Mandrel Command — persistent memory for your AI coding agent
           </Text>
         </div>
         
@@ -80,7 +80,7 @@ const Dashboard: React.FC = () => {
           {getGreeting()}, {user?.username || 'User'}! 👋
         </Title>
         <Text type="secondary">
-          Welcome to Mandrel Command - Your AI Development Intelligence System
+          Welcome to Mandrel Command — persistent memory for your AI coding agent
         </Text>
       </div>
 

@@ -213,3 +213,7 @@ docker-compose.override.yml
 # Onboarding docs — versioned product artifact (overrides docs/ ignore)
 !docs/onboarding/
 !docs/onboarding/**
+
+# Command UI frontend logo assets — versioned brand artifact (overrides *.png/*.svg ignore)
+!mandrel-command/frontend/public/assets/
+!mandrel-command/frontend/public/assets/**
