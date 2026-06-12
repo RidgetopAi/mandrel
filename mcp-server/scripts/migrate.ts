@@ -96,6 +96,48 @@ class MigrationRunner {
   }
 
   /**
+   * Stamp the consolidated baseline (000) plus every historical incremental
+   * migration up to BASELINE_THROUGH as already-applied, WITHOUT running any of
+   * their SQL. This is the bookkeeping half of a rebaseline: it tells the pending
+   * loop that 000..BASELINE_THROUGH are already represented in the live schema so
+   * they are never re-run on top of it.
+   *
+   * Shared by BOTH the fresh path (after applyBaseline installs the schema) and
+   * the non-fresh self-heal path (where the schema is already present from an
+   * older/renumbered lineage and we only need to reconcile the tracker).
+   *
+   * Idempotent (ON CONFLICT (filename) DO NOTHING via stampMigration). Returns the
+   * set of filenames now considered applied so the caller can skip them.
+   */
+  private async stampBaselineAndHistoricals(allMigrations: Migration[]): Promise<Set<string>> {
+    const baseline = allMigrations.find(m => m.filename === BASELINE_FILE);
+    if (!baseline) {
+      throw new Error(
+        `Baseline ${BASELINE_FILE} is missing from ${this.migrationsPath}. ` +
+        `Cannot stamp the rebaseline.`
+      );
+    }
+
+    const stamped = new Set<string>();
+    await this.stampMigration(baseline);
+    stamped.add(baseline.filename);
+
+    const superseded = allMigrations.filter(
+      m => m.filename !== BASELINE_FILE && m.number <= BASELINE_THROUGH
+    );
+    for (const m of superseded) {
+      await this.stampMigration(m);
+      stamped.add(m.filename);
+    }
+    console.log(
+      `📌 Stamped baseline + ${superseded.length} historical migrations ` +
+      `(<= ${String(BASELINE_THROUGH).padStart(3, '0')}) as applied.`
+    );
+
+    return stamped;
+  }
+
+  /**
    * Fresh-DB rebaseline path: apply the consolidated baseline, then stamp the
    * baseline itself plus every historical migration up to BASELINE_THROUGH as
    * already-applied. Returns the set of filenames now considered applied so the
@@ -117,22 +159,72 @@ class MigrationRunner {
     // The baseline itself creates the real _aidis_migrations table but does not
     // insert its own tracking row, so stamp it now along with the superseded
     // incremental migrations (<= BASELINE_THROUGH).
-    const stamped = new Set<string>();
-    await this.stampMigration(baseline);
-    stamped.add(baseline.filename);
+    return this.stampBaselineAndHistoricals(allMigrations);
+  }
 
-    const superseded = allMigrations.filter(
-      m => m.filename !== BASELINE_FILE && m.number <= BASELINE_THROUGH
-    );
-    for (const m of superseded) {
-      await this.stampMigration(m);
-      stamped.add(m.filename);
+  /**
+   * Non-fresh SELF-HEAL: detect an EXISTING database that predates the rebaseline
+   * — it already carries the baseline schema (from an older/renumbered migration
+   * lineage) but does NOT have 000_baseline_schema.sql recorded in
+   * _aidis_migrations. Without this, the pending loop would treat the baseline as
+   * pending and run it against a populated DB → `CREATE TABLE … already exists` →
+   * crash-loop the service (the exact failure that bit prod; see lesson 008).
+   *
+   * Detection requires ALL THREE conditions (precise — no false positives):
+   *   1. Non-fresh path (caller only invokes this when _aidis_migrations exists).
+   *   2. 000_baseline_schema.sql is NOT already recorded in _aidis_migrations.
+   *   3. The DB already carries the baseline schema — verified by confirming a
+   *      small robust set of core app tables all exist (projects, contexts,
+   *      sessions, admin_users). If they exist, this is a populated pre-baseline
+   *      DB, not a blank one.
+   *
+   * When all hold, stamp 000 + every migration <= BASELINE_THROUGH (the same
+   * bookkeeping the fresh path does) WITHOUT running the baseline SQL, then let
+   * the normal pending loop apply only genuinely-new migrations (43, 44, …).
+   *
+   * Returns the set of filenames it stamped (empty if self-heal did not fire).
+   */
+  private async selfHealPreBaselineDb(
+    appliedMigrations: Set<string>,
+    allMigrations: Migration[]
+  ): Promise<Set<string>> {
+    // Condition 2: baseline already stamped → already-baselined instance → no-op.
+    if (appliedMigrations.has(BASELINE_FILE)) {
+      return new Set<string>();
     }
-    console.log(
-      `📌 Stamped baseline + ${superseded.length} historical migrations ` +
-      `(<= ${String(BASELINE_THROUGH).padStart(3, '0')}) as applied.`
-    );
 
+    // Condition 3: does the DB already carry the baseline schema? Check a small,
+    // robust set of core app tables. to_regclass() returns NULL when absent.
+    const coreTables = [
+      'public.projects',
+      'public.contexts',
+      'public.sessions',
+      'public.admin_users',
+    ];
+    const probe = await db.query(
+      `SELECT ${coreTables
+        .map((_, i) => `to_regclass($${i + 1}) IS NOT NULL AS t${i}`)
+        .join(', ')}`,
+      coreTables
+    );
+    const hasBaselineSchema = coreTables.every((_, i) => probe.rows[0]?.[`t${i}`] === true);
+
+    if (!hasBaselineSchema) {
+      // Non-fresh but core tables absent → genuinely-blank-ish DB. Do NOT auto-
+      // stamp; that would hide a real missing-schema situation. Let the normal
+      // pending loop handle it.
+      return new Set<string>();
+    }
+
+    console.log(
+      `🩹 Self-heal: existing DB predates the rebaseline — core schema present but ` +
+      `${BASELINE_FILE} not stamped. Stamping baseline + historicals (without ` +
+      `running the baseline SQL) to reconcile the tracker.`
+    );
+    const stamped = await this.stampBaselineAndHistoricals(allMigrations);
+    console.log(
+      `✅ Self-heal complete: ${stamped.size} filenames stamped; baseline SQL was NOT re-run.`
+    );
     return stamped;
   }
 
@@ -268,6 +360,15 @@ class MigrationRunner {
         // does) and proceed with the normal incremental path. An already-
         // baselined DB will have 000..BASELINE_THROUGH stamped, so they're skipped.
         await this.createMigrationsTable();
+
+        // SELF-HEAL: an existing DB that predates the rebaseline carries the
+        // baseline schema but does NOT have 000_baseline_schema.sql stamped (its
+        // history is an older/renumbered lineage). Detect that and auto-stamp
+        // 000 + <= BASELINE_THROUGH (without running the baseline SQL) so the
+        // pending loop below doesn't run 000 against a populated DB and crash-loop
+        // the service. No-op on already-baselined or blank DBs (see method doc).
+        const currentApplied = await this.getAppliedMigrations();
+        await this.selfHealPreBaselineDb(currentApplied, allMigrations);
       }
 
       // Get list of already applied migrations (now includes anything just stamped).
