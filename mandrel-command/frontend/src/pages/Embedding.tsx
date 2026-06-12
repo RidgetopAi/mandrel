@@ -151,7 +151,7 @@ const Embedding: React.FC = () => {
       <div style={{ marginBottom: 24 }}>
         <Title level={2}>Embedding Visualization System</Title>
         <Text type="secondary">
-          Interactive visualization and analysis of embedding vectors from your AIDIS context data.
+          Interactive visualization and analysis of embedding vectors from your Mandrel context data.
           Explore similarities, clusters, and patterns in high-dimensional space.
         </Text>
       </div>

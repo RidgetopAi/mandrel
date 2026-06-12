@@ -6,7 +6,7 @@ interface LoadingStateProps {
   fullscreen?: boolean;
 }
 
-const LoadingState: React.FC<LoadingStateProps> = ({ message = 'Loading AIDIS…', fullscreen }) => {
+const LoadingState: React.FC<LoadingStateProps> = ({ message = 'Loading Mandrel…', fullscreen }) => {
   const content = (
     <div style={{ textAlign: 'center', padding: '2rem' }}>
       <Spin size="large" />

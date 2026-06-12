@@ -160,7 +160,7 @@ const Login: React.FC = () => {
 
           {/* Footer */}
           <Text type="secondary" style={{ fontSize: '12px' }}>
-            Mandrel Command ©2025 - Development Intelligence System
+            Mandrel Command ©2025
           </Text>
         </Space>
       </Card>

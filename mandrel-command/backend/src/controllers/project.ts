@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { ProjectService } from '../services/project';
 import { McpService } from '../services/mcp';
 import { ProjectInsightsService } from '../services/projectInsights';
+import { db } from '../database/connection';
 import { logger } from '../config/logger';
 
 export class ProjectController {
@@ -309,6 +310,46 @@ export class ProjectController {
         success: false,
         error: error instanceof Error ? error.message : 'Failed to set primary project'
       });
+    }
+  }
+
+  /**
+   * POST /projects/clear-primary - Clear the primary/default flag from all projects
+   *
+   * Unlike set-primary, there is no MCP REST endpoint to clear the flag, so this
+   * clears the is_primary metadata key directly against the shared database. This
+   * persists a "no default project" choice server-side so the next login's seed
+   * does not re-apply a previously-set primary.
+   */
+  static async clearPrimary(_req: Request, res: Response): Promise<void> {
+    const client = await db.connect();
+
+    try {
+      logger.info('[Clear Primary] Clearing is_primary flag from all projects');
+
+      const updateResult = await client.query(
+        `UPDATE projects
+         SET metadata = metadata - 'is_primary'
+         WHERE metadata->>'is_primary' = 'true'`
+      );
+
+      logger.info('[Clear Primary] Cleared primary flag', { cleared: updateResult.rowCount });
+
+      res.json({
+        success: true,
+        data: {
+          cleared: updateResult.rowCount ?? 0,
+          is_primary: false
+        }
+      });
+    } catch (error) {
+      logger.error('Clear primary project error', { error });
+      res.status(500).json({
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to clear primary project'
+      });
+    } finally {
+      client.release();
     }
   }
 }

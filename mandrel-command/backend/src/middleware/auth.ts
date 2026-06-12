@@ -14,8 +14,18 @@ export const authenticateToken = async (
       return next();
     }
 
-    // Development mode bypass - use default dev user (matches real user for settings persistence)
-    if (process.env.NODE_ENV === 'development') {
+    // Local-dev auth bypass — fail-closed. This is OFF unless BOTH an explicit
+    // opt-in flag is set AND NODE_ENV is development, so it can never trigger by
+    // NODE_ENV alone (e.g. an instance accidentally started in development).
+    // Default behavior in every environment: no valid token -> 401.
+    if (
+      process.env.ALLOW_DEV_AUTH_BYPASS === 'true' &&
+      process.env.NODE_ENV === 'development'
+    ) {
+      logger.warn('Dev auth bypass active (ALLOW_DEV_AUTH_BYPASS=true) — request authenticated as default dev user', {
+        path: req.path,
+        method: req.method
+      });
       req.user = {
         id: 'f7ad70e4-ae50-4c42-9447-7be278023db4',
         username: 'ridgetopai',
