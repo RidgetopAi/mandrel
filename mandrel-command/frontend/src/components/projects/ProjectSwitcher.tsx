@@ -24,7 +24,7 @@ const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({
 
   // Use React Query to fetch projects (only when authenticated)
   const { data: projectsData, isLoading: loading } = useProjects(
-    { page: 1, limit: 100 },
+    { page: 1, limit: 500 },
     { enabled: isAuthenticated && !authLoading }
   );
 
@@ -35,7 +35,13 @@ const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({
     : projectsData?.data?.projects ?? [];
 
   const projects: Project[] = (projectsArray ?? [])
-    .filter((p) => (p.status ?? 'active') === 'active');
+    .filter((p) => (p.status ?? 'active') === 'active')
+    // Sort by most recent activity first; projects with no activity sink to the bottom.
+    .sort((a, b) => {
+      const ta = (a as any).last_activity ? new Date((a as any).last_activity).getTime() : 0;
+      const tb = (b as any).last_activity ? new Date((b as any).last_activity).getTime() : 0;
+      return tb - ta;
+    });
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -77,6 +83,10 @@ const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({
       placeholder="Select a project..."
       notFoundContent={loading ? <Spin size="small" /> : 'No projects found'}
       optionLabelProp="label"
+      showSearch
+      filterOption={(input, option) =>
+        String(option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+      }
     >
       {projects.map(project => (
         <Option key={project.id} value={project.id} label={project.name}>
