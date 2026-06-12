@@ -37,7 +37,8 @@ class TasksRoutes {
         args.createdBy,
         args.tags,
         args.dependencies,
-        args.metadata
+        args.metadata,
+        context?.connectionId
       );
 
       // Activity tracking is already handled in tasksHandler.createTask()
@@ -179,7 +180,7 @@ class TasksRoutes {
         metadata: args.metadata,
         notes: args.notes,
         projectId: projectId
-      });
+      }, context?.connectionId);
 
       const taskBulkIconMap = {
         todo: '⏰',

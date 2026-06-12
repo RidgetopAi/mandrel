@@ -74,6 +74,8 @@ export interface Alternative {
 export interface RecordDecisionRequest {
   projectId?: string;
   sessionId?: string;
+  /** Connection scope for per-connection session attribution (no global fallback). */
+  connectionId?: string;
   decisionType: DecisionType;
   title: string;
   description: string;
@@ -128,7 +130,8 @@ class DecisionsHandler {
       if (!sessionId) {
         try {
           const { SessionTracker } = await import('../services/sessionTracker.js');
-          sessionId = await SessionTracker.getActiveSession();
+          // Connection-scoped: attach to THIS connection's session only (no leak).
+          sessionId = await SessionTracker.getActiveSession(request.connectionId);
           if (sessionId) {
             logger.info(`📋 Linking decision to active session: ${sessionId.substring(0, 8)}...`);
           }

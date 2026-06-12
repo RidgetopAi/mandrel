@@ -21,7 +21,9 @@ export class SessionManagementHandler {
    */
   static async assignSessionToProject(projectName: string): Promise<SessionOperationResult> {
     try {
-      const activeSessionId = await SessionTracker.getActiveSession();
+      // Dashboard/management op on "the current session" (no connection scope):
+      // explicit global reader.
+      const activeSessionId = await SessionTracker.getActiveSession(undefined, { allowGlobalFallback: true });
       if (!activeSessionId) {
         return {
           success: false,
@@ -105,7 +107,8 @@ export class SessionManagementHandler {
    */
   static async getSessionStatus(): Promise<SessionStatusResult> {
     try {
-      const activeSessionId = await SessionTracker.getActiveSession();
+      // Dashboard status read on "the current session": explicit global reader.
+      const activeSessionId = await SessionTracker.getActiveSession(undefined, { allowGlobalFallback: true });
       if (!activeSessionId) {
         return {
           success: false,
@@ -528,7 +531,8 @@ export class SessionManagementHandler {
         resolvedProjectName = project.name;
       }
 
-      const currentSessionId = await SessionTracker.getActiveSession();
+      // Explicit user "switch/new session" op on the current session anywhere.
+      const currentSessionId = await SessionTracker.getActiveSession(undefined, { allowGlobalFallback: true });
       if (currentSessionId) {
         await db.query(`
           UPDATE sessions

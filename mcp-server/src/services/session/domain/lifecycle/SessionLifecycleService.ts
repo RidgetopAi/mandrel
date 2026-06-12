@@ -185,21 +185,44 @@ export const SessionLifecycleService = {
   },
 
   /**
-   * Get currently active session ID for a connection
+   * Get currently active session ID for a connection.
+   *
+   * CONNECTION-SCOPED BY DEFAULT (attribution-correct):
+   *   A miss returns null. We NEVER silently adopt another connection's session
+   *   via a global "last active anywhere" lookup — that was the per-connection
+   *   attribution leak (a context/task on connection A could attach to whatever
+   *   session was last touched on B). Connection-scoped write callers
+   *   (context_store / task_create / decision_record, the tracking middleware)
+   *   must pass their connectionId and accept null when their connection has no
+   *   session yet (the route-level action gate creates it lazily before the write).
+   *
+   * EXPLICIT GLOBAL FALLBACK (opt-in only):
+   *   A handful of legacy/dashboard READ callers genuinely want "the most recent
+   *   session anywhere" (e.g. the REST /sessions/active poll that has no
+   *   connection of its own). Those callers pass { allowGlobalFallback: true }
+   *   so the global query is auditable, never implicit.
+   *
    * @param connectionId - Optional connection identifier for isolation
+   * @param opts.allowGlobalFallback - opt in to the global last-active DB lookup
    */
-  async getActiveSession(connectionId?: string): Promise<string | null> {
+  async getActiveSession(
+    connectionId?: string,
+    opts: { allowGlobalFallback?: boolean } = {}
+  ): Promise<string | null> {
     try {
-      // Check in-memory first
+      // Check in-memory first (connection-scoped)
       const memorySession = ActiveSessionStore.get(connectionId);
       if (memorySession) {
         return memorySession;
       }
 
-      // Fall back to database only for default connection (backwards compatibility)
-      if (!connectionId) {
+      // Global "last active anywhere" lookup ONLY when a caller explicitly opts in.
+      // This is intentionally NOT gated on `!connectionId` anymore: a missing
+      // connectionId no longer implies "go find some other session".
+      if (opts.allowGlobalFallback) {
         const dbSession = await SessionRepo.getLastActive();
         if (dbSession) {
+          // Cache under the (possibly default) key for this read-only caller only.
           ActiveSessionStore.set(dbSession, connectionId);
           return dbSession;
         }

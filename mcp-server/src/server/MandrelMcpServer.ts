@@ -38,7 +38,7 @@ import {
 import { initializeDatabase, closeDatabase } from '../config/database.js';
 import { dbPool } from '../services/databasePool.js';
 import { validationMiddleware } from '../middleware/validation.js';
-import { SessionTracker, ensureActiveSession } from '../services/sessionTracker.js';
+import { SessionTracker } from '../services/sessionTracker.js';
 import { ActiveSessionStore } from '../services/session/index.js';
 import { ensureFeatureFlags } from '../utils/featureFlags.js';
 // Phase 6.3: Route executor integration - replaces individual handler imports
@@ -353,37 +353,15 @@ export default class MandrelMcpServer {
           });
         });
 
-        // Initialize session tracking for this AIDIS instance
-        logger.info('📋 Ensuring session exists for this AIDIS instance...');
-        try {
-          const currentProject = await projectHandler.getCurrentProject();
-
-          // Detect AI model from environment variables
-          const aiModel =
-            process.env.ANTHROPIC_MODEL ||
-            process.env.CLAUDE_MODEL ||
-            process.env.AI_MODEL ||
-            process.env.MODEL ||
-            'claude-sonnet-4-5'; // Default to Claude Sonnet 4.5
-
-          logger.info(`🤖 AI Model detected: ${aiModel}`);
-
-          // Use ensureActiveSession to reuse existing active session or create new one
-          // Using 'stdio' as connection ID for the main MCP stdio transport
-          const sessionId = await ensureActiveSession(
-            currentProject?.id,
-            undefined, // title
-            undefined, // description
-            undefined, // sessionGoal
-            undefined, // tags
-            aiModel,   // AI model
-            'stdio'    // connectionId - isolates stdio from HTTP connections
-          );
-          logger.info(`✅ Session tracking initialized: ${sessionId.substring(0, 8)}... (connection: stdio)`);
-        } catch (error) {
-          logger.warn('⚠️  Failed to initialize session tracking', { metadata: { error } });
-          logger.warn('   Contexts will be stored without session association');
-        }
+        // LAZY SESSION LIFECYCLE (no eager create on boot/connect).
+        // Previously this called ensureActiveSession('stdio') at startup, which
+        // stamped an empty DB session row on every server boot even if the
+        // connection never produced any content. We no longer do that: a session
+        // is created lazily by the route-level ACTION gate (routes/index.ts) the
+        // first time a content-producing tool (context_store / task_create /
+        // decision_record) runs on a connection. Passive/read tools never create
+        // a session. The detected AI model is applied when that lazy create fires.
+        logger.info('📋 Session lifecycle: lazy (created on first content-producing tool, not on boot)');
       } else {
         logger.info('🧪 Skipping database initialization (AIDIS_SKIP_DATABASE=true)');
       }
@@ -469,10 +447,14 @@ export default class MandrelMcpServer {
           logger.warn('⚠️  Failed to flush session data', { metadata: { error } });
         }
 
-        // End current session if active
+        // End current session if active.
+        // Lazy-create model: the stdio connection's session (if one was ever
+        // created by a real action) lives under the 'stdio' connection key.
+        // Connection-scoped lookup — do NOT adopt some other connection's session
+        // at shutdown.
         logger.info('📋 Ending active session...');
         try {
-          const activeSessionId = await SessionTracker.getActiveSession();
+          const activeSessionId = await SessionTracker.getActiveSession('stdio');
           if (activeSessionId) {
             await SessionTracker.endSession(activeSessionId);
             logger.info('✅ Session ended gracefully');

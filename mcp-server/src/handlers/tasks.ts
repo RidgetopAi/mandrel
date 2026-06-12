@@ -36,7 +36,8 @@ class TasksHandler {
         createdBy?: string,
         tags: string[] = [],
         dependencies: string[] = [],
-        metadata: Record<string, any> = {}
+        metadata: Record<string, any> = {},
+        connectionId?: string
     ): Promise<Task> {
         // Validate project exists before creating task
         const projectExists = await this.pool.query(
@@ -53,9 +54,11 @@ class TasksHandler {
             const callStack = new Error().stack;
             logger.error(`🔍 TASK_CREATE CALLED: "${title}" - Stack: ${callStack?.split('\n')[2]?.trim()}`);
 
-            // TS005-1: Capture active session_id for task-session linking
+            // TS005-1: Capture active session_id for task-session linking.
+            // Connection-scoped: attach to THIS connection's session only (no global
+            // fallback) so concurrent connections never cross-attribute tasks.
             const { SessionTracker } = await import('../services/sessionTracker.js');
-            const sessionId = await SessionTracker.getActiveSession();
+            const sessionId = await SessionTracker.getActiveSession(connectionId);
 
             const result = await client.query(
                 `INSERT INTO tasks
@@ -154,7 +157,7 @@ class TasksHandler {
         }
     }
 
-    async updateTaskStatus(taskId: string, status: string, assignedTo?: string, metadata?: any): Promise<void> {
+    async updateTaskStatus(taskId: string, status: string, assignedTo?: string, metadata?: any, connectionId?: string): Promise<void> {
         const client = await this.pool.connect();
         try {
             const updates = ['status = $1', 'updated_at = CURRENT_TIMESTAMP'];
@@ -178,9 +181,9 @@ class TasksHandler {
             params.push(taskId);
             await client.query(`UPDATE tasks SET ${updates.join(', ')} WHERE id = $${paramIndex}`, params);
 
-            // TS004-1: Update session activity after task update
+            // TS004-1: Update session activity after task update (connection-scoped)
             const { SessionTracker } = await import('../services/sessionTracker.js');
-            const sessionId = await SessionTracker.getActiveSession();
+            const sessionId = await SessionTracker.getActiveSession(connectionId);
             if (sessionId) {
                 await SessionTracker.updateSessionActivity(sessionId);
                 // TS007-2: Record task update for activity tracking
@@ -207,7 +210,8 @@ class TasksHandler {
             metadata?: Record<string, any>;
             notes?: string;
             projectId?: string; // For validation only
-        }
+        },
+        connectionId?: string
     ): Promise<{
         totalRequested: number;
         successfullyUpdated: number;
@@ -310,9 +314,9 @@ class TasksHandler {
 
             await client.query('COMMIT');
 
-            // TS007-2: Record task updates for activity tracking (one per task)
+            // TS007-2: Record task updates for activity tracking (connection-scoped)
             const { SessionTracker } = await import('../services/sessionTracker.js');
-            const sessionId = await SessionTracker.getActiveSession();
+            const sessionId = await SessionTracker.getActiveSession(connectionId);
             if (sessionId && updatedTaskIds.length > 0) {
                 const isCompleted = updates.status === 'completed';
                 // Record one update per task that was successfully updated
