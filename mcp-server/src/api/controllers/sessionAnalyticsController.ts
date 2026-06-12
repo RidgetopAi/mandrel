@@ -12,6 +12,23 @@ import { formatSessionsList, formatSessionStats, formatSessionComparison } from 
 import { logger } from '../../utils/logger.js';
 
 /**
+ * Normalize an Express request value (route param or query param) to a plain
+ * string. In @types/express 5.x, `req.params[x]` is typed `string | string[]`
+ * and `req.query[x]` is `string | string[] | ParsedQs | ParsedQs[] | undefined`.
+ * These endpoints only ever expect single scalar values, so collapse arrays to
+ * their first element and coerce anything else to a string (empty when absent).
+ */
+function asStr(value: unknown): string {
+  if (Array.isArray(value)) {
+    return value.length > 0 ? asStr(value[0]) : '';
+  }
+  if (value === undefined || value === null) {
+    return '';
+  }
+  return String(value);
+}
+
+/**
  * Session Analytics Controller
  * Provides REST API endpoints for session tracking and analytics
  */
@@ -22,7 +39,7 @@ export class SessionAnalyticsController {
    */
   async recordActivity(req: Request, res: Response): Promise<void> {
     try {
-      const { sessionId } = req.params;
+      const sessionId = asStr(req.params.sessionId);
       const { activityType, activityData } = req.body;
 
       if (!sessionId || !activityType) {
@@ -67,7 +84,7 @@ export class SessionAnalyticsController {
    */
   async getActivities(req: Request, res: Response): Promise<void> {
     try {
-      const { sessionId } = req.params;
+      const sessionId = asStr(req.params.sessionId);
       const activityType = req.query.type as string | undefined;
       const limit = req.query.limit ? Number(req.query.limit) : 100;
 
@@ -111,7 +128,7 @@ export class SessionAnalyticsController {
    */
   async recordFileEdit(req: Request, res: Response): Promise<void> {
     try {
-      const { sessionId } = req.params;
+      const sessionId = asStr(req.params.sessionId);
       const { filePath, linesAdded, linesDeleted, source } = req.body;
 
       if (!sessionId || !filePath || isNaN(Number(linesAdded)) || isNaN(Number(linesDeleted))) {
@@ -161,7 +178,7 @@ export class SessionAnalyticsController {
    */
   async getFiles(req: Request, res: Response): Promise<void> {
     try {
-      const { sessionId } = req.params;
+      const sessionId = asStr(req.params.sessionId);
 
       if (!sessionId) {
         res.status(400).json({
@@ -209,7 +226,7 @@ export class SessionAnalyticsController {
    */
   async calculateProductivity(req: Request, res: Response): Promise<void> {
     try {
-      const { sessionId } = req.params;
+      const sessionId = asStr(req.params.sessionId);
       const { configName } = req.body;
 
       if (!sessionId) {
@@ -408,7 +425,7 @@ export class SessionAnalyticsController {
    */
   async getSessionDetail(req: Request, res: Response): Promise<void> {
     try {
-      const { sessionId } = req.params;
+      const sessionId = asStr(req.params.sessionId);
 
       if (!sessionId) {
         res.status(400).json({
@@ -504,7 +521,7 @@ export class SessionAnalyticsController {
    */
   async syncFiles(req: Request, res: Response): Promise<void> {
     try {
-      const { sessionId } = req.params;
+      const sessionId = asStr(req.params.sessionId);
 
       if (!sessionId) {
         res.status(400).json({
@@ -668,7 +685,7 @@ export class SessionAnalyticsController {
    */
   async endSession(req: Request, res: Response): Promise<void> {
     try {
-      const { sessionId } = req.params;
+      const sessionId = asStr(req.params.sessionId);
 
       if (!sessionId) {
         res.status(400).json({
