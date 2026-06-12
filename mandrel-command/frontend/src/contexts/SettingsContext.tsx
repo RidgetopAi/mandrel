@@ -152,10 +152,27 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
   }, []);
 
   const clearDefaultProject = useCallback(async () => {
-    // NOTE: there is currently no backend "clear primary" endpoint, so clearing
-    // is local-only (matches the pre-fix behavior). On next login the backend
-    // seed will re-apply the still-set primary until a backend clear exists.
-    // See Foreman report: optional follow-up to add a clear-primary route.
+    // Persist the clear server-side (clears is_primary on projects.metadata) so the
+    // next login's seed does not re-apply a previously-set primary. Mirrors the
+    // set-primary fetch pattern (Bearer token, error handling). Local clear is kept.
+    const apiBaseUrl = getApiBaseUrl();
+
+    const response = await fetch(`${apiBaseUrl}/projects/clear-primary`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${getToken()}`,
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      logger.error('Failed to clear primary project in backend:', errorText);
+      throw new Error(`Backend error: ${errorText}`);
+    }
+
+    logger.log('✅ Successfully cleared primary project in backend');
+
     setSettings((prev) => ({ ...prev, defaultProject: undefined }));
   }, []);
 

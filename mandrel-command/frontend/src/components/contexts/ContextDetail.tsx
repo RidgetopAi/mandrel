@@ -182,7 +182,7 @@ const ContextDetail: React.FC<ContextDetailProps> = ({
     
     const shareData = {
       title: `Context: ${context.type}`,
-      text: `AIDIS Context\n\nType: ${getTypeDisplayName(context.type)}\nProject: ${context.project_name || 'Unknown'}\nCreated: ${dayjs(context.created_at).format('YYYY-MM-DD HH:mm')}\n\nContent:\n${context.content}`,
+      text: `Mandrel Context\n\nType: ${getTypeDisplayName(context.type)}\nProject: ${context.project_name || 'Unknown'}\nCreated: ${dayjs(context.created_at).format('YYYY-MM-DD HH:mm')}\n\nContent:\n${context.content}`,
       url: window.location.href
     };
 

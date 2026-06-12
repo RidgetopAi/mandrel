@@ -174,7 +174,7 @@ const Decisions: React.FC = () => {
 
   const handleDecisionShare = (decision: any) => {
     const shareData = {
-      title: `AIDIS Technical Decision: ${decision.title}`,
+      title: `Mandrel Technical Decision: ${decision.title}`,
       text: `Problem: ${decision.problem}\n\nDecision: ${decision.decision}`,
       url: window.location.href
     };

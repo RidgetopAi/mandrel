@@ -76,7 +76,7 @@ const AppContent: React.FC = () => {
                 maxRetries={3}
               >
                 <ProjectProvider>
-                  <Suspense fallback={<LoadingState fullscreen message="Preparing AIDIS interface…" /> }>
+                  <Suspense fallback={<LoadingState fullscreen message="Preparing Mandrel interface…" /> }>
                     <Routes>
                     {/* Public Routes */}
                     <Route path="/login" element={<SectionErrorBoundary section="Login"><Login /></SectionErrorBoundary>} />

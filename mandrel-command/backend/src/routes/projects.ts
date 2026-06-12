@@ -200,6 +200,22 @@ router.post('/:id/set-primary', validateUUIDParam(), ProjectController.setPrimar
 
 /**
  * @swagger
+ * /projects/clear-primary:
+ *   post:
+ *     summary: Clear the primary/default flag from all projects
+ *     tags: [Projects]
+ *     responses:
+ *       200:
+ *         description: Primary flag cleared successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ApiSuccessResponse'
+ */
+router.post('/clear-primary', ProjectController.clearPrimary);
+
+/**
+ * @swagger
  * /projects/{id}:
  *   get:
  *     summary: Get project by ID
