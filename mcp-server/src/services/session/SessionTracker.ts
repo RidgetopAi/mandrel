@@ -69,11 +69,17 @@ export class SessionTracker {
   }
 
   /**
-   * Get currently active session ID for a connection
+   * Get currently active session ID for a connection.
+   * Connection-scoped by default (a miss returns null). Pass
+   * { allowGlobalFallback: true } ONLY for legacy/dashboard READ callers that
+   * genuinely want the most-recent-session-anywhere (see SessionLifecycleService).
    * @param connectionId - Optional connection identifier for session isolation
    */
-  static async getActiveSession(connectionId?: string): Promise<string | null> {
-    return SessionLifecycleService.getActiveSession(connectionId);
+  static async getActiveSession(
+    connectionId?: string,
+    opts: { allowGlobalFallback?: boolean } = {}
+  ): Promise<string | null> {
+    return SessionLifecycleService.getActiveSession(connectionId, opts);
   }
 
   /**
@@ -358,16 +364,27 @@ export async function ensureActiveSession(
 }
 
 /**
- * Record operation and ensure session exists
+ * Record operation and ensure session exists.
+ * Legacy/global helper (no connection scope): used by tests and bare callers.
+ * @param connectionId - optional connection scope for the ensured session
  */
-export async function recordSessionOperation(operationType: string, projectId?: string): Promise<void> {
-  const sessionId = await ensureActiveSession(projectId);
+export async function recordSessionOperation(
+  operationType: string,
+  projectId?: string,
+  connectionId?: string
+): Promise<void> {
+  const sessionId = await ensureActiveSession(
+    projectId, undefined, undefined, undefined, undefined, undefined, connectionId
+  );
   await SessionTracker.recordOperation(sessionId, operationType);
 }
 
 /**
- * Get current session ID
+ * Get current session ID (GLOBAL last-active reader).
+ * Legacy/background helper (e.g. gitTracker) that genuinely wants the most-recent
+ * session anywhere and has no connection of its own. Opts INTO the global fallback
+ * explicitly so this is not a silent cross-connection adoption.
  */
 export async function getCurrentSession(): Promise<string | null> {
-  return SessionTracker.getActiveSession();
+  return SessionTracker.getActiveSession(undefined, { allowGlobalFallback: true });
 }

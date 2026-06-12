@@ -39,14 +39,16 @@ class DecisionsRoutes {
         problemStatement: args.problemStatement,
         affectedComponents: args.affectedComponents,
         tags: args.tags,
-        projectId: projectId
+        projectId: projectId,
+        connectionId: context?.connectionId
       });
 
-      // Auto-track decision_recorded activity in session
+      // Auto-track decision_recorded activity in session (connection-scoped)
       await SessionTrackingMiddleware.trackDecisionRecorded(
         decision.id,
         decision.decisionType,
-        decision.impactLevel
+        decision.impactLevel,
+        context?.connectionId
       );
 
       const alternativesText = decision.alternativesConsidered.length > 0

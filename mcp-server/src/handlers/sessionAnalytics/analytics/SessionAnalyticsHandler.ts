@@ -314,8 +314,10 @@ export class SessionAnalyticsHandler {
       logger.info('🔍 Getting active session information');
       
       const startTime = Date.now();
-      const activeSessionId = await SessionTracker.getActiveSession();
-      
+      // Dashboard READ path (REST /sessions/active): no connection of its own,
+      // wants the most-recent session anywhere → explicit global fallback.
+      const activeSessionId = await SessionTracker.getActiveSession(undefined, { allowGlobalFallback: true });
+
       if (!activeSessionId) {
         logger.info('ℹ️  No active session found');
         
@@ -375,8 +377,9 @@ export class SessionAnalyticsHandler {
       logger.info(`📝 Recording operation: ${operationType} for project: ${projectId || 'current'}`);
       
       const startTime = Date.now();
-      let sessionId = await SessionTracker.getActiveSession();
-      
+      // Legacy analytics op recorder (no connection scope): explicit global reader.
+      let sessionId = await SessionTracker.getActiveSession(undefined, { allowGlobalFallback: true });
+
       if (!sessionId) {
         sessionId = await SessionTracker.startSession(projectId);
         logger.info(`🚀 Auto-started session for operation: ${sessionId.substring(0, 8)}...`);

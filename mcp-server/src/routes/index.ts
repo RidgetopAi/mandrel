@@ -6,6 +6,8 @@
 import { formatMcpError } from '../utils/mcpFormatter.js';
 import type { McpResponse } from '../utils/mcpFormatter.js';
 import { logger } from '../utils/logger.js';
+import { ensureActiveSession } from '../services/sessionTracker.js';
+import { projectHandler } from '../handlers/project.js';
 
 // Import all route modules
 import { systemRoutes } from './system.routes.js';
@@ -23,6 +25,74 @@ export interface RouteContext {
 }
 
 /**
+ * CONTENT-PRODUCING ("ACTION") TOOLS — the single source of truth for lazy
+ * session creation.
+ *
+ * Lazy-session model (P-B): a DB session row is created ONLY when one of these
+ * tools runs on a connection. Every other tool is PASSIVE and never creates a
+ * session — so passive connects, dashboard polls, searches, stats, help, and
+ * `project_*` navigation leave zero empty session rows behind.
+ *
+ * Keep this set TIGHT and in ONE place: adding a tool here is the only way to
+ * make a tool create sessions, so noise can't creep back in silently. A tool is
+ * an ACTION only if it persists user-authored content that should be attributed
+ * to a session (creates), NOT if it merely reads or mutates existing rows.
+ *
+ * NOTE on project_switch: intentionally PASSIVE. Switching project must NOT
+ * spawn a session (one-session-per-connection); if a session already exists it
+ * is re-pinned to the new project by projectHandler.syncSessionProject, and if
+ * none exists yet the NEXT real action creates one already pinned to the
+ * switched-to project.
+ */
+const ACTION_TOOLS: ReadonlySet<string> = new Set<string>([
+  'context_store',
+  'task_create',
+  'decision_record',
+]);
+
+/**
+ * Lazily ensure a DB session exists for this connection BEFORE a content-
+ * producing tool writes, so the write attaches to the correct per-connection
+ * session. Inherits the connection's CURRENT project; a later project_switch
+ * re-pins that same session (never spawns a new one).
+ *
+ * Connection-scoped and idempotent: if the connection already has an active
+ * session, ensureActiveSession returns it unchanged (no duplicate rows). Failure
+ * here must not block the tool — the write path degrades to "no session" exactly
+ * as before, so a session-tracking hiccup never breaks the user's action.
+ */
+async function ensureSessionForAction(toolName: string, connectionId?: string): Promise<void> {
+  try {
+    const connId = connectionId ?? 'stdio';
+    // Resolve the connection's current project (same key the route layer uses).
+    let projectId: string | undefined;
+    try {
+      await projectHandler.initializeSession(connId);
+      projectId = (await projectHandler.getCurrentProjectId(connId)) ?? undefined;
+    } catch {
+      projectId = undefined;
+    }
+    const sessionId = await ensureActiveSession(
+      projectId,
+      undefined, // title
+      undefined, // description
+      undefined, // sessionGoal
+      undefined, // tags
+      undefined, // aiModel
+      connId     // connectionId — isolates this session to this connection
+    );
+    logger.info(
+      `📋 Lazy session ready for action '${toolName}': ${sessionId.substring(0, 8)}... (connection: ${connId})`
+    );
+  } catch (error) {
+    // Never block the user action on a session-tracking failure.
+    logger.warn(`⚠️  Lazy session ensure failed for '${toolName}'; proceeding without`, {
+      metadata: { error: (error as Error)?.message }
+    });
+  }
+}
+
+/**
  * Execute MCP Tool via Route Dispatcher
  * Central entry point for all 36 active MCP tools
  */
@@ -33,6 +103,14 @@ export async function routeExecutor(toolName: string, args: any, context?: Route
     if (deprecatedTools.includes(toolName)) {
       const newName = toolName.replace('aidis_', 'mandrel_');
       logger.warn(`⚠️  Tool '${toolName}' is deprecated. Use '${newName}' instead.`);
+    }
+
+    // P-B ACTION GATE: lazily create this connection's DB session ONLY when a
+    // content-producing tool runs. Passive/read tools fall straight through and
+    // never create a session row. Centralised here so the create-timing decision
+    // lives in exactly one place (see ACTION_TOOLS above).
+    if (ACTION_TOOLS.has(toolName)) {
+      await ensureSessionForAction(toolName, context?.connectionId);
     }
 
     switch (toolName) {

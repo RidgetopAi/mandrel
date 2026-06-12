@@ -64,14 +64,16 @@ class ContextRoutes {
         relevanceScore: args.relevanceScore,
         metadata: args.metadata,
         projectId: projectId,
-        sessionId: args.sessionId
+        sessionId: args.sessionId,
+        connectionId: context?.connectionId
       });
 
-      // Auto-track context_stored activity in session
+      // Auto-track context_stored activity in session (connection-scoped)
       await SessionTrackingMiddleware.trackContextStored(
         result.id,
         result.contextType,
-        result.tags
+        result.tags,
+        context?.connectionId
       );
 
       return {

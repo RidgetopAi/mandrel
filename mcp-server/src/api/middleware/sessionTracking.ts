@@ -19,10 +19,12 @@ export class SessionTrackingMiddleware {
   static async trackContextStored(
     contextId: string,
     contextType: string,
-    tags: string[]
+    tags: string[],
+    connectionId?: string
   ): Promise<void> {
     try {
-      const activeSessionId = await SessionTracker.getActiveSession();
+      // Connection-scoped: track against THIS connection's session only.
+      const activeSessionId = await SessionTracker.getActiveSession(connectionId);
       if (!activeSessionId) {
         logger.debug('No active session - skipping context_stored activity tracking');
         return;
@@ -50,10 +52,12 @@ export class SessionTrackingMiddleware {
     taskId: string,
     taskTitle: string,
     taskType: string,
-    taskPriority: string
+    taskPriority: string,
+    connectionId?: string
   ): Promise<void> {
     try {
-      const activeSessionId = await SessionTracker.getActiveSession();
+      // Connection-scoped: track against THIS connection's session only.
+      const activeSessionId = await SessionTracker.getActiveSession(connectionId);
       if (!activeSessionId) {
         logger.debug('No active session - skipping task_created activity tracking');
         return;
@@ -81,10 +85,12 @@ export class SessionTrackingMiddleware {
   static async trackDecisionRecorded(
     decisionId: string,
     decisionType: string,
-    impactLevel: string
+    impactLevel: string,
+    connectionId?: string
   ): Promise<void> {
     try {
-      const activeSessionId = await SessionTracker.getActiveSession();
+      // Connection-scoped: track against THIS connection's session only.
+      const activeSessionId = await SessionTracker.getActiveSession(connectionId);
       if (!activeSessionId) {
         logger.debug('No active session - skipping decision_recorded activity tracking');
         return;
@@ -110,10 +116,12 @@ export class SessionTrackingMiddleware {
    */
   static async trackNamingRegistered(
     entityType: string,
-    canonicalName: string
+    canonicalName: string,
+    connectionId?: string
   ): Promise<void> {
     try {
-      const activeSessionId = await SessionTracker.getActiveSession();
+      // Connection-scoped: track against THIS connection's session only.
+      const activeSessionId = await SessionTracker.getActiveSession(connectionId);
       if (!activeSessionId) {
         logger.debug('No active session - skipping naming_registered activity tracking');
         return;
@@ -141,10 +149,12 @@ export class SessionTrackingMiddleware {
     filePath: string,
     linesAdded: number,
     linesDeleted: number,
-    _source: 'tool' | 'git' | 'manual' = 'tool'
+    _source: 'tool' | 'git' | 'manual' = 'tool',
+    connectionId?: string
   ): Promise<void> {
     try {
-      const activeSessionId = await SessionTracker.getActiveSession();
+      // Connection-scoped: track against THIS connection's session only.
+      const activeSessionId = await SessionTracker.getActiveSession(connectionId);
       if (!activeSessionId) {
         logger.debug('No active session - skipping file_edit activity tracking');
         return;

@@ -41,7 +41,8 @@ export async function startSessionTracking(projectId?: string): Promise<string |
   try {
     const result = await SessionAnalyticsHandler.startSession(projectId);
     if (result.success) {
-      const activeSessionId = await SessionTracker.getActiveSession();
+      // Legacy global reader: returns the just-started session anywhere.
+      const activeSessionId = await SessionTracker.getActiveSession(undefined, { allowGlobalFallback: true });
       return activeSessionId;
     }
     return null;

@@ -19,6 +19,12 @@ import { logger } from '../utils/logger.js';
 export interface StoreContextRequest {
   projectId?: string;
   sessionId?: string;
+  /**
+   * Connection scope for session attribution. When set, the active session is
+   * resolved per-connection (no global "last active anywhere" fallback), closing
+   * the cross-connection attribution leak.
+   */
+  connectionId?: string;
   type: 'code' | 'decision' | 'error' | 'discussion' | 'planning' | 'completion' | 'milestone' | 'reflections' | 'handoff' | 'lessons';
   content: string;
   tags?: string[];
@@ -106,7 +112,7 @@ class ContextHandler {
 
       // Get or create project/session
       const projectId = await this.ensureProjectId(request.projectId);
-      const sessionId = await this.ensureSessionId(request.sessionId, projectId);
+      const sessionId = await this.ensureSessionId(request.sessionId, projectId, request.connectionId);
 
       // Create hybrid embedding text combining title, tags, type, and content
       const extractedTitle = this.extractTitle(request.content);
@@ -622,7 +628,7 @@ class ContextHandler {
   /**
    * Ensure we have a valid session ID (get current or create new)
    */
-  private async ensureSessionId(sessionId?: string, _projectId?: string): Promise<string | null> {
+  private async ensureSessionId(sessionId?: string, _projectId?: string, connectionId?: string): Promise<string | null> {
     if (sessionId) {
       // Verify the session exists
       const result = await db.query('SELECT id FROM sessions WHERE id = $1', [sessionId]);
@@ -632,10 +638,13 @@ class ContextHandler {
       throw new Error(`Session ${sessionId} not found`);
     }
 
-    // Get or create an active session using the SessionTracker
+    // Resolve the active session for THIS connection only. No global fallback —
+    // a context must never attach to another connection's session (the leak).
+    // The route-level action gate lazily creates this connection's session
+    // before the write, so this normally resolves to that session.
     try {
       const { SessionTracker } = await import('../services/sessionTracker.js');
-      const activeSessionId = await SessionTracker.getActiveSession();
+      const activeSessionId = await SessionTracker.getActiveSession(connectionId);
       if (activeSessionId) {
         logger.info(`📋 Using active session: ${activeSessionId.substring(0, 8)}... for context storage`);
         return activeSessionId;
