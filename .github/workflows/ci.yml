@@ -1,0 +1,129 @@
+name: CI
+
+# Build + test gate for ra-mandrel. Mirrors scripts/ci.sh stage-for-stage using
+# GitHub-native infra (a Postgres service container instead of a disposable
+# sudo-created DB). Green here = the tree is shippable.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Cancel superseded runs on the same ref to save minutes.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    name: build + test gate
+    runs-on: ubuntu-latest
+
+    # Postgres service container. Uses pgvector/pgvector:pg16 (NOT stock
+    # postgres:16) because mcp-server/database/init/00-extensions.sql does
+    # `CREATE EXTENSION vector` (plus pg_trgm, pgcrypto, uuid-ossp) — pgvector
+    # ships the `vector` extension that stock postgres lacks. pg16 matches the
+    # production server_version (16.x).
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci_throwaway_pw
+          POSTGRES_DB: mandrel_ci
+        ports:
+          - 5432:5432
+        # Wait until Postgres is actually accepting connections before any step
+        # touches it (migrate.ts / vitest / jest all connect immediately).
+        options: >-
+          --health-cmd "pg_isready -U ci -d mandrel_ci"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    # DB wiring: mcp-server/src/config/database.ts (used by migrate.ts AND the
+    # vitest contract tests) and the backend jest suites both read this exact
+    # DATABASE_* convention. Point them all at the service container on
+    # localhost:5432. EMBEDDING_PREFER_LOCAL=false keeps the contract tests'
+    # mocked embeddings offline (no model download). MANDREL_SKIP_DB_TESTS=true
+    # makes the backend's live-MCP-server-only suites self-skip (they need a
+    # running server, which is out of scope for this gate).
+    env:
+      DATABASE_HOST: localhost
+      DATABASE_PORT: '5432'
+      DATABASE_NAME: mandrel_ci
+      DATABASE_USER: ci
+      DATABASE_PASSWORD: ci_throwaway_pw
+      NODE_ENV: test
+      EMBEDDING_PREFER_LOCAL: 'false'
+      MANDREL_SKIP_DB_TESTS: 'true'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          # Cache npm for all three package lockfiles.
+          cache: npm
+          cache-dependency-path: |
+            mcp-server/package-lock.json
+            mandrel-command/backend/package-lock.json
+            mandrel-command/frontend/package-lock.json
+
+      # --- Install deps per package (three independent lockfiles) -------------
+      - name: Install mcp-server deps
+        working-directory: mcp-server
+        run: npm ci
+
+      - name: Install backend deps
+        working-directory: mandrel-command/backend
+        run: npm ci
+
+      - name: Install frontend deps
+        working-directory: mandrel-command/frontend
+        # frontend/.npmrc sets legacy-peer-deps=true (CRA5 peers TS3/4, app uses
+        # TS5); npm ci honors it automatically.
+        run: npm ci
+
+      # --- Install required Postgres extensions into the service DB -----------
+      # The pgvector image only auto-runs init SQL on first volume init for the
+      # default DB; run the repo's extensions file explicitly so `vector`,
+      # `pg_trgm`, `pgcrypto`, `uuid-ossp` exist before migrate.ts runs.
+      - name: Install Postgres extensions
+        env:
+          PGPASSWORD: ci_throwaway_pw
+        run: |
+          psql -h localhost -p 5432 -U ci -d mandrel_ci \
+            -f mcp-server/database/init/00-extensions.sql
+
+      # --- STAGE 0b: migrate the CI database with the real migrate.ts ---------
+      - name: Migrate database (real migrate.ts)
+        working-directory: mcp-server
+        run: npx tsx scripts/migrate.ts
+
+      # --- STAGE 1: mcp-server contract tests (vitest, real DB) ---------------
+      - name: mcp-server contract tests
+        working-directory: mcp-server
+        run: npx vitest run src/tests/*.contract.test.ts
+
+      # --- STAGE 2: mcp-server type-check -------------------------------------
+      - name: mcp-server type-check
+        working-directory: mcp-server
+        run: npm run type-check
+
+      # --- STAGE 3: backend type-check ----------------------------------------
+      - name: backend type-check
+        working-directory: mandrel-command/backend
+        run: npm run type-check
+
+      # --- STAGE 4: backend tests (jest, real DB) -----------------------------
+      - name: backend tests
+        working-directory: mandrel-command/backend
+        run: npx jest --runInBand --ci
+
+      # --- STAGE 5: frontend build (CRA compile gate) -------------------------
+      - name: frontend build
+        working-directory: mandrel-command/frontend
+        run: npm run build
