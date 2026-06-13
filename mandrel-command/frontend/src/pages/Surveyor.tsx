@@ -4,12 +4,13 @@
  */
 
 import React from 'react';
-import { Typography, Space, Card, Empty, Tag } from 'antd';
+import { Typography, Space, Card, Empty, Tag, theme } from 'antd';
 import { RadarChartOutlined, RocketOutlined } from '@ant-design/icons';
 
 const { Title, Paragraph, Text } = Typography;
 
 const Surveyor: React.FC = () => {
+  const { token } = theme.useToken();
   return (
     <Space direction="vertical" size="large" style={{ width: '100%' }}>
       {/* Page Header */}
@@ -39,7 +40,7 @@ const Surveyor: React.FC = () => {
 
               <Space direction="vertical" size="small" style={{ textAlign: 'left', marginTop: 16 }}>
                 <Text strong>Planned Features:</Text>
-                <ul style={{ textAlign: 'left', color: 'rgba(0, 0, 0, 0.45)' }}>
+                <ul style={{ textAlign: 'left', color: token.colorTextTertiary }}>
                   <li>Multi-language dependency analysis</li>
                   <li>Interactive dependency graphs</li>
                   <li>Circular dependency detection</li>

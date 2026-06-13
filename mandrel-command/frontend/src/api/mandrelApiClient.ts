@@ -13,6 +13,10 @@ import { logger } from '../utils/logger';
 
 export const McpResponseSchema = z.object({
   success: z.boolean(),
+  // The Mandrel MCP HTTP server (/mcp/tools/*) returns the tool payload under
+  // `result`; older/V2 responses used `data`. Accept both so validation passes
+  // regardless of which shape the server returns.
+  result: z.any().optional(),
   data: z.any().optional(),
   error: z.string().optional(),
   version: z.string().optional(),
@@ -30,6 +34,7 @@ export const ApiErrorSchema = z.object({
 
 export type McpResponse<T = any> = z.infer<typeof McpResponseSchema> & {
   data?: T;
+  result?: T;
 };
 
 export type ApiError = z.infer<typeof ApiErrorSchema>;
@@ -80,8 +85,10 @@ export class MandrelApiClient {
     // Host-agnostic base URL. Only honor an explicit absolute http(s) REACT_APP_MCP_URL;
     // otherwise default to same-origin ('' / relative) so the browser never makes a
     // loopback fetch to localhost:8080 (which triggers the "Private Network Access"
-    // prompt on a hosted browser). V2 calls then hit same-origin /v2/mcp/* and fall
-    // back to the authenticated backend. Mirrors sessionsClient.ts / client.ts.
+    // prompt on a hosted browser). Calls then hit same-origin /mcp/tools/* and /healthz,
+    // which Traefik routes (PathPrefix /mcp + /healthz) directly to the tenant's MCP
+    // server. (The previous /v2/mcp/* prefix matched no route and 405'd on the static
+    // frontend.) Mirrors sessionsClient.ts / client.ts.
     const envMcpUrl = process.env.REACT_APP_MCP_URL;
     const absoluteEnvUrl = envMcpUrl && /^https?:\/\//.test(envMcpUrl) ? envMcpUrl : '';
     this.baseUrl = config?.baseUrl || absoluteEnvUrl || '';
@@ -274,30 +281,40 @@ export class MandrelApiClient {
 
   async getHealth(): Promise<{ status: string; version: string; toolsAvailable: number }> {
     return this.executeWithRetry(async () => {
+      // The MCP server exposes liveness at /healthz (not /v2/mcp/health, which 405'd).
       const response = await this.makeRequest<{ status: string; version: string; toolsAvailable: number }>(
         'GET',
-        '/v2/mcp/health'
+        '/healthz',
+        undefined,
+        { validateResponse: false }
       );
-      return response.data || response;
+      return (response.result || response.data || response) as any;
     }, 'getHealth');
   }
 
   async listTools(): Promise<{ tools: string[] }> {
     return this.executeWithRetry(async () => {
+      // GET /mcp/tools returns { success, tools: [...] } from the MCP server.
       const response = await this.makeRequest<{ tools: string[] }>(
         'GET',
-        '/v2/mcp/tools'
+        '/mcp/tools',
+        undefined,
+        { validateResponse: false }
       );
-      return response.data || { tools: [] };
+      return (response as any).tools
+        ? { tools: (response as any).tools }
+        : response.result || response.data || { tools: [] };
     }, 'listTools');
   }
 
   async callTool<T = any>(toolName: string, args: Record<string, any> = {}): Promise<T> {
     return this.executeWithRetry(async () => {
+      // POST /mcp/tools/<tool> with the args wrapped in { arguments } (the MCP HTTP
+      // server reads requestData.arguments). Response shape: { success, result }.
       const response = await this.makeRequest<T>(
         'POST',
-        `/v2/mcp/tools/${toolName}`,
-        args
+        `/mcp/tools/${toolName}`,
+        { arguments: args }
       );
 
       if (!response.success) {
@@ -309,7 +326,8 @@ export class MandrelApiClient {
         throw error;
       }
 
-      return response.data;
+      // MCP server nests the tool payload under `result`; tolerate `data` too.
+      return (response.result ?? response.data) as T;
     }, `callTool:${toolName}`);
   }
 
