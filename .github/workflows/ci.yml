@@ -69,22 +69,24 @@ jobs:
           cache: npm
           cache-dependency-path: |
             mcp-server/package-lock.json
-            mandrel-command/backend/package-lock.json
-            mandrel-command/frontend/package-lock.json
+            mandrel-command/package-lock.json
 
-      # --- Install deps per package (three independent lockfiles) -------------
+      # --- Install deps --------------------------------------------------------
+      # mcp-server is a standalone package. mandrel-command is an npm WORKSPACES
+      # root (frontend/backend/shared) — when the full repo is checked out, npm
+      # sees the workspace, so `npm ci` MUST run at the workspace root (the child
+      # lockfiles are only valid for the isolated Docker builds, where the parent
+      # workspace isn't present). Root install hoists deps to
+      # mandrel-command/node_modules; the backend/frontend script stages below
+      # resolve through it (incl. the `shared` workspace + tsc/react-scripts bins).
       - name: Install mcp-server deps
         working-directory: mcp-server
         run: npm ci
 
-      - name: Install backend deps
-        working-directory: mandrel-command/backend
-        run: npm ci
-
-      - name: Install frontend deps
-        working-directory: mandrel-command/frontend
+      - name: Install command deps (workspace root)
+        working-directory: mandrel-command
         # frontend/.npmrc sets legacy-peer-deps=true (CRA5 peers TS3/4, app uses
-        # TS5); npm ci honors it automatically.
+        # TS5); the workspace install honors it.
         run: npm ci
 
       # --- Install required Postgres extensions into the service DB -----------
