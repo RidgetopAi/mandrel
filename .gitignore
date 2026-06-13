@@ -224,3 +224,6 @@ docker-compose.neko-trappings.yml
 docker-compose.dmclark.yml
 docker-compose.tomobobo.yml
 docker-compose.bfenix.yml
+
+# Staging canary override (non-customer, localhost-only) — local pipeline artifact
+docker-compose.staging.yml
