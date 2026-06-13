@@ -24,9 +24,11 @@ import {
   ClockCircleOutlined,
   EditOutlined
 } from '@ant-design/icons';
-import { useProject, useProjectSessions } from '../hooks/useProjects';
+import { useProject, useProjectSessions, useUpdateProject } from '../hooks/useProjects';
 import SessionList from '../components/projects/SessionList';
+import ProjectForm from '../components/projects/ProjectForm';
 import type { Session } from '../types/session';
+import type { CreateProjectRequest, UpdateProjectRequest, ProjectEntity } from '../api/generated';
 import { useTheme } from '../contexts/ThemeContext';
 import { logger } from '../utils/logger';
 
@@ -50,6 +52,12 @@ const ProjectDetail: React.FC = () => {
     isLoading: sessionsLoading,
     error: sessionsError
   } = useProjectSessions(id);
+
+  // Mutation for editing the project
+  const updateProjectMutation = useUpdateProject();
+
+  // Local UI state for the edit modal
+  const [editFormVisible, setEditFormVisible] = React.useState(false);
 
   // Extract data from API responses
   const project = projectResponse?.data;
@@ -77,8 +85,30 @@ const ProjectDetail: React.FC = () => {
   };
 
   const handleEditProject = () => {
-    // Could open edit modal or navigate to edit page
-    message.info('Edit project functionality would be implemented here');
+    setEditFormVisible(true);
+  };
+
+  const handleEditFormSubmit = async (
+    data: CreateProjectRequest | UpdateProjectRequest
+  ) => {
+    if (!id) {
+      return;
+    }
+    try {
+      await updateProjectMutation.mutateAsync({
+        id,
+        data: data as UpdateProjectRequest
+      });
+      message.success('Project updated successfully');
+      setEditFormVisible(false);
+    } catch (error) {
+      message.error('Failed to update project');
+      logger.error('Update project error:', error);
+    }
+  };
+
+  const handleEditFormCancel = () => {
+    setEditFormVisible(false);
   };
 
   const getStatusColor = (status: string) => {
@@ -267,9 +297,18 @@ const ProjectDetail: React.FC = () => {
             </Card>
           )}
         </TabPane>
-        
+
 
       </Tabs>
+
+      {/* Edit Project Modal */}
+      <ProjectForm
+        visible={editFormVisible}
+        project={project as ProjectEntity}
+        onSubmit={handleEditFormSubmit}
+        onCancel={handleEditFormCancel}
+        loading={updateProjectMutation.isPending}
+      />
     </Space>
   );
 };
