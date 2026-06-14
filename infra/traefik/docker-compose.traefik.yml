@@ -1,0 +1,125 @@
+# docker-compose.traefik.yml — Traefik v3 reverse proxy for the Mandrel tenant fleet.
+# PHASE 2a: nginx terminates the wildcard TLS cert on :443 and reverse-proxies plain
+# HTTP to Traefik's localhost-only web entrypoint (127.0.0.1:8090). Traefik does pure
+# label routing; nginx stays authoritative for :80/:443. Owned ridgetop:ridgetop.
+#
+# Bring up:   docker compose -f /opt/mandrel/traefik/docker-compose.traefik.yml -p ra-traefik up -d
+# Tear down:  docker compose -f /opt/mandrel/traefik/docker-compose.traefik.yml -p ra-traefik down
+#
+# GUARDRAILS baked in:
+#   * Host ports bind to 127.0.0.1 ONLY (8090 web data-plane, 8091 api/dashboard).
+#     Traefik NEVER touches 0.0.0.0:80 / :443 — nginx owns those.
+#   * Joined to the EXISTING staging network (external) so it reaches staging
+#     containers by service name. Removing this stack fully reverses the change.
+#
+# WHY THE SOCKET-PROXY (docker-socket-proxy) instead of mounting docker.sock
+# straight into Traefik:
+#   This host's docker daemon sets MinAPIVersion=1.40. Traefik v3's embedded moby
+#   client SEEDS API-version negotiation with a /v1.24/version ping, which the daemon
+#   rejects with HTTP 400 ("client version 1.24 is too old"), so negotiation aborts and
+#   Traefik stays pinned at 1.24 -> the docker provider never loads. Measured: v1.24
+#   ping = 400, unversioned /version = 200, v1.44 = 200 (daemon range 1.40–1.54).
+#   DOCKER_API_VERSION env on Traefik does NOT fix it (only applies when negotiation is
+#   disabled). The docker-socket-proxy negotiates cleanly with the daemon (presents
+#   ApiVersion 1.54) and re-exposes a stable API over tcp://docker-socket-proxy:2375 on
+#   the staging network. Bonus: it's the recommended hardening pattern — Traefik never
+#   touches the raw socket; the proxy is read-only (only CONTAINERS/NETWORKS/etc enabled).
+
+services:
+  # Read-only Docker API broker. Holds the real socket (RO); exposes a minimal,
+  # version-filtered HTTP API on the staging network only (no host port).
+  docker-socket-proxy:
+    # PINNED off :latest (Phase 2a). This is the most security-sensitive container —
+    # it holds the docker.sock — so it is pinned to an immutable digest. This digest is
+    # the image that was security-reviewed + proven in Phase 1. Bump deliberately, never
+    # implicitly. (image was tecnativa/docker-socket-proxy :latest == VERSION=1 at pin time.)
+    image: ghcr.io/tecnativa/docker-socket-proxy@sha256:1f3a6f303320723d199d2316a3e82b2e2685d86c275d5e3deeaf182573b47476
+    container_name: ra-traefik-dsp
+    restart: unless-stopped
+    environment:
+      # Least-privilege: only what the Traefik docker provider needs to read.
+      CONTAINERS: "1"
+      NETWORKS: "1"
+      SERVICES: "1"
+      TASKS: "1"
+      # everything else (POST, EXEC, IMAGES, VOLUMES, etc.) stays default-denied
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - staging
+
+  # API-version rewriter (see haproxy-apiver.cfg for the full WHY). Rewrites Traefik's
+  # /v1.24 negotiation seed -> /v1.44 so this daemon (MinAPIVersion=1.40) accepts it.
+  docker-apiver-proxy:
+    image: haproxy:2.9-alpine
+    container_name: ra-traefik-apiver
+    restart: unless-stopped
+    depends_on:
+      - docker-socket-proxy
+    volumes:
+      - ./haproxy-apiver.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+    networks:
+      - staging
+
+  traefik:
+    image: traefik:v3.3
+    container_name: ra-traefik
+    restart: unless-stopped
+    command: []   # all static config comes from the mounted traefik.yml
+    depends_on:
+      - docker-apiver-proxy
+    ports:
+      # web data-plane — localhost-only high port (nginx keeps 80/443)
+      - "127.0.0.1:8090:80"
+      # api/dashboard — localhost-only high port; insecure OK because 127.0.0.1-bound
+      - "127.0.0.1:8091:8080"
+    volumes:
+      # Static config only. The ./dynamic file-provider mount was removed in Phase 2a
+      # (no file provider configured). nginx terminates TLS, so no ACME/letsencrypt
+      # volume or CF token env is needed in this container — Traefik does pure routing.
+      - ./traefik.yml:/etc/traefik/traefik.yml:ro
+    networks:
+      - staging
+      # Cutover 2026-06-13 (task 705fbad0): joined to brian's network so Traefik can
+      # reach brian's mcp-server + command-frontend by service name. Additive — staging
+      # stays. Only the `traefik` container needs tenant-network reach (socket-proxy /
+      # apiver only talk to the docker socket). Remove this line + the brian network
+      # below to revert.
+      - brian
+      # Fleet cutover 2026-06-13 (task 705fbad0): remaining tenants joined additively.
+      - bfenix
+      - dmclark
+      # neko-trappings removed 2026-06-13 (tenant suspended; reversible). Re-add this
+      # line + the neko-trappings network def below to restore routing.
+      - tomobobo
+      - app
+
+networks:
+  # The staging stack's network, created by the mandrel-staging compose project.
+  staging:
+    external: true
+    name: mandrel-staging_mandrel-network
+  # brian's tenant network (cutover 2026-06-13, task 705fbad0). External — created by
+  # the mandrel-brian compose project. Lets Traefik route to brian's containers.
+  brian:
+    external: true
+    name: mandrel-brian_mandrel-network
+  # Fleet cutover 2026-06-13 (task 705fbad0). External — created by each tenant's
+  # compose project. Lets Traefik route to that tenant's containers.
+  bfenix:
+    external: true
+    name: mandrel-bfenix_mandrel-network
+  dmclark:
+    external: true
+    name: mandrel-dmclark_mandrel-network
+  # neko-trappings network def removed 2026-06-13 (tenant suspended; reversible).
+  # To restore: re-add the block below and the `- neko-trappings` service-network line.
+  #   neko-trappings:
+  #     external: true
+  #     name: mandrel-neko-trappings_mandrel-network
+  tomobobo:
+    external: true
+    name: mandrel-tomobobo_mandrel-network
+  app:
+    external: true
+    name: mandrel-app_mandrel-network

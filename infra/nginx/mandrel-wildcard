@@ -1,0 +1,48 @@
+# mandrel-wildcard — wildcard vhost for the Mandrel tenant fleet (Traefik Phase 2a, task 705fbad0).
+#
+# Catch-all for *.mandrel.ridgetopai.net. nginx terminates the Let's Encrypt wildcard
+# TLS cert here and reverse-proxies PLAIN HTTP to Traefik's localhost-only web entrypoint
+# (127.0.0.1:8090). Traefik then does Docker-label host/path routing to the right tenant.
+#
+# PRECEDENCE: nginx matches an EXACT server_name before a wildcard, so every explicit
+# per-tenant vhost (app/bfenix/brian/dmclark/neko-trappings/tomobobo .mandrel...) still
+# wins for its own host and is UNAFFECTED. This wildcard only catches hosts that have no
+# explicit vhost (e.g. staging.* and any future tenant before its labels exist).
+#
+# SSE/streaming proxy settings mirror the app.mandrel vhost so MCP Streamable HTTP works.
+
+server {
+    server_name *.mandrel.ridgetopai.net;
+    client_max_body_size 25m;   # match app.mandrel (Command UI uploads)
+
+    location / {
+        proxy_pass http://127.0.0.1:8090;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        # SSE / streaming: stream responses immediately, keep upstream connection alive
+        proxy_set_header Connection '';
+        proxy_buffering off;
+        proxy_cache off;
+        chunked_transfer_encoding on;
+        proxy_read_timeout 3600s;
+        proxy_send_timeout 3600s;
+    }
+
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    ssl_certificate /etc/letsencrypt/live/mandrel.ridgetopai.net-0001/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/mandrel.ridgetopai.net-0001/privkey.pem;
+    include /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+}
+
+# :80 -> :443 redirect for wildcard hosts (mirrors the per-tenant vhosts).
+server {
+    server_name *.mandrel.ridgetopai.net;
+    listen 80;
+    listen [::]:80;
+    return 301 https://$host$request_uri;
+}

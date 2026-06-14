@@ -31,6 +31,27 @@ services:
     environment:
       MCP_AUTH_TOKEN: "${MCP_AUTH_TOKEN:?set MCP_AUTH_TOKEN in /root/.mandrel-app.env}"
       MCP_ALLOWED_HOSTS: "${MCP_ALLOWED_HOSTS:-app.mandrel.ridgetopai.net}"
+    # --- Traefik fleet routing (cutover 2026-06-13, task 705fbad0: plain HTTP behind
+    # nginx wildcard) ---------------------------------------------------------------
+    # PathPrefix /mcp and /healthz on app.mandrel.ridgetopai.net -> this mcp-server:8080.
+    # Higher priority than the catch-all frontend router so path matches win. NO tls here:
+    # nginx terminates the wildcard cert and reverse-proxies plain HTTP to Traefik's `web`
+    # entrypoint (127.0.0.1:8090). Remove this whole labels block to fully revert.
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=mandrel-app_mandrel-network"
+      # /mcp -> mcp-server
+      - "traefik.http.routers.app-mcp.rule=Host(`app.mandrel.ridgetopai.net`) && PathPrefix(`/mcp`)"
+      - "traefik.http.routers.app-mcp.entrypoints=web"
+      - "traefik.http.routers.app-mcp.priority=100"
+      - "traefik.http.routers.app-mcp.service=app-mcp-svc"
+      # /healthz -> mcp-server
+      - "traefik.http.routers.app-healthz.rule=Host(`app.mandrel.ridgetopai.net`) && PathPrefix(`/healthz`)"
+      - "traefik.http.routers.app-healthz.entrypoints=web"
+      - "traefik.http.routers.app-healthz.priority=100"
+      - "traefik.http.routers.app-healthz.service=app-mcp-svc"
+      # shared service -> container port 8080
+      - "traefik.http.services.app-mcp-svc.loadbalancer.server.port=8080"
 
   mandrel-command-backend:
     container_name: mandrel-app-command-backend
@@ -49,3 +70,16 @@ services:
     container_name: mandrel-app-command-frontend
     ports: !override
       - "127.0.0.1:13000:3000"
+    # --- Traefik fleet routing (cutover 2026-06-13, task 705fbad0: plain HTTP behind
+    # nginx wildcard) ---------------------------------------------------------------
+    # Catch-all for app.mandrel.ridgetopai.net -> the Command UI frontend:3000.
+    # priority=1 (lowest) so /mcp + /healthz path routers above always win. No tls here
+    # (nginx terminates). Remove this whole labels block to fully revert.
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=mandrel-app_mandrel-network"
+      - "traefik.http.routers.app-frontend.rule=Host(`app.mandrel.ridgetopai.net`)"
+      - "traefik.http.routers.app-frontend.entrypoints=web"
+      - "traefik.http.routers.app-frontend.priority=1"
+      - "traefik.http.routers.app-frontend.service=app-frontend-svc"
+      - "traefik.http.services.app-frontend-svc.loadbalancer.server.port=3000"
