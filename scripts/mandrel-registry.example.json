@@ -1,0 +1,49 @@
+{
+  "version": 1,
+  "_comment": "EXAMPLE / SCHEMA ONLY — placeholder handles. The REAL registry lives at /root/mandrel-registry.json (chmod 600, LOCAL ONLY, NEVER committed: it holds customer handles). This file documents the schema that scripts/provision-instance.sh reads + writes. Onboarding model: labels-only behind nginx wildcard *.mandrel.ridgetopai.net -> Traefik 127.0.0.1:8090 (Docker-label routing); ports auto-allocated from the ranges below.",
+  "port_ranges": {
+    "mcp": [18080, 18099],
+    "pg": [15432, 15499],
+    "redis": [16379, 16399],
+    "backend": [15000, 15099],
+    "frontend": [13000, 13099]
+  },
+  "reserved_ports": {
+    "_comment": "Ports pinned by convention (e.g. the staging canary anchored at the top of every range) that must NOT be auto-allocated to a new handle.",
+    "mcp": [18099],
+    "pg": [15499],
+    "redis": [16399],
+    "backend": [15099],
+    "frontend": [13099]
+  },
+  "tenants": {
+    "examplecorp": {
+      "status": "active",
+      "type": "customer",
+      "domain": "examplecorp.mandrel.ridgetopai.net",
+      "ports": { "mcp": 18080, "pg": 15432, "redis": 16379, "backend": 15000, "frontend": 13000 },
+      "network": "mandrel-examplecorp_mandrel-network",
+      "routing": "traefik",
+      "created": "2026-01-01"
+    },
+    "demo": {
+      "status": "suspended",
+      "type": "customer",
+      "domain": "demo.mandrel.ridgetopai.net",
+      "ports": { "mcp": 18081, "pg": 15433, "redis": 16380, "backend": 15001, "frontend": 13001 },
+      "network": "mandrel-demo_mandrel-network",
+      "routing": "traefik",
+      "created": "2026-01-02",
+      "_note": "status=suspended means the stack is down (volumes + env retained) and ra-traefik is NOT connected to its network. Ports stay reserved to this handle until deprovisioned. Resume = stack up + reconnect ra-traefik."
+    },
+    "staging": {
+      "status": "active",
+      "type": "canary",
+      "domain": "staging.mandrel.ridgetopai.net",
+      "ports": { "mcp": 18099, "pg": 15499, "redis": 16399, "backend": 15099, "frontend": 13099 },
+      "network": "mandrel-staging_mandrel-network",
+      "routing": "traefik",
+      "created": "2026-01-01"
+    }
+  }
+}
