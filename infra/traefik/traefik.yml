@@ -1,0 +1,51 @@
+# traefik.yml — Traefik v3 STATIC config for the Mandrel tenant fleet (Phase 2a).
+# Owned by ridgetop:ridgetop. Mounted read-only into the traefik container.
+#
+# Architecture (Phase 2a): nginx terminates the wildcard TLS cert
+# (*.mandrel.ridgetopai.net, Let's Encrypt DNS-01) on :443 and reverse-proxies plain
+# HTTP to Traefik's localhost-only `web` entrypoint (127.0.0.1:8090). Traefik does
+# PURE label routing only — no TLS, no ACME. nginx remains authoritative for :80/:443.
+#
+# Reversibility: this whole stack is removed by
+#   docker compose -f docker-compose.traefik.yml -p ra-traefik down
+# plus dropping the traefik.* labels from the staging compose file. Nothing here binds :80/:443.
+
+# ---- Entrypoints --------------------------------------------------------------
+# web  -> the data-plane entrypoint. Bound to 127.0.0.1:8090 by the compose port map
+#         (the container listens on :80 internally; the host-side bind is localhost-only).
+#         Serves PLAIN HTTP — nginx terminates TLS in front of it. No websecure/:443
+#         entrypoint here; nginx owns 443.
+entryPoints:
+  web:
+    address: ":80"
+
+# ---- API / Dashboard ----------------------------------------------------------
+# insecure=true is acceptable ONLY because the compose port map binds it to 127.0.0.1:8091.
+# It is never reachable off-box.
+api:
+  dashboard: true
+  insecure: true
+
+# ---- Providers ----------------------------------------------------------------
+# Docker provider: read-only docker.sock. exposedByDefault=false means a container is
+# ignored unless it carries `traefik.enable=true`. We pin to the staging network so
+# Traefik only watches/reaches the staging stack.
+providers:
+  docker:
+    # Talk to the daemon via the api-version rewriter -> docker-socket-proxy chain
+    # (NOT the raw socket). The rewriter fixes Traefik's /v1.24 negotiation seed that
+    # this daemon (MinAPIVersion=1.40) would otherwise reject. See the long notes in
+    # docker-compose.traefik.yml and haproxy-apiver.cfg.
+    endpoint: "tcp://docker-apiver-proxy:2375"
+    exposedByDefault: false
+    network: "mandrel-staging_mandrel-network"
+
+# ---- Logging ------------------------------------------------------------------
+log:
+  level: INFO
+accessLog: {}
+
+# NOTE (Phase 2a): The former Phase-2 ACME/DNS-01 Cloudflare stub was REMOVED — it is
+# moot under the nginx-terminates-TLS architecture. TLS for *.mandrel.ridgetopai.net is
+# issued by certbot (dns-cloudflare plugin) and served by nginx, NOT by Traefik. The
+# unused ./dynamic file-provider mount was likewise dropped (no file provider configured).
