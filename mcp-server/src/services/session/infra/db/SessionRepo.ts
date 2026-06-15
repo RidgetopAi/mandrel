@@ -148,6 +148,28 @@ export const SessionRepo = {
   },
 
   /**
+   * Check whether a session row actually exists in the database.
+   *
+   * Used to validate an in-memory active-session id against the source of truth
+   * before any caller trusts it for a FK-bearing write (e.g. contexts.session_id).
+   * Returns false (never throws) on a DB error so callers can fail safe — the
+   * worst case is we treat a session as missing and re-create/clear it.
+   */
+  async exists(sessionId: string): Promise<boolean> {
+    try {
+      const result = await db.query('SELECT 1 FROM sessions WHERE id = $1', [sessionId]);
+      return result.rows.length > 0;
+    } catch (error) {
+      logger.error('Failed to check session existence', error instanceof Error ? error : new Error('Unknown error'), {
+        component: 'SessionRepo',
+        operation: 'exists',
+        metadata: { sessionId }
+      });
+      return false;
+    }
+  },
+
+  /**
    * Get the last active (non-ended) session
    */
   async getLastActive(): Promise<string | null> {

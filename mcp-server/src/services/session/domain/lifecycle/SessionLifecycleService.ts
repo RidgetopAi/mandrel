@@ -210,10 +210,31 @@ export const SessionLifecycleService = {
     opts: { allowGlobalFallback?: boolean } = {}
   ): Promise<string | null> {
     try {
-      // Check in-memory first (connection-scoped)
+      // Check in-memory first (connection-scoped).
+      //
+      // ROOT-CAUSE GUARD (dangling-FK fix): the in-memory store can hold a session
+      // id whose DB row no longer exists — e.g. the session was ended+pruned, the
+      // process retained the cache across a row deletion, or a prior global-fallback
+      // read cached a `getLastActive` id that was later removed. If we returned that
+      // stale id, ensureActiveSession() would treat the connection as "already has a
+      // session" and SKIP startSession()/SessionRepo.create(), and the subsequent
+      // contexts INSERT would violate contexts_session_id_fkey. So we VALIDATE the
+      // cached id against the DB (the source of truth) and self-heal on a miss:
+      // clear the stale entry and fall through, so the caller lazily re-creates a
+      // real, DB-backed session.
       const memorySession = ActiveSessionStore.get(connectionId);
       if (memorySession) {
-        return memorySession;
+        const stillExists = await SessionRepo.exists(memorySession);
+        if (stillExists) {
+          return memorySession;
+        }
+        logger.warn(
+          `⚠️  Active session ${memorySession.substring(0, 8)}... is cached in memory but ` +
+          `missing from the database${connectionId ? ` (connection: ${connectionId})` : ''}; ` +
+          `clearing stale entry so a fresh session is created.`
+        );
+        ActiveSessionStore.clear(connectionId);
+        // fall through — treat as a miss
       }
 
       // Global "last active anywhere" lookup ONLY when a caller explicitly opts in.

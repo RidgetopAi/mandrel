@@ -646,8 +646,24 @@ class ContextHandler {
       const { SessionTracker } = await import('../services/sessionTracker.js');
       const activeSessionId = await SessionTracker.getActiveSession(connectionId);
       if (activeSessionId) {
-        logger.info(`📋 Using active session: ${activeSessionId.substring(0, 8)}... for context storage`);
-        return activeSessionId;
+        // DEFENSIVE HARDENING (belt-and-suspenders): never trust the active-session
+        // id blindly. The explicit-sessionId branch above already verifies existence
+        // before returning; mirror that here so a stale/missing session can NEVER be
+        // passed as a dangling FK to the contexts INSERT (contexts_session_id_fkey).
+        // contexts.session_id is NULLABLE, so storing without a session is valid and
+        // strictly safer than crashing the user's context_store. The root-cause guard
+        // in getActiveSession should already prevent this, but this guarantees the
+        // write path itself can never throw an FK error on a bad session id.
+        const verify = await db.query('SELECT id FROM sessions WHERE id = $1', [activeSessionId]);
+        if (verify.rows.length > 0) {
+          logger.info(`📋 Using active session: ${activeSessionId.substring(0, 8)}... for context storage`);
+          return activeSessionId;
+        }
+        logger.warn(
+          `⚠️  Active session ${activeSessionId.substring(0, 8)}... not found in database - ` +
+          `storing context WITHOUT session association to avoid an FK violation`
+        );
+        return null;
       }
 
       logger.warn('⚠️  No active session found - context will be stored without session association');

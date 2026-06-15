@@ -46,7 +46,11 @@ docs/*
 # D3 (2026-06-09): organized doc homes — tracked, not scratch
 !docs/guides/
 !docs/archive/
-tests/
+# Anchor to repo root: ignore only a top-level scratch tests/ dir, NOT nested
+# source test dirs like mcp-server/src/tests/ (where the tracked *.contract.test.ts
+# regression guards live and must run in CI). Unanchored `tests/` matched ANY depth
+# and silently excluded new test files from CI. See 2026-06-15 test-hygiene fix.
+/tests/
 ridge-parser-tui/
 
 # OS generated files
