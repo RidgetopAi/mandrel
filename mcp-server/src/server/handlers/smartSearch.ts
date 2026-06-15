@@ -10,7 +10,6 @@ const typeIcons: Record<string, string> = {
   context: '📝',
   decision: '🎯',
   task: '📋',
-  naming: '🏷️',
   code: '📦',
   component: '📦'
 };

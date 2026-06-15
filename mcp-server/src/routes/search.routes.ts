@@ -80,7 +80,7 @@ class SearchRoutes {
         content: [{
           type: 'text',
           text: `🔍 Smart Search Results (${results.length})\n\n${resultsList}\n\n` +
-                `🎯 Searched: [${args.includeTypes?.join(', ') || 'context, component, decision, naming'}]\n` +
+                `🎯 Searched: [${args.includeTypes?.join(', ') || 'context, component, decision'}]\n` +
                 `💡 Refine with different includeTypes or broader query`
         }],
       };

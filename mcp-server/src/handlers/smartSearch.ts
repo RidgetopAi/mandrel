@@ -6,7 +6,7 @@ import { decisionsHandler } from './decisions.js';
 import { codeAnalysisHandler } from './codeAnalysis.js';
 
 export interface SmartSearchResult {
-    type: 'context' | 'component' | 'decision' | 'naming' | 'task' | 'agent';
+    type: 'context' | 'component' | 'decision' | 'task' | 'agent';
     id: string;
     title: string;
     summary: string;
@@ -31,7 +31,7 @@ class SmartSearchHandler {
     async smartSearch(
         projectId: string,
         query: string,
-        includeTypes: string[] = ['context', 'component', 'decision', 'naming'],
+        includeTypes: string[] = ['context', 'component', 'decision'],
         limit: number = 10
     ): Promise<SmartSearchResult[]> {
         logger.info(`🔍 Smart search for: "${query}" in project ${projectId}`);
@@ -167,64 +167,11 @@ class SmartSearchHandler {
                 logger.info(`⏭️  Skipping decision search (not in includeTypes)`);
             }
 
-            // Search naming registry
-            if (includeTypes.includes('naming')) {
-                const client = await this.pool.connect();
-                try {
-                    const namingResult = await client.query(`
-                        SELECT canonical_name, entity_type, description, naming_convention
-                        FROM naming_registry
-                        WHERE project_id = $1 AND (
-                            canonical_name ILIKE $2 OR
-                            description ILIKE $2 OR
-                            $2 = ANY(context_tags)
-                        )
-                        LIMIT $3
-                    `, [projectId, `%${query}%`, Math.ceil(limit / 4)]);
-
-                    for (const naming of namingResult.rows) {
-                        // Calculate naming relevance based on match quality
-                        const nameLower = naming.canonical_name.toLowerCase();
-                        const descLower = (naming.description || '').toLowerCase();
-                        const queryLower = query.toLowerCase();
-                        const queryWords = queryLower.split(/\s+/);
-
-                        let relevanceScore = 0.4; // Base score for naming matches
-
-                        // Boost for exact name matches (highest priority)
-                        if (nameLower === queryLower) {
-                            relevanceScore = 0.95;
-                        } else if (nameLower.includes(queryLower)) {
-                            relevanceScore += 0.3;
-                        } else {
-                            // Partial word matches in name
-                            for (const word of queryWords) {
-                                if (nameLower.includes(word)) {
-                                    relevanceScore += 0.1;
-                                }
-                                if (descLower.includes(word)) {
-                                    relevanceScore += 0.05;
-                                }
-                            }
-                        }
-
-                        results.push({
-                            type: 'naming',
-                            id: naming.canonical_name,
-                            title: `NAME: ${naming.canonical_name}`,
-                            summary: naming.description || `${naming.entity_type} name`,
-                            relevanceScore: Math.min(0.95, relevanceScore),
-                            metadata: {
-                                entityType: naming.entity_type,
-                                namingConvention: naming.naming_convention
-                            },
-                            source: 'naming_registry'
-                        });
-                    }
-                } finally {
-                    client.release();
-                }
-            }
+            // NOTE: The 'naming' source was removed. The naming_registry table was
+            // permanently dropped in migration 034_drop_naming_registry.sql (feature
+            // replaced by dependency tracking). Querying it always failed silently
+            // inside this try/catch, so the branch is gone — no query may target a
+            // non-existent table.
 
             // Search code components
             if (includeTypes.includes('component')) {
