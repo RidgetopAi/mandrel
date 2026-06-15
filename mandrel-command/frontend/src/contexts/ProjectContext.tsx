@@ -234,7 +234,23 @@ export const ProjectProvider: React.FC<ProjectProviderProps> = ({ children }) =>
           if (projectNameMatch) {
             const projectName = projectNameMatch[1].trim();
             if (projectName && projectName !== 'None' && projectName !== 'unassigned') {
-              // Create project object from AIDIS data
+              // Resolve the AIDIS project NAME to the real project (with a real
+              // UUID) from our loaded list. A synthetic `aidis-<name>` id is NOT
+              // a UUID and would 400 on every UUID-validated route (insights,
+              // sessions). Only fall back to a synthetic object if the name can't
+              // be resolved — and never let that synthetic id drive UUID routes.
+              const projectList = (projectsFromRefresh && projectsFromRefresh.length > 0)
+                ? projectsFromRefresh
+                : allProjects;
+              const realProject = projectList.find(
+                (p: Project) => p.name === projectName && p.id !== UNASSIGNED_PROJECT_ID
+              );
+              if (realProject) {
+                setCurrentProject(realProject);
+                DEBUG && logger.log('✅ Resolved AIDIS V2 project name to real project:', realProject.name, realProject.id);
+                return;
+              }
+              logger.warn('⚠️ AIDIS V2 project name not found in projects list, using synthetic id (insights disabled until a real project resolves):', projectName);
               const aidisProject: Project = {
                 id: `aidis-${projectName.toLowerCase().replace(/\s+/g, '-')}`,
                 name: projectName,
@@ -244,7 +260,7 @@ export const ProjectProvider: React.FC<ProjectProviderProps> = ({ children }) =>
                 description: `Project from AIDIS V2 API: ${projectName}`
               };
               setCurrentProject(aidisProject);
-              DEBUG && logger.log('✅ Loaded project from AIDIS V2 API (fallback):', aidisProject.name);
+              DEBUG && logger.log('✅ Loaded project from AIDIS V2 API (fallback, synthetic id):', aidisProject.name);
               return;
             }
           }
@@ -360,7 +376,17 @@ export const ProjectProvider: React.FC<ProjectProviderProps> = ({ children }) =>
     const operation = async () => {
       const response = await mandrelApi.switchProject(projectName);
       if (response?.content?.[0]?.text) {
-        // Create project object from successful switch
+        // Prefer the real project (real UUID) from our loaded list so that
+        // UUID-validated routes (insights/sessions) keep working. Only synthesize
+        // an id if the name can't be resolved.
+        const realProject = allProjects.find(
+          (p: Project) => p.name === projectName && p.id !== UNASSIGNED_PROJECT_ID
+        );
+        if (realProject) {
+          setCurrentProject(realProject);
+          DEBUG && logger.log('✅ Switched to real project via AIDIS V2:', realProject.name, realProject.id);
+          return true;
+        }
         const switchedProject: Project = {
           id: `aidis-${projectName.toLowerCase().replace(/\s+/g, '-')}`,
           name: projectName,
@@ -370,7 +396,7 @@ export const ProjectProvider: React.FC<ProjectProviderProps> = ({ children }) =>
           description: `Project switched via AIDIS V2: ${projectName}`
         };
         setCurrentProject(switchedProject);
-        DEBUG && logger.log('✅ Successfully switched to project via AIDIS V2:', projectName);
+        logger.warn('⚠️ Switched project not found in list, using synthetic id (UUID routes disabled until resolved):', projectName);
         return true;
       }
       throw new Error('Project switch response was empty or invalid');
@@ -378,7 +404,7 @@ export const ProjectProvider: React.FC<ProjectProviderProps> = ({ children }) =>
 
     const result = await errorHandler.withErrorHandling(operation)();
     return result ?? false;
-  }, [errorHandler]);
+  }, [errorHandler, allProjects]);
 
   // Load projects only when authenticated AND settings are loaded
   useEffect(() => {

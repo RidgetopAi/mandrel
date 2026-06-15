@@ -19,6 +19,7 @@ import type { Project } from '../types/project';
 import type { Session, UpdateSessionRequest } from '../types/session';
 import { sessionsClient } from '../api/sessionsClient';
 import { logger } from '../utils/logger';
+import { isValidUuid } from '../utils/uuid';
 
 // Query keys for cache management
 type ProjectsQueryData = {
@@ -93,7 +94,9 @@ export const useProject = (id: string | undefined) => {
   return useQuery({
     queryKey: projectQueryKeys.detail(id!),
     queryFn: () => ProjectsService.getProjects1({ id: id! }),
-    enabled: !!id, // Only run if ID is provided
+    // Only run for a real UUID — a synthetic `aidis-*` id or the UNASSIGNED
+    // sentinel would 400 on the UUID-validated backend route.
+    enabled: isValidUuid(id),
     select: (response): ProjectDetailQueryData => ({
       project: response.data?.project as Project | undefined,
       data: response.data?.project as Project | undefined,
@@ -126,7 +129,11 @@ export const useProjectInsights = (id: string | undefined) => {
       logger.log('[useProjectInsights] Making API call for ID:', id);
       return ProjectsService.getProjectsInsights({ id: id! });
     },
-    enabled: !!id,
+    // Guard: only fire for a real UUID. A synthetic `aidis-<name>` id (set when
+    // a project is loaded from the AIDIS V2 API by name) or the UNASSIGNED
+    // sentinel would hit validateUUIDParam and return 400 "Bad Request" — the
+    // root of the customer-reported "Failed to Load Project Insights".
+    enabled: isValidUuid(id),
     staleTime: 1000 * 60 * 15, // 15 minutes - insights are expensive to compute
     select: (response) => {
       logger.log('[useProjectInsights] API Response:', response);
@@ -142,7 +149,8 @@ export const useProjectSessions = (id: string | undefined) => {
   return useQuery({
     queryKey: projectQueryKeys.sessions(id!),
     queryFn: () => ProjectsService.getProjectsSessions({ id: id! }),
-    enabled: !!id,
+    // Only run for a real UUID (UUID-validated backend route).
+    enabled: isValidUuid(id),
     select: (response): ProjectSessionsData => ({
       sessions: (response.data as ProjectSessionsResponse | undefined)?.sessions as Session[] ?? [],
       total: (response.data as ProjectSessionsResponse | undefined)?.total ?? 0,

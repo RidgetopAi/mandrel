@@ -5,6 +5,7 @@ import {
   ReloadOutlined, GitlabOutlined, PlusOutlined, MinusOutlined
 } from '@ant-design/icons';
 import { useProjectInsights } from '../../hooks/useProjects';
+import { isValidUuid } from '../../utils/uuid';
 
 const { Text, Title } = Typography;
 
@@ -15,6 +16,22 @@ interface ProjectInsightsProps {
 
 const ProjectInsights: React.FC<ProjectInsightsProps> = ({ projectId, className }) => {
   const { data: response, isLoading, error, refetch } = useProjectInsights(projectId);
+
+  // Graceful degrade: when no real project is selected (synthetic/undefined id),
+  // the insights query is disabled. Show a calm prompt instead of a stuck spinner
+  // or a scary "Bad Request" error.
+  if (!isValidUuid(projectId)) {
+    return (
+      <Card className={className}>
+        <Alert
+          message="No Project Selected"
+          description="Select a project to view its insights."
+          type="info"
+          showIcon
+        />
+      </Card>
+    );
+  }
 
   if (isLoading) {
     return (

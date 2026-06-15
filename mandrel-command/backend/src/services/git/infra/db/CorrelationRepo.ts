@@ -83,13 +83,11 @@ export class CorrelationRepo {
    * Get sessions for correlation
    */
   static async getSessionsForProject(project_id: string): Promise<any[]> {
+    // Single consolidated `sessions` table; the legacy `user_sessions` table
+    // (and its `last_activity` column) no longer exist in any tenant schema.
     const result = await pool.query(`
       SELECT id, started_at, ended_at, agent_type
-      FROM sessions 
-      WHERE project_id = $1
-      UNION ALL
-      SELECT id, started_at, last_activity as ended_at, 'web' as agent_type
-      FROM user_sessions
+      FROM sessions
       WHERE project_id = $1
       ORDER BY started_at DESC
     `, [project_id]);

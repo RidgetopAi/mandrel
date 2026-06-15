@@ -317,60 +317,40 @@ export class SessionDetailService {
     try {
       const whereClause = projectId ? 'WHERE s.project_id = $3' : '';
       const params = projectId ? [limit, offset, projectId] : [limit, offset];
-      
+
+      // NOTE: there is exactly ONE sessions table in the schema (`sessions`).
+      // The legacy separate `user_sessions` (web sessions) table was consolidated
+      // into `sessions` and no longer exists in any tenant DB — querying it threw
+      // 'relation "user_sessions" does not exist' on every call. The denormalized
+      // counters (contexts_created/decisions_created/tasks_created) live on the
+      // `sessions` row; we COALESCE to the legacy `tokens_used` for old rows where
+      // `total_tokens` was not yet populated.
       const query = `
         WITH session_activity AS (
-          -- User sessions (web sessions)
-          SELECT 
+          SELECT
             s.id,
             s.project_id,
             p.name as project_name,
             s.started_at,
             s.ended_at,
-            s.total_tokens,
-            s.contexts_created,
-            s.decisions_created,
-            s.tasks_created,
+            COALESCE(s.total_tokens, s.tokens_used, 0) as total_tokens,
+            COALESCE(s.contexts_created, 0) as contexts_created,
+            COALESCE(s.decisions_created, 0) as decisions_created,
+            COALESCE(s.tasks_created, 0) as tasks_created,
             EXTRACT(EPOCH FROM (COALESCE(s.ended_at, CURRENT_TIMESTAMP) - s.started_at)) / 60 as duration_minutes,
-            'web' as session_type,
+            COALESCE(s.agent_type, 'web') as session_type,
             (
-              SELECT COUNT(*) 
-              FROM tasks t 
-              WHERE t.project_id = s.project_id
-                AND t.status = 'completed'
-                AND t.updated_at BETWEEN s.started_at AND COALESCE(s.ended_at, CURRENT_TIMESTAMP)
-            ) as tasks_completed
-          FROM user_sessions s
-          LEFT JOIN projects p ON s.project_id = p.id
-          ${whereClause}
-          
-          UNION ALL
-          
-          -- Agent sessions (Claude Code, etc.)
-          SELECT 
-            s.id,
-            s.project_id,
-            p.name as project_name,
-            s.started_at,
-            s.ended_at,
-            s.tokens_used as total_tokens,
-            COALESCE((SELECT COUNT(*) FROM contexts c WHERE c.session_id = s.id AND c.project_id = s.project_id), 0) as contexts_created,
-            COALESCE((SELECT COUNT(*) FROM technical_decisions td WHERE td.session_id = s.id), 0) as decisions_created,
-            0 as tasks_created, -- Agent sessions don't track tasks directly
-            EXTRACT(EPOCH FROM (COALESCE(s.ended_at, CURRENT_TIMESTAMP) - s.started_at)) / 60 as duration_minutes,
-            s.agent_type as session_type,
-            (
-              SELECT COUNT(*) 
-              FROM tasks t 
+              SELECT COUNT(*)
+              FROM tasks t
               WHERE t.project_id = s.project_id
                 AND t.status = 'completed'
                 AND t.updated_at BETWEEN s.started_at AND COALESCE(s.ended_at, CURRENT_TIMESTAMP)
             ) as tasks_completed
           FROM sessions s
           LEFT JOIN projects p ON s.project_id = p.id
-          ${whereClause.replace('s.project_id', 's.project_id')}
+          ${whereClause}
         )
-        SELECT 
+        SELECT
           id,
           project_name,
           started_at,
@@ -427,14 +407,11 @@ export class SessionDetailService {
     try {
       logger.info(`🔗 Correlating session ${sessionId.substring(0, 8)}... with git commits`);
       
-      // Get session details
+      // Get session details (single consolidated `sessions` table; the legacy
+      // `user_sessions` table no longer exists)
       const sessionQuery = `
-        SELECT project_id, started_at, ended_at 
-        FROM user_sessions 
-        WHERE id = $1
-        UNION ALL
-        SELECT project_id, started_at, ended_at 
-        FROM sessions 
+        SELECT project_id, started_at, ended_at
+        FROM sessions
         WHERE id = $1
       `;
       
@@ -535,7 +512,7 @@ export class SessionDetailService {
           SUM(COALESCE(s.decisions_created, 0)) as total_decisions,
           SUM(COALESCE(s.tasks_created, 0)) as total_tasks_created,
           AVG(EXTRACT(EPOCH FROM (COALESCE(s.ended_at, CURRENT_TIMESTAMP) - s.started_at)) / 60) as avg_duration_minutes
-        FROM user_sessions s
+        FROM sessions s
         ${whereClause}
         GROUP BY ${periodFormat[period]}
         ORDER BY period DESC
