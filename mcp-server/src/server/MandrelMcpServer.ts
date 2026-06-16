@@ -27,6 +27,7 @@ import { HealthServer } from './healthServer.js';
 import { backgroundServices } from '../services/backgroundServices.js';
 import { registerMcpHandlers, type McpHandlerDeps } from './registerMcpHandlers.js';
 import { RemoteMcpTransport } from './remoteMcpTransport.js';
+import { assertRemoteMcpEnvOrExit } from './requireRemoteMcpEnv.js';
 
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
@@ -324,6 +325,12 @@ export default class MandrelMcpServer {
       processId: process.pid,
       nodeVersion: process.version
     });
+
+    // FAIL-LOUD STARTUP GUARD (Lesson 009): if this process is in a mode that actually
+    // serves the remote HTTP MCP transport but a required env var is missing/empty, log
+    // a NAMED FATAL error and exit non-zero BEFORE binding any port — never boot into a
+    // broken fail-closed state. No-op for local/stdio/dev/test. See requireRemoteMcpEnv.ts.
+    assertRemoteMcpEnvOrExit();
 
     try {
       // ORACLE FIX #2: Initialize database with retry and circuit breaker
