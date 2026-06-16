@@ -47,10 +47,10 @@ Cloudflare DNS                  nginx :443                 Traefik :8090        
 | `traefik/haproxy-apiver.cfg` | `/opt/mandrel/traefik/haproxy-apiver.cfg` | Docker API version-prefix rewriter (`/v1.XX -> /v1.44`) |
 | `nginx/mandrel-wildcard` | `/etc/nginx/sites-available/mandrel-wildcard` | nginx wildcard `:443` vhost (terminates TLS, proxies to Traefik) |
 
-Per-tenant Traefik label edits live in each `docker-compose.<tenant>.yml`. Only
-`docker-compose.app.yml` is tracked in git (the rest are `.gitignore`d as per-customer
-local overrides — see the **Tenant compose tracking** note at the bottom). The proven
-label set is documented below so any gitignored tenant can be reproduced.
+Per-tenant Traefik label edits live in each `docker-compose.<handle>.yml`. These
+per-customer overrides are `.gitignore`d (so tenant handles never land in the public
+repo) — see the **Tenant compose tracking** note at the bottom. The proven label set
+is documented below so any gitignored tenant can be reproduced.
 
 ---
 
@@ -180,26 +180,25 @@ per-DNS (the wildcard cert + wildcard DNS already cover it).
 
 ---
 
-## Tenant compose tracking (why only app.yml is in git)
+## Tenant compose tracking (per-customer composes stay local)
 
-`git status` shows only `docker-compose.app.yml` as modified because **it is the only
-tenant compose that is tracked**. The repo's `.gitignore` explicitly excludes the
-per-customer overrides so tester/customer handles don't leak into the (public) repo:
+The per-tenant override files `docker-compose.<handle>.yml` are **gitignored** so that
+customer/tester handles never leak into the (public) repo. The `.gitignore` ignores the
+whole family with a single wildcard:
 
 ```
-docker-compose.brian.yml
-docker-compose.neko-trappings.yml
-docker-compose.dmclark.yml
-docker-compose.tomobobo.yml
-docker-compose.bfenix.yml
-docker-compose.staging.yml          # staging canary, non-customer
+docker-compose.*.yml                # per-tenant overrides stay LOCAL (handles not in public repo)
 ```
 
-`docker-compose.app.yml` is the company-owned `app.` instance and is NOT gitignored, so
-its Traefik label edit is the one tenant change that lands in git. The other tenants'
-label edits live only on the box; they are reproducible from the **proven label set**
-above. This is intentional: the per-customer composes carry tenant-specific specifics
-and stay local.
+(`docker-compose.yml`, `docker-compose.override.yml`, and the `docker-compose.staging.yml`
+canary are negated back in / unaffected as needed — see `.gitignore` for the exact rules.)
+
+Each tenant's per-tenant Traefik label edits live only on the box, in that tenant's
+gitignored compose override. They are reproducible from the **proven label set** above
+(`<h>-mcp` / `<h>-healthz` prio 100 -> mcp-server; `<h>-frontend` prio 1 -> frontend; no
+`tls=true`). This is intentional: the per-customer composes carry tenant-specific
+specifics and stay local; the registry (also local, never committed) is the source of
+truth for the actual tenant list.
 
 ---
 

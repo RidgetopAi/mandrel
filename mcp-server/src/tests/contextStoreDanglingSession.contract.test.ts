@@ -2,7 +2,7 @@
  * Dangling-Session FK Regression Contract Test
  * (the executable fuse for the P0 `contexts_session_id_fkey` crash)
  *
- * THE BUG (customer bfenix, remote Streamable-HTTP transport):
+ * THE BUG (customer report, remote Streamable-HTTP transport):
  *   context_store failed with
  *     insert or update on table "contexts" violates foreign key constraint
  *     "contexts_session_id_fkey"

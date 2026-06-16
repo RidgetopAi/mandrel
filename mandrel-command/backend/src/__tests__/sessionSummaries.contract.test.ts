@@ -2,7 +2,7 @@
  * Contract test: SessionDetailService.getSessionSummaries works against the
  * REAL migrated schema.
  *
- * Schematic fuse for the customer-reported (dmclark), fleet-wide bug:
+ * Schematic fuse for the customer-reported, fleet-wide bug:
  *   "Error loading sessions / Failed to load session summaries"
  * Root cause: getSessionSummaries queried `FROM user_sessions`, a relation that
  * does not exist in any tenant DB (the legacy web-sessions table was consolidated

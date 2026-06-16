@@ -18,7 +18,7 @@
 #   This script reads ONLY counts, timestamps, and status enums. It NEVER selects
 #   or displays any user content: no context.content, no titles, no descriptions,
 #   no free text, no project names, no usernames/emails/tokens. The only per-
-#   tenant labels shown are the HANDLE (e.g. "app", "brian") and the *.mandrel
+#   tenant labels shown are the per-tenant HANDLE (e.g. "<handle>") and the *.mandrel
 #   domain — both of which Brian owns. The exact columns queried are documented
 #   inline below the SELECT. Archive listing shows filenames + size + mtime only.
 #

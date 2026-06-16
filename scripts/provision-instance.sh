@@ -20,7 +20,7 @@
 #   scripts/provision-instance.sh <handle> [--type customer|canary]
 #
 # Example:
-#   scripts/provision-instance.sh neko-trappings
+#   scripts/provision-instance.sh acme-example
 #   scripts/provision-instance.sh ptest --type canary
 #
 # Per-tenant artifacts (LOCAL only, never committed/pushed):
@@ -175,7 +175,7 @@ EOF
 fi
 
 # ----- 4. Compose override (PROVEN Traefik label set) ---------------------------
-# Generated freshly each run from the proven label set (brian/staging cutover, task
+# Generated freshly each run from the proven label set (staging cutover, task
 # 705fbad0). NOTE: routers <h>-mcp / <h>-healthz prio 100 -> mcp-server:8080; router
 # <h>-frontend prio 1 -> frontend:3000; NO tls=true (nginx terminates the wildcard);
 # traefik.docker.network pins the right network for the socket-proxy provider.

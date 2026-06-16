@@ -4,16 +4,17 @@
 # TLS cert here and reverse-proxies PLAIN HTTP to Traefik's localhost-only web entrypoint
 # (127.0.0.1:8090). Traefik then does Docker-label host/path routing to the right tenant.
 #
-# PRECEDENCE: nginx matches an EXACT server_name before a wildcard, so every explicit
-# per-tenant vhost (app/bfenix/brian/dmclark/neko-trappings/tomobobo .mandrel...) still
-# wins for its own host and is UNAFFECTED. This wildcard only catches hosts that have no
-# explicit vhost (e.g. staging.* and any future tenant before its labels exist).
+# PRECEDENCE: nginx matches an EXACT server_name before a wildcard, so any explicit
+# per-tenant vhost (<handle>.mandrel.ridgetopai.net) still wins for its own host and is
+# UNAFFECTED. This wildcard only catches hosts that have no explicit vhost (e.g.
+# staging.* and any future tenant before its labels exist).
 #
-# SSE/streaming proxy settings mirror the app.mandrel vhost so MCP Streamable HTTP works.
+# SSE/streaming proxy settings mirror a per-tenant (<handle>.mandrel) vhost so MCP
+# Streamable HTTP works.
 
 server {
     server_name *.mandrel.ridgetopai.net;
-    client_max_body_size 25m;   # match app.mandrel (Command UI uploads)
+    client_max_body_size 25m;   # match per-tenant vhost (Command UI uploads)
 
     location / {
         proxy_pass http://127.0.0.1:8090;

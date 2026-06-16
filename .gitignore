@@ -222,12 +222,12 @@ docker-compose.override.yml
 !mandrel-command/frontend/public/assets/
 !mandrel-command/frontend/public/assets/**
 
-# Per-customer instance overrides stay LOCAL (do not leak tester handles to the public repo)
-docker-compose.brian.yml
-docker-compose.neko-trappings.yml
-docker-compose.dmclark.yml
-docker-compose.tomobobo.yml
-docker-compose.bfenix.yml
-
-# Staging canary override (non-customer, localhost-only) — local pipeline artifact
-docker-compose.staging.yml
+# Per-tenant compose overrides stay LOCAL (do not leak customer handles to the public
+# repo). Wildcard covers every docker-compose.<handle>.yml (customers + the staging
+# canary) in one rule. The base composes that ARE meant to be public are negated back
+# in just below so the wildcard can't accidentally ignore them.
+docker-compose.*.yml
+!docker-compose.yml
+!docker-compose.override.yml
+!docker-compose.app.yml
+!docker-compose.rebaseltest.yml

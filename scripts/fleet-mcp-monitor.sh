@@ -33,8 +33,8 @@
 #
 # WHAT IT DOES
 #   - Iterates the TENANT REGISTRY (/root/mandrel-registry.json — source of truth),
-#     probing ONLY status=="active" tenants (auto-skips suspended e.g.
-#     neko-trappings, auto-covers any newly-added active tenant) PLUS prod
+#     probing ONLY status=="active" tenants (auto-skips suspended ones, and
+#     auto-covers any newly-added active tenant) PLUS prod
 #     (mandrel.ridgetopai.net).
 #   - For each endpoint: POST a synthetic MCP `initialize` to https://<domain>/mcp
 #     using THAT endpoint's bearer token, and measure %{time_total}.

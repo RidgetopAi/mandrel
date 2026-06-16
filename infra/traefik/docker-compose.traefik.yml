@@ -80,46 +80,32 @@ services:
       - ./traefik.yml:/etc/traefik/traefik.yml:ro
     networks:
       - staging
-      # Cutover 2026-06-13 (task 705fbad0): joined to brian's network so Traefik can
-      # reach brian's mcp-server + command-frontend by service name. Additive — staging
-      # stays. Only the `traefik` container needs tenant-network reach (socket-proxy /
-      # apiver only talk to the docker socket). Remove this line + the brian network
-      # below to revert.
-      - brian
-      # Fleet cutover 2026-06-13 (task 705fbad0): remaining tenants joined additively.
-      - bfenix
-      - dmclark
-      # neko-trappings removed 2026-06-13 (tenant suspended; reversible). Re-add this
-      # line + the neko-trappings network def below to restore routing.
-      - tomobobo
-      - app
+      # --- PER-TENANT NETWORKS (TEMPLATE) -------------------------------------------
+      # Only the `traefik` container needs tenant-network reach (socket-proxy / apiver
+      # only talk to the docker socket). For EACH active tenant the live runtime adds
+      # one `- <handle>` service-network entry here PLUS a matching external network def
+      # under `networks:` below (see `tenant-example`). These per-tenant entries are
+      # GENERATED PER-TENANT AT PROVISION TIME (scripts/provision-instance.sh) and live
+      # in the gitignored runtime copy / tenant registry — they are NOT committed here,
+      # so the public repo never publishes the tenant list. The one illustrative
+      # `tenant-example` entry below keeps this template valid and self-documenting.
+      # Tenant cutover history (network joins, additive; suspends just drop the line)
+      # is tracked in the registry + task notes, not in this committed template.
+      - tenant-example
 
 networks:
   # The staging stack's network, created by the mandrel-staging compose project.
   staging:
     external: true
     name: mandrel-staging_mandrel-network
-  # brian's tenant network (cutover 2026-06-13, task 705fbad0). External — created by
-  # the mandrel-brian compose project. Lets Traefik route to brian's containers.
-  brian:
+  # --- PER-TENANT NETWORK DEFS (TEMPLATE) -----------------------------------------
+  # One illustrative entry. The live runtime has one such block per active tenant,
+  # generated at provision time and kept in the gitignored runtime copy / registry —
+  # NOT committed (so the public repo never publishes the tenant list). Each tenant's
+  # network is `external` (created by that tenant's own `mandrel-<handle>` compose
+  # project) so Traefik can route to its containers by service name. To wire a real
+  # tenant, the provisioner emits a `- <handle>` line in the `traefik` service above
+  # and a block like this one:
+  tenant-example:
     external: true
-    name: mandrel-brian_mandrel-network
-  # Fleet cutover 2026-06-13 (task 705fbad0). External — created by each tenant's
-  # compose project. Lets Traefik route to that tenant's containers.
-  bfenix:
-    external: true
-    name: mandrel-bfenix_mandrel-network
-  dmclark:
-    external: true
-    name: mandrel-dmclark_mandrel-network
-  # neko-trappings network def removed 2026-06-13 (tenant suspended; reversible).
-  # To restore: re-add the block below and the `- neko-trappings` service-network line.
-  #   neko-trappings:
-  #     external: true
-  #     name: mandrel-neko-trappings_mandrel-network
-  tomobobo:
-    external: true
-    name: mandrel-tomobobo_mandrel-network
-  app:
-    external: true
-    name: mandrel-app_mandrel-network
+    name: mandrel-tenant-example_mandrel-network

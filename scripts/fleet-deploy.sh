@@ -36,8 +36,8 @@
 # Usage:
 #   bash scripts/fleet-deploy.sh                       # full pipeline, all instances
 #   bash scripts/fleet-deploy.sh --dry-run             # show the plan
-#   bash scripts/fleet-deploy.sh --only brian --yes    # one instance, gated
-#   bash scripts/fleet-deploy.sh --skip-ci --only brian
+#   bash scripts/fleet-deploy.sh --only <handle> --yes # one instance, gated
+#   bash scripts/fleet-deploy.sh --skip-ci --only <handle>
 # =============================================================================
 set -euo pipefail
 

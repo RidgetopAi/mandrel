@@ -2,7 +2,7 @@
  * Contract test: per-session / per-project context counts are ISOLATED.
  *
  * Schematic fuse for the cross-project misattribution bug reported by a real
- * user (bfenix): the dashboard Session Analytics showed contexts belonging to
+ * customer: the dashboard Session Analytics showed contexts belonging to
  * project B under a session whose project_id was A ("Personal Project").
  *
  * Root: every per-session context count joined `contexts ON session_id` WITHOUT
