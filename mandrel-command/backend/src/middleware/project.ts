@@ -1,6 +1,7 @@
 import { Response, NextFunction } from 'express';
 import { AuthenticatedRequest } from '../types/auth';
 import { logger } from '../config/logger';
+import { isValidUuid } from '../utils/uuid';
 
 /**
  * Project Context Middleware
@@ -28,9 +29,11 @@ export const projectContextMiddleware = async (
     const projectIdHeader = req.headers['x-project-id'] as string;
     
     if (projectIdHeader) {
-      // Validate project ID format (UUID)
-      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-      if (!uuidRegex.test(projectIdHeader)) {
+      // Validate project ID format against the shared, Postgres-exact UUID
+      // check. (Previously this used a stricter RFC version/variant regex
+      // `...-[1-5]...-[89ab]...` which REJECTED real ids the DB had stored and
+      // accepted — over-rejection that 400'd users out of valid projects.)
+      if (!isValidUuid(projectIdHeader)) {
         res.status(400).json({
           success: false,
           error: 'Invalid project ID format',

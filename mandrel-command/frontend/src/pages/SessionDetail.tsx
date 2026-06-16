@@ -39,6 +39,7 @@ import { SessionsService } from '../api/generated';
 import type { Context } from '../types/context';
 import { getTypeColor, getTypeDisplayName } from '../utils/contextHelpers';
 import { logger } from '../utils/logger';
+import { isValidUuid } from '../utils/uuid';
 
 // Session detail type
 interface SessionDetailType {
@@ -127,7 +128,10 @@ const SessionDetail: React.FC = () => {
       if (!id) throw new Error('Session ID is required');
       return sessionsClient.getSessionFiles(id);
     },
-    enabled: !!id,
+    // Guard like ProjectDetail: only fire when :id is a real UUID, so a
+    // malformed route param (e.g. /sessions/not-a-uuid) never fires a request
+    // that is guaranteed to 400/404.
+    enabled: isValidUuid(id),
   });
 
   // Use React Query for session data - now from backend API
@@ -141,7 +145,7 @@ const SessionDetail: React.FC = () => {
       if (!id) throw new Error('Session ID is required');
       return SessionsService.getSessions1({ id });
     },
-    enabled: !!id,
+    enabled: isValidUuid(id),
     retry: 1,
   });
 
@@ -155,6 +159,18 @@ const SessionDetail: React.FC = () => {
   logger.log('Contexts:', session?.contexts);
   logger.log('Tasks:', session?.tasks);
   logger.log('Decisions:', session?.decisions);
+
+  // Guard the route param itself: if :id is present but not a real UUID, the
+  // data queries are disabled (never error), so redirect explicitly — matching
+  // ProjectDetail's error->redirect self-heal so a bad URL can't wedge the page
+  // on a perpetual loading/empty state.
+  useEffect(() => {
+    if (id && !isValidUuid(id)) {
+      logger.error('Invalid session id in route, redirecting:', id);
+      message.error('Invalid session id');
+      navigate('/sessions');
+    }
+  }, [id, navigate]);
 
   // Handle error state
   useEffect(() => {

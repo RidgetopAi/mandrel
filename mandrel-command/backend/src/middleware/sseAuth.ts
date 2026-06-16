@@ -2,6 +2,7 @@ import { Response, NextFunction } from 'express';
 import { AuthService } from '../services/auth';
 import { logger } from '../config/logger';
 import { AuthenticatedRequest } from '../types/auth';
+import { isValidUuid } from '../utils/uuid';
 
 /**
  * SSE Authentication Middleware
@@ -132,9 +133,8 @@ export const extractSseProjectContext = async (
     const projectId = req.query.projectId as string | undefined;
 
     if (projectId) {
-      // Validate UUID format
-      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-      if (!uuidRegex.test(projectId)) {
+      // Validate UUID format via the shared, Postgres-exact check.
+      if (!isValidUuid(projectId)) {
         logger.warn('SSE Project: Invalid project ID format', {
           projectId,
           userId: req.user?.id

@@ -5,6 +5,7 @@
 
 import { OpenAPI } from './generated';
 import { logger } from '../utils/logger';
+import { isValidUuid, clearStoredProject } from '../utils/uuid';
 
 const resolvedBase =
   process.env.REACT_APP_API_BASE_URL ||
@@ -35,12 +36,24 @@ OpenAPI.HEADERS = async () => {
 
     if (storedProject) {
       const parsed = JSON.parse(storedProject) as { id?: string } | null;
-      if (parsed?.id && parsed.id !== '00000000-0000-0000-0000-000000000000') {
-        headers['X-Project-ID'] = parsed.id;
+      // SELF-HEAL: this OpenAPI client reads localStorage independently of
+      // ProjectContext, so it must apply the SAME UUID validation as
+      // services/api.ts. Only a real-UUID id is attached; a corrupt/synthetic/
+      // UNASSIGNED id (e.g. `session_voiceitt-bridge`) is NEVER sent — sending
+      // it would make the backend project middleware 400 EVERY /api call and
+      // wedge the dashboard. On corruption we purge the stored project keys so
+      // the next load is clean (no manual site-data clearing by the user).
+      if (isValidUuid(parsed?.id)) {
+        headers['X-Project-ID'] = parsed!.id as string;
+      } else {
+        clearStoredProject();
       }
     }
   } catch (error) {
     logger.warn('Failed to attach project header for OpenAPI client:', error);
+    // Unparseable stored value — treat as corrupt and purge it so it can't
+    // re-wedge subsequent requests.
+    clearStoredProject();
   }
 
   return headers;

@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { NamingController } from '../controllers/naming';
 import { authenticateToken } from '../middleware/auth';
+import { validateUUIDParam } from '../middleware/validation';
 
 const router = Router();
 
@@ -248,8 +249,8 @@ router.post('/register', NamingController.registerName);
  *       200:
  *         description: Entry deleted
  */
-router.get('/:id', NamingController.getEntry);
-router.put('/:id', NamingController.updateEntry);
-router.delete('/:id', NamingController.deleteEntry);
+router.get('/:id', validateUUIDParam(), NamingController.getEntry);
+router.put('/:id', validateUUIDParam(), NamingController.updateEntry);
+router.delete('/:id', validateUUIDParam(), NamingController.deleteEntry);
 
 export default router;

@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { authenticateToken } from '../middleware/auth';
+import { validateUUIDParam } from '../middleware/validation';
 import { SessionDetailService } from '../services/sessionDetail';
 import { GitService } from '../services/gitService';
 import { db as pool } from '../database/connection';
@@ -100,7 +101,7 @@ router.get('/current', async (_req: Request, res: Response): Promise<void> => {
  * GET /api/session-code/session/:sessionId
  * Get code activity for a specific session
  */
-router.get('/session/:sessionId', async (req: Request, res: Response): Promise<void> => {
+router.get('/session/:sessionId', validateUUIDParam('sessionId'), async (req: Request, res: Response): Promise<void> => {
   try {
     const { sessionId } = req.params;
     
@@ -352,7 +353,7 @@ router.post('/analyze', async (req: Request, res: Response): Promise<void> => {
  * GET /api/session-code/commits/:sessionId
  * Get git commits for a session
  */
-router.get('/commits/:sessionId', async (req: Request, res: Response): Promise<void> => {
+router.get('/commits/:sessionId', validateUUIDParam('sessionId'), async (req: Request, res: Response): Promise<void> => {
   try {
     const { sessionId } = req.params;
     const { includeFileChanges = false, confidenceThreshold = 0.3 } = req.query;
@@ -532,7 +533,7 @@ router.post('/correlate', async (req: Request, res: Response): Promise<void> => 
  * GET /api/session-code/metrics/:sessionId
  * Get code metrics for a session
  */
-router.get('/metrics/:sessionId', async (req: Request, res: Response): Promise<void> => {
+router.get('/metrics/:sessionId', validateUUIDParam('sessionId'), async (req: Request, res: Response): Promise<void> => {
   try {
     const { sessionId } = req.params;
     const { metricType, aggregateLevel = 'session' } = req.query;

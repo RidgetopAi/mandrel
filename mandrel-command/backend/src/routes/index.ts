@@ -19,6 +19,7 @@ import eventsRoutes from './events';
 import gitRoutes from './git';
 import feedbackRoutes from './feedback';
 import { authenticateToken } from '../middleware/auth';
+import { validateUUIDParam } from '../middleware/validation';
 import { logger } from '../config/logger';
 
 const router = Router();
@@ -61,7 +62,7 @@ if (process.env.AIDIS_MCP_PORT && !process.env.MANDREL_MCP_PORT) {
 /**
  * Proxy GET /api/v2/sessions/:sessionId/files to MCP server
  */
-router.get('/v2/sessions/:sessionId/files', async (req: Request, res: Response): Promise<void> => {
+router.get('/v2/sessions/:sessionId/files', validateUUIDParam('sessionId'), async (req: Request, res: Response): Promise<void> => {
   try {
     const { sessionId } = req.params;
     const url = `${MCP_BASE}/api/v2/sessions/${sessionId}/files`;
@@ -88,7 +89,7 @@ router.get('/v2/sessions/:sessionId/files', async (req: Request, res: Response):
 /**
  * Proxy POST /api/v2/sessions/:sessionId/sync-files to MCP server
  */
-router.post('/v2/sessions/:sessionId/sync-files', async (req: Request, res: Response): Promise<void> => {
+router.post('/v2/sessions/:sessionId/sync-files', validateUUIDParam('sessionId'), async (req: Request, res: Response): Promise<void> => {
   try {
     const { sessionId } = req.params;
     const url = `${MCP_BASE}/api/v2/sessions/${sessionId}/sync-files`;
@@ -171,7 +172,7 @@ router.get('/v2/sessions/active', authenticateToken, async (_req: Request, res: 
 /**
  * Proxy POST /api/v2/sessions/:sessionId/end to MCP server (authenticated)
  */
-router.post('/v2/sessions/:sessionId/end', authenticateToken, async (req: Request, res: Response): Promise<void> => {
+router.post('/v2/sessions/:sessionId/end', authenticateToken, validateUUIDParam('sessionId'), async (req: Request, res: Response): Promise<void> => {
   try {
     const { sessionId } = req.params;
     const url = `${MCP_BASE}/api/v2/sessions/${sessionId}/end`;

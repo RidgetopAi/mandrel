@@ -7,6 +7,7 @@ import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { logger } from '../config/logger';
 import { validateData, ValidationError, SchemaRegistry, SchemaName } from '../validation/schemas';
+import { isValidUuid } from '../utils/uuid';
 
 // ================================
 // VALIDATION MIDDLEWARE TYPES
@@ -163,9 +164,20 @@ export const validateQuery = (schema: z.ZodSchema<any>, options?: { required?: b
 // COMMON PARAMETER SCHEMAS
 // ================================
 
-const UUIDParamSchema = z.object({
-  id: z.string().uuid('Invalid UUID format')
-});
+/**
+ * Build a params schema that validates a single UUID route param of the given
+ * name (default `id`) against the shared, Postgres-exact UUID regex (NOT zod's
+ * version-dependent `.uuid()`). `.passthrough()` keeps any sibling params (e.g.
+ * a route with both `:sessionId` and `:metric`) intact.
+ */
+const makeUUIDParamSchema = (paramName: string) =>
+  z
+    .object({
+      [paramName]: z
+        .string()
+        .refine((v) => isValidUuid(v), { message: 'Invalid UUID format' }),
+    })
+    .passthrough();
 
 const PaginationQuerySchema = z.object({
   page: z.string().regex(/^\d+$/, 'Page must be a number').transform(Number).optional(),
@@ -179,11 +191,17 @@ const PaginationQuerySchema = z.object({
 // ================================
 
 /**
- * Validate UUID parameter
+ * Validate a UUID route parameter. Defaults to `:id` (backwards compatible with
+ * every existing caller); pass a name to guard `:sessionId` or any other uuid
+ * param so the route returns a clean 400 instead of letting a malformed id
+ * reach Postgres and throw a 500.
+ *
+ * Uses the shared, Postgres-exact UUID regex via `isValidUuid` — see
+ * `utils/uuid.ts` for why we do NOT use a stricter RFC regex or zod `.uuid()`.
  */
-export const validateUUIDParam = () => {
+export const validateUUIDParam = (paramName: string = 'id') => {
   return createValidationMiddleware({
-    schema: UUIDParamSchema,
+    schema: makeUUIDParamSchema(paramName),
     source: 'params',
     required: true,
     customErrorMessage: undefined

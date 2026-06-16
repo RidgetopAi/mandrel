@@ -10,6 +10,24 @@ import { SessionTracker } from '../../services/sessionTracker.js';
 import { db } from '../../config/database.js';
 import { formatSessionsList, formatSessionStats, formatSessionComparison } from '../../utils/sessionFormatters.js';
 import { logger } from '../../utils/logger.js';
+import { isValidUuid } from '../../utils/uuid.js';
+
+/**
+ * Format-check a session id at the REST boundary. Returns true and writes a
+ * clean 404 if the id is not a syntactically valid UUID, so a malformed id
+ * (e.g. `session_voiceitt-bridge`) never reaches a Postgres uuid column and
+ * throws `invalid input syntax for type uuid` (an unhandled 500). 404 (not 400)
+ * because at this REST surface a non-UUID `:sessionId` simply cannot identify
+ * any session — it is "not found", not a malformed *request body*.
+ */
+function rejectInvalidSessionId(res: Response, sessionId: string): boolean {
+  if (isValidUuid(sessionId)) return false;
+  res.status(404).json({
+    success: false,
+    error: 'Session not found'
+  });
+  return true;
+}
 
 /**
  * Normalize an Express request value (route param or query param) to a plain
@@ -40,6 +58,7 @@ export class SessionAnalyticsController {
   async recordActivity(req: Request, res: Response): Promise<void> {
     try {
       const sessionId = asStr(req.params.sessionId);
+      if (rejectInvalidSessionId(res, sessionId)) return;
       const { activityType, activityData } = req.body;
 
       if (!sessionId || !activityType) {
@@ -85,6 +104,7 @@ export class SessionAnalyticsController {
   async getActivities(req: Request, res: Response): Promise<void> {
     try {
       const sessionId = asStr(req.params.sessionId);
+      if (rejectInvalidSessionId(res, sessionId)) return;
       const activityType = req.query.type as string | undefined;
       const limit = req.query.limit ? Number(req.query.limit) : 100;
 
@@ -129,6 +149,7 @@ export class SessionAnalyticsController {
   async recordFileEdit(req: Request, res: Response): Promise<void> {
     try {
       const sessionId = asStr(req.params.sessionId);
+      if (rejectInvalidSessionId(res, sessionId)) return;
       const { filePath, linesAdded, linesDeleted, source } = req.body;
 
       if (!sessionId || !filePath || isNaN(Number(linesAdded)) || isNaN(Number(linesDeleted))) {
@@ -179,6 +200,7 @@ export class SessionAnalyticsController {
   async getFiles(req: Request, res: Response): Promise<void> {
     try {
       const sessionId = asStr(req.params.sessionId);
+      if (rejectInvalidSessionId(res, sessionId)) return;
 
       if (!sessionId) {
         res.status(400).json({
@@ -227,6 +249,7 @@ export class SessionAnalyticsController {
   async calculateProductivity(req: Request, res: Response): Promise<void> {
     try {
       const sessionId = asStr(req.params.sessionId);
+      if (rejectInvalidSessionId(res, sessionId)) return;
       const { configName } = req.body;
 
       if (!sessionId) {
@@ -426,6 +449,7 @@ export class SessionAnalyticsController {
   async getSessionDetail(req: Request, res: Response): Promise<void> {
     try {
       const sessionId = asStr(req.params.sessionId);
+      if (rejectInvalidSessionId(res, sessionId)) return;
 
       if (!sessionId) {
         res.status(400).json({
@@ -522,6 +546,7 @@ export class SessionAnalyticsController {
   async syncFiles(req: Request, res: Response): Promise<void> {
     try {
       const sessionId = asStr(req.params.sessionId);
+      if (rejectInvalidSessionId(res, sessionId)) return;
 
       if (!sessionId) {
         res.status(400).json({
@@ -579,12 +604,24 @@ export class SessionAnalyticsController {
    */
   async compareSessions(req: Request, res: Response): Promise<void> {
     try {
-      const { sessionId1, sessionId2 } = req.query;
+      const sessionId1 = asStr(req.query.sessionId1);
+      const sessionId2 = asStr(req.query.sessionId2);
 
       if (!sessionId1 || !sessionId2) {
         res.status(400).json({
           success: false,
           error: 'Both sessionId1 and sessionId2 are required'
+        });
+        return;
+      }
+
+      // Format-check both ids before they reach the uuid column. A malformed id
+      // would otherwise make Postgres throw `invalid input syntax for type uuid`
+      // (an unhandled 500). A non-UUID id cannot identify any session → 404.
+      if (!isValidUuid(sessionId1) || !isValidUuid(sessionId2)) {
+        res.status(404).json({
+          success: false,
+          error: 'One or both sessions not found'
         });
         return;
       }
@@ -686,6 +723,7 @@ export class SessionAnalyticsController {
   async endSession(req: Request, res: Response): Promise<void> {
     try {
       const sessionId = asStr(req.params.sessionId);
+      if (rejectInvalidSessionId(res, sessionId)) return;
 
       if (!sessionId) {
         res.status(400).json({

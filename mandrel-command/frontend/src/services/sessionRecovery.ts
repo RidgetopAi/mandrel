@@ -7,6 +7,7 @@
 
 import type { Session } from '../types/session';
 import { logger } from '../utils/logger';
+import { isValidUuid } from '../utils/uuid';
 
 interface SessionState {
   currentSession: Session | null;
@@ -48,11 +49,24 @@ class SessionRecoveryService {
         const stored = localStorage.getItem(SESSION_STORAGE_KEY);
         if (stored) {
           const parsed = JSON.parse(stored);
-          this.state = {
-            ...this.state,
-            currentSession: parsed.currentSession,
-            lastSyncTime: parsed.lastSyncTime || 0
-          };
+          // VALIDATE-ON-READ: a persisted session carries an `id` that can flow
+          // into UUID-validated requests. If the stored id is corrupt (non-UUID),
+          // discard the recovered session and purge the key so a stale/corrupt
+          // value can't drive a guaranteed-failing request. A null currentSession
+          // is a valid recovered state (no active session).
+          const recovered = parsed.currentSession;
+          if (recovered && !isValidUuid(recovered.id)) {
+            logger.warn('Discarding recovered session with corrupt id', {
+              id: recovered.id
+            });
+            localStorage.removeItem(SESSION_STORAGE_KEY);
+          } else {
+            this.state = {
+              ...this.state,
+              currentSession: recovered ?? null,
+              lastSyncTime: parsed.lastSyncTime || 0
+            };
+          }
         }
       }
     } catch (error) {

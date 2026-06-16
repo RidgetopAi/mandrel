@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { DecisionController } from '../controllers/decision';
 import { authenticateToken } from '../middleware/auth';
+import { validateUUIDParam } from '../middleware/validation';
 
 const router = Router();
 
@@ -181,8 +182,8 @@ router.get('/stats', DecisionController.getDecisionStats);
  *       200:
  *         description: Decision deleted successfully
  */
-router.get('/:id', DecisionController.getDecision);
-router.put('/:id', DecisionController.updateDecision);
-router.delete('/:id', DecisionController.deleteDecision);
+router.get('/:id', validateUUIDParam(), DecisionController.getDecision);
+router.put('/:id', validateUUIDParam(), DecisionController.updateDecision);
+router.delete('/:id', validateUUIDParam(), DecisionController.deleteDecision);
 
 export default router;

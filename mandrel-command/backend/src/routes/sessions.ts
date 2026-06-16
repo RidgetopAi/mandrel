@@ -193,6 +193,6 @@ router.put(
 *         description: Session not found
 */
 // Session detail route (must be last to avoid conflicts)
-router.get('/:id', SessionController.getSessionDetail);
+router.get('/:id', validateUUIDParam(), SessionController.getSessionDetail);
 
 export default router;

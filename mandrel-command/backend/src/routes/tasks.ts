@@ -35,8 +35,8 @@ router.put('/:id', validateUUIDParam(), validateBody('UpdateTask'), TaskControll
 router.delete('/:id', validateUUIDParam(), TaskController.deleteTask);              // DELETE /tasks/:id - Delete task
 
 // Task management operations
-router.get('/:id/dependencies', TaskController.getTaskDependencies); // GET /tasks/:id/dependencies - Get dependencies
-router.post('/:id/assign', TaskController.assignTask);               // POST /tasks/:id/assign - Assign task
-router.post('/:id/status', TaskController.updateTaskStatus);         // POST /tasks/:id/status - Update status
+router.get('/:id/dependencies', validateUUIDParam(), TaskController.getTaskDependencies); // GET /tasks/:id/dependencies - Get dependencies
+router.post('/:id/assign', validateUUIDParam(), TaskController.assignTask);               // POST /tasks/:id/assign - Assign task
+router.post('/:id/status', validateUUIDParam(), TaskController.updateTaskStatus);         // POST /tasks/:id/status - Update status
 
 export default router;
