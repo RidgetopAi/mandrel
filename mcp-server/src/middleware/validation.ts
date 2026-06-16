@@ -40,7 +40,17 @@ const aidisSystemSchemas = mandrelSystemSchemas;
 // Context Management Schemas
 const contextSchemas = {
   store: z.object({
-    content: z.string().min(1).max(10000),
+    // Store the user's FULL content — never silently lose data (Brian's no-data-loss
+    // bar). The old .max(10000) cap rejected real conversational turns (~23k chars)
+    // with a 500 and was the LongMemEval eval pain. There is no hard *storage* limit:
+    // `contexts.content` is Postgres TEXT, and the embedding path is independently
+    // bounded — the handler embeds only request.content.substring(0, 1000) (see
+    // handlers/context.ts), so the local model's token limit (EMBEDDING_MAX_TEXT_LENGTH,
+    // default 8000) is never reached regardless of stored length. The stored row keeps
+    // everything and stays retrievable. The generous 5MB ceiling below is ONLY an
+    // anti-abuse guard (well above any real turn and below express.json's 10mb body
+    // limit) so a pathological payload can't OOM the process — it is not a content cap.
+    content: z.string().min(1).max(5_000_000),
     type: z.enum(['code', 'decision', 'error', 'discussion', 'planning', 'completion', 'milestone', 'reflections', 'handoff', 'lessons']),
     tags: baseTags,
     relevanceScore: baseRelevanceScore,
