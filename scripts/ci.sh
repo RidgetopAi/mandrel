@@ -111,6 +111,7 @@ else
   tail -25 "$MIG_LOG"
   record "0b. migrate disposable DB" "FAIL"
   # No point running the DB-dependent stages; jump to summary.
+  record "0c. schema-contract gate" "FAIL"
   record "1. mcp-server contract tests" "FAIL"
   record "2. mcp-server type-check" "FAIL"
   record "3. backend type-check" "FAIL"
@@ -119,6 +120,47 @@ else
   hdr "SUMMARY"; for i in "${!STAGE_NAMES[@]}"; do printf '  %-32s %s\n' "${STAGE_NAMES[$i]}" "${STAGE_RESULTS[$i]}"; done
   printf '\n%s########## RED ##########%s\n' "$RED" "$RST"
   exit 1
+fi
+
+# =============================================================================
+# STAGE 0c — schema-contract gate (anti-drift, Lesson 008)
+# =============================================================================
+# Proves the committed migrations DETERMINISTICALLY reproduce the expected schema.
+# Reuses the disposable DB just migrated in Stage 0b (same DB the tests run on),
+# extracts a canonical version-agnostic fingerprint, and diffs it against the
+# committed reference (scripts/schema-reference.sql.txt). Catches the "migrations
+# don't reproduce the schema / code calls phantom tables+columns" class of bug at
+# the gate instead of in prod. Regenerate the reference (after an INTENTIONAL
+# schema change) with:  bash scripts/schema-contract.sh regenerate
+# =============================================================================
+hdr "STAGE 0c: schema-contract gate (migrations reproduce reference schema)"
+FINGERPRINT_SQL="$REPO_DIR/scripts/schema-fingerprint.sql"
+SCHEMA_REF="$REPO_DIR/scripts/schema-reference.sql.txt"
+SC_FRESH="/tmp/ci_schema_fresh_${SFX}.txt"
+SC_REF_BODY="/tmp/ci_schema_ref_${SFX}.txt"
+SC_DIFF="/tmp/ci_schema_diff_${SFX}.txt"
+if [[ ! -f "$FINGERPRINT_SQL" || ! -f "$SCHEMA_REF" ]]; then
+  echo "${RED}FAIL: schema-contract assets missing ($FINGERPRINT_SQL / $SCHEMA_REF)${RST}"
+  record "0c. schema-contract gate" "FAIL"
+else
+  $PGSUPER psql -d "$DBNAME" -f "$FINGERPRINT_SQL" 2>/dev/null \
+    | grep -E '^(COLUMN|CONSTRAINT|INDEX|VIEW|SEQUENCE|ENUM) ' \
+    | LC_ALL=C sort > "$SC_FRESH"
+  SC_LINES=$(wc -l < "$SC_FRESH")
+  grep -v '^#' "$SCHEMA_REF" | sed '/^[[:space:]]*$/d' | LC_ALL=C sort > "$SC_REF_BODY"
+  if [[ "$SC_LINES" -lt 50 ]]; then
+    echo "${RED}FAIL: fingerprint extraction produced only ${SC_LINES} lines — broken.${RST}"
+    record "0c. schema-contract gate" "FAIL"
+  elif diff -u "$SC_REF_BODY" "$SC_FRESH" > "$SC_DIFF" 2>&1; then
+    echo "${GRN}PASS: migrations reproduce the committed reference schema (${SC_LINES} objects).${RST}"
+    record "0c. schema-contract gate" "PASS"
+  else
+    echo "${RED}FAIL: SCHEMA DRIFT — committed migrations do NOT reproduce scripts/schema-reference.sql.txt${RST}"
+    echo "${YLW}--- < reference (committed)   --- > fresh migrate (actual) ---${RST}"
+    grep -E '^[+-][^+-]' "$SC_DIFF" || cat "$SC_DIFF"
+    echo "${YLW}If intentional, regenerate + commit:  bash scripts/schema-contract.sh regenerate${RST}"
+    record "0c. schema-contract gate" "FAIL"
+  fi
 fi
 
 # =============================================================================
