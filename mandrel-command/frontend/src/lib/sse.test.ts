@@ -89,9 +89,12 @@ describe('SSE Client', () => {
 
   describe('startSse()', () => {
     it('should create EventSource with correct URL and params', () => {
+      // Use a real UUID — a non-UUID projectId is intentionally dropped (see the
+      // self-heal validation tests below).
+      const validProjectId = 'c875b2af-9020-41b7-9595-d70221603464';
       startSse({
         token: 'test-token',
-        projectId: 'proj-123',
+        projectId: validProjectId,
         entities: ['tasks', 'contexts'],
         queryClient,
       });
@@ -101,8 +104,40 @@ describe('SSE Client', () => {
       );
       const url = ((window as any).EventSource as jest.Mock).mock.calls[0][0];
       expect(url).toContain('token=test-token');
-      expect(url).toContain('projectId=proj-123');
+      expect(url).toContain(`projectId=${validProjectId}`);
       expect(url).toContain('entities=tasks%2Ccontexts');
+    });
+
+    it('does NOT attach a non-UUID projectId to the SSE URL (dmclark self-heal)', () => {
+      // The exact corrupt id from the customer report. The backend SSE route
+      // would 400 ("Invalid project ID format") and spam "SSE connection error";
+      // we must open an unfiltered stream instead, never sending the bad id.
+      startSse({
+        token: 'test-token',
+        projectId: 'session_voiceitt-bridge',
+        entities: ['tasks'],
+        queryClient,
+      });
+
+      const url = ((window as any).EventSource as jest.Mock).mock.calls[0][0];
+      // EventSource is still opened (stream works), but WITHOUT the bad filter.
+      expect(url).toContain('/api/events?');
+      expect(url).not.toContain('projectId');
+      expect(url).not.toContain('session_voiceitt-bridge');
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        'Dropping non-UUID projectId from SSE subscription:',
+        'session_voiceitt-bridge'
+      );
+    });
+
+    it('drops the UNASSIGNED sentinel projectId from the SSE URL', () => {
+      startSse({
+        token: 'test-token',
+        projectId: '00000000-0000-0000-0000-000000000000',
+        queryClient,
+      });
+      const url = ((window as any).EventSource as jest.Mock).mock.calls[0][0];
+      expect(url).not.toContain('projectId');
     });
 
     it('should return unsupported flag when EventSource not available', () => {

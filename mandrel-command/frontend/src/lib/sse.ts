@@ -1,6 +1,7 @@
 import { QueryClient } from '@tanstack/react-query';
 import { AidisDbEvent, AidisEntity } from '../types/events';
 import { logger } from '../utils/logger';
+import { isValidUuid } from '../utils/uuid';
 
 export type SseOptions = {
   token: string;
@@ -26,10 +27,18 @@ export function startSse(options: SseOptions): SseHandle {
     return { stop: () => {}, unsupported: true };
   }
 
-  // Build URL with query params
+  // Build URL with query params. Defense in depth: only attach projectId when it
+  // is a real UUID. The backend SSE route rejects a non-UUID projectId with a
+  // 400 ("Invalid project ID format"), which surfaces as repeated "SSE
+  // connection error". A corrupt/synthetic id is dropped here so the stream
+  // opens unfiltered rather than failing closed.
   const params = new URLSearchParams();
   params.set('token', token);
-  if (projectId) params.set('projectId', projectId);
+  if (projectId && isValidUuid(projectId)) {
+    params.set('projectId', projectId);
+  } else if (projectId) {
+    logger.warn('Dropping non-UUID projectId from SSE subscription:', projectId);
+  }
   if (entities?.length) params.set('entities', entities.join(','));
 
   // Host-agnostic base URL. If REACT_APP_API_URL is configured as an absolute

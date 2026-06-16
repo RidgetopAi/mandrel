@@ -21,6 +21,7 @@ import type { ColumnsType } from 'antd/es/table';
 import { apiService } from '../../services/api';
 import SessionDetailView from './SessionDetailView';
 import { logger } from '../../utils/logger';
+import { isValidUuid } from '../../utils/uuid';
 
 const { Title, Text } = Typography;
 
@@ -60,7 +61,10 @@ const SessionSummaries: React.FC<SessionSummariesProps> = ({
     try {
       setLoading(true);
       const params: Record<string, unknown> = { limit };
-      if (projectId) {
+      // Only forward a real-UUID project_id. A corrupt/synthetic id must never
+      // be sent to the backend filter (defense in depth; the primary fix keeps
+      // such an id out of currentProject entirely).
+      if (isValidUuid(projectId)) {
         params.project_id = projectId;
       }
       

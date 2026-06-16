@@ -401,17 +401,20 @@ describe('SSE Error Scenarios and Recovery (Frontend)', () => {
       expect(es.url).toContain('token=secret-token-123');
     });
 
-    it('should include projectId when provided', () => {
+    it('should include projectId when provided (real UUID)', () => {
+      // Only a real-UUID projectId is attached to the URL; a non-UUID is dropped
+      // (see sse.test.ts self-heal cases). Use dmclark's real voiceitt-bridge id.
+      const validProjectId = 'c875b2af-9020-41b7-9595-d70221603464';
       const options: SseOptions = {
         token: 'test-token',
-        projectId: 'proj-456',
+        projectId: validProjectId,
         queryClient,
       };
 
       startSse(options);
 
       const es = MockEventSource.getLastInstance()!;
-      expect(es.url).toContain('projectId=proj-456');
+      expect(es.url).toContain(`projectId=${validProjectId}`);
     });
 
     it('should include entities when provided', () => {

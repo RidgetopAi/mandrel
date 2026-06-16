@@ -7,6 +7,7 @@ import { mandrelApi } from '../api/mandrelApiClient';
 import { useErrorHandler } from '../hooks/useErrorHandler';
 import { useSettings } from '../hooks/useSettings';
 import { logger } from '../utils/logger';
+import { isValidUuid, loadValidStoredProject } from '../utils/uuid';
 
 const UNASSIGNED_PROJECT_ID = '00000000-0000-0000-0000-000000000000';
 const DEFAULT_BOOTSTRAP_PROJECT_NAME = 'aidis-bootstrap';
@@ -295,22 +296,19 @@ export const ProjectProvider: React.FC<ProjectProviderProps> = ({ children }) =>
         }
       }
       
-      // Fallback to localStorage if session API fails
-      let stored = localStorage.getItem('aidis_selected_project');
-      if (!stored) {
-        // Try the old key for backward compatibility
-        stored = localStorage.getItem('aidis_current_project');
-      }
-      if (stored) {
-        const project = JSON.parse(stored);
-        if (project?.id && project.id !== UNASSIGNED_PROJECT_ID) {
-          setCurrentProject({
-            ...project,
-            status: (project.status ?? ACTIVE_STATUS) as Project['status']
-          });
-          DEBUG && logger.log('📱 Loaded project from localStorage:', project.name);
-          return;
-        }
+      // Fallback to localStorage if session API fails. SELF-HEAL: only accept a
+      // stored project whose id is a real UUID. A corrupt stored id (e.g.
+      // `session_voiceitt-bridge`) is discarded here (loadValidStoredProject
+      // purges the bad keys) so it can never drive /api/projects/{id} or the
+      // SSE projectId into a 400 — we fall through to the real project list.
+      const stored = loadValidStoredProject() as Project | null;
+      if (stored && isValidUuid(stored.id)) {
+        setCurrentProject({
+          ...stored,
+          status: (stored.status ?? ACTIVE_STATUS) as Project['status']
+        });
+        DEBUG && logger.log('📱 Loaded project from localStorage (validated):', stored.name);
+        return;
       }
 
       const bootstrapProject = await selectBootstrapProject(projectsFromRefresh);
@@ -320,22 +318,16 @@ export const ProjectProvider: React.FC<ProjectProviderProps> = ({ children }) =>
       }
     } catch (error) {
       logger.error('Failed to load project from session:', error);
-      // Fallback to localStorage
+      // Fallback to localStorage. SELF-HEAL: same UUID validation as above — a
+      // corrupt stored id is discarded rather than re-applied on the error path.
       try {
-        let stored = localStorage.getItem('aidis_selected_project');
-        if (!stored) {
-          // Try the old key for backward compatibility
-          stored = localStorage.getItem('aidis_current_project');
-        }
-        if (stored) {
-          const project = JSON.parse(stored);
-        if (project?.id && project.id !== UNASSIGNED_PROJECT_ID) {
+        const stored = loadValidStoredProject() as Project | null;
+        if (stored && isValidUuid(stored.id)) {
           setCurrentProject({
-            ...project,
-            status: (project.status ?? ACTIVE_STATUS) as Project['status']
+            ...stored,
+            status: (stored.status ?? ACTIVE_STATUS) as Project['status']
           });
-            return;
-          }
+          return;
         }
 
         const bootstrapProject = await selectBootstrapProject(projectsFromRefresh);

@@ -5,6 +5,7 @@ import { useProjectContext } from './ProjectContext';
 import { startSse, SseHandle } from '../lib/sse';
 import { AidisEntity } from '../types/events';
 import { logger } from '../utils/logger';
+import { isValidUuid } from '../utils/uuid';
 
 interface SseContextValue {
   isConnected: boolean;
@@ -34,9 +35,15 @@ export const SseProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     // Subscribe to all entity types
     const entities: AidisEntity[] = ['contexts', 'tasks', 'decisions', 'projects', 'sessions'];
 
+    // Only filter by projectId when it is a real UUID. A synthetic `aidis-*` id
+    // or a corrupt stored id would make the backend SSE route 400 ("Invalid
+    // project ID format") and spam "SSE connection error". Omitting it opens an
+    // unfiltered stream (still valid) until a real project resolves.
+    const safeProjectId = isValidUuid(currentProject?.id) ? currentProject?.id : undefined;
+
     const handle: SseHandle = startSse({
       token,
-      projectId: currentProject?.id,
+      projectId: safeProjectId,
       entities,
       queryClient,
       onConnect: () => setIsConnected(true),

@@ -1,4 +1,10 @@
-import { isValidUuid, UNASSIGNED_PROJECT_ID } from './uuid';
+import {
+  isValidUuid,
+  UNASSIGNED_PROJECT_ID,
+  PROJECT_STORAGE_KEYS,
+  loadValidStoredProject,
+  clearStoredProject,
+} from './uuid';
 
 /**
  * Guard test for the customer-reported "Failed to Load Project Insights — Bad
@@ -31,5 +37,91 @@ describe('isValidUuid', () => {
     expect(isValidUuid('not-a-uuid')).toBe(false);
     expect(isValidUuid(12345)).toBe(false);
     expect(isValidUuid({})).toBe(false);
+  });
+
+  test('rejects the dmclark corrupt id `session_voiceitt-bridge`', () => {
+    // The exact client-side value that drove /api/projects/{badid} and the SSE
+    // projectId into repeated 400s on the customer dashboard.
+    expect(isValidUuid('session_voiceitt-bridge')).toBe(false);
+  });
+});
+
+/**
+ * Self-heal guards (dmclark dashboard bug). A corrupt persisted project id like
+ * `session_voiceitt-bridge` must be DISCARDED on load — not returned for use —
+ * and the offending localStorage keys purged so the app recovers on its own.
+ */
+describe('loadValidStoredProject / clearStoredProject (self-heal)', () => {
+  const VALID_PROJECT = {
+    id: 'c875b2af-9020-41b7-9595-d70221603464', // dmclark's real voiceitt-bridge UUID
+    name: 'voiceitt-bridge',
+  };
+
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  afterEach(() => {
+    localStorage.clear();
+  });
+
+  test('returns a stored project when its id is a real UUID', () => {
+    localStorage.setItem('aidis_selected_project', JSON.stringify(VALID_PROJECT));
+    const loaded = loadValidStoredProject() as { id: string; name: string } | null;
+    expect(loaded).not.toBeNull();
+    expect(loaded!.id).toBe(VALID_PROJECT.id);
+    // Valid value is preserved, not purged.
+    expect(localStorage.getItem('aidis_selected_project')).not.toBeNull();
+  });
+
+  test('discards a corrupt `session_voiceitt-bridge` id and PURGES all keys', () => {
+    const corrupt = JSON.stringify({ id: 'session_voiceitt-bridge', name: 'voiceitt-bridge' });
+    localStorage.setItem('aidis_selected_project', corrupt);
+    localStorage.setItem('aidis_current_project', corrupt);
+
+    const loaded = loadValidStoredProject();
+
+    // The bad value is NOT returned for use...
+    expect(loaded).toBeNull();
+    // ...and BOTH project keys are cleared so the dashboard self-heals with no
+    // manual site-data clearing.
+    for (const key of PROJECT_STORAGE_KEYS) {
+      expect(localStorage.getItem(key)).toBeNull();
+    }
+  });
+
+  test('discards the UNASSIGNED sentinel id and purges', () => {
+    localStorage.setItem(
+      'aidis_selected_project',
+      JSON.stringify({ id: UNASSIGNED_PROJECT_ID, name: 'unassigned' })
+    );
+    expect(loadValidStoredProject()).toBeNull();
+    expect(localStorage.getItem('aidis_selected_project')).toBeNull();
+  });
+
+  test('discards unparseable JSON and purges', () => {
+    localStorage.setItem('aidis_selected_project', '{not valid json');
+    expect(loadValidStoredProject()).toBeNull();
+    expect(localStorage.getItem('aidis_selected_project')).toBeNull();
+  });
+
+  test('falls through (returns null) when nothing is stored', () => {
+    expect(loadValidStoredProject()).toBeNull();
+  });
+
+  test('falls back to the legacy key when the primary key is empty', () => {
+    localStorage.setItem('aidis_current_project', JSON.stringify(VALID_PROJECT));
+    const loaded = loadValidStoredProject() as { id: string } | null;
+    expect(loaded!.id).toBe(VALID_PROJECT.id);
+  });
+
+  test('clearStoredProject removes every project key', () => {
+    for (const key of PROJECT_STORAGE_KEYS) {
+      localStorage.setItem(key, JSON.stringify(VALID_PROJECT));
+    }
+    clearStoredProject();
+    for (const key of PROJECT_STORAGE_KEYS) {
+      expect(localStorage.getItem(key)).toBeNull();
+    }
   });
 });

@@ -1,7 +1,6 @@
 import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
 import { logger } from '../utils/logger';
-
-const UNASSIGNED_PROJECT_ID = '00000000-0000-0000-0000-000000000000';
+import { isValidUuid, clearStoredProject } from '../utils/uuid';
 
 // Legacy auth interfaces removed - use generated types from src/api/generated/models/
 
@@ -41,21 +40,27 @@ class ApiClient {
           config.headers.Authorization = `Bearer ${token}`;
         }
 
-        // Add X-Project-ID header if currentProject exists and not already specified
+        // Add X-Project-ID header if currentProject exists and not already
+        // specified. SELF-HEAL: this interceptor reads localStorage independently
+        // of ProjectContext, so it must apply the SAME UUID validation. Only a
+        // real-UUID id is attached; a corrupt/synthetic/UNASSIGNED id is never
+        // sent AND the offending stored keys are purged so the dashboard heals
+        // without the user clearing site data.
         if (!config.headers['X-Project-ID']) {
           try {
             const currentProjectData = localStorage.getItem('aidis_selected_project');
             if (currentProjectData) {
               const currentProject = JSON.parse(currentProjectData);
-              if (currentProject?.id && currentProject.id !== UNASSIGNED_PROJECT_ID) {
+              if (isValidUuid(currentProject?.id)) {
                 config.headers['X-Project-ID'] = currentProject.id;
-              } else if (currentProject?.id === UNASSIGNED_PROJECT_ID) {
-                localStorage.removeItem('aidis_selected_project');
-                localStorage.removeItem('aidis_current_project');
+              } else {
+                // Corrupt or sentinel id — discard the stored project entirely.
+                clearStoredProject();
               }
             }
           } catch (error) {
-            // Ignore localStorage parsing errors silently
+            // Unparseable stored value — treat as corrupt and purge it.
+            clearStoredProject();
           }
         }
         
