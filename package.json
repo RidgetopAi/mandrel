@@ -4,6 +4,8 @@
   "description": "AI Development Intelligence System - Persistent context management",
   "private": true,
   "scripts": {
+    "prepare": "git config core.hooksPath hooks || true",
+    "hooks:install": "git config core.hooksPath hooks && echo 'git hooks enabled (core.hooksPath=hooks): pre-commit secret scan active'",
     "setup": "npm run install:mcp && npm run install:command",
     "install:mcp": "cd mcp-server && npm install",
     "install:command": "cd mandrel-command && npm run install:all",

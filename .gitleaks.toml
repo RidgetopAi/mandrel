@@ -1,0 +1,84 @@
+# =============================================================================
+# .gitleaks.toml — secret-leak gate config for ra-mandrel (PUBLIC repo)
+# =============================================================================
+# Used by BOTH the pre-commit hook (`gitleaks protect --staged`) and the CI
+# backstops (`gitleaks detect` in scripts/ci.sh + .github/workflows/secrets.yml).
+#
+# Design goals:
+#   - FAIL CLOSED: any real-secret shape in staged changes blocks the commit;
+#     any in the tree/history fails CI. No "warn and continue".
+#   - LOW NOISE / TRUSTWORTHY: a conservative allowlist suppresses ONLY confirmed
+#     noise so the gate stays believable and devs don't learn to ignore it.
+#
+# Allowlist policy (NON-NEGOTIABLE):
+#   - We allowlist by PATH (legacy cruft that is now .gitignore'd, and doc-example
+#     files) or by FILE+REGEX for a specific known-expired doc token.
+#   - We NEVER allowlist a real secret SHAPE globally (no blanket jwt / sk- / AKIA
+#     / ghp_ / square / private-key regex in the global allowlist). Suppressing a
+#     shape would blind the gate to that entire class of real secret.
+#   - Every entry below carries a one-line reason. If a reason can't be written,
+#     the entry doesn't belong here.
+#
+# All allowlisted paths were triaged DEAD / false-positive in the 2026-06-17
+# code-health audit (raw findings: ridgetopai-reports/code-health/2026-06-17/raw/
+# gitleaks-history.json + gitleaks-worktree.json). They are forward-looking
+# guards, not a license to commit secrets.
+# =============================================================================
+
+# Inherit gitleaks' full built-in ruleset (AWS, GitHub, Stripe, JWT, private
+# keys, generic-api-key, square, etc.). We ADD an allowlist on top; we do NOT
+# replace or weaken any rule.
+[extend]
+useDefault = true
+
+# -----------------------------------------------------------------------------
+# Global allowlist — applies to every rule. Conservative on purpose.
+# NOTE: gitleaks 8.18.x uses the SINGULAR [allowlist] table (the plural
+# [[allowlists]] array form is 8.19+). Keep this as [allowlist].
+# -----------------------------------------------------------------------------
+[allowlist]
+description = "ra-mandrel confirmed-noise allowlist (2026-06-17 audit, all DEAD)"
+
+# Only suppress a finding when BOTH the path/regex AND nothing else matches; we
+# use path/regex allowlists so a NEW real secret in a NEW file is never hidden.
+paths = [
+  # --- Doc-example tokens (expired, illustrative) --------------------------
+  # AUTHENTICATION.md ships sample login responses containing EXPIRED example
+  # JWTs purely to document the API response shape. Allowlisting the *.md doc
+  # file (any depth) suppresses these without touching real JWTs elsewhere.
+  # Audit: generic-api-key on **/AUTHENTICATION.md, triaged DEAD (expired demo).
+  '''(^|/)AUTHENTICATION\.md$''',
+
+  # --- Legacy cruft paths, now .gitignore'd so they can't re-enter ---------
+  # Each path below leaked in HISTORY only (not the current worktree, not
+  # tracked). They are now blocked by .gitignore; these entries stop them
+  # re-flagging on a history-aware scan. None is a current/live source path.
+
+  # DB dumps / backups — full table dumps that captured app rows (e.g. Square
+  # idempotency keys, hashed tokens). Dead data; *.sql + *backup* now ignored.
+  '''(^|/)backups/''',
+  '''aidis_production_384d_backup\.sql$''',
+  '''aidis_backup_cascade_fix_\d+_\d+\.sql$''',
+
+  # Surveyor scan cache — local code-scan JSON that captured snippets verbatim.
+  # `.surveyor/` is already gitignored; this guards the history matches.
+  '''(^|/)\.surveyor/''',
+
+  # ai-context / debug-context scratch — local AI scratch dumps, now ignored.
+  '''(^|/)ai-context/''',
+  '''(^|/)debug-context.*''',
+
+  # auth_response*.json — a captured login response (local probe artifact),
+  # already ignored as auth_response.json; widen to the *.json variants.
+  '''(^|/)auth_response.*\.json$''',
+
+  # Legacy pre-rename tree `aidis-command*/` (now `mandrel-command/`). These
+  # paths no longer exist in the worktree; the matches are old commits. Anchored
+  # to `aidis-command` so the CURRENT `mandrel-command/` tree is NOT allowlisted.
+  '''(^|/)aidis-command(-dev)?/''',
+
+  # Personal, non-product project tree (`projects/dc-viz`, a Spotify demo) —
+  # `projects/` is already gitignored (not part of the Mandrel product). The
+  # leaked values were a public Spotify client-id, triaged DEAD.
+  '''(^|/)projects/''',
+]

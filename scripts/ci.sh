@@ -79,6 +79,53 @@ case "$DBNAME" in
 esac
 
 # =============================================================================
+# STAGE S — secret scan (gitleaks) — the CI backstop to the pre-commit hook.
+# =============================================================================
+# Runs FIRST (before any DB provisioning) so a leaked secret fails the gate fast
+# and cheap. History-aware `gitleaks detect` over the whole repo + git history,
+# using the repo's .gitleaks.toml (default rules + the documented allowlist of
+# confirmed-DEAD noise). ANY finding => this stage FAILs => ci.sh goes RED.
+# Fail CLOSED: if gitleaks is not installed, this stage FAILS (does not skip).
+# =============================================================================
+hdr "STAGE S: secret scan (gitleaks: history + staged changes)"
+GITLEAKS_CFG="$REPO_DIR/.gitleaks.toml"
+# Two complementary scans (a finding in EITHER fails the stage). Both respect
+# git tracking, so gitignored on-disk noise (local .env, build/*.map, *.log) is
+# NOT scanned — only what is or could become committed:
+#   - detect           => history-aware (all committed history; the CI concern)
+#   - protect --staged => changes staged for the next commit (the same surface
+#                         the pre-commit hook guards; catches a leak locally
+#                         before it lands). Unstaged working-tree edits are NOT
+#                         committable as-is and are covered once staged.
+SECRET_OK=1
+if ! command -v gitleaks >/dev/null 2>&1; then
+  echo "${RED}FAIL: gitleaks not installed — cannot run the secret-scan backstop (fail-closed).${RST}"
+  SECRET_OK=0
+elif [[ ! -f "$GITLEAKS_CFG" ]]; then
+  echo "${RED}FAIL: .gitleaks.toml missing at repo root — refusing to scan with unknown config.${RST}"
+  SECRET_OK=0
+else
+  if ( cd "$REPO_DIR" && gitleaks detect --redact --no-banner --config "$GITLEAKS_CFG" ); then
+    echo "${GRN}  history scan: clean${RST}"
+  else
+    echo "${RED}  history scan: SECRET FOUND${RST}"; SECRET_OK=0
+  fi
+  if ( cd "$REPO_DIR" && gitleaks protect --staged --redact --no-banner --config "$GITLEAKS_CFG" ); then
+    echo "${GRN}  staged-changes scan: clean${RST}"
+  else
+    echo "${RED}  staged-changes scan: SECRET FOUND${RST}"; SECRET_OK=0
+  fi
+fi
+if [[ "$SECRET_OK" -eq 1 ]]; then
+  echo "${GRN}PASS: no secrets found (working tree + history).${RST}"
+  record "S. secret scan (gitleaks)" "PASS"
+else
+  echo "${RED}FAIL: gitleaks found a potential secret (or could not run). Rotate/remove it,"
+  echo "or add a documented allowlist entry to .gitleaks.toml (never a real shape).${RST}"
+  record "S. secret scan (gitleaks)" "FAIL"
+fi
+
+# =============================================================================
 hdr "STAGE 0: provision disposable Postgres"
 echo "DB=$DBNAME  ROLE=$DBUSER  HOST=$DBHOST:$DBPORT"
 $PGSUPER psql -q -c "DROP ROLE IF EXISTS \"$DBUSER\";" >/dev/null 2>&1 || true
