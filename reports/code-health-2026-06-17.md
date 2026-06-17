@@ -1,6 +1,6 @@
 # RidgetopAi Code-Health Report — 2026-06-17
 
-_Generated: 2026-06-17 07:49:28 EDT · wall-time: 97s · harness: `scripts/code-health.sh`_
+_Generated: 2026-06-17 07:54:49 EDT · wall-time: 100s · harness: `scripts/code-health.sh`_
 
 Repo: `ra-mandrel` (public, customer-serving, largely agent-built).
 Scopes — TS: mcp-server/src, mandrel-command/{backend,frontend}/src · Shell: scripts/*.sh + scripts/lib/*.sh.
@@ -37,7 +37,7 @@ generic-api-key    [COMMITTED]  mandrel-command/backend/AUTHENTICATION.md:116
 generic-api-key    [COMMITTED]  mandrel-command/backend/AUTHENTICATION.md:53
 generic-api-key    [local-only(gitignored)] mandrel-command/frontend/build/static/js/367.78793f5c.chunk.js.map:1
 generic-api-key    [local-only(gitignored)] mandrel-command/frontend/build/static/js/main.fcc2b0b6.js.map:1
-private-key        [local-only(gitignored)] mcp-server/logs/aidis-mcp.3.log:25339
+private-key        [local-only(gitignored)] mcp-server/logs/aidis-mcp.4.log:25339
 ```
 
 Git-history hits by file+rule (these persist in the public repo even if

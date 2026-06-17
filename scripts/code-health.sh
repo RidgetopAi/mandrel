@@ -450,6 +450,19 @@ log "Assembling report -> $REPORT"
 END_EPOCH="$(date +%s)"
 WALL=$(( END_EPOCH - START_EPOCH ))
 
+# Preserve a hand-written judgment across re-runs. The "What this means" section is
+# the one part a human authors (the numbers above are regenerated). If an existing
+# repo report for this date already has a REAL judgment (not the placeholder), carry
+# it forward so a re-run never clobbers it. Detect via a sentinel the template lacks.
+PRIOR_JUDGMENT=""
+PRIOR="$REPO_REPORT_DIR/code-health-$DATE.md"
+if [ -f "$PRIOR" ] && grep -q '^## What this means (judgment)' "$PRIOR" \
+   && ! grep -q 'auto-templated by the harness' "$PRIOR"; then
+  # Everything from the judgment header to EOF is the authored narrative.
+  PRIOR_JUDGMENT="$(awk '/^## What this means \(judgment\)/{p=1} p' "$PRIOR")"
+  log "Preserving existing hand-written judgment from $PRIOR"
+fi
+
 {
   echo "# RidgetopAi Code-Health Report — $DATE"
   echo ""
@@ -476,11 +489,18 @@ WALL=$(( END_EPOCH - START_EPOCH ))
   echo ""
   echo "---"
   echo ""
-  echo "## What this means (judgment)"
-  echo ""
-  echo "_This section is auto-templated by the harness; the Foreman/Ridge fills the"
-  echo "narrative each run based on the numbers above. See the committed report for the"
-  echo "written judgment._"
+  if [ -n "$PRIOR_JUDGMENT" ]; then
+    # Re-run: keep the human-authored judgment verbatim.
+    echo "$PRIOR_JUDGMENT"
+  else
+    # First run for this date: emit the template for a human to fill in.
+    echo "## What this means (judgment)"
+    echo ""
+    echo "_PLACEHOLDER — fill this in based on the numbers above (written for a"
+    echo "non-coder reader: what's genuinely healthy, the real risks, and a"
+    echo "prioritized shortlist). A re-run of the harness will preserve whatever"
+    echo "you write here._"
+  fi
 } >"$REPORT"
 
 # Mirror into the repo (committed) and keep raw out of git.
