@@ -243,6 +243,120 @@ describe('Remote MCP transport — two-session isolation', () => {
   });
 });
 
+describe('Remote MCP transport — expired session returns an actionable, self-healing error', () => {
+  // The remote idle-session papercut (task 2ed788de): an idle-evicted session causes the
+  // client's NEXT tool call to arrive with a valid bearer token + a session id that is no
+  // longer in the map. That must NOT read as a cryptic outage. It must tell the agent the
+  // session EXPIRED and to RE-INITIALIZE, with a recognizable error code — and it must NOT
+  // be shaped like an auth failure (the token is still valid).
+  const SESSION_EXPIRED_CODE = -32002;
+
+  it('rejects a tools/call with a valid token but unknown/expired session id with the new error (not the old cryptic one)', async () => {
+    // A well-formed session id that the server has never issued exactly models an
+    // idle-evicted (expired) session: auth passes, but the session is gone from the map.
+    const expiredSessionId = '00000000-0000-4000-8000-000000000000';
+
+    const res = await fetch(`${baseUrl}/mcp`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json, text/event-stream',
+        Authorization: `Bearer ${TEST_TOKEN}`, // token is VALID — this is the expired-session path, not auth
+        'Mcp-Session-Id': expiredSessionId,
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: 42,
+        method: 'tools/call',
+        params: { name: 'mandrel_ping', arguments: {} },
+      }),
+    });
+
+    // Not 401 (that's auth) and not the old generic 400 "no valid session" shape.
+    expect(res.status).toBe(404);
+    const body = await res.json();
+    expect(body.jsonrpc).toBe('2.0');
+    expect(body.error).toBeDefined();
+
+    // Recognizable, dedicated "re-initialize needed" code in the implementation range.
+    expect(body.error.code).toBe(SESSION_EXPIRED_CODE);
+
+    // The message must be ACTIONABLE: say it expired and to re-initialize/reconnect.
+    const msg: string = body.error.message;
+    expect(msg.toLowerCase()).toContain('expired');
+    expect(msg.toLowerCase()).toContain('re-initialize');
+
+    // It must NOT misrepresent itself as an auth failure (constraint: don't claim auth).
+    expect(msg.toLowerCase()).not.toContain('unauthorized');
+    expect(msg.toLowerCase()).not.toContain('invalid bearer');
+
+    // Machine-readable hint for well-behaved clients to self-heal.
+    expect(body.error.data?.reason).toBe('session_expired');
+    expect(body.error.data?.action).toBe('reinitialize');
+    expect(body.error.data?.retryable).toBe(true);
+
+    // The id from the request is echoed back (proper JSON-RPC correlation).
+    expect(body.id).toBe(42);
+
+    // The old cryptic message must be gone.
+    expect(msg).not.toBe('Bad Request: no valid session ID provided for non-initialize request.');
+  });
+
+  it('still returns the protocol error (-32600) when NO session id is sent on a non-initialize request', async () => {
+    const res = await fetch(`${baseUrl}/mcp`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json, text/event-stream',
+        Authorization: `Bearer ${TEST_TOKEN}`,
+        // No Mcp-Session-Id header at all.
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: 7,
+        method: 'tools/call',
+        params: { name: 'mandrel_ping', arguments: {} },
+      }),
+    });
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error.code).toBe(-32600);
+    // This branch (no session at all) is distinct from the expired-session branch.
+    expect(body.error.code).not.toBe(SESSION_EXPIRED_CODE);
+  });
+});
+
+describe('Remote MCP transport — idle timeout is env-configurable (default raised to a few hours)', () => {
+  it('defaults to 4 hours and honors MCP_SESSION_IDLE_MS override', async () => {
+    const { RemoteMcpTransport } = await import('../server/remoteMcpTransport.js');
+
+    // Default (env unset): bounded, multi-hour idle window so a working dev rarely expires.
+    const savedIdle = process.env.MCP_SESSION_IDLE_MS;
+    delete process.env.MCP_SESSION_IDLE_MS;
+    try {
+      const dflt = new RemoteMcpTransport(deps);
+      expect((dflt as any).sessionIdleMs).toBe(4 * 60 * 60 * 1000);
+
+      // Override is read from env at construction (tunable without a code change).
+      process.env.MCP_SESSION_IDLE_MS = String(2 * 60 * 60 * 1000); // 2 hours
+      const overridden = new RemoteMcpTransport(deps);
+      expect((overridden as any).sessionIdleMs).toBe(2 * 60 * 60 * 1000);
+
+      // Invalid / non-positive values fall back to the safe default (never unbounded).
+      process.env.MCP_SESSION_IDLE_MS = 'not-a-number';
+      const bad = new RemoteMcpTransport(deps);
+      expect((bad as any).sessionIdleMs).toBe(4 * 60 * 60 * 1000);
+
+      process.env.MCP_SESSION_IDLE_MS = '0';
+      const zero = new RemoteMcpTransport(deps);
+      expect((zero as any).sessionIdleMs).toBe(4 * 60 * 60 * 1000);
+    } finally {
+      if (savedIdle === undefined) delete process.env.MCP_SESSION_IDLE_MS;
+      else process.env.MCP_SESSION_IDLE_MS = savedIdle;
+    }
+  });
+});
+
 describe('Remote MCP transport — session map is bounded (LRU eviction)', () => {
   const CAP_PORT = 18098;
   let capHealth: HealthServer;
