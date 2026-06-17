@@ -5,6 +5,7 @@
 import * as http from 'http';
 import { AIDIS_TOOL_DEFINITIONS } from '../../config/toolDefinitions.js';
 import { CircuitBreaker } from '../infra/CircuitBreaker.js';
+import { MANDREL_VERSION } from '../../version.js';
 
 const DISABLED_TOOLS = [
   'code_analyze', 'code_components', 'code_dependencies', 'code_impact', 'code_stats'
@@ -34,7 +35,7 @@ export function createHttpServer(
         timestamp: new Date().toISOString(),
         uptime: process.uptime(),
         pid: process.pid,
-        version: '1.0.0-core',
+        version: MANDREL_VERSION, // single source of truth (mcp-server/package.json)
         service: 'aidis-core-http'
       }));
       

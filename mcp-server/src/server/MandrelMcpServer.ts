@@ -19,6 +19,7 @@
  * - Circuit breaker pattern
  */
 
+import { MANDREL_VERSION } from '../version.js';
 import { logger, CorrelationIdManager } from '../utils/logger.js';
 import { RequestLogger } from '../middleware/requestLogger.js';
 import { ErrorHandler } from '../utils/errorHandler.js';
@@ -78,7 +79,7 @@ export default class MandrelMcpServer {
     this.server = new Server(
       {
         name: 'aidis-mcp-server',
-        version: '0.1.0-hardened',
+        version: MANDREL_VERSION, // single source of truth (mcp-server/package.json) — CUSTOMER-VISIBLE
       },
       {
         capabilities: {
@@ -296,7 +297,7 @@ export default class MandrelMcpServer {
     }
 
     return {
-      version: '0.1.0',
+      version: MANDREL_VERSION, // single source of truth (mcp-server/package.json)
       uptime,
       startTime: new Date(Date.now() - uptime * 1000).toISOString(),
       environment: process.env.NODE_ENV || 'development',
@@ -321,7 +322,7 @@ export default class MandrelMcpServer {
    */
   async start(): Promise<void> {
     RequestLogger.logSystemEvent('server_startup_initiated', {
-      version: '0.1.0-hardened',
+      version: MANDREL_VERSION, // single source of truth (mcp-server/package.json)
       processId: process.pid,
       nodeVersion: process.version
     });

@@ -5,6 +5,7 @@
 import { navigationHandler } from '../../handlers/navigation.js';
 import { CircuitBreaker } from '../infra/CircuitBreaker.js';
 import { AIDIS_TOOL_DEFINITIONS } from '../../config/toolDefinitions.js';
+import { MANDREL_VERSION } from '../../version.js';
 
 const HTTP_PORT = process.env.AIDIS_HTTP_PORT || 8080;
 
@@ -36,7 +37,7 @@ export function createSystemHandlers(circuitBreaker: CircuitBreaker, dbHealthy: 
           {
             type: 'text',
             text: `📊 AIDIS Core HTTP Service Status\n\n` +
-                  `🚀 Service: aidis-core-http v1.0.0-core\n` +
+                  `🚀 Service: aidis-core-http v${MANDREL_VERSION}\n` +
                   `⏰ Uptime: ${uptimeStr}\n` +
                   `🔒 Process: ${process.pid}\n` +
                   `🌐 HTTP Port: ${HTTP_PORT}\n` +

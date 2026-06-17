@@ -23,6 +23,7 @@ import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js';
 import { logger } from '../utils/logger.js';
+import { MANDREL_VERSION } from '../version.js';
 import { registerMcpHandlers, type McpHandlerDeps } from './registerMcpHandlers.js';
 
 const MCP_SESSION_HEADER = 'mcp-session-id';
@@ -228,7 +229,7 @@ export class RemoteMcpTransport {
   private async createSession(req: Request, res: Response): Promise<void> {
     // A per-session SDK Server with the SAME capabilities as stdio.
     const server = new Server(
-      { name: 'aidis-mcp-server', version: '0.1.0-hardened' },
+      { name: 'aidis-mcp-server', version: MANDREL_VERSION }, // single source of truth — CUSTOMER-VISIBLE (remote HTTP transport)
       { capabilities: { tools: {}, resources: {} } }
     );
 

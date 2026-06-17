@@ -444,6 +444,114 @@ else
 fi
 
 # ===========================================================================
+# 6.5 version sanity — release/drift self-check (Lesson 011: catch re-drift)
+# ===========================================================================
+# Mandrel's runtime version is customer-visible and must derive from ONE source
+# (mcp-server/package.json -> src/version.ts). This section is how we never again
+# silently miss a version mismatch. It reports:
+#   (a) commits since the latest vX.Y.Z tag (release-gap awareness),
+#   (b) whether all FOUR package.json versions agree,
+#   (c) whether the runtime-derived version (compiled dist, falling back to src
+#       via tsx) equals package.json.
+# Flags ⚠️ on any mismatch / large commit-gap. MEASURE-only (never mutates).
+# ===========================================================================
+log "version sanity (release/drift self-check)"
+sec "Version sanity (release + drift self-check)"
+{
+  PKG_ROOT="$REPO/package.json"
+  PKG_MCP="$REPO/mcp-server/package.json"
+  PKG_BE="$REPO/mandrel-command/backend/package.json"
+  PKG_FE="$REPO/mandrel-command/frontend/package.json"
+
+  read_pkg_version() { # read_pkg_version <path>
+    if have node && [ -f "$1" ]; then
+      node -e 'try{process.stdout.write(String(require(process.argv[1]).version||""))}catch(e){process.stdout.write("")}' "$1"
+    else
+      grep -m1 '"version"' "$1" 2>/dev/null | sed -E 's/.*"version"[[:space:]]*:[[:space:]]*"([^"]*)".*/\1/'
+    fi
+  }
+
+  V_ROOT="$(read_pkg_version "$PKG_ROOT")"
+  V_MCP="$(read_pkg_version "$PKG_MCP")"
+  V_BE="$(read_pkg_version "$PKG_BE")"
+  V_FE="$(read_pkg_version "$PKG_FE")"
+
+  VS_ISSUES=0
+
+  # (a) commits since the latest vX.Y.Z tag
+  LATEST_TAG="$(git -C "$REPO" tag --list 'v*' --sort=-version:refname 2>/dev/null | head -1)"
+  if [ -n "$LATEST_TAG" ]; then
+    GAP="$(git -C "$REPO" rev-list --count "${LATEST_TAG}..HEAD" 2>/dev/null || echo '?')"
+  else
+    LATEST_TAG="(none)"; GAP="?"
+  fi
+
+  echo "**(a) Release gap**"
+  echo ""
+  echo "- Latest tag: \`$LATEST_TAG\`"
+  echo "- Commits on HEAD since that tag: \`$GAP\`"
+  if [[ "$GAP" =~ ^[0-9]+$ ]] && [ "$GAP" -gt 30 ]; then
+    echo "- ⚠️ Large release gap (>30 commits) — consider cutting a release."
+    VS_ISSUES=$((VS_ISSUES + 1))
+  fi
+  echo ""
+
+  # (b) four package.json agree
+  echo "**(b) package.json agreement (must all match)**"
+  echo ""
+  echo "| package.json | version |"
+  echo "|--------------|---------|"
+  echo "| root | \`${V_ROOT:-?}\` |"
+  echo "| mcp-server | \`${V_MCP:-?}\` |"
+  echo "| mandrel-command/backend | \`${V_BE:-?}\` |"
+  echo "| mandrel-command/frontend | \`${V_FE:-?}\` |"
+  echo ""
+  if [ -n "$V_ROOT" ] && [ "$V_ROOT" = "$V_MCP" ] && [ "$V_ROOT" = "$V_BE" ] && [ "$V_ROOT" = "$V_FE" ]; then
+    echo "- ✅ all four agree at \`$V_ROOT\`."
+  else
+    echo "- ⚠️ package.json versions DISAGREE — fix before releasing."
+    VS_ISSUES=$((VS_ISSUES + 1))
+  fi
+  echo ""
+
+  # (c) runtime-derived version == package.json (prefer COMPILED dist; fall back to src)
+  echo "**(c) runtime-derived version vs mcp-server/package.json**"
+  echo ""
+  RUNTIME_VER=""
+  RUNTIME_SRC=""
+  if have node && [ -f "$REPO/mcp-server/dist/version.js" ]; then
+    RUNTIME_VER="$( ( cd "$REPO/mcp-server" && node --input-type=module -e \
+      "import('./dist/version.js').then(m=>process.stdout.write(String(m.MANDREL_VERSION||''))).catch(()=>process.stdout.write(''))" ) 2>/dev/null )"
+    RUNTIME_SRC="compiled dist (dist/version.js)"
+  fi
+  if [ -z "$RUNTIME_VER" ] && have npx && [ -f "$REPO/mcp-server/src/version.ts" ]; then
+    RUNTIME_VER="$( ( cd "$REPO/mcp-server" && npx --no-install tsx -e \
+      "import('./src/version.ts').then(m=>process.stdout.write(String(m.MANDREL_VERSION||''))).catch(()=>process.stdout.write(''))" ) 2>/dev/null )"
+    RUNTIME_SRC="src via tsx (dist not built)"
+  fi
+  if [ -n "$RUNTIME_VER" ]; then
+    echo "- Runtime-derived version: \`$RUNTIME_VER\` (source: $RUNTIME_SRC)"
+    echo "- mcp-server/package.json: \`${V_MCP:-?}\`"
+    if [ "$RUNTIME_VER" = "$V_MCP" ]; then
+      echo "- ✅ runtime matches package.json."
+    else
+      echo "- ⚠️ runtime version DRIFTS from package.json — a hardcoded string crept back in."
+      VS_ISSUES=$((VS_ISSUES + 1))
+    fi
+  else
+    echo "- ⚠️ could not derive a runtime version (no built dist + no tsx) — cannot verify."
+    VS_ISSUES=$((VS_ISSUES + 1))
+  fi
+  echo ""
+} >>"$BODY"
+
+if [ "${VS_ISSUES:-0}" -eq 0 ]; then
+  add_summary "version-sanity" "0 issues" "—" "✅ clean"
+else
+  add_summary "version-sanity" "$VS_ISSUES issue(s)" "moderate" "⚠️ attention"
+fi
+
+# ===========================================================================
 # 7. Assemble the consolidated report (summary table first, then sections)
 # ===========================================================================
 log "Assembling report -> $REPORT"

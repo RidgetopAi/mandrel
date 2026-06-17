@@ -1,6 +1,6 @@
 # RidgetopAi Code-Health Report — 2026-06-17
 
-_Generated: 2026-06-17 07:54:49 EDT · wall-time: 100s · harness: `scripts/code-health.sh`_
+_Generated: 2026-06-17 10:19:55 EDT · wall-time: 51s · harness: `scripts/code-health.sh`_
 
 Repo: `ra-mandrel` (public, customer-serving, largely agent-built).
 Scopes — TS: mcp-server/src, mandrel-command/{backend,frontend}/src · Shell: scripts/*.sh + scripts/lib/*.sh.
@@ -10,12 +10,13 @@ Excluded: node_modules, dist, build, *.bak*, .git, logs, coverage, test files, L
 
 | Tool | Count | Worst severity | Verdict |
 |------|-------|----------------|---------|
-| gitleaks | 7 wt / 50 hist | committed | ⚠️ attention (secrets in committed files — triage; see Secrets section) |
-| shellcheck | 146 | error | 🔴 serious (1 errors) |
-| jscpd | 4.14% / 181 clusters | moderate | ⚠️ attention (cross-package dup) |
+| gitleaks | 6 wt / n/a hist | — | ✅ clean (committed: 0) |
+| shellcheck | 147 | error | 🔴 serious (1 errors) |
+| jscpd | 4.17% / 182 clusters | moderate | ⚠️ attention (cross-package dup) |
 | semgrep | 6 | WARNING | ⚠️ attention (6 warnings) |
 | knip | 505 items | high | ⚠️ attention (lots of dead code) |
 | eslint | 1040 problems | high | ⚠️ attention (config-inflated; see note) |
+| version-sanity | 1 issue(s) | moderate | ⚠️ attention |
 
 _Verdict legend: ✅ clean · ⚠️ attention · 🔴 serious._
 
@@ -24,8 +25,8 @@ _Verdict legend: ✅ clean · ⚠️ attention · 🔴 serious._
 
 ## Secrets (gitleaks)
 
-- **Working tree (on disk now):** 7 hit(s)
-- **Git history (committed / public):** 50 hit(s)
+- **Working tree (on disk now):** 6 hit(s)
+- **Git history (committed / public):** n/a hit(s)
 
 Working-tree hits (value REDACTED — file:line + rule only). Note many
 live in gitignored files (.env, logs) that are NOT committed:
@@ -33,48 +34,23 @@ live in gitignored files (.env, logs) that are NOT committed:
 ```
 generic-api-key    [local-only(gitignored)] .env:7
 generic-api-key    [local-only(gitignored)] .env:9
-generic-api-key    [COMMITTED]  mandrel-command/backend/AUTHENTICATION.md:116
-generic-api-key    [COMMITTED]  mandrel-command/backend/AUTHENTICATION.md:53
 generic-api-key    [local-only(gitignored)] mandrel-command/frontend/build/static/js/367.78793f5c.chunk.js.map:1
 generic-api-key    [local-only(gitignored)] mandrel-command/frontend/build/static/js/main.fcc2b0b6.js.map:1
-private-key        [local-only(gitignored)] mcp-server/logs/aidis-mcp.4.log:25339
-```
-
-Git-history hits by file+rule (these persist in the public repo even if
-the file was later deleted — value REDACTED):
-
-```
-      6 generic-api-key	backups/pre-agent-removal-20250910_215306.sql
-      6 generic-api-key	aidis_production_384d_backup.sql
-      4 generic-api-key	aidis-command-dev/backend/AUTHENTICATION.md
-      4 generic-api-key	aidis-command/backend/test-session-code-api.ts
-      4 generic-api-key	ai-context/debug-context.txt
-      3 generic-api-key	aidis_backup_cascade_fix_20251012_145510.sql
-      2 square-access-token	backups/pre-agent-removal-20250910_215306.sql
-      2 jwt	auth_response.json
-      2 generic-api-key	.surveyor/scan-ddf672a7-2c9a-4c6e-a7d9-8d1778a7d484.json
-      2 generic-api-key	.surveyor/scan-85cfbd27-f808-4212-884c-998f11d9b6bd.json
-      2 generic-api-key	.surveyor/scan-80f583e9-8f99-42a2-a8f0-c7bf7dfb51a6.json
-      2 generic-api-key	.surveyor/scan-69b85d97-5df1-4df3-b624-fcf76b5abdea.json
-      2 generic-api-key	.surveyor/scan-0e23fc85-1108-4377-bf83-855206008b2c.json
-      2 generic-api-key	projects/dc-viz/src/SpotifyAPI.js
-      2 generic-api-key	projects/dc-viz/PHASE5_SPOTIFY_IMPLEMENTATION.md
-      2 generic-api-key	mandrel-command/backend/AUTHENTICATION.md
-      2 generic-api-key	aidis-command/backend/AUTHENTICATION.md
-      1 square-access-token	.surveyor/scan-70f53319-45ea-4632-8755-1ba5f328945c.json
+square-access-token [local-only(gitignored)] mcp-server/logs/aidis-mcp.1.log:24656
+square-access-token [local-only(gitignored)] mcp-server/logs/aidis-mcp.1.log:24694
 ```
 
 ## Shell (shellcheck)
 
-Scanned **48** shell scripts (scripts/*.sh + scripts/lib/*.sh).
+Scanned **49** shell scripts (scripts/*.sh + scripts/lib/*.sh).
 
 | Severity | Count |
 |----------|-------|
 | error    | 1 |
 | warning  | 59 |
-| info     | 75 |
+| info     | 76 |
 | style    | 11 |
-| **total**| 146 |
+| **total**| 147 |
 
 Top shellcheck codes by frequency:
 ```
@@ -99,9 +75,9 @@ scripts/process-supervisor.sh:161  SC2168  'local' is only valid in functions.
 
 ## Duplication (jscpd) — the centerpiece
 
-- **Duplicated:** 4.14% of lines
-- **Clone clusters:** 181
-- **Duplicated lines:** 3249
+- **Duplicated:** 4.17% of lines
+- **Clone clusters:** 182
+- **Duplicated lines:** 3257
 
 Top 12 worst clones (lines — fileA:start-end  <=>  fileB:start-end).
 Cross-package clones are the drift risk that caused the outage:
@@ -191,6 +167,32 @@ env/globals (TS/Node) — config noise, NOT that many real undefined-variable bu
 1      [bug-class]  no-redeclare
 1      [style]      no-useless-catch
 ```
+
+## Version sanity (release + drift self-check)
+
+**(a) Release gap**
+
+- Latest tag: `v0.3.0`
+- Commits on HEAD since that tag: `67`
+- ⚠️ Large release gap (>30 commits) — consider cutting a release.
+
+**(b) package.json agreement (must all match)**
+
+| package.json | version |
+|--------------|---------|
+| root | `0.3.0` |
+| mcp-server | `0.3.0` |
+| mandrel-command/backend | `0.3.0` |
+| mandrel-command/frontend | `0.3.0` |
+
+- ✅ all four agree at `0.3.0`.
+
+**(c) runtime-derived version vs mcp-server/package.json**
+
+- Runtime-derived version: `0.3.0` (source: compiled dist (dist/version.js))
+- mcp-server/package.json: `0.3.0`
+- ✅ runtime matches package.json.
+
 
 ---
 

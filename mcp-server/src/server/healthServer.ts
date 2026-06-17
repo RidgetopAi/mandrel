@@ -6,6 +6,7 @@
 import * as http from 'http';
 import express from 'express';
 import { logger } from '../utils/logger.js';
+import { MANDREL_VERSION } from '../version.js';
 import { portManager } from '../utils/portManager.js';
 import { dbPool, poolHealthCheck } from '../services/databasePool.js';
 import { AIDIS_TOOL_DEFINITIONS } from '../config/toolDefinitions.js';
@@ -199,7 +200,7 @@ export class HealthServer {
       timestamp: new Date().toISOString(),
       uptime: process.uptime(),
       pid: process.pid,
-      version: '0.1.0-hardened'
+      version: MANDREL_VERSION // single source of truth (mcp-server/package.json) — the PRODUCT version
     };
     res.json(healthData);
   }
@@ -330,6 +331,10 @@ export class HealthServer {
     const path = req.path.replace('/v2/mcp', '') || '/';
 
     if (path === '/') {
+      // NOTE: this '2.0.0' is the V2 MCP **API/schema** version (the contract this
+      // /v2/mcp surface speaks, with its own compatibleVersions negotiation) — NOT
+      // the product/package version. It is intentionally kept SEPARATE from
+      // MANDREL_VERSION and must move only when the V2 API contract itself changes.
       res.json({
         version: '2.0.0',
         compatibleVersions: ['2.0.0', '2.1.0'],

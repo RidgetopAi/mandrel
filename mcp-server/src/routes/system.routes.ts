@@ -2,6 +2,7 @@ import { navigationHandler } from '../handlers/navigation.js';
 import { formatMcpError } from '../utils/mcpFormatter.js';
 import type { McpResponse } from '../utils/mcpFormatter.js';
 import { logger } from '../utils/logger.js';
+import { MANDREL_VERSION } from '../version.js';
 
 /**
  * System & Navigation Routes
@@ -35,12 +36,19 @@ class SystemRoutes {
   async handleStatus(): Promise<McpResponse> {
     try {
       logger.info('🎯 Status request received');
-      // Navigation handler doesn't have getStatus, will be implemented in Phase 6.3
-      // For now, return basic status
+      const uptime = process.uptime();
+      const uptimeStr = `${Math.floor(uptime / 3600)}h ${Math.floor((uptime % 3600) / 60)}m ${Math.floor(uptime % 60)}s`;
+      // Version comes from the SINGLE source of truth (mcp-server/package.json via
+      // ../version.js) — the SAME number reported by `initialize` and the health
+      // endpoints. Surfacing it here closes the last gap where status showed none.
       return {
         content: [{
           type: 'text',
-          text: `🎯 Mandrel Server Status Report\n\nStatus: Operational\nNote: Full status implementation pending Phase 6.3 refactor`
+          text: `🎯 Mandrel Server Status Report\n\n` +
+                `Version: ${MANDREL_VERSION}\n` +
+                `Status: Operational\n` +
+                `Uptime: ${uptimeStr}\n` +
+                `Process: ${process.pid}`
         }]
       };
     } catch (error) {
