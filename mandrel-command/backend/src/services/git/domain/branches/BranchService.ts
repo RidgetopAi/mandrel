@@ -37,7 +37,7 @@ export class BranchService {
       for (const [branchName, branchData] of Object.entries(branches.branches)) {
         const dbBranch = dbBranchMap.get(branchName);
         
-        let branchInfo: BranchInfo = {
+        const branchInfo: BranchInfo = {
           id: dbBranch?.id || '',
           project_id,
           branch_name: branchName,

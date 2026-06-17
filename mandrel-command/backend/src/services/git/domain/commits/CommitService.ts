@@ -119,7 +119,7 @@ export class CommitService {
     git: SimpleGit
   ): Promise<{ commitsProcessed: number; branchesUpdated: number; fileChangesTracked: number }> {
     let commitsProcessed = 0;
-    let branchesUpdated = 0;
+    const branchesUpdated = 0;
     let fileChangesTracked = 0;
 
     for (const commit of commits) {

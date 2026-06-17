@@ -294,8 +294,8 @@ export class SessionAnalyticsService {
     try {
       const { projectId, status, limit = 1000, offset = 0 } = options;
       
-      let whereConditions: string[] = [];
-      let params: any[] = [];
+      const whereConditions: string[] = [];
+      const params: any[] = [];
       let paramIndex = 1;
 
       // No filtering needed - we only have 'mcp-server' and 'AI Model' session types now

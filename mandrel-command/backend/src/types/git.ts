@@ -342,20 +342,6 @@ export interface DeveloperProductivity {
   avg_lines_per_commit: number;
 }
 
-export interface FileChangeHotspot {
-  project_id: string;
-  file_path: string;
-  
-  change_count: number;
-  contributor_count: number;
-  total_lines_added: number;
-  total_lines_removed: number;
-  
-  last_changed: Date;
-  first_changed: Date;
-  change_types: FileChangeType[];
-}
-
 // Error and Status Types
 
 export interface GitServiceError {

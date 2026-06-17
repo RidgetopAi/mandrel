@@ -387,7 +387,7 @@ router.get('/profile', generalLimiter, authenticateToken, async (req: Authentica
       return;
     }
 
-    const { password_hash, ...userProfile } = req.user as any;
+    const { password_hash: _password_hash, ...userProfile } = req.user as any;
     
     res.json({
       success: true,
@@ -563,7 +563,7 @@ router.post('/register', authLimiter, authenticateToken, requireAdmin, async (re
 
     const newUser = await AuthService.createUser({ username, email, password, role: role || 'admin' });
     
-    const { password_hash, ...userResponse } = newUser as any;
+    const { password_hash: _password_hash, ...userResponse } = newUser as any;
     
     res.status(201).json({
       success: true,

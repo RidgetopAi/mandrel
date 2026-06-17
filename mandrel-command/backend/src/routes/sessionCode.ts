@@ -368,7 +368,7 @@ router.get('/commits/:sessionId', validateUUIDParam('sessionId'), async (req: Re
     }
 
     // Get commits with optional file changes
-    let commitsQuery = `
+    const commitsQuery = `
       SELECT 
         gc.*,
         csl.confidence_score,

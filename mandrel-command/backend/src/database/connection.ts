@@ -115,26 +115,22 @@ export async function getDatabaseStats(): Promise<{
   pool_size: number;
   idle_connections: number;
 }> {
-  try {
-    const client = await db.connect();
-    const result = await client.query(`
-      SELECT 
-        count(*) as total_connections,
-        count(*) FILTER (WHERE state = 'active') as active_connections
-      FROM pg_stat_activity 
-      WHERE datname = current_database()
-    `);
-    client.release();
+  const client = await db.connect();
+  const result = await client.query(`
+    SELECT
+      count(*) as total_connections,
+      count(*) FILTER (WHERE state = 'active') as active_connections
+    FROM pg_stat_activity
+    WHERE datname = current_database()
+  `);
+  client.release();
 
-    return {
-      total_connections: parseInt(result.rows[0].total_connections),
-      active_connections: parseInt(result.rows[0].active_connections),
-      pool_size: db.totalCount,
-      idle_connections: db.idleCount
-    };
-  } catch (error) {
-    throw error;
-  }
+  return {
+    total_connections: parseInt(result.rows[0].total_connections),
+    active_connections: parseInt(result.rows[0].active_connections),
+    pool_size: db.totalCount,
+    idle_connections: db.idleCount
+  };
 }
 
 /**

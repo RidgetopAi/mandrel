@@ -12,13 +12,13 @@ import { logger } from '../../../config/logger';
 export function classifyCommitType(message: string): CommitType {
   const msg = message.toLowerCase();
   
-  if (msg.match(/^(fix|fixed|fixes|bug)[\s\(\[]/)) return 'fix';
-  if (msg.match(/^(feat|feature|add)[\s\(\[]/)) return 'feature';
-  if (msg.match(/^(docs|doc)[\s\(\[]/)) return 'docs';
-  if (msg.match(/^(refactor|refact)[\s\(\[]/)) return 'refactor';
-  if (msg.match(/^(test|tests)[\s\(\[]/)) return 'test';
-  if (msg.match(/^(style|format)[\s\(\[]/)) return 'style';
-  if (msg.match(/^(chore|build|ci)[\s\(\[]/)) return 'chore';
+  if (msg.match(/^(fix|fixed|fixes|bug)[\s([]/)) return 'fix';
+  if (msg.match(/^(feat|feature|add)[\s([]/)) return 'feature';
+  if (msg.match(/^(docs|doc)[\s([]/)) return 'docs';
+  if (msg.match(/^(refactor|refact)[\s([]/)) return 'refactor';
+  if (msg.match(/^(test|tests)[\s([]/)) return 'test';
+  if (msg.match(/^(style|format)[\s([]/)) return 'style';
+  if (msg.match(/^(chore|build|ci)[\s([]/)) return 'chore';
   if (msg.match(/^(merge|merged)/)) return 'merge';
   
   return 'feature';
