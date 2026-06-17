@@ -12,6 +12,7 @@
 
 import { db } from '../config/database.js';
 import { logger } from '../utils/logger.js';
+import { isValidUuid } from '../utils/uuid.js';
 import { ActiveSessionStore } from '../services/session/state/ActiveSessionStore.js';
 // Re-export types from shared types file (to avoid circular dependency with projectSwitchValidator)
 export type { ProjectInfo, CreateProjectRequest, SessionState } from '../types/project.js';
@@ -136,7 +137,7 @@ class ProjectHandler {
 
     try {
       // Try by ID first (UUID format), then by name
-      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(identifier);
+      const isUUID = isValidUuid(identifier);
       
       const field = isUUID ? 'id' : 'name';
       const result = await db.query(`

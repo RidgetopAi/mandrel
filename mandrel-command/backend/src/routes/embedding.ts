@@ -3,8 +3,7 @@ import { authenticateToken } from '../middleware/auth';
 import { AuthenticatedRequest } from '../types/auth';
 import { EmbeddingService } from '../services/EmbeddingService';
 import { logger } from '../config/logger';
-
-const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+import { isValidUuid } from '../utils/uuid';
 
 const resolveProjectScope = (
   req: AuthenticatedRequest
@@ -19,7 +18,7 @@ const resolveProjectScope = (
     return {};
   }
 
-  if (uuidRegex.test(legacyHeader)) {
+  if (isValidUuid(legacyHeader)) {
     return { projectId: legacyHeader };
   }
 

@@ -74,6 +74,52 @@ describe('shared isValidUuid (single source of truth)', () => {
   });
 });
 
+// ---------------------------------------------------------------------------
+// Strict-RFC -> shared-validator migration (task 76404ecf).
+//
+// Several id-vs-name DISCRIMINATORS used to carry their OWN inline regex with
+// the RFC version/variant nibbles (`-[1-5]...-[89ab]...`): the backend embedding
+// route (`resolveProjectScope`), the mcp-server project handler (`getProject`),
+// and `projectSwitchValidator`. Those are now migrated to the shared
+// `isValidUuid`. The migration must only ever make the discriminator LOOSER (the
+// shared loose set is a strict superset of the old RFC set) — never stricter —
+// so a Postgres-valid non-RFC id is now correctly treated as an *id*, not a
+// *name* (the over-rejection / "M1 in reverse" failure mode).
+// ---------------------------------------------------------------------------
+describe('discriminator migration: strict RFC regex -> shared isValidUuid (no over-rejection)', () => {
+  // The exact strict regex the migrated sites used to embed inline.
+  const OLD_STRICT_RFC =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+  test('shared validator is a SUPERSET of the old strict regex (nothing got stricter)', () => {
+    // Every id the OLD strict regex accepted, the shared validator must still
+    // accept — otherwise the migration would lock a user out of a valid id.
+    const strictlyAccepted = [
+      REAL_UUID, // a real v4 (version 4, variant 9) — accepted by both
+      'c875b2af-9020-41b7-9595-d70221603464',
+      'aaaaaaaa-aaaa-1aaa-8aaa-aaaaaaaaaaaa',
+    ];
+    for (const id of strictlyAccepted) {
+      expect(OLD_STRICT_RFC.test(id)).toBe(true); // sanity: old regex took it
+      expect(isValidUuid(id)).toBe(true); // shared validator still takes it
+    }
+  });
+
+  test('shared validator now accepts ids the OLD strict regex WRONGLY rejected (the fix)', () => {
+    // These cast cleanly to Postgres `uuid` but fail the RFC version/variant
+    // nibbles, so the old strict discriminator mis-routed them as NAMES.
+    const wronglyRejectedByOldRegex = [
+      'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+      '12345678-1234-1234-1234-123456789012',
+      'c875b2af-9020-71b7-c595-d70221603464', // version 7, variant c — non-RFC4122 nibbles
+    ];
+    for (const id of wronglyRejectedByOldRegex) {
+      expect(OLD_STRICT_RFC.test(id)).toBe(false); // old regex mis-rejected it
+      expect(isValidUuid(id)).toBe(true); // shared validator now accepts it
+    }
+  });
+});
+
 // Build a tiny app mirroring the production route shapes added in this fix.
 function buildApp() {
   const app = express();
