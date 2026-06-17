@@ -4,6 +4,7 @@
  */
 
 import { logger } from '../utils/logger.js';
+import { isValidUuid } from '../utils/uuid.js';
 
 // Enhanced ingress validation options
 export interface IngressValidationOptions {
@@ -369,11 +370,11 @@ export class IngressValidator {
       }
 
       // Universal validations
-      if (args.projectId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(args.projectId)) {
+      if (args.projectId && !isValidUuid(args.projectId)) {
         errors.push('Invalid project ID format');
       }
 
-      if (args.sessionId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(args.sessionId)) {
+      if (args.sessionId && !isValidUuid(args.sessionId)) {
         errors.push('Invalid session ID format');
       }
 

@@ -13,6 +13,7 @@
 
 import { db } from '../config/database.js';
 import { logger } from '../utils/logger.js';
+import { isValidUuid } from '../utils/uuid.js';
 import type { ProjectInfo } from '../types/project.js';  // ← Import type from shared file
 import { randomUUID } from 'crypto';
 
@@ -338,7 +339,7 @@ class ProjectSwitchValidator {
 
     try {
       // Check if sessionId is a UUID format - if not, skip database check
-      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(sessionId);
+      const isUUID = isValidUuid(sessionId);
       
       if (!isUUID) {
         // For non-UUID session IDs, check if it exists in ProjectHandler's in-memory store

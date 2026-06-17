@@ -15,6 +15,7 @@ import { dimensionalityReductionService } from '../services/dimensionality-reduc
 import { projectHandler } from './project.js';
 import { logContextEvent, logHierarchicalMemorySearch } from '../middleware/eventLogger.js';
 import { logger } from '../utils/logger.js';
+import { isValidUuid } from '../utils/uuid.js';
 
 export interface StoreContextRequest {
   projectId?: string;
@@ -596,8 +597,7 @@ class ContextHandler {
   private async ensureProjectId(projectId?: string): Promise<string> {
     if (projectId) {
       // Check if projectId is a valid UUID format
-      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-      const isUuid = uuidRegex.test(projectId);
+      const isUuid = isValidUuid(projectId);
 
       // Query by UUID or name
       const result = await db.query(

@@ -1,6 +1,7 @@
 import { Pool } from 'pg';
 import { db } from '../config/database.js';
 import { logger } from '../utils/logger.js';
+import { isValidUuid } from '../utils/uuid.js';
 
 export interface Agent {
     id: string;
@@ -462,8 +463,7 @@ class AgentsHandler {
     }
 
     private isUUID(str: string): boolean {
-        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-        return uuidRegex.test(str);
+        return isValidUuid(str);
     }
 
     async updateTaskStatus(
