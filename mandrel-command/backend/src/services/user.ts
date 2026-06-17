@@ -153,27 +153,6 @@ export class UserService {
     return (result.rowCount ?? 0) > 0;
   }
 
-  static async getUserSessions(userId: string): Promise<any[]> {
-    const result = await pool.query(`
-      SELECT id, token_id, created_at, expires_at, is_active
-      FROM user_sessions 
-      WHERE user_id = $1 
-      ORDER BY created_at DESC
-    `, [userId]);
-    
-    return result.rows;
-  }
-
-  static async getActiveSessionsCount(userId: string): Promise<number> {
-    const result = await pool.query(`
-      SELECT COUNT(*) as count
-      FROM user_sessions 
-      WHERE user_id = $1 AND is_active = true AND expires_at > NOW()
-    `, [userId]);
-    
-    return parseInt(result.rows[0].count);
-  }
-
   static async validatePasswordStrength(password: string): Promise<{ isValid: boolean; errors: string[] }> {
     const errors: string[] = [];
 
