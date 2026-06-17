@@ -47,6 +47,27 @@ Add this to your Amp settings (`amp.mcpServers`):
 ```
 Save and reload Amp. Mandrel's tools will load alongside your others.
 
+### OpenCode — a config block
+Add a `mandrel` server to your OpenCode config — `opencode.json` in your project root, or
+`~/.config/opencode/opencode.json` to make it available everywhere:
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "mandrel": {
+      "type": "remote",
+      "url": "{{MCP_URL}}",
+      "enabled": true,
+      "oauth": false,
+      "headers": { "Authorization": "Bearer {{TOKEN}}" }
+    }
+  }
+}
+```
+The `"oauth": false` matters: Mandrel is fail-closed (no token → `401`), and OpenCode would
+otherwise try to start an OAuth flow when it sees that 401 — this keeps it on your bearer
+token. Restart OpenCode and Mandrel's tools load alongside your others.
+
 ---
 
 ## 2. Or — let your agent set it up (keeps your token out of the chat)
@@ -56,7 +77,7 @@ chat.** Your token is a password, and chat messages can be logged. Instead, hand
 the *file* and let it read the token from disk:
 
 1. **Save this file** into your project (e.g. as `mandrel-CONNECT.md`).
-2. Tell Claude Code or Amp:
+2. Tell Claude Code, Amp, or OpenCode:
 
 > Read `mandrel-CONNECT.md` in my project and connect me to my Mandrel instance over MCP,
 > using the MCP URL and token from that file (don't print the token back to me).
@@ -64,6 +85,9 @@ the *file* and let it read the token from disk:
 >   `claude mcp list` and tell me if it shows Connected.
 > - If I'm in **Amp**, add a `mandrel` server to my `amp.mcpServers` settings using the URL
 >   and `Authorization: Bearer` header from the file, then tell me to reload.
+> - If I'm in **OpenCode**, add a `mandrel` server to my `opencode.json` `mcp` block with
+>   `type: "remote"`, the URL, `oauth: false`, and the `Authorization: Bearer` header from
+>   the file, then tell me to restart.
 
 Your agent reads the token straight from the file and runs the setup — you never paste it
 into the chat. (When you're done, you can delete the file or keep it somewhere private.)
