@@ -1,0 +1,11 @@
+# Code-health reports: commit the consolidated markdown reports ONLY.
+# Raw per-tool output (jscpd JSON, semgrep JSON, eslint JSON, gitleaks JSON,
+# knip logs, etc.) is noisy/large and lives under
+# ridgetopai-reports/code-health/<date>/raw/ (outside this repo) by default.
+# This guard makes sure that if anyone ever points REPORT_ROOT inside the repo,
+# the raw dumps still never get committed.
+raw/
+*/raw/
+*.json
+*.log
+!code-health-*.md
