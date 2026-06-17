@@ -317,7 +317,9 @@ const AppLayout: React.FC = () => {
 
         {/* Breadcrumb */}
         <div style={{
-          padding: '16px 24px 0',
+          // Tighter side padding on phones so the breadcrumb aligns with the
+          // edge-to-edge content card below instead of leaving a gutter.
+          padding: isMobile ? '12px 12px 0' : '16px 24px 0',
           background: themeMode === 'dark' ? '#141414' : '#f0f2f5',
         }}>
           <Breadcrumb items={getBreadcrumbItems()} />
@@ -326,14 +328,21 @@ const AppLayout: React.FC = () => {
         {/* Content */}
         <Content
           style={{
-            margin: '24px',
-            padding: '24px',
+            // On phones the 24px margin on each side (48px total) left a white
+            // gutter and squeezed the content to ~70% width. Use a small uniform
+            // margin so the content card fills the viewport edge-to-edge; the nav
+            // is an overlay Drawer, so it reserves no width. Desktop is unchanged.
+            margin: isMobile ? '12px' : '24px',
+            padding: isMobile ? '16px' : '24px',
             background: themeMode === 'dark' ? '#1f1f1f' : '#fff',
             borderRadius: '8px',
             boxShadow: themeMode === 'dark'
               ? '0 2px 8px rgba(0,0,0,0.45)'
               : '0 2px 8px rgba(0,0,0,0.06)',
             minHeight: 'calc(100vh - 180px)',
+            // Guard against any wide child (tables, long titles) forcing the
+            // content wider than the viewport and reintroducing a gutter.
+            overflowX: 'hidden',
           }}
         >
           <SectionErrorBoundary section="App Layout">

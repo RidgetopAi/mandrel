@@ -446,8 +446,8 @@ const Sessions: React.FC = () => {
     <div style={{ padding: '24px' }}>
       <Space direction="vertical" size="large" style={{ width: '100%' }}>
         {/* Header */}
-        <Space style={{ width: '100%', justifyContent: 'space-between' }}>
-          <Space direction="vertical">
+        <div className="page-header-row">
+          <Space direction="vertical" className="page-header-title">
             <Title level={2}>Session Management</Title>
             <Space>
               <Text type="secondary">
@@ -483,7 +483,7 @@ const Sessions: React.FC = () => {
               )}
             </Space>
           </Space>
-          <Space>
+          <Space className="page-header-actions">
             <Button
               type="primary"
               icon={<PlayCircleOutlined />}
@@ -511,7 +511,7 @@ const Sessions: React.FC = () => {
               Refresh
             </Button>
           </Space>
-        </Space>
+        </div>
 
         {/* Stats Cards */}
         <Row gutter={[16, 16]}>

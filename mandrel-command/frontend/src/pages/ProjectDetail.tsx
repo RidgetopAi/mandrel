@@ -156,8 +156,8 @@ const ProjectDetail: React.FC = () => {
   return (
     <Space direction="vertical" size="large" style={{ width: '100%' }}>
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <div>
+      <div className="page-header-row" style={{ alignItems: 'flex-start' }}>
+        <div className="page-header-title">
           <Button 
             icon={<ArrowLeftOutlined />} 
             onClick={() => navigate('/projects')}
@@ -189,9 +189,11 @@ const ProjectDetail: React.FC = () => {
             </div>
           </div>
         </div>
-        <Button type="primary" icon={<EditOutlined />} onClick={handleEditProject}>
-          Edit Project
-        </Button>
+        <div className="page-header-actions" style={{ display: 'flex', gap: '8px' }}>
+          <Button type="primary" icon={<EditOutlined />} onClick={handleEditProject}>
+            Edit Project
+          </Button>
+        </div>
       </div>
 
       {/* Project Overview */}

@@ -219,8 +219,8 @@ const Decisions: React.FC = () => {
   return (
     <Space direction="vertical" size="large" style={{ width: '100%' }}>
       {/* Page Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div>
+      <div className="page-header-row">
+        <div className="page-header-title">
           <Title level={2} style={{ margin: 0 }}>
             <BulbOutlined /> Technical Decision Browser
           </Title>
@@ -228,8 +228,8 @@ const Decisions: React.FC = () => {
             Track architectural decisions, their rationale, and outcomes across your projects
           </Text>
         </div>
-        
-        <Space>
+
+        <Space className="page-header-actions">
           <Button
             icon={<BarChartOutlined />}
             onClick={() => setShowStatsModal(true)}

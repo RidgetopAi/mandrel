@@ -13,6 +13,51 @@
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 }
 
+/* ============================================
+   Shared page-header row (title block + action buttons)
+   Used by Contexts, Decisions, Tasks, ProjectDetail, etc.
+
+   The old markup was a non-wrapping flex row:
+   [title block | action buttons]. On phones the buttons kept their
+   natural width and overflowed right, squeezing the title flex-item to
+   ~1 char wide so the title wrapped one letter per line (and the buttons
+   ran off the right edge). This shared class fixes the whole class:
+   - flex-wrap so the buttons drop below the title when there isn't room;
+   - the title block claims a full line (flex-basis 100% under the wrap
+     threshold) and min-width:0 so it can shrink without per-char wrapping;
+   - on wide screens there's room for both so it stays a single row →
+     desktop is visually unchanged.
+   ============================================ */
+.page-header-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+/* Title block: never the thing that gets squeezed. min-width:0 lets it
+   shrink past its content's intrinsic min-width (which is what caused the
+   per-character wrap); flex-basis 320px means once the row is narrower than
+   ~title+buttons it claims a full line and the buttons wrap beneath it. */
+.page-header-row > .page-header-title {
+  flex: 1 1 320px;
+  min-width: 0;
+}
+
+/* On real phones, force the title to its own full-width line and let the
+   action buttons wrap below it, left-aligned and usable. */
+@media (max-width: 575px) {
+  .page-header-row > .page-header-title {
+    flex: 1 1 100%;
+  }
+  .page-header-row > .page-header-actions {
+    flex: 1 1 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+}
+
 /* Layout customizations */
 .ant-layout {
   background: var(--bg-secondary) !important;

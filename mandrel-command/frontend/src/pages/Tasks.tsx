@@ -217,8 +217,8 @@ const Tasks: React.FC = () => {
       <Row gutter={[24, 24]}>
         <Col xs={24}>
           <Card>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <div>
+            <div className="page-header-row" style={{ marginBottom: '16px' }}>
+              <div className="page-header-title">
                 <h2 style={{ margin: 0, display: 'flex', alignItems: 'center' }}>
                   <ProjectOutlined style={{ marginRight: '8px' }} />
                   Task Management - {selectedProjectName}
@@ -227,7 +227,7 @@ const Tasks: React.FC = () => {
                   {tasks.length} tasks loaded
                 </p>
               </div>
-              <div style={{ display: 'flex', gap: '8px' }}>
+              <div className="page-header-actions" style={{ display: 'flex', gap: '8px' }}>
                 <Button
                   icon={<ReloadOutlined />}
                   onClick={loadTasks}
