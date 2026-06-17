@@ -49,6 +49,12 @@ paths = [
   # Audit: generic-api-key on **/AUTHENTICATION.md, triaged DEAD (expired demo).
   '''(^|/)AUTHENTICATION\.md$''',
 
+  # test-session-code-api.ts ships SHORT STUB authTokens (8-char, not real
+  # credentials) hardcoded in a manual API test. Triaged DEAD (test stubs;
+  # generic-api-key false-positive). The proper fix is fixture/env replacement
+  # (task 3bdf4139); remove this entry once that lands.
+  '''(^|/)test-session-code-api\.ts$''',
+
   # --- Legacy cruft paths, now .gitignore'd so they can't re-enter ---------
   # Each path below leaked in HISTORY only (not the current worktree, not
   # tracked). They are now blocked by .gitignore; these entries stop them
