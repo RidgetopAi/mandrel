@@ -99,14 +99,10 @@ export class GitCorrelationService {
     try {
       logger.info(`🔗 Correlating session ${sessionId.substring(0, 8)}... with git commits`);
       
-      // Get session details from both tables (user_sessions and sessions)
+      // Get session details (single consolidated `sessions` table)
       const sessionQuery = `
-        SELECT project_id, started_at, ended_at 
-        FROM user_sessions 
-        WHERE id = $1
-        UNION ALL
-        SELECT project_id, started_at, ended_at 
-        FROM sessions 
+        SELECT project_id, started_at, ended_at
+        FROM sessions
         WHERE id = $1
       `;
       
@@ -191,14 +187,10 @@ export class GitCorrelationService {
       const commitsResult = await db.query(commitSql, params);
       const commits = commitsResult.rows;
       
-      // Get sessions for correlation (from both tables)
+      // Get sessions for correlation (single consolidated `sessions` table)
       const sessionsResult = await db.query(`
         SELECT id, started_at, ended_at, agent_type
-        FROM sessions 
-        WHERE project_id = $1
-        UNION ALL
-        SELECT id, started_at, last_activity as ended_at, 'web' as agent_type
-        FROM user_sessions
+        FROM sessions
         WHERE project_id = $1
         ORDER BY started_at DESC
       `, [project_id]);

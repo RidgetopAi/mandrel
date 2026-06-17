@@ -200,10 +200,8 @@ export class GitTracker {
         };
       }
 
-      // Get session project
+      // Get session project (single consolidated `sessions` table)
       const sessionQuery = `
-        SELECT project_id FROM user_sessions WHERE id = $1
-        UNION ALL
         SELECT project_id FROM sessions WHERE id = $1
       `;
       const sessionResult = await db.query(sessionQuery, [sessionId]);
@@ -278,11 +276,8 @@ export class GitTracker {
         };
       }
 
-      // Get session project
+      // Get session project (single consolidated `sessions` table)
       const sessionQuery = `
-        SELECT project_id, started_at
-        FROM user_sessions WHERE id = $1
-        UNION ALL
         SELECT project_id, started_at
         FROM sessions WHERE id = $1
       `;
@@ -350,13 +345,8 @@ export class GitTracker {
         return;
       }
 
-      // Get project root directory
+      // Get project root directory (single consolidated `sessions` table)
       const sessionQuery = `
-        SELECT p.root_directory, p.metadata->>'git_repo_path' as git_path
-        FROM user_sessions us
-        JOIN projects p ON us.project_id = p.id
-        WHERE us.id = $1
-        UNION ALL
         SELECT p.root_directory, p.metadata->>'git_repo_path' as git_path
         FROM sessions s
         JOIN projects p ON s.project_id = p.id
