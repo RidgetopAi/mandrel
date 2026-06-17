@@ -256,8 +256,8 @@ const ProjectInsights: React.FC<ProjectInsightsProps> = ({ projectId, className 
         ) : (
           <Card size="small">
             <Alert
-              message="No Git Activity Tracked"
-              description="Git commit tracking has not been set up for this project yet."
+              message="No Git Activity Yet"
+              description="Development activity is populated from a local Git repository. It won't appear on a hosted instance, and there's nothing to configure here."
               type="info"
               showIcon
             />
