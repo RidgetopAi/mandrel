@@ -49,20 +49,24 @@ Save and reload Amp. Mandrel's tools will load alongside your others.
 
 ---
 
-## 2. Or — let your agent set itself up
+## 2. Or — let your agent set it up (keeps your token out of the chat)
 
-Don't want to touch a terminal? Paste this to Claude Code or Amp and let it do the work:
+Don't want to touch a terminal? Let your agent do it — but **don't paste your token into the
+chat.** Your token is a password, and chat messages can be logged. Instead, hand your agent
+the *file* and let it read the token from disk:
 
-> Connect me to my Mandrel instance (it's my AI coding memory, over MCP).
-> - MCP URL: `{{MCP_URL}}`
-> - Auth header: `Authorization: Bearer {{TOKEN}}`
->
-> If I'm in **Claude Code**, run:
-> `claude mcp add --transport http mandrel {{MCP_URL}} --header "Authorization: Bearer {{TOKEN}}"`
-> then `claude mcp list` and tell me if it shows Connected.
-> If I'm in **Amp**, add a `mandrel` server to my `amp.mcpServers` settings with that url and Authorization header, then tell me to reload.
+1. **Save this file** into your project (e.g. as `mandrel-CONNECT.md`).
+2. Tell Claude Code or Amp:
 
-Your agent reads the access, runs the right setup, and confirms it's connected.
+> Read `mandrel-CONNECT.md` in my project and connect me to my Mandrel instance over MCP,
+> using the MCP URL and token from that file (don't print the token back to me).
+> - If I'm in **Claude Code**, run the `claude mcp add` command shown in the file, then run
+>   `claude mcp list` and tell me if it shows Connected.
+> - If I'm in **Amp**, add a `mandrel` server to my `amp.mcpServers` settings using the URL
+>   and `Authorization: Bearer` header from the file, then tell me to reload.
+
+Your agent reads the token straight from the file and runs the setup — you never paste it
+into the chat. (When you're done, you can delete the file or keep it somewhere private.)
 
 ---
 
