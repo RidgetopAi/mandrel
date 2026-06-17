@@ -28,12 +28,22 @@ import { registerMcpHandlers, type McpHandlerDeps } from './registerMcpHandlers.
 
 const MCP_SESSION_HEADER = 'mcp-session-id';
 const JSONRPC_INVALID_REQUEST = -32600;
+// Session-expired (idle-evicted) is distinct from a malformed/no-session request: it is
+// a recoverable state where the client should RE-INITIALIZE. We use a dedicated code in
+// the implementation-defined JSON-RPC range (-32000..-32099) so a well-behaved MCP
+// client can recognize "re-initialize needed" rather than treating it as a fatal
+// protocol/auth error. (Auth failures stay 401/-32001 in bearerAuth — see CONSTRAINTS.)
+const JSONRPC_SESSION_EXPIRED = -32002;
 
 // Bounds on the per-session transport map. Even an AUTHENTICATED caller must not be
 // able to grow memory without limit by spamming `initialize`. We cap the number of
 // live sessions and evict idle ones, so memory stays bounded on the public endpoint.
 const DEFAULT_MAX_SESSIONS = 100;
-const DEFAULT_SESSION_IDLE_MS = 30 * 60 * 1000; // 30 minutes
+// Idle TTL before a session is evicted. Tuned so a working dev rarely hits idle-expiry:
+// 4 hours comfortably spans normal work gaps (meetings, lunch, context-switching) while
+// staying BOUNDED for memory/security (not unbounded). Override with MCP_SESSION_IDLE_MS
+// (milliseconds) without a code change.
+const DEFAULT_SESSION_IDLE_MS = 4 * 60 * 60 * 1000; // 4 hours
 
 function resolveMaxSessions(): number {
   const raw = process.env.MCP_MAX_SESSIONS;
@@ -175,15 +185,45 @@ export class RemoteMcpTransport {
         return;
       }
 
-      // Anything else is a protocol error (missing/unknown session, non-init).
-      logger.warn(`MCP POST rejected: no valid session (sessionId=${sessionId ?? 'none'})`);
+      // A session id WAS supplied but is not (or no longer) in our map. The common cause
+      // is idle eviction: the session expired after inactivity. This is RECOVERABLE — the
+      // bearer token is still valid (auth ran before us); the client just needs to
+      // re-initialize. Return a clear, self-healing error so the agent/user re-connects
+      // instead of reading a cryptic "no valid session" as an outage.
+      if (sessionId) {
+        logger.info(
+          `MCP POST: unknown/expired session ${sessionId.substring(0, 8)}… → asking client to re-initialize`
+        );
+        res.status(404).json({
+          jsonrpc: '2.0',
+          error: {
+            code: JSONRPC_SESSION_EXPIRED,
+            message:
+              'MCP session expired after inactivity. Re-initialize the connection ' +
+              '(reconnect / restart your MCP client) to start a new session, then retry. ' +
+              'Your credentials are still valid — this is not an auth failure.',
+            data: {
+              reason: 'session_expired',
+              action: 'reinitialize',
+              retryable: true,
+            },
+          },
+          id: (req.body && typeof req.body === 'object' && 'id' in req.body) ? req.body.id : null,
+        });
+        return;
+      }
+
+      // No session id and not an initialize request → genuine protocol error.
+      logger.warn('MCP POST rejected: no session id on a non-initialize request');
       res.status(400).json({
         jsonrpc: '2.0',
         error: {
           code: JSONRPC_INVALID_REQUEST,
-          message: 'Bad Request: no valid session ID provided for non-initialize request.',
+          message:
+            'Bad Request: no session ID provided for a non-initialize request. ' +
+            'Send an "initialize" request first to establish an MCP session.',
         },
-        id: null,
+        id: (req.body && typeof req.body === 'object' && 'id' in req.body) ? req.body.id : null,
       });
     } catch (error) {
       logger.error('Error handling MCP POST request', error as Error);
