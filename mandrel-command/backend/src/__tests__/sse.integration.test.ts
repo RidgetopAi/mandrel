@@ -247,7 +247,7 @@ describeStreaming('SSE Integration Tests', () => {
     it('should only receive events for subscribed project', (done) => {
       const contextId1 = randomUUID();
       const contextId2 = randomUUID();
-      let receivedEvents: string[] = [];
+      const receivedEvents: string[] = [];
 
       const req = request(app)
         .get(`/api/events?projectId=${subscribedProjectId}`)
@@ -304,7 +304,7 @@ describeStreaming('SSE Integration Tests', () => {
     it('should only receive events for subscribed entity types', (done) => {
       const taskId = randomUUID();
       const contextId = randomUUID();
-      let receivedEvents: string[] = [];
+      const receivedEvents: string[] = [];
 
       const req = request(app)
         .get('/api/events?entities=tasks')

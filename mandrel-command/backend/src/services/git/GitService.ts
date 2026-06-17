@@ -231,8 +231,8 @@ export class GitService {
     };
   }> {
     try {
-      let whereConditions: string[] = ['gc.project_id = $1'];
-      let queryParams: any[] = [request.project_id];
+      const whereConditions: string[] = ['gc.project_id = $1'];
+      const queryParams: any[] = [request.project_id];
       let paramIndex = 2;
       
       if (request.author) {
@@ -323,8 +323,8 @@ export class GitService {
 
   static async getFileChangeHotspots(project_id: string, options: { since?: Date; limit?: number; min_changes?: number } = {}) {
     try {
-      let whereConditions = ['gfc.project_id = $1'];
-      let queryParams: any[] = [project_id];
+      const whereConditions = ['gfc.project_id = $1'];
+      const queryParams: any[] = [project_id];
       
       if (options.since) {
         whereConditions.push(`gc.author_date >= $2`);

@@ -160,7 +160,7 @@ export class AuthService {
     await this.updateLastLogin(user.id);
 
     // Remove password_hash from user object
-    const { password_hash, ...userWithoutPassword } = user;
+    const { password_hash: _password_hash, ...userWithoutPassword } = user;
 
     return {
       user: userWithoutPassword as User,
