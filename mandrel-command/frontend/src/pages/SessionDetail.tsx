@@ -492,6 +492,7 @@ const SessionDetail: React.FC = () => {
               <Table
                 dataSource={tasks}
                 rowKey="id"
+                scroll={{ x: 'max-content' }}
                 pagination={{
                   pageSize: 20,
                   showSizeChanger: true,
@@ -659,6 +660,7 @@ const SessionDetail: React.FC = () => {
               <Table
                 dataSource={sessionFiles}
                 rowKey="id"
+                scroll={{ x: 'max-content' }}
                 pagination={{
                   pageSize: 20,
                   showSizeChanger: true,

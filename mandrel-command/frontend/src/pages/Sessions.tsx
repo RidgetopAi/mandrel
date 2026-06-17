@@ -605,6 +605,7 @@ const Sessions: React.FC = () => {
             dataSource={filteredSessions}
             rowKey="id"
             loading={loading}
+            scroll={{ x: 'max-content' }}
             pagination={{
               total: filteredSessions.length,
               pageSize: 10,

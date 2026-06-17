@@ -266,9 +266,10 @@ const Decisions: React.FC = () => {
       )}
 
       <Row gutter={24}>
-        {/* Filters Sidebar */}
+        {/* Filters Sidebar — full width on phones (stacks above results),
+            fixed 25% sidebar from md up. Avoids the ~97px crushed column. */}
         {showFilters && (
-          <Col span={6}>
+          <Col xs={24} md={6}>
             <DecisionFilters
               onSearch={handleSearch}
               loading={isSearching}
@@ -277,7 +278,7 @@ const Decisions: React.FC = () => {
         )}
 
         {/* Main Content */}
-        <Col span={showFilters ? 18 : 24}>
+        <Col xs={24} md={showFilters ? 18 : 24}>
           <Space direction="vertical" size="middle" style={{ width: '100%' }}>
             {/* Results Header */}
             <Card size="small">

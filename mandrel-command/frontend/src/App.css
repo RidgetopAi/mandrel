@@ -48,20 +48,9 @@
   transition: all 0.3s ease;
 }
 
-/* Responsive adjustments */
-@media (max-width: 768px) {
-  .ant-layout-sider {
-    position: fixed !important;
-    left: 0;
-    top: 0;
-    bottom: 0;
-    z-index: 1000;
-  }
-  
-  .ant-layout-content {
-    margin-left: 0 !important;
-  }
-}
+/* Mobile navigation is now an antd overlay Drawer (see AppLayout.tsx) rather
+   than a position:fixed Sider hack. The old @media (max-width:768px) block that
+   force-fixed .ant-layout-sider was removed here to avoid dead/conflicting CSS. */
 
 /* Legacy styles to maintain compatibility */
 .layout {

@@ -14,7 +14,8 @@ import {
   Descriptions,
   Timeline,
   Alert,
-  Spin
+  Spin,
+  Grid
 } from 'antd';
 import {
   EditOutlined,
@@ -42,6 +43,7 @@ dayjs.extend(timezone);
 
 const { Text, Paragraph } = Typography;
 const { TextArea } = Input;
+const { useBreakpoint } = Grid;
 
 interface DecisionDetailProps {
   visible: boolean;
@@ -61,6 +63,9 @@ const DecisionDetail: React.FC<DecisionDetailProps> = ({
   const [editMode, setEditMode] = useState(false);
   const [loading, setLoading] = useState(false);
   const [form] = Form.useForm();
+  const screens = useBreakpoint();
+  // Full-screen drawer on phones; the fixed 720px overflows a ~390px viewport.
+  const isMobile = !screens.md;
 
   useEffect(() => {
     if (decision && visible) {
@@ -234,7 +239,7 @@ const DecisionDetail: React.FC<DecisionDetailProps> = ({
       closable={true}
       onClose={onClose}
       open={visible}
-      width={720}
+      width={isMobile ? '100%' : 720}
       extra={
         <Space>
           {!editMode ? (

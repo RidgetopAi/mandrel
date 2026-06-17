@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   Drawer, Typography, Space, Tag, Button, Descriptions, Card,
-  Tabs, List, message, Spin, Input, Form, Select, Modal
+  Tabs, List, message, Spin, Input, Form, Select, Modal, Grid
 } from 'antd';
 import {
   EditOutlined, SaveOutlined, ShareAltOutlined,
@@ -31,6 +31,7 @@ dayjs.extend(timezone);
 const { Text, Paragraph } = Typography;
 const { TextArea } = Input;
 const { TabPane } = Tabs;
+const { useBreakpoint } = Grid;
 
 interface ContextDetailProps {
   visible: boolean;
@@ -49,6 +50,9 @@ const ContextDetail: React.FC<ContextDetailProps> = ({
 }) => {
   const { relatedContexts, setRelatedContexts, setCurrentContext } = useContextStore();
   const { allProjects } = useProjectContext();
+  const screens = useBreakpoint();
+  // Full-screen drawer on phones; the 66% width is unusably narrow at ~390px.
+  const isMobile = !screens.md;
   const [isEditing, setIsEditing] = useState(false);
   const [originalProjectId, setOriginalProjectId] = useState<string | null>(null);
   const [showMetadata, setShowMetadata] = useState(false);
@@ -219,7 +223,7 @@ const ContextDetail: React.FC<ContextDetailProps> = ({
         </Space>
       }
       placement="right"
-      width="66%"
+      width={isMobile ? '100%' : '66%'}
       onClose={onClose}
       open={visible}
       extra={
