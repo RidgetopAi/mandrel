@@ -7,14 +7,20 @@
 # This script is the PUSH half: when a tester submits feedback on ANY hosted Mandrel
 # instance, fire a phone alert so Brian knows to go look — even though this runs
 # head­less from cron (the Claude-app/Remote-Control push is tied to Ridge's live
-# session and can't be fired from cron, so we use ntfy.sh instead).
+# session and can't be fired from cron, so we route through Telegram instead).
 #
-# ── PRIVACY: METADATA ONLY ────────────────────────────────────────────────────────
-#   The push alert carries ONLY metadata: type, severity, username, instance, page.
-#   It DELIBERATELY does NOT include the feedback message body. The full content stays
-#   on the dashboard (ridge.ridgetopai.net/feedback.html). The alert just says
-#   "something came in, go look." This keeps free-text user content off a third-party
-#   push service (ntfy.sh). Do NOT add the message body to the ntfy payload.
+# ── ALWAYS LOUD ───────────────────────────────────────────────────────────────────
+#   NEW customer feedback ALWAYS notifies loudly, regardless of severity. A tester
+#   reaching out must never arrive silently. (Previously low-severity feedback mapped
+#   to a silent push — that is fixed: every new feedback row alerts loud.)
+#
+# ── PRIVACY: MESSAGE INCLUDED — PRIVATE TELEGRAM CHAT ONLY ────────────────────────
+#   The push alert carries metadata (type, severity, username, instance, page) PLUS
+#   the feedback message body (whitespace-collapsed, truncated to 400 chars), so Brian
+#   can read a tester's feedback at a glance without opening the dashboard. This is
+#   ONLY acceptable because the push goes to his PRIVATE Telegram chat. Do NOT route
+#   this alert to any public / third-party channel while it carries the message body.
+#   The full, untruncated content also remains on the dashboard (…/feedback.html).
 #
 # ── READ-ONLY ─────────────────────────────────────────────────────────────────────
 #   Every DB statement against an instance is a SELECT from `feedback`. This script
@@ -35,23 +41,19 @@
 #
 set -euo pipefail
 
-NTFY_ENV="${NTFY_ENV:-/root/.ridge-ntfy.env}"
+NOTIFY_LIB="${NOTIFY_LIB:-$(dirname "${BASH_SOURCE[0]}")/lib/ridge-notify.sh}"
 WATERMARK_FILE="${WATERMARK_FILE:-/root/.ridge-feedback-watermark}"
 DASHBOARD="ridge.ridgetopai.net/feedback.html"
 
 log() { printf '%s feedback-notify: %s\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" "$*"; }
 
-# --- Load the secret ntfy topic (never echoed) ------------------------------------
-if [[ ! -r "$NTFY_ENV" ]]; then
-  log "FATAL: cannot read $NTFY_ENV (ntfy topic). Aborting."
+# --- Load shared Telegram notify helper (creds never echoed) -----------------------
+if [[ ! -r "$NOTIFY_LIB" ]]; then
+  log "FATAL: notify helper not found: $NOTIFY_LIB. Aborting."
   exit 1
 fi
 # shellcheck disable=SC1090
-. "$NTFY_ENV"
-if [[ -z "${NTFY_TOPIC:-}" ]]; then
-  log "FATAL: NTFY_TOPIC not set in $NTFY_ENV. Aborting."
-  exit 1
-fi
+. "$NOTIFY_LIB"
 
 # --- Discover instances by their postgres containers (auto-pickup new ones) -------
 mapfile -t PG_CONTAINERS < <(docker ps --format '{{.Names}}' | grep -E '^mandrel-.*-postgres$' | sort)
@@ -89,24 +91,17 @@ if ! [[ "$WATERMARK" =~ ^[0-9]+$ ]]; then
 fi
 log "start: watermark epoch=$WATERMARK ($(date -u -d "@$WATERMARK" '+%Y-%m-%d %H:%M:%SZ'))"
 
-# --- Map severity -> ntfy Priority header -----------------------------------------
-sev_to_priority() {
+# --- Map type -> leading emoji ----------------------------------------------------
+type_to_emoji() {
   case "$1" in
-    high)   echo "urgent" ;;
-    medium) echo "default" ;;
-    low)    echo "low" ;;
-    *)      echo "default" ;;
+    bug)      echo "🐞" ;;
+    idea)     echo "💡" ;;
+    question) echo "❓" ;;
+    *)        echo "🗣️" ;;
   esac
 }
-# --- Map type -> tag/emoji (ntfy renders named emoji from the Tags header) ---------
-type_to_tag() {
-  case "$1" in
-    bug)      echo "beetle" ;;       # 🐞
-    idea)     echo "bulb" ;;         # 💡
-    question) echo "question" ;;     # ❓
-    *)        echo "speech_balloon" ;;  # 🗣️
-  esac
-}
+# NOTE: NO severity->priority map any more. New customer feedback is ALWAYS loud
+# (level "high"), so a low-severity tester message can never arrive silently again.
 
 sent=0
 new_global_max="$WATERMARK"
@@ -118,16 +113,20 @@ for pg in "${PG_CONTAINERS[@]}"; do
   [[ "$(docker inspect "$pg" --format '{{.State.Status}}' 2>/dev/null || echo missing)" == "running" ]] || continue
   [[ "$(docker exec "$pg" psql -U mandrel -d mandrel -t -A -c "SELECT to_regclass('public.feedback');" 2>/dev/null || echo "")" == "feedback" ]] || continue
 
-  # READ-ONLY: pull only the METADATA columns (NO message body) for rows newer than
-  # the watermark, oldest-first so notifications arrive in chronological order.
-  # Fields (tab-separated): epoch, type, severity, username, page
+  # READ-ONLY: pull the metadata + the feedback message body for rows newer than the
+  # watermark, oldest-first so notifications arrive in chronological order. The message
+  # is whitespace-collapsed (tabs/newlines -> single spaces) so it stays one tab-safe
+  # field on one line, and truncated to 400 chars so the alert stays a sane size.
+  # The body is included because the push goes to Brian's PRIVATE Telegram chat (header).
+  # Fields (tab-separated): epoch, type, severity, username, page, message
   rows=$(docker exec "$pg" psql -U mandrel -d mandrel -t -A -F$'\t' -c "
     SELECT
       extract(epoch FROM created_at)::bigint,
       type,
       severity,
       coalesce(nullif(username,''),'anon'),
-      coalesce(nullif(page,''),'?')
+      coalesce(nullif(page,''),'?'),
+      left(regexp_replace(coalesce(message,''), '\s+', ' ', 'g'), 400)
     FROM feedback
     WHERE extract(epoch FROM created_at)::bigint > ${WATERMARK}
     ORDER BY created_at ASC;
@@ -135,30 +134,27 @@ for pg in "${PG_CONTAINERS[@]}"; do
 
   [[ -z "$rows" ]] && continue
 
-  while IFS=$'\t' read -r r_epoch r_type r_sev r_user r_page; do
+  while IFS=$'\t' read -r r_epoch r_type r_sev r_user r_page r_msg; do
     [[ -z "$r_epoch" ]] && continue
 
-    priority="$(sev_to_priority "$r_sev")"
-    tag="$(type_to_tag "$r_type")"
+    emoji="$(type_to_emoji "$r_type")"
     title="New feedback: ${r_type}/${r_sev}"
-    # BODY = METADATA ONLY. No feedback.message anywhere in this payload.
-    body="${r_user} on ${handle} · page ${r_page}"$'\n'"→ ${DASHBOARD}"
+    # BODY now includes the feedback message itself (private Telegram chat — see header).
+    body="${r_user} on ${handle} · page ${r_page}"
+    [[ -n "$r_msg" ]] && body+=$'\n'"\"${r_msg}\""
+    body+=$'\n'"→ ${DASHBOARD}"
 
-    http=$(curl -s -o /dev/null -w '%{http_code}' \
-      -H "Title: ${title}" \
-      -H "Priority: ${priority}" \
-      -H "Tags: ${tag}" \
-      -d "${body}" \
-      "https://ntfy.sh/${NTFY_TOPIC}" 2>/dev/null || echo "000")
+    # ALWAYS LOUD: customer feedback is high-visibility regardless of severity.
+    notify "${title}" "${body}" "high" "${emoji}" || true
 
-    if [[ "$http" == "200" ]]; then
+    if [[ "${NOTIFY_LAST_OK:-0}" == "1" ]]; then
       sent=$((sent+1))
-      log "SENT [HTTP $http] ${title} | ${r_user} on ${handle} · page ${r_page} (epoch=$r_epoch)"
+      log "SENT [ok:true] ${title} | ${r_user} on ${handle} · page ${r_page} (epoch=$r_epoch)"
       [[ "$r_epoch" -gt "$new_global_max" ]] && new_global_max="$r_epoch"
     else
       # Do NOT advance the watermark past a row we failed to deliver — it will retry
       # on the next run. Stop advancing here to preserve at-least-once delivery.
-      log "FAILED [HTTP $http] ${title} | ${r_user} on ${handle} (epoch=$r_epoch) — leaving watermark; will retry next run."
+      log "FAILED [HTTP ${NOTIFY_LAST_HTTP:-000}] ${title} | ${r_user} on ${handle} (epoch=$r_epoch) — leaving watermark; will retry next run."
     fi
   done <<< "$rows"
 done
