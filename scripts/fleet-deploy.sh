@@ -272,7 +272,9 @@ deploy_prod() {
   info "prod: current=$prev  target=$ref"
 
   # Fetch the exact ref the fleet was built from; refuse if it isn't reachable.
-  if ! git -C "$dir" fetch --quiet origin --tags; then bad "prod: git fetch failed"; return 1; fi
+  # --force so divergent local tags (e.g. from a history rewrite) can't fail the
+  # fetch with "would clobber existing tag" — origin is the source of truth.
+  if ! git -C "$dir" fetch --quiet --force --tags origin; then bad "prod: git fetch failed"; return 1; fi
   if ! git -C "$dir" cat-file -e "${ref}^{commit}" 2>/dev/null; then
     bad "prod: target ref $ref not found after fetch (is it pushed to origin?)"; return 1
   fi
