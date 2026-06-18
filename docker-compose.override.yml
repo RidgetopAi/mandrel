@@ -1,0 +1,36 @@
+# SaaS-P1 isolation override (mandrel-p1).
+# Remaps published host ports to FREE high ports so the P1 golden-image stack
+# NEVER collides with LIVE PROD on this box (prod uses 8080/5000/5432/6379/3000).
+#
+# IMPORTANT: Compose MERGES list fields (like `ports`) additively by default, which
+# would keep the base file's prod port mappings. We use the `!override` YAML tag so
+# our high-port lists REPLACE the base ports entirely. `!reset null` drops the
+# hard-coded container_name so `-p mandrel-p1` fully namespaces the containers.
+#
+# Usage: docker compose -p mandrel-p1 up -d   (override is auto-merged)
+
+services:
+  postgres:
+    container_name: !reset null
+    ports: !override
+      - "${P1_PG_PORT:-15432}:5432"
+
+  redis:
+    container_name: !reset null
+    ports: !override
+      - "${P1_REDIS_PORT:-16379}:6379"
+
+  mcp-server:
+    container_name: !reset null
+    ports: !override
+      - "${P1_MCP_PORT:-18080}:8080"
+
+  mandrel-command-backend:
+    container_name: !reset null
+    ports: !override
+      - "${P1_BACKEND_PORT:-15000}:5000"
+
+  mandrel-command-frontend:
+    container_name: !reset null
+    ports: !override
+      - "${P1_FRONTEND_PORT:-13000}:3000"

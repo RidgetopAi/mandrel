@@ -42,15 +42,15 @@
 #       * prod token:    /opt/mandrel/.env.secrets      (MCP_AUTH_TOKEN=)
 #   - Classifies each: UP (200 + session, fast) / DEGRADED (200 + session but
 #     slow, > DEGRADED_THRESHOLD_S) / DOWN (non-200, no session, or timeout).
-#   - Per-endpoint STATE-DEBOUNCED ntfy: DOWN pushed ONCE at urgent priority,
-#     RECOVERY pushed ONCE, DEGRADED at default priority — never spams while a
+#   - Per-endpoint STATE-DEBOUNCED Telegram alert: DOWN pushed ONCE (loud),
+#     RECOVERY pushed ONCE (loud), DEGRADED ONCE (loud) — never spams while a
 #     state persists (reuses the prod script's state-file debounce pattern).
 #   - Regenerates the fleet HTML adding a real /mcp status + latency column
 #     alongside fleet-status.sh's shallow /healthz column.
 #
 # TOKEN DISCIPLINE (HARD RULE)
 #   Tokens are read at runtime and are NEVER echoed, logged, written to the HTML,
-#   or placed in any ntfy payload. Alerts/HTML carry ONLY handle + status +
+#   or placed in any alert payload. Alerts/HTML carry ONLY handle + status +
 #   latency. The Authorization header is constructed inline and never expanded
 #   into a log line.
 #
@@ -66,12 +66,13 @@ set -euo pipefail
 
 # --------------------------- configuration ------------------------------------
 REGISTRY="${FLEET_REGISTRY:-/root/mandrel-registry.json}"
-NTFY_ENV="${NTFY_ENV:-/root/.ridge-ntfy.env}"
 PROD_SECRETS="${PROD_SECRETS:-/opt/mandrel/.env.secrets}"
 TENANT_ENV_DIR="${TENANT_ENV_DIR:-/root}"
 STATE_DIR="${FLEET_MCP_STATE_DIR:-/root/.ridge-fleet-mcp-state}"
 OUT="${FLEET_MCP_OUT:-/home/ridgetop/projects/ridgetopai-reports/fleet-mcp.html}"
-NTFY_BASE_URL="${NTFY_BASE_URL:-https://ntfy.sh}"   # overridable for testing (default = real ntfy)
+
+# Shared Telegram notify helper (single source of truth for host alerts).
+NOTIFY_LIB="${NOTIFY_LIB:-$(dirname "${BASH_SOURCE[0]}")/lib/ridge-notify.sh}"
 
 PROD_HANDLE="prod"
 PROD_DOMAIN="mandrel.ridgetopai.net"
@@ -80,7 +81,7 @@ DEGRADED_THRESHOLD_S="${DEGRADED_THRESHOLD_S:-3.0}"   # > this (and 200+session)
 PROBE_TIMEOUT_S="${PROBE_TIMEOUT_S:-12}"
 
 # When set (DRY_RUN=1) the script probes + classifies + writes HTML but sends NO
-# ntfy pushes and does NOT update state files (so a dry-run can't desync debounce).
+# alerts and does NOT update state files (so a dry-run can't desync debounce).
 DRY_RUN="${DRY_RUN:-0}"
 
 NOW_UTC="$(date -u '+%Y-%m-%d %H:%M UTC')"
@@ -94,24 +95,20 @@ jq -e . "$REGISTRY" >/dev/null 2>&1 || { log "FATAL: registry is not valid JSON"
 
 mkdir -p "$STATE_DIR"
 
-# --------------------------- ntfy topic (never echoed) ------------------------
-if [[ ! -r "$NTFY_ENV" ]]; then log "FATAL: cannot read $NTFY_ENV"; exit 1; fi
+# --------------------------- shared notify helper -----------------------------
+# Sources the single Telegram notify helper (creds from /root/.ridge-telegram.env,
+# never echoed). DRY_RUN here propagates to the helper so a dry-run sends nothing.
+[[ -r "$NOTIFY_LIB" ]] || { log "FATAL: notify helper not found: $NOTIFY_LIB"; exit 1; }
 # shellcheck disable=SC1090
-. "$NTFY_ENV"
-if [[ -z "${NTFY_TOPIC:-}" ]]; then log "FATAL: NTFY_TOPIC not set in $NTFY_ENV"; exit 1; fi
+. "$NOTIFY_LIB"
+[[ "$DRY_RUN" == "1" ]] && export NOTIFY_DRY_RUN=1
 
 # --------------------------- HTML escape helper -------------------------------
 esc() { local s="${1:-}"; s="${s//&/&amp;}"; s="${s//</&lt;}"; s="${s//>/&gt;}"; printf '%s' "$s"; }
 
-# --------------------------- ntfy push ----------------------------------------
-push() {  # push <title> <priority> <tags> <message>
-  if [[ "$DRY_RUN" == "1" ]]; then
-    log "DRY_RUN: would push -> title='$1' priority='$2'"
-    return 0
-  fi
-  curl -s -o /dev/null -m 15 \
-    -H "Title: $1" -H "Priority: $2" -H "Tags: $3" \
-    -d "$4" "${NTFY_BASE_URL}/${NTFY_TOPIC}" || log "WARN: ntfy push failed"
+# --------------------------- alert push (Telegram) ----------------------------
+push() {  # push <title> <level> <emoji> <message>   (loud unless level=low/min)
+  notify "$1" "$4" "$2" "$3" || log "WARN: Telegram alert failed"
 }
 
 # --------------------------- token loader (NEVER echoed) ----------------------
@@ -187,21 +184,21 @@ alert_if_changed() {  # $1=handle $2=domain $3=state $4=code $5=time
     DOWN)
       if [[ "$prev" != "DOWN" ]]; then
         log "ALERT(DOWN): ${handle} /mcp DOWN (code=${code}, ${lat})"
-        push "🔴 ${handle} /mcp DOWN" "urgent" "rotating_light" \
+        push "${handle} /mcp DOWN" "urgent" "🔴" \
           "Tenant '${handle}' MCP transport failing — code=${code}, latency=${lat}. Synthetic initialize got no valid session. (on-box/internal probe)"
       fi
       ;;
     DEGRADED)
       if [[ "$prev" != "DEGRADED" ]]; then
         log "ALERT(DEGRADED): ${handle} /mcp slow (${lat})"
-        push "🟠 ${handle} /mcp DEGRADED" "default" "warning" \
+        push "${handle} /mcp DEGRADED" "default" "🟠" \
           "Tenant '${handle}' MCP slow — code=${code}, latency=${lat} (> ${DEGRADED_THRESHOLD_S}s). (on-box/internal probe)"
       fi
       ;;
     UP)
       if [[ "$prev" == "DOWN" || "$prev" == "DEGRADED" ]]; then
         log "RECOVERY: ${handle} /mcp back to UP (${lat})"
-        push "🟢 ${handle} /mcp recovered" "default" "white_check_mark" \
+        push "${handle} /mcp recovered" "default" "🟢" \
           "Tenant '${handle}' MCP healthy again — code=${code}, latency=${lat}. (on-box/internal probe)"
       fi
       ;;
@@ -380,7 +377,7 @@ cat <<FOOT
 
   <footer>
     Fleet /mcp monitor (internal tier) · regenerated every ~5 min by <code>scripts/fleet-mcp-monitor.sh</code> (cron)<br>
-    On-box hairpin — exercises real auth+transport surface · per-endpoint state-debounced ntfy · tokens never logged or shown
+    On-box hairpin — exercises real auth+transport surface · per-endpoint state-debounced Telegram alerts · tokens never logged or shown
   </footer>
 </div>
 </body>

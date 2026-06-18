@@ -14,8 +14,8 @@
 #   form ("contact me about access"). Surfacing it to Brian is the entire point — it's
 #   addressed to us. The dashboard is auth_basic gated (location / in the ridge nginx
 #   site), so the PII never leaves the gated surface. The *push* alert
-#   (waitlist-notify.sh) is METADATA-ONLY because ntfy.sh is a public relay — the raw
-#   email appears ONLY here, behind auth.
+#   (waitlist-notify.sh) is METADATA-ONLY as a defense-in-depth rule — the raw email
+#   appears ONLY here, behind auth.
 #
 # READ-ONLY: this script only READS /root/waitlist.jsonl and WRITES the HTML output.
 #   It never mutates the waitlist file and never touches prod (8080) or /opt.

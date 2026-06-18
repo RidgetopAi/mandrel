@@ -231,6 +231,7 @@ docker-compose.*.yml
 !docker-compose.override.yml
 !docker-compose.app.yml
 !docker-compose.rebaseltest.yml
+docker-compose.ryushineo.yml
 
 # =============================================================================
 # Secret-leak hardening (added 2026-06-17 alongside the gitleaks gate)
@@ -263,3 +264,8 @@ debug-context*
 # Captured auth/login responses (probe artifacts) — all variants.
 auth_response*.json
 
+docker-compose.sunbrolynk.yml
+
+# Local backup snapshots (deploy/cutover .bak files) — disposable, never tracked.
+*.bak
+*.bak-*
