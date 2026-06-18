@@ -246,6 +246,10 @@ docker-compose.ryushineo.yml
 *.sql
 *backup*
 !mcp-server/database/migrations/*.sql
+# ...but the backup/offsite SCRIPTS are code, not data dumps — keep them tracked
+# (they read secrets at runtime, never embed them; the gitleaks gate enforces that).
+!scripts/backup-*.sh
+!scripts/offsite-*.sh
 
 # Env files — block every variant, but ALWAYS keep the committed example.
 .env
