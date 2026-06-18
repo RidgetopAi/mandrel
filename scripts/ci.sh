@@ -126,6 +126,66 @@ else
 fi
 
 # =============================================================================
+# STAGE 0a — toolchain integrity (pinned TypeScript resolves LOCALLY)
+# =============================================================================
+# Root-causes the recurring "stale-TS-hoist" false-RED (task 14d98e20): in a
+# fresh agent git worktree, node_modules isn't populated, so `npm run type-check`
+# falls back to a hoisted/global tsc (seen: 4.9.5) that can't parse modern .d.ts
+# (zod v4, d3), RED-ing Stages 2/3 even though the committed code is fine.
+#
+# Guard: for each tsc-based package, confirm the LOCAL node_modules/typescript
+# MAJOR matches the package.json pin. If node_modules is absent or the major is
+# wrong (or older), SELF-HEAL once with `npm ci`, then re-verify. If it STILL
+# can't resolve the pinned major, FAIL FAST with an actionable message instead of
+# letting a misleading type-check error masquerade as a real one.
+# Deterministic, same spirit as the secret + schema-contract + version gates.
+# =============================================================================
+hdr "STAGE 0a: toolchain integrity (pinned TypeScript resolves locally)"
+# Read the typescript semver requested in a package.json (dev or prod dep).
+ts_pin_major() {  # ts_pin_major <pkg_dir> -> major int, or "" if not declared
+  node -e "try{const p=require('$1/package.json');const d=(p.devDependencies||{}).typescript||(p.dependencies||{}).typescript||'';const m=String(d).match(/(\d+)\./);process.stdout.write(m?m[1]:'')}catch(e){process.stdout.write('')}"
+}
+# Read the version actually installed under <pkg_dir>/node_modules/typescript.
+ts_installed_major() {  # ts_installed_major <pkg_dir> -> major int, or "" if absent
+  node -e "try{process.stdout.write(String(require('$1/node_modules/typescript/package.json').version).split('.')[0])}catch(e){process.stdout.write('')}"
+}
+TOOLCHAIN_OK=1
+for PKG in "$MCP_DIR" "$BACKEND_DIR"; do
+  NAME="$(basename "$(dirname "$PKG")")/$(basename "$PKG")"
+  PIN="$(ts_pin_major "$PKG")"
+  if [[ -z "$PIN" ]]; then
+    echo "${YLW}  ${NAME}: no typescript pin declared — skipping${RST}"
+    continue
+  fi
+  GOT="$(ts_installed_major "$PKG")"
+  if [[ "$GOT" == "$PIN" ]]; then
+    echo "${GRN}  ${NAME}: TS major ${GOT} matches pin ^${PIN} (local install OK)${RST}"
+    continue
+  fi
+  echo "${YLW}  ${NAME}: local TS is '${GOT:-absent}', pin is ^${PIN} — self-healing with 'npm ci'…${RST}"
+  if ( cd "$PKG" && npm ci ) >/tmp/ci_npmci_${SFX}_$(basename "$PKG").log 2>&1; then
+    GOT="$(ts_installed_major "$PKG")"
+    if [[ "$GOT" == "$PIN" ]]; then
+      echo "${GRN}  ${NAME}: healed — TS major now ${GOT} (matches pin ^${PIN})${RST}"
+    else
+      echo "${RED}  ${NAME}: STILL '${GOT:-absent}' after npm ci — expected major ${PIN}.${RST}"
+      echo "${RED}      The pinned TypeScript can't be resolved locally; type-check would be misleading.${RST}"
+      TOOLCHAIN_OK=0
+    fi
+  else
+    echo "${RED}  ${NAME}: 'npm ci' FAILED (see /tmp/ci_npmci_${SFX}_$(basename "$PKG").log).${RST}"
+    TOOLCHAIN_OK=0
+  fi
+done
+if [[ "$TOOLCHAIN_OK" -eq 1 ]]; then
+  echo "${GRN}PASS: pinned TypeScript resolves locally for all tsc packages.${RST}"
+  record "0a. toolchain integrity (TS pin)" "PASS"
+else
+  echo "${RED}FAIL: pinned TypeScript could not be resolved locally — fix node_modules before trusting type-check.${RST}"
+  record "0a. toolchain integrity (TS pin)" "FAIL"
+fi
+
+# =============================================================================
 hdr "STAGE 0: provision disposable Postgres"
 echo "DB=$DBNAME  ROLE=$DBUSER  HOST=$DBHOST:$DBPORT"
 $PGSUPER psql -q -c "DROP ROLE IF EXISTS \"$DBUSER\";" >/dev/null 2>&1 || true
