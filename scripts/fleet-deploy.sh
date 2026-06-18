@@ -27,6 +27,8 @@
 #   --services "<a b c>"   Services to deploy. Default: all three code services.
 #                          postgres/redis are rejected if passed.
 #   --skip-ci              Skip the ci.sh gate (LOUD warning). Default: run it.
+#   --skip-prod            Skip the final PROD (/opt/mandrel) deploy stage. Default:
+#                          deploy prod LAST, after the fleet roll is green.
 #   --dry-run              Print the full plan; deploy NOTHING.
 #   --only <handle>        Deploy a single instance (still CI+staging-gated
 #                          unless --skip-ci). <handle> may be a customer or
@@ -55,6 +57,20 @@ ASSUME_YES=0
 HEALTH_TIMEOUT=60          # seconds to wait for healthy/smoke before declaring fail
 STAGING_HANDLE="staging"
 
+# --- PROD (systemd /opt/mandrel) — deployed as the FINAL stage --------------
+# Prod is NOT a compose stack; it's the systemd internal instance. It used to be
+# excluded entirely, so it silently drifted behind the fleet every release (the
+# "do I have to remember to sync prod?" defect). It is now a first-class final
+# stage: after the customer roll is GREEN, prod is deployed from a CLEAN CHECKOUT
+# of the SAME ref the fleet got — reset --hard (NEVER stash/clean, so untracked
+# secrets/.env.secrets + ops scripts are never touched — see Lesson 012), rebuild,
+# restart, health-gate. DEPLOY_PROD=0 (--skip-prod) opts out.
+PROD_DIR="${PROD_DIR:-/opt/mandrel}"
+PROD_REF="${PROD_REF:-$(git -C "$REPO_DIR" rev-parse HEAD)}"   # the commit the fleet was built from
+PROD_USER="${PROD_USER:-ridgetop}"                              # systemd User= for both prod services
+PROD_SERVICES="${PROD_SERVICES:-mandrel mandrel-command}"
+DEPLOY_PROD=1
+
 # --- Pretty output -----------------------------------------------------------
 RED=$'\033[31m'; GRN=$'\033[32m'; YLW=$'\033[33m'; CYN=$'\033[36m'; BLD=$'\033[1m'; RST=$'\033[0m'
 hdr()  { printf '\n%s========== %s ==========%s\n' "$BLD" "$*" "$RST"; }
@@ -68,6 +84,7 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --services) SERVICES="${2:?--services needs a value}"; shift 2 ;;
     --skip-ci)  SKIP_CI=1; shift ;;
+    --skip-prod) DEPLOY_PROD=0; shift ;;
     --dry-run)  DRY_RUN=1; shift ;;
     --only)     ONLY="${2:?--only needs a handle}"; shift 2 ;;
     --yes|-y)   ASSUME_YES=1; shift ;;
@@ -239,6 +256,102 @@ retry_http() {  # <expected_code> <url>
 }
 
 # =============================================================================
+# PROD deploy (systemd /opt/mandrel) — clean checkout of PROD_REF, rebuild, smoke
+# =============================================================================
+# Returns 0 on full success, non-zero on any failure (prints a rollback hint).
+# SAFETY (Lesson 012): only `git fetch` + `git reset --hard` — NEVER stash/clean,
+# so untracked runtime files (.env.secrets, prod-only ops scripts) are untouched.
+deploy_prod() {
+  local dir="$PROD_DIR" ref="$PROD_REF"
+  info "── PROD ($dir → ${ref:0:12}) ──"
+
+  if [[ ! -d "$dir/.git" ]]; then bad "prod: $dir is not a git checkout"; return 1; fi
+
+  # Rollback point (current prod commit) — printed on failure.
+  local prev; prev="$(git -C "$dir" rev-parse HEAD 2>/dev/null || echo unknown)"
+  info "prod: current=$prev  target=$ref"
+
+  # Fetch the exact ref the fleet was built from; refuse if it isn't reachable.
+  if ! git -C "$dir" fetch --quiet origin --tags; then bad "prod: git fetch failed"; return 1; fi
+  if ! git -C "$dir" cat-file -e "${ref}^{commit}" 2>/dev/null; then
+    bad "prod: target ref $ref not found after fetch (is it pushed to origin?)"; return 1
+  fi
+
+  # Detect whether deps changed across the deploy (decides npm ci vs build-only).
+  local deps_changed=""
+  deps_changed="$(git -C "$dir" diff --name-only "$prev" "$ref" 2>/dev/null \
+    | grep -E '(^|/)package(-lock)?\.json$' || true)"
+
+  # Clean checkout — tracked files → ref; untracked runtime files UNTOUCHED.
+  if ! git -C "$dir" reset --hard "$ref"; then bad "prod: git reset --hard failed"; return 1; fi
+  ok "prod: tree at $(git -C "$dir" rev-parse --short HEAD)"
+
+  # Rebuild the two code packages. mcp-server is compiled (tsc→dist) and RUN from
+  # dist; the command backend runs tsx (live src) but the frontend is a static
+  # build served by nginx. npm ci only when deps actually changed.
+  local pkg
+  for pkg in mcp-server mandrel-command/frontend mandrel-command/backend; do
+    [[ -d "$dir/$pkg" ]] || continue
+    if [[ -n "$deps_changed" ]] && grep -q "^$pkg/package" <<<"$deps_changed"; then
+      info "prod: deps changed in $pkg → npm ci"
+      if ! ( cd "$dir/$pkg" && npm ci ) ; then bad "prod: npm ci failed in $pkg"; return 1; fi
+    fi
+  done
+  info "prod: building mcp-server (tsc) + frontend (CRA)"
+  if ! ( cd "$dir/mcp-server" && npm run build ) ; then bad "prod: mcp-server build failed"; return 1; fi
+  if [[ -d "$dir/mandrel-command/frontend" ]]; then
+    if ! ( cd "$dir/mandrel-command/frontend" && CI=false npm run build ) ; then bad "prod: frontend build failed"; return 1; fi
+  fi
+
+  # Ownership back to the service user (root built it — Lesson 008). Fail closed:
+  # a root-owned dist/build would crash the ridgetop-user services.
+  if ! chown -R "$PROD_USER:$PROD_USER" "$dir"; then
+    bad "prod: chown to $PROD_USER FAILED — ROLLBACK: git -C $dir reset --hard $prev && rebuild && systemctl restart $PROD_SERVICES"
+    return 1
+  fi
+
+  # Restart + health-gate.
+  info "prod: restarting [$PROD_SERVICES]"
+  if ! systemctl restart $PROD_SERVICES; then
+    bad "prod: systemctl restart failed — ROLLBACK: git -C $dir reset --hard $prev && rebuild && systemctl restart $PROD_SERVICES"
+    return 1
+  fi
+
+  # Smoke: mcp /healthz 200, backend /api/health 200, and initialize reports the
+  # version this ref ships (proves the NEW build is actually live, not stale).
+  if ! retry_http 200 "http://127.0.0.1:8080/healthz"; then
+    bad "prod: mcp /healthz not 200 — ROLLBACK: git -C $dir reset --hard $prev && rebuild && systemctl restart $PROD_SERVICES"
+    return 1
+  fi
+  ok "prod: mcp /healthz 200"
+  if ! retry_http 200 "http://127.0.0.1:5000/api/health"; then
+    bad "prod: backend /api/health not 200 — ROLLBACK: git -C $dir reset --hard $prev && rebuild && systemctl restart $PROD_SERVICES"
+    return 1
+  fi
+  ok "prod: backend /api/health 200"
+
+  local want_ver live_ver tok
+  want_ver="$(grep -m1 '"version"' "$dir/mcp-server/package.json" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+[^"]*')"
+  tok="$(grep -m1 '^MCP_AUTH_TOKEN=' "$dir/.env.secrets" 2>/dev/null | cut -d= -f2-)"
+  live_ver="$(curl -s --max-time 8 -X POST http://127.0.0.1:8080/mcp \
+      -H 'Content-Type: application/json' -H 'Accept: application/json, text/event-stream' \
+      -H "Authorization: Bearer $tok" \
+      -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"fleet-deploy","version":"1"}}}' \
+      2>/dev/null | grep -oE '"version":"[^"]*"' | head -1 | sed -E 's/.*:"([^"]*)"/\1/')"
+  if [[ -z "$want_ver" ]]; then
+    bad "prod: could not parse expected version from $dir/mcp-server/package.json — cannot verify the build is live (fail closed)"
+    return 1
+  fi
+  if [[ "$live_ver" != "$want_ver" ]]; then
+    bad "prod: initialize reports '$live_ver' but ref ships '$want_ver' (stale/broken build) — ROLLBACK: git -C $dir reset --hard $prev && rebuild && systemctl restart $PROD_SERVICES"
+    return 1
+  fi
+  ok "prod: initialize reports v${live_ver}"
+  ok "prod: deploy + health + smoke GREEN"
+  return 0
+}
+
+# =============================================================================
 # Build the plan
 # =============================================================================
 ALL_HANDLES=()
@@ -255,10 +368,15 @@ done
 ROLL_TARGETS=()
 DEPLOY_STAGING=1
 if [[ -n "$ONLY" ]]; then
-  if [[ "$ONLY" == "$STAGING_HANDLE" ]]; then
-    # --only staging: just (re)deploy staging via the staging stage; no customer roll.
-    ROLL_TARGETS=()
+  if [[ "$ONLY" == "prod" ]]; then
+    # --only prod: just (re)deploy prod (still CI-gated). No staging, no customer roll.
+    DEPLOY_STAGING=0; ROLL_TARGETS=(); DEPLOY_PROD=1
+  elif [[ "$ONLY" == "$STAGING_HANDLE" ]]; then
+    # --only staging: just (re)deploy staging via the staging stage; no customer roll, no prod.
+    ROLL_TARGETS=(); DEPLOY_PROD=0
   else
+    # any other targeted --only <customer>: that one customer only, never prod.
+    DEPLOY_PROD=0
     # --only <customer>: must be a discovered customer handle.
     only_found=0
     for h in "${CUSTOMER_HANDLES[@]}"; do [[ "$h" == "$ONLY" ]] && only_found=1; done
@@ -283,7 +401,8 @@ echo "  CI gate:         $( [[ $SKIP_CI -eq 1 ]] && echo 'SKIPPED (--skip-ci)' |
 echo "  Staging bake:    $( [[ $DEPLOY_STAGING -eq 1 ]] && echo "deploy + health-gate mandrel-$STAGING_HANDLE" || echo 'none' )"
 echo "  Discovered:      ${ALL_HANDLES[*]:-<none>}"
 echo "  Customer roll:   ${ROLL_TARGETS[*]:-<none (none selected)>}"
-echo "  Order:           CI → staging → $( [[ ${#ROLL_TARGETS[@]} -gt 0 ]] && printf '%s → ' "${ROLL_TARGETS[@]}" | sed 's/ → $//' || echo '(no customer roll)' )"
+echo "  Order:           CI → staging → $( [[ ${#ROLL_TARGETS[@]} -gt 0 ]] && printf '%s → ' "${ROLL_TARGETS[@]}" || true )$( [[ $DEPLOY_PROD -eq 1 ]] && echo 'PROD' || echo '(no prod)' )"
+echo "  Prod deploy:     $( [[ $DEPLOY_PROD -eq 1 ]] && echo "$PROD_DIR @ ${PROD_REF:0:12} (clean reset --hard, rebuild, restart, smoke)" || echo 'SKIPPED (--skip-prod / targeted --only)' )"
 echo "  Mode:            $( [[ $DRY_RUN -eq 1 ]] && echo 'DRY-RUN (deploy nothing)' || echo 'LIVE' )"
 echo "  Stop policy:     fleet roll STOPS on the first instance failure; remaining instances are NOT attempted."
 
@@ -368,6 +487,29 @@ else
 fi
 
 # =============================================================================
+# STAGE 4 — PROD (systemd /opt/mandrel), the FINAL stage
+# =============================================================================
+# Runs only if everything upstream is GREEN (no customer failed). Prod is Ridge's
+# own/dogfood instance + the public mandrel.ridgetopai.net; it goes LAST, after the
+# release is proven on the fleet. This is the fix for prod silently drifting behind.
+PROD_RESULT="skipped"
+if [[ $DEPLOY_PROD -eq 1 ]]; then
+  if [[ -n "$FAILED" ]]; then
+    PROD_RESULT="skipped (fleet roll failed)"
+    warn "PROD stage skipped — a customer instance failed; not touching prod."
+  else
+    hdr "STAGE 4: PROD DEPLOY ($PROD_DIR)"
+    if deploy_prod; then
+      PROD_RESULT="PASS"
+      ok "PROD deploy GREEN."
+    else
+      PROD_RESULT="FAIL"
+      bad "PROD deploy FAILED (customers already deployed OK). See the ROLLBACK hint above."
+    fi
+  fi
+fi
+
+# =============================================================================
 # SUMMARY
 # =============================================================================
 hdr "SUMMARY"
@@ -386,9 +528,11 @@ if [[ ${#ROLL_TARGETS[@]} -gt 0 ]]; then
   echo "  Failed:         ${FAILED:-<none>}"
   echo "  Not attempted:  ${NOT_ATTEMPTED[*]:-<none>}"
 fi
+echo "  Prod deploy:    $PROD_RESULT"
 
-if [[ -n "$FAILED" ]]; then
-  printf '\n%s##########  OVERALL: FAILED (rolled stopped at %s)  ##########%s\n' "$RED" "$FAILED" "$RST"
+if [[ -n "$FAILED" || "$PROD_RESULT" == "FAIL" ]]; then
+  printf '\n%s##########  OVERALL: FAILED (%s)  ##########%s\n' "$RED" \
+    "$( [[ -n "$FAILED" ]] && echo "roll stopped at $FAILED" || echo "prod deploy failed" )" "$RST"
   exit 1
 else
   printf '\n%s##########  OVERALL: GREEN  ##########%s\n' "$GRN" "$RST"
