@@ -58,6 +58,14 @@ export interface SearchContextRequest {
 
 export interface SearchResult extends ContextEntry {
   similarity?: number;
+  /**
+   * The relevance score (0–100) the row ACTUALLY ranked on — i.e. the sort key
+   * expressed as a percentage. In hierarchical mode this is `combined_score`*100;
+   * in baseline mode it equals `similarity`. Display this (task e520d129) so the
+   * shown number always agrees with the sort order: #1 shows the highest number.
+   * `similarity` remains available as the raw vector-similarity component.
+   */
+  relevance?: number;
   searchReason?: string;
   // Score components for observability (Instance #49)
   recency_score?: number;
@@ -133,6 +141,57 @@ const RANK_WEIGHTS: { balanced: RankWeights; recency: RankWeights } = {
     halfLifeDays: envFloat('MANDREL_RANK_REC_HALFLIFE_DAYS', 7.0),
   },
 };
+
+/**
+ * Retrieval HONESTY FLOOR (task b02446d7).
+ *
+ * context_search / smart_search always return the top-k rows by score. When the
+ * single BEST row is still a weak match, presenting those rows with no caveat reads
+ * as a confident answer — surfacing noise as a hit. The floor adds an honest LABEL
+ * (a warning header) when the best row's relevance is below the threshold. It does
+ * NOT suppress or hide any row — recall is untouched; this is honest labeling only.
+ *
+ * The number compared against the floor is the SAME relevance the rows are sorted
+ * and displayed on (task e520d129) — the row's sort-key relevance as a fraction in
+ * [0,1] — so the header, the displayed per-row number, and the sort order all agree.
+ *
+ * DEFAULT 0.35 (35%) — justification:
+ *   - The per-row searchReason buckets in searchContext already treat >40% as
+ *     "Moderate" and ≤40% as "Low"; 35% sits just inside "Low", so the floor fires
+ *     precisely when the best row is in (or barely above) the Low band — i.e. when
+ *     there is genuinely no strong match to stand behind.
+ *   - It is BELOW the gold-match band for answerable questions (whose correct
+ *     context embeds at high similarity, comfortably above the floor), so the header
+ *     does NOT fire on answerable Qs → no recall/QA regression. It SHOULD help
+ *     abstention on unanswerable Qs, where even the best row is weak.
+ *   - Env-overridable (MANDREL_SEARCH_MIN_SIMILARITY) following the RANK_WEIGHTS
+ *     pattern, so the eval gate (d63803c2) can sweep it without a code edit. Bad /
+ *     missing values fall back to the default. Accepts either a fraction (0.35) or a
+ *     percentage (35) — values > 1 are read as a percentage.
+ */
+function envFloorFraction(name: string, fallback: number): number {
+  const v = envFloat(name, fallback);
+  // Permit a percentage form (e.g. "35") as well as a fraction ("0.35").
+  const frac = v > 1 ? v / 100 : v;
+  // Clamp to a sane [0,1]; a non-positive floor disables the header.
+  return Math.min(1, Math.max(0, frac));
+}
+
+const SEARCH_MIN_SIMILARITY = envFloorFraction('MANDREL_SEARCH_MIN_SIMILARITY', 0.35);
+
+/**
+ * Build the honesty-floor warning header for a result set, or `null` if the best
+ * row clears the floor (or there are no rows). `bestRelevancePct` is the top row's
+ * relevance as a 0–100 number — the SAME number that is sorted/displayed on, so the
+ * header is always consistent with row #1.
+ */
+export function buildHonestyHeader(bestRelevancePct: number | undefined): string | null {
+  if (SEARCH_MIN_SIMILARITY <= 0) return null; // floor disabled
+  if (bestRelevancePct === undefined) return null;
+  if (bestRelevancePct >= SEARCH_MIN_SIMILARITY * 100) return null;
+  const pct = Math.round(bestRelevancePct);
+  return `⚠️ No strong match — best ${pct}%; results may not be relevant.`;
+}
 
 /**
  * Build the SQL fragment for `combined_score` from a weight profile. The four
@@ -609,6 +668,22 @@ class ContextHandler {
           similarity > 40 ? 'Moderate similarity match' :
           'Low similarity match';
 
+        // DISPLAY CONSISTENCY (task e520d129): the rows are ORDERED by the SQL sort
+        // key — `combined_score` when hierarchical, else raw `similarity`. Surface
+        // THAT value (as 0–100) as `relevance`, so the displayed number always
+        // agrees with the order: row #1 shows the highest number. `combined_score`
+        // is a weighted blend of signals each in [0,1], so it is itself in [0,1].
+        //
+        // DEFERRED (separate MEASURED change — do NOT do here): the JS substring
+        // `boost` above adjusts the displayed `similarity` but NOT the SQL sort key,
+        // so a boosted row is not re-ranked. Whether the substring boost SHOULD feed
+        // the ranking/order is a ranking change that must go through the eval gate
+        // (d63803c2); it is intentionally out of scope for this display-only fix.
+        const sortKeyFraction = row.combined_score !== undefined && row.combined_score !== null
+          ? parseFloat(row.combined_score)
+          : (rawSimilarity && !isNaN(parseFloat(rawSimilarity)) ? parseFloat(rawSimilarity) : 0);
+        const relevance = Math.round(Math.max(0, Math.min(1, sortKeyFraction)) * 100 * 10) / 10;
+
         return {
           id: row.id,
           projectId: row.project_id,
@@ -619,7 +694,8 @@ class ContextHandler {
           relevanceScore: row.relevance_score,
           tags: row.tags || [],
           metadata: typeof row.metadata === 'string' ? JSON.parse(row.metadata) : row.metadata,
-          similarity: Math.round(similarity * 10) / 10, // Round to 1 decimal place
+          similarity: Math.round(similarity * 10) / 10, // Round to 1 decimal place (raw vector sim + boost)
+          relevance, // the sort-key relevance the row ranked on (task e520d129)
           searchReason: finalSearchReason,
           // Include score components for observability (Instance #49)
           recency_score: row.recency_score ? parseFloat(row.recency_score) : undefined,
