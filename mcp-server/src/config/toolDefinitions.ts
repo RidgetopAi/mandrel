@@ -148,7 +148,7 @@ export const AIDIS_TOOL_DEFINITIONS: ToolDefinition[] = [
                 tags: {
                   type: 'array',
                   items: { type: 'string' },
-                  description: 'Optional tags for categorization and filtering (e.g., ["bug-fix", "authentication"])'
+                  description: 'Optional tags for categorization and filtering (e.g., ["bug-fix", "authentication"]). A `ref:<slug>` tag (grammar `ref:[a-z0-9-]+`) creates a memorable named pointer resolvable via context_search({tags:["ref:<slug>"]}); a malformed ref slug is normalized on write and reported, not rejected.'
                 }
               },
               required: ['content', 'type'],

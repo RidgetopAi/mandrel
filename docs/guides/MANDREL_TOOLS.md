@@ -64,13 +64,49 @@ Example: context_store("Implementation complete", "completion", ["TT009", "conso
 ```
 
 ### `context_search`
-**Purpose**: Search stored contexts using semantic similarity
-**Usage**: `context_search(query: string, limit?: number, type?: string)`
+**Purpose**: Search stored contexts using semantic similarity, by direct id, **or by tags only**
+**Usage**: `context_search(query?: string, id?: string, tags?: string[], limit?: number, type?: string)`
 **Status**: ✅ **WORKING**
+Provide at least one of `id`, `query`, or a non-empty `tags` array.
+- `query` → semantic similarity search (ranked by relevance).
+- `id` → direct lookup of one context by UUID (bypasses search).
+- `tags` (no `query`) → **tags-only** filter, returned **newest-first**. This is the canonical way to resolve a named ref (see below).
 ```
-Example: context_search("tool consolidation", 5)
-Returns: Matching contexts with relevance scores
+Example (semantic): context_search("tool consolidation", 5)
+Example (tags-only / ref): context_search({ tags: ["ref:resume"] })
+Returns: Matching contexts with relevance scores (semantic) or newest-first (tags-only)
 ```
+
+### Named refs (`ref:<slug>`) — memorable pointers to a context
+
+A **named ref** is a first-class, human-friendly handle for a context (or a thread of
+contexts) — a bookmark you can remember and reuse instead of a raw UUID.
+
+**Create** — tag a context with a `ref:<slug>` when you store it:
+```
+context_store("★ HANDOFF: live state + next steps", "handoff", ["ref:resume"])
+```
+The slug grammar is `ref:[a-z0-9-]+` (lowercase alphanumerics + single hyphens). A
+malformed slug (e.g. `ref:My Resume`) is **normalized on write** (`→ ref:my-resume`)
+and `context_store` returns a "Ref notes" warning describing the rewrite — it is never
+silently dropped, and existing tags are never rejected.
+
+**Resolve** — a tags-only `context_search`:
+```
+context_search({ tags: ["ref:resume"] })   // → newest-first
+```
+
+**Moving vs pinned:**
+- **Moving ref** — the same slug is re-stamped on successive contexts (e.g.
+  `ref:resume` carried by every new `★ HANDOFF`). Resolution is **newest-first**, so
+  it always lands on the **latest** thread. Use this for "resume from where I left off".
+- **Pinned ref** — the slug lives on a single context (e.g. `ref:cp-gaps`,
+  `ref:ergonomics-map`). It resolves to that one thread — a stable jump to a specific
+  branch point.
+
+In the Command UI, a context that carries a well-formed ref shows it as a **copyable
+chip** (distinct link icon) on the card, so you can see which contexts have a reusable
+handle and copy it (e.g. `ref:resume`) to reuse.
 
 ### `context_get_recent`
 **Purpose**: Get recent contexts chronologically (newest first)

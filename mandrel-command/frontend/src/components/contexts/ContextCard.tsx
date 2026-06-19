@@ -3,7 +3,8 @@ import { Card, Tag, Typography, Space, Tooltip, Checkbox, Button, Dropdown, Menu
 import {
   EyeOutlined, EditOutlined, DeleteOutlined, ShareAltOutlined,
   CalendarOutlined, FolderOutlined, TagsOutlined,
-  FileMarkdownOutlined, CopyOutlined, FileTextOutlined, DatabaseOutlined
+  FileMarkdownOutlined, CopyOutlined, FileTextOutlined, DatabaseOutlined,
+  LinkOutlined
 } from '@ant-design/icons';
 import type { Context } from '../../types/context';
 import {
@@ -12,6 +13,7 @@ import {
   highlightSearchTermsAsNodes,
   truncateContent,
 } from '../../utils/contextHelpers';
+import { contextHandleChip } from '../../utils/refHelpers';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import utc from 'dayjs/plugin/utc';
@@ -56,14 +58,20 @@ const ContextCard: React.FC<ContextCardProps> = ({
   const truncatedContent = truncateContent(context.content, 120);
   const highlightedContent = highlightSearchTermsAsNodes(truncatedContent, searchTerm);
 
-  // Copyable id affordance on the COLLAPSED card. Previously the only copyable id
-  // lived in ContextDetail (after expanding). If the context carries a `ref:` tag,
-  // surface that ref as the copyable handle (it is the human-friendly stable
-  // reference); otherwise fall back to the short UUID prefix. Uses the same Ant
-  // `copyable` pattern as ContextDetail (copies the FULL value, shows a short label).
-  const refTag = context.tags?.find(tag => /^ref:/.test(tag));
-  const idChipLabel = refTag ?? `${context.id.slice(0, 8)}`;
-  const idChipCopyText = refTag ?? context.id;
+  // Copyable id / named-ref affordance on the COLLAPSED card. Previously the only
+  // copyable id lived in ContextDetail (after expanding). If the context carries a
+  // well-formed `ref:<slug>` tag, surface that ref as the copyable handle (it is the
+  // human-friendly, first-class stable reference — e.g. "ref:resume" — that resolves
+  // via context_search({tags:["ref:<slug>"]})); otherwise fall back to the short
+  // UUID prefix. Uses the same Ant `copyable` pattern as ContextDetail (copies the
+  // FULL value, shows a short label). When it IS a ref the chip is visually distinct
+  // (link icon + accent color) so a user can SEE which contexts have a reusable ref.
+  // The chip decision is the shared, unit-tested `contextHandleChip` predicate.
+  const handleChip = contextHandleChip(context.tags, context.id);
+  const isRefChip = handleChip.isRef;
+  const refTag = isRefChip ? handleChip.label : undefined;
+  const idChipLabel = handleChip.label;
+  const idChipCopyText = handleChip.copyText;
 
   const actions = [
     <Tooltip title="View Details" key="view">
@@ -151,9 +159,15 @@ const ContextCard: React.FC<ContextCardProps> = ({
             <Tag color={typeColor} style={{ margin: 0 }}>
               {typeDisplayName}
             </Tag>
-            {/* Copyable id / ref handle (collapsed-card affordance) */}
-            <Tooltip title={refTag ? `Copy ref: ${refTag}` : `Copy context id: ${context.id}`}>
-              <Tag icon={<DatabaseOutlined />} style={{ margin: 0 }}>
+            {/* Copyable id / named-ref handle (collapsed-card affordance). A named
+                ref renders as a distinct link-icon / accent chip so it reads as a
+                reusable handle, not just an id. */}
+            <Tooltip title={isRefChip ? `Copy ref handle: ${refTag}` : `Copy context id: ${context.id}`}>
+              <Tag
+                icon={isRefChip ? <LinkOutlined /> : <DatabaseOutlined />}
+                color={isRefChip ? 'geekblue' : undefined}
+                style={{ margin: 0 }}
+              >
                 <Text
                   code
                   style={{ fontSize: '12px' }}

@@ -76,6 +76,14 @@ class ContextRoutes {
         context?.connectionId
       );
 
+      // REF-GRAMMAR warnings (named refs first-class): if a `ref:<slug>` tag was
+      // malformed it was normalized (or flagged) at the write boundary — surface that
+      // to the caller so a typo'd ref is visible, not silent. Stored tags already
+      // reflect the normalized form.
+      const refWarnings = result.warnings && result.warnings.length > 0
+        ? `\n⚠️  Ref notes:\n` + result.warnings.map(w => `   • ${w}`).join('\n') + '\n'
+        : '';
+
       return {
         content: [{
           type: 'text',
@@ -84,6 +92,7 @@ class ContextRoutes {
                 `🏷️  Type: ${result.contextType}\n` +
                 `📊 Relevance: ${result.relevanceScore}/10\n` +
                 `🏷️  Tags: [${result.tags.join(', ')}]\n` +
+                refWarnings +
                 `⏰ Stored: ${result.createdAt.toISOString()}\n` +
                 `🔍 Content: "${result.content.length > 100 ? result.content.substring(0, 100) + '...' : result.content}"\n\n` +
                 `🎯 Context is now searchable via semantic similarity!`
@@ -142,6 +151,15 @@ class ContextRoutes {
       // filter directly — NO dummy query needed. This does NOT touch the semantic
       // ranking/scoring (the out-of-scope MEASURED tranche): it is a straight tag
       // filter ordered newest-first.
+      //
+      // NAMED-REF RESOLUTION (first-class): this is the canonical way to resolve a
+      // `ref:<slug>` — `context_search({ tags: ["ref:<slug>"] })`. The
+      // `ORDER BY created_at DESC` below is load-bearing for a MOVING ref: when
+      // several contexts share the same slug (e.g. `ref:resume`, re-stamped on each
+      // handoff), the NEWEST wins, so "read in on ref:resume" always lands on the
+      // latest. A PINNED ref (one context) resolves to that single thread. This
+      // ordering is contract-tested (namedRefs.contract.test.ts) — do not change it
+      // to a score-ordered sort without updating that fuse.
       if (!args.query && Array.isArray(args.tags) && args.tags.length > 0) {
         const projectId = await this.resolveProjectId(args.projectId, context);
         logger.info(`🔍 Context tags-only search: [${args.tags.join(', ')}]`);
