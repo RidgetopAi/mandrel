@@ -186,6 +186,21 @@ else
 fi
 
 # =============================================================================
+hdr "STAGE 0a2: prod-deploy install topology (fast static; Lesson 013)"
+# Guard the workspace-correct PROD install logic in fleet-deploy.sh against drift:
+# mandrel-command must be installed at the workspace ROOT (never per-member), and
+# the install must gate on the real binaries/deps (tsc, react-scripts, cors/helmet).
+# This runs only the FAST static assertions (no npm install); the heavy real-build
+# path is run on demand via `bash scripts/test/prod-install-topology.test.sh --full`.
+if bash "$REPO_DIR/scripts/test/prod-install-topology.test.sh"; then
+  echo "${GRN}PASS: prod-deploy install logic matches the workspace topology.${RST}"
+  record "0a2. prod-install topology (static)" "PASS"
+else
+  echo "${RED}FAIL: prod-deploy install logic drifted from the workspace topology — see fleet-deploy.sh / prod-install.sh.${RST}"
+  record "0a2. prod-install topology (static)" "FAIL"
+fi
+
+# =============================================================================
 hdr "STAGE 0: provision disposable Postgres"
 echo "DB=$DBNAME  ROLE=$DBUSER  HOST=$DBHOST:$DBPORT"
 $PGSUPER psql -q -c "DROP ROLE IF EXISTS \"$DBUSER\";" >/dev/null 2>&1 || true

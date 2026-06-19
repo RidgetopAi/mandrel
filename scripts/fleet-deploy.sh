@@ -79,6 +79,13 @@ ok()   { printf '  %s[PASS]%s %s\n' "$GRN" "$RST" "$*"; }
 bad()  { printf '  %s[FAIL]%s %s\n' "$RED" "$RST" "$*"; }
 warn() { printf '%s[WARN]%s %s\n' "$YLW" "$RST" "$*"; }
 
+# --- Shared PROD install logic (workspace-correct; Lesson 013) ---------------
+# Factored into a sourced lib so the acceptance test (scripts/test/) can exercise
+# the EXACT install targets/gates this deploy uses, not a drifting copy. Sourced
+# AFTER info/ok/bad so the lib reuses them (its shims become no-ops).
+# shellcheck source=lib/prod-install.sh
+source "$REPO_DIR/scripts/lib/prod-install.sh"
+
 # --- Arg parsing -------------------------------------------------------------
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -288,30 +295,26 @@ deploy_prod() {
   if ! git -C "$dir" reset --hard "$ref"; then bad "prod: git reset --hard failed"; return 1; fi
   ok "prod: tree at $(git -C "$dir" rev-parse --short HEAD)"
 
-  # Rebuild the two code packages. mcp-server is compiled (tsc→dist) and RUN from
-  # dist; the command backend runs tsx (live src) but the frontend is a static
-  # build served by nginx. npm ci only when deps actually changed.
-  # mcp-server (tsc) and frontend (CRA) are BUILT on the box and need their
-  # devDependencies (typescript, react-scripts). Prod systemd runs with
-  # NODE_ENV=production, under which `npm ci` OMITS devDeps — so we MUST pass
-  # --include=dev or the on-box build fails ("react-scripts: not found").
-  # Run npm ci when deps changed, OR node_modules is absent, OR the build
-  # toolchain binary is missing (e.g. a prior prod-mode install omitted devDeps).
-  local pkg
-  for pkg in mcp-server mandrel-command/frontend mandrel-command/backend; do
-    [[ -d "$dir/$pkg" ]] || continue
-    local need_ci=""
-    if [[ -n "$deps_changed" ]] && grep -q "^$pkg/package" <<<"$deps_changed"; then need_ci=1; fi
-    [[ -d "$dir/$pkg/node_modules" ]] || need_ci=1
-    case "$pkg" in
-      mcp-server)                [[ -x "$dir/$pkg/node_modules/.bin/tsc" ]]           || need_ci=1 ;;
-      mandrel-command/frontend)  [[ -x "$dir/$pkg/node_modules/.bin/react-scripts" ]] || need_ci=1 ;;
-    esac
-    if [[ -n "$need_ci" ]]; then
-      info "prod: npm ci --include=dev in $pkg"
-      if ! ( cd "$dir/$pkg" && npm ci --include=dev ) ; then bad "prod: npm ci failed in $pkg"; return 1; fi
-    fi
-  done
+  # Install deps for the on-box build, WORKSPACE-CORRECTLY (Lesson 013). The two
+  # install targets match the real topology:
+  #   * mcp-server            — standalone package; tsc→dist, RUN from dist.
+  #   * mandrel-command       — npm workspace ROOT (members backend/frontend/
+  #                             shared); install ONCE at the root so deps hoist.
+  #                             The backend runs tsx (live src, no build) but its
+  #                             runtime deps (cors/helmet) must resolve; the
+  #                             frontend is a static CRA build served by nginx.
+  # All installs pass --include=dev because prod systemd runs NODE_ENV=production,
+  # under which `npm ci` OMITS the devDeps the on-box build needs (tsc / react-
+  # scripts). prod_install_deps reinstalls a target when its package*.json
+  # changed, its node_modules is absent, OR — the real gate — the actual build
+  # binary / runtime dep is unresolvable (NOT merely "node_modules/ exists"). It
+  # fails closed if the artifacts that crash-looped prod (frontend react-scripts,
+  # backend cors/helmet) are still missing after the install. See
+  # scripts/lib/prod-install.sh.
+  if ! prod_install_deps "$dir" "$deps_changed"; then
+    bad "prod: dependency install failed — ROLLBACK: git -C $dir reset --hard $prev && rebuild && systemctl restart $PROD_SERVICES"
+    return 1
+  fi
   info "prod: building mcp-server (tsc) + frontend (CRA)"
   if ! ( cd "$dir/mcp-server" && npm run build ) ; then bad "prod: mcp-server build failed"; return 1; fi
   if [[ -d "$dir/mandrel-command/frontend" ]]; then
