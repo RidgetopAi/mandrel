@@ -327,34 +327,26 @@ export const AIDIS_TOOL_DEFINITIONS: ToolDefinition[] = [
           },
           {
             name: 'decision_record',
-            description: 'Record a technical decision with full context and alternatives',
-            inputSchema: {
-              type: 'object',
-              properties: {
-                decisionType: {
-                  type: 'string',
-                  description: 'Decision type: architecture, library, framework, pattern, api_design, database, deployment, security, performance, ui_ux, testing, tooling, process, naming_convention, code_style'
-                },
-                title: {
-                  type: 'string',
-                  description: 'Decision title'
-                },
-                description: {
-                  type: 'string',
-                  description: 'Detailed description'
-                },
-                rationale: {
-                  type: 'string',
-                  description: 'Why this decision was made'
-                },
-                impactLevel: {
-                  type: 'string',
-                  description: 'Impact: low, medium, high, critical'
-                }
-              },
-              required: ['decisionType', 'title', 'description', 'rationale', 'impactLevel'],
-              additionalProperties: true
-            },
+            // DEFECT B fix: the model-facing inputSchema is now DERIVED from the zod
+            // validator (buildInputSchema) so every accepted param is advertised, and
+            // the enum-valued params spell out their allowed values inline so an LLM
+            // gets decisionType/impactLevel right on the FIRST call (no guess-and-fail).
+            description: 'Record a technical decision with full context and alternatives. Captures the learning loop: set success_criteria up front, then evaluate later via decision_update.',
+            inputSchema: buildInputSchema('decision_record', {
+              decisionType: 'REQUIRED. One of EXACTLY these values: architecture, library, framework, pattern, api_design, database, deployment, security, performance, ui_ux, testing, tooling, process, naming_convention, code_style',
+              title: 'REQUIRED. Short decision title',
+              description: 'REQUIRED. What was decided (the decision itself)',
+              rationale: 'REQUIRED. Why this decision was made (the reasoning/trade-offs)',
+              impactLevel: 'REQUIRED. One of EXACTLY these values: low, medium, high, critical',
+              alternativesConsidered: 'Optional. Array of { name, pros?, cons?, reasonRejected } alternatives that were rejected',
+              problemStatement: 'Optional. The problem this decision solves',
+              successCriteria: 'Optional but recommended. What "success" looks like — the measurable bar this decision will later be evaluated against (the learning loop starts here)',
+              implementationStatus: 'Optional. One of: planned, in_progress, implemented, validated, deprecated (defaults to "planned")',
+              affectedComponents: 'Optional. Array of component names this decision affects',
+              tags: 'Optional. Array of tags for searchability',
+              projectId: 'Optional. Project ID or name (defaults to current project)',
+              metadata: 'Optional. Arbitrary metadata object'
+            }),
           },
           {
             name: 'decision_search',
@@ -373,18 +365,24 @@ export const AIDIS_TOOL_DEFINITIONS: ToolDefinition[] = [
           },
           {
             name: 'decision_update',
-            description: 'Update decision status, outcomes, or lessons learned',
-            inputSchema: {
-              type: 'object',
-              properties: {
-                decisionId: {
-                  type: 'string',
-                  description: 'Decision ID to update'
-                }
-              },
-              required: ['decisionId'],
-              additionalProperties: true
-            },
+            // DEFECT A fix: the declared inputSchema now DERIVES from the zod validator
+            // and advertises the learning-loop params the handler actually reads
+            // (outcomeStatus/outcomeNotes/lessonsLearned/...). Previously it advertised
+            // only decisionId while the zod schema declared outcome/lessons that the
+            // route never read — so the tool was a no-op through the bridge.
+            description: 'Update a decision after the fact — close the learning loop: set outcome_status + lessons_learned once you know how it turned out. Also updates status, implementation_status, or supersession.',
+            inputSchema: buildInputSchema('decision_update', {
+              decisionId: 'REQUIRED. UUID of the decision to update',
+              status: 'Optional. One of: active, deprecated, superseded, under_review',
+              outcomeStatus: 'Optional. How the decision turned out — one of EXACTLY: unknown, successful, failed, mixed, too_early',
+              outcomeNotes: 'Optional. Free-text notes on the outcome',
+              lessonsLearned: 'Optional. What was learned — the payoff of the learning loop',
+              implementationStatus: 'Optional. One of: planned, in_progress, implemented, validated, deprecated',
+              successCriteria: 'Optional. Set/revise the success criteria the outcome is judged against',
+              problemStatement: 'Optional. Set/revise the problem this decision solves',
+              supersededBy: 'Optional. UUID of the decision that supersedes this one (also flips status to superseded)',
+              supersededReason: 'Optional. Why this decision was superseded'
+            }),
           },
           {
             name: 'decision_stats',

@@ -174,6 +174,12 @@ const namingSchemas = {
   stats: z.object({})
 };
 
+// Technical Decision learning-loop enums — must match the DB CHECK constraints on
+// technical_decisions (see migrations/000_baseline_schema.sql). Defined once and
+// reused by record + update so the two tools can never drift apart.
+const outcomeStatusEnum = z.enum(['unknown', 'successful', 'failed', 'mixed', 'too_early']);
+const implementationStatusEnum = z.enum(['planned', 'in_progress', 'implemented', 'validated', 'deprecated']);
+
 // Technical Decision Schemas
 const decisionSchemas = {
   record: z.object({
@@ -189,6 +195,11 @@ const decisionSchemas = {
       reasonRejected: z.string()
     })).optional(),
     problemStatement: z.string().max(2000).optional(),
+    // Learning-loop fields settable UP FRONT (capture). success_criteria is the
+    // moat field: record what "success" looks like now, evaluate it later via
+    // decision_update.outcomeStatus. implementationStatus tracks the build lifecycle.
+    successCriteria: z.string().max(2000).optional(),
+    implementationStatus: implementationStatusEnum.optional(),
     affectedComponents: z.array(z.string()).optional(),
     tags: baseTags.optional(),
     projectId: z.string().optional(),
@@ -211,13 +222,34 @@ const decisionSchemas = {
     // Note: dateFrom/dateTo excluded - complex date parsing not needed for AI ease-of-use
   }),
   
+  // DEFECT A FIX (decision_update was a no-op through the bridge): the zod schema
+  // declared `outcome`/`lessons` but the route handler reads outcomeStatus/
+  // outcomeNotes/lessonsLearned. zod uses .parse() (not .strict()), so the real
+  // params were SILENTLY STRIPPED → the handler got all-undefined → updateDecision
+  // threw "No update fields provided". This schema now declares EXACTLY the params
+  // the handler reads (declared==handler boundary, Lesson 011 class fix), with the
+  // learning-loop enums validated against the DB CHECK constraints.
   update: z.object({
     decisionId: z.string().uuid(),
-    outcome: z.string().max(2000).optional(),
-    lessons: z.string().max(2000).optional(),
-    status: z.enum(['active', 'superseded', 'deprecated']).optional()
-  }),
-  
+    status: z.enum(['active', 'deprecated', 'superseded', 'under_review']).optional(),
+    // Learning-loop fields settable AFTER THE FACT (evaluate → correct).
+    outcomeStatus: outcomeStatusEnum.optional(),
+    outcomeNotes: z.string().max(2000).optional(),
+    lessonsLearned: z.string().max(2000).optional(),
+    implementationStatus: implementationStatusEnum.optional(),
+    successCriteria: z.string().max(2000).optional(),
+    problemStatement: z.string().max(2000).optional(),
+    supersededBy: z.string().uuid().optional(),
+    supersededReason: z.string().max(2000).optional()
+  }).refine(
+    data => data.status !== undefined || data.outcomeStatus !== undefined ||
+            data.outcomeNotes !== undefined || data.lessonsLearned !== undefined ||
+            data.implementationStatus !== undefined || data.successCriteria !== undefined ||
+            data.problemStatement !== undefined || data.supersededBy !== undefined ||
+            data.supersededReason !== undefined,
+    { message: 'At least one field to update must be provided (status, outcomeStatus, outcomeNotes, lessonsLearned, implementationStatus, successCriteria, problemStatement, supersededBy, supersededReason)' }
+  ),
+
   stats: z.object({})
 };
 
@@ -496,7 +528,7 @@ export function validateToolArguments(toolName: string, args: any) {
   }
 
   // Normalize synonyms for decision tools (AI-friendly parameter names)
-  if (toolName === 'decision_record' || toolName === 'decision_search') {
+  if (toolName === 'decision_record' || toolName === 'decision_search' || toolName === 'decision_update') {
     args = normalizeDecisionSynonyms(toolName, args);
   }
 
@@ -580,6 +612,21 @@ function normalizeDecisionSynonyms(toolName: string, args: any): any {
     delete normalized.options;
     delete normalized.alternatives;
     delete normalized.choices;
+  }
+
+  if (toolName === 'decision_update') {
+    // Back-compat / AI-friendly synonyms for the learning-loop fields. The tool
+    // previously advertised `outcome`/`lessons`; accept them (and a few natural
+    // variants) and map to the canonical param names the handler reads.
+    if (args.outcome && !args.outcomeNotes) normalized.outcomeNotes = args.outcome;
+    if (args.notes && !args.outcomeNotes) normalized.outcomeNotes = args.notes;
+    if (args.lessons && !args.lessonsLearned) normalized.lessonsLearned = args.lessons;
+    if (args.outcome_status && !args.outcomeStatus) normalized.outcomeStatus = args.outcome_status;
+
+    delete normalized.outcome;
+    delete normalized.notes;
+    delete normalized.lessons;
+    delete normalized.outcome_status;
   }
 
   if (toolName === 'decision_search') {

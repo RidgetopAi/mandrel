@@ -49,6 +49,7 @@ export interface TechnicalDecision {
   outcomeStatus: OutcomeStatus;
   outcomeNotes: string | null;
   lessonsLearned: string | null;
+  implementationStatus: ImplementationStatus;
 }
 
 export type DecisionType = 
@@ -61,6 +62,8 @@ export type DecisionStatus = 'active' | 'deprecated' | 'superseded' | 'under_rev
 export type ImpactLevel = 'low' | 'medium' | 'high' | 'critical';
 
 export type OutcomeStatus = 'unknown' | 'successful' | 'failed' | 'mixed' | 'too_early';
+
+export type ImplementationStatus = 'planned' | 'in_progress' | 'implemented' | 'validated' | 'deprecated';
 
 export interface Alternative {
   name: string;
@@ -82,6 +85,7 @@ export interface RecordDecisionRequest {
   rationale: string;
   problemStatement?: string;
   successCriteria?: string;
+  implementationStatus?: ImplementationStatus;
   alternativesConsidered?: Alternative[];
   decidedBy?: string;
   stakeholders?: string[];
@@ -97,6 +101,9 @@ export interface UpdateDecisionRequest {
   outcomeStatus?: OutcomeStatus;
   outcomeNotes?: string;
   lessonsLearned?: string;
+  implementationStatus?: ImplementationStatus;
+  successCriteria?: string;
+  problemStatement?: string;
   supersededBy?: string;
   supersededReason?: string;
 }
@@ -169,8 +176,8 @@ class DecisionsHandler {
           project_id, session_id, decision_type, title, description, rationale,
           problem_statement, success_criteria, alternatives_considered,
           decided_by, stakeholders, impact_level, affected_components,
-          tags, category
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+          tags, category, implementation_status
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, COALESCE($16, 'planned'))
         RETURNING *
       `, [
         projectId,
@@ -187,7 +194,8 @@ class DecisionsHandler {
         request.impactLevel,
         request.affectedComponents || [],
         request.tags || [],
-        request.category?.trim() || null
+        request.category?.trim() || null,
+        request.implementationStatus || null
       ]);
 
       const decision = this.mapDatabaseRowToDecision(result.rows[0]);
@@ -255,6 +263,24 @@ class DecisionsHandler {
       if (request.lessonsLearned !== undefined) {
         updateFields.push(`lessons_learned = $${paramIndex}`);
         values.push(request.lessonsLearned);
+        paramIndex++;
+      }
+
+      if (request.implementationStatus !== undefined) {
+        updateFields.push(`implementation_status = $${paramIndex}`);
+        values.push(request.implementationStatus);
+        paramIndex++;
+      }
+
+      if (request.successCriteria !== undefined) {
+        updateFields.push(`success_criteria = $${paramIndex}`);
+        values.push(request.successCriteria);
+        paramIndex++;
+      }
+
+      if (request.problemStatement !== undefined) {
+        updateFields.push(`problem_statement = $${paramIndex}`);
+        values.push(request.problemStatement);
         paramIndex++;
       }
 
@@ -730,7 +756,8 @@ class DecisionsHandler {
       category: row.category,
       outcomeStatus: row.outcome_status,
       outcomeNotes: row.outcome_notes,
-      lessonsLearned: row.lessons_learned
+      lessonsLearned: row.lessons_learned,
+      implementationStatus: row.implementation_status
     };
   }
 }
