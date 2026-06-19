@@ -76,12 +76,13 @@ class ContextRoutes {
         context?.connectionId
       );
 
-      // REF-GRAMMAR warnings (named refs first-class): if a `ref:<slug>` tag was
-      // malformed it was normalized (or flagged) at the write boundary — surface that
-      // to the caller so a typo'd ref is visible, not silent. Stored tags already
+      // LINKING-GRAMMAR warnings (tool-native linking): if a `ref:<slug>` OR a
+      // threading tag (`task:`/`decision:`/`context:`/`scope:`/`owner:`/`tranche:`)
+      // was malformed it was normalized (or flagged) at the write boundary — surface
+      // that to the caller so a typo'd link is visible, not silent. Stored tags already
       // reflect the normalized form.
       const refWarnings = result.warnings && result.warnings.length > 0
-        ? `\n⚠️  Ref notes:\n` + result.warnings.map(w => `   • ${w}`).join('\n') + '\n'
+        ? `\n⚠️  Tag notes:\n` + result.warnings.map(w => `   • ${w}`).join('\n') + '\n'
         : '';
 
       return {
@@ -131,6 +132,13 @@ class ContextRoutes {
 
         const ctx = result.rows[0];
         const tags = ctx.tags?.length > 0 ? `\n🏷️  Tags: [${ctx.tags.join(', ')}]` : '';
+        // METADATA ROUND-TRIP (tool-native linking): surface the structured back-links
+        // a context carries (stored via context_store's metadata param) so the thread
+        // resolves end-to-end through the tools alone — no SQL needed to read a link.
+        const meta = typeof ctx.metadata === 'string' ? JSON.parse(ctx.metadata) : (ctx.metadata ?? {});
+        const metadataText = meta && Object.keys(meta).length > 0
+          ? `\n📊 Metadata: ${JSON.stringify(meta)}`
+          : '';
 
         return {
           content: [{
@@ -138,7 +146,7 @@ class ContextRoutes {
             text: `📄 Context Details\n\n` +
                   `🆔 ID: ${ctx.id}\n` +
                   `📝 Type: ${ctx.context_type}\n` +
-                  `📅 Created: ${new Date(ctx.created_at).toLocaleString()}${tags}\n` +
+                  `📅 Created: ${new Date(ctx.created_at).toLocaleString()}${tags}${metadataText}\n` +
                   `⭐ Relevance: ${ctx.relevance_score}/10\n\n` +
                   `---\n\n${ctx.content}`
           }],
@@ -203,9 +211,15 @@ class ContextRoutes {
         const tagSummary = `🔍 Found ${tagResult.rows.length} contexts with tags [${args.tags.join(', ')}]\n\n`;
         const tagList = tagResult.rows.map((row, index) => {
           const timeAgo = this.getTimeAgo(row.created_at);
+          // Surface each thread member's structured back-links (metadata) so a thread
+          // fetched by its `task:`/`ref:` tag resolves end-to-end via tools alone.
+          const meta = typeof row.metadata === 'string' ? JSON.parse(row.metadata) : (row.metadata ?? {});
+          const metaLine = meta && Object.keys(meta).length > 0
+            ? `\n   Metadata: ${JSON.stringify(meta)}`
+            : '';
           return `${index + 1}. **${row.context_type}** (${timeAgo})\n` +
                  `   Content: ${row.content}\n` +
-                 `   Tags: [${(row.tags || []).join(', ')}]\n` +
+                 `   Tags: [${(row.tags || []).join(', ')}]${metaLine}\n` +
                  `   ID: ${row.id}`;
         }).join('\n\n');
 

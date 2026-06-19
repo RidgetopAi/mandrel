@@ -16,7 +16,7 @@ import { projectHandler } from './project.js';
 import { logContextEvent, logHierarchicalMemorySearch } from '../middleware/eventLogger.js';
 import { logger } from '../utils/logger.js';
 import { isValidUuid } from '../utils/uuid.js';
-import { validateAndNormalizeRefTags } from '../utils/refs.js';
+import { validateAndNormalizeTags } from '../utils/threadingTags.js';
 
 export interface StoreContextRequest {
   projectId?: string;
@@ -263,17 +263,19 @@ class ContextHandler {
         throw new Error('Context type is required');
       }
 
-      // REF-GRAMMAR VALIDATION (named refs first-class): validate/normalize any
-      // `ref:<slug>` tags at the write boundary so a typo'd/garbage ref can't
-      // silently break tags-only resolution. This WARNS + NORMALIZES (never rejects,
-      // never drops a tag); non-ref tags pass through untouched. The normalized tags
-      // are used for BOTH the embedding text and the stored row so the ref a user
-      // copies from the UI is exactly the ref that was indexed.
-      const refValidation = validateAndNormalizeRefTags(request.tags);
-      const normalizedTags = refValidation.tags;
-      const refWarnings = refValidation.warnings;
+      // LINKING-GRAMMAR VALIDATION (tool-native record linking): validate/normalize
+      // BOTH ref tags (`ref:<slug>`) AND the threading tags that thread the
+      // record-linking model (`task:`/`decision:`/`context:`/`scope:`/`owner:`/
+      // `tranche:`) at the write boundary, so a typo'd join key can't silently break
+      // the thread. This WARNS + NORMALIZES (never rejects, never drops a tag);
+      // non-linking tags pass through untouched. The normalized tags are used for BOTH
+      // the embedding text and the stored row so the tag a user copies from the UI is
+      // exactly the tag that was indexed.
+      const tagValidation = validateAndNormalizeTags(request.tags);
+      const normalizedTags = tagValidation.tags;
+      const refWarnings = tagValidation.warnings;
       if (refWarnings.length > 0) {
-        logger.warn(`🏷️  Ref-grammar normalization: ${refWarnings.join(' ')}`);
+        logger.warn(`🏷️  Linking-grammar normalization: ${refWarnings.join(' ')}`);
       }
 
       // Get or create project/session

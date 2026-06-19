@@ -141,7 +141,7 @@ describe('named refs: write-boundary + resolution (real DB)', () => {
     );
     const id = parseContextId(resp);
     expect(await tagsOf(id)).toEqual(['ref:cp-gaps', 'audit']);
-    expect(responseText(resp)).not.toContain('Ref notes');
+    expect(responseText(resp)).not.toContain('Tag notes');
   });
 
   test('malformed ref is normalized on write AND a warning is surfaced', async () => {
@@ -155,7 +155,7 @@ describe('named refs: write-boundary + resolution (real DB)', () => {
     expect(await tagsOf(id)).toEqual(['ref:my-resume', 'keep']);
     // The caller is told what changed (no silent rewrite).
     const text = responseText(resp);
-    expect(text).toContain('Ref notes');
+    expect(text).toContain('Tag notes');
     expect(text).toContain('ref:my-resume');
   });
 

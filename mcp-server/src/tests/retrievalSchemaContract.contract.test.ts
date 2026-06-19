@@ -30,6 +30,11 @@ import { validationSchemas } from '../middleware/validation.js';
 // The retrieval tools this tranche guards, with the exact param set the task
 // specified must be visible to the model (== what the zod validator accepts).
 const EXPECTED_PARAMS: Record<string, string[]> = {
+  // context_store (tool-native linking, task 49ad7b4d): previously hard-coded to only
+  // content/type/tags, hiding `metadata` (the keystone for structured back-links) +
+  // relevanceScore/projectId/sessionId. Now DERIVED from zod, so the declared schema
+  // advertises exactly the validated/accepted field set — and `metadata` is visible.
+  context_store: ['content', 'type', 'tags', 'relevanceScore', 'metadata', 'projectId', 'sessionId'],
   context_search: ['id', 'query', 'type', 'tags', 'limit', 'minSimilarity', 'offset', 'projectId', 'sessionId'],
   decision_search: ['query', 'limit', 'decisionType', 'status', 'impactLevel', 'component', 'tags', 'projectId', 'includeOutcome'],
   // Learning-loop wiring (task aff35ac1): decision_record/decision_update now DERIVE
@@ -94,6 +99,17 @@ describe('retrieval schema-drift class guard (declared == zod)', () => {
     ]);
     // Only `title` is required; everything else (incl. type) is optional at the JSON layer.
     expect(def.inputSchema.required ?? []).toEqual(['title']);
+  });
+
+  test('context_store now DECLARES the `metadata` param (tool-native linking keystone)', () => {
+    const def = AIDIS_TOOL_DEFINITIONS.find(t => t.name === 'context_store')!;
+    const props = def.inputSchema.properties as Record<string, any>;
+    // The param a context needed to carry STRUCTURED back-links (not just tags).
+    expect(Object.keys(props)).toContain('metadata');
+    // metadata is a jsonb object at the tool layer (zod z.record(z.any())).
+    expect(props.metadata.type).toBe('object');
+    // Only content+type are required; metadata (and the rest) stay optional.
+    expect((def.inputSchema.required ?? []).sort()).toEqual(['content', 'type']);
   });
 
   test('context_search now DECLARES the `tags` param (the headline drift fix)', () => {

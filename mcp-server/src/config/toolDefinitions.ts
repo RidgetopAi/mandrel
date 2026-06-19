@@ -132,28 +132,26 @@ export const AIDIS_TOOL_DEFINITIONS: ToolDefinition[] = [
             },
           },
           {
+            // SCHEMA-DRIFT CLASS FIX (tool-native linking, task 49ad7b4d): context_store
+            // previously HARD-CODED its inputSchema to only content/type/tags, hiding
+            // `metadata` (+ relevanceScore/projectId/sessionId) even though the zod
+            // validator (contextSchemas.store) accepts them and the handler persists
+            // them to contexts.metadata. So a context could carry structured back-links
+            // ONLY via tags, never via the metadata jsonb column — the missing keystone
+            // of tool-native record linking. Now DERIVED from the zod schema (same
+            // class fix as context_search/task_create), so the model sees exactly the
+            // fields the validator accepts and the layers can't drift again.
             name: 'context_store',
             description: 'Store development context with automatic embedding generation for semantic search',
-            inputSchema: {
-              type: 'object',
-              properties: {
-                content: {
-                  type: 'string',
-                  description: 'The context content to store'
-                },
-                type: {
-                  type: 'string',
-                  description: 'Context type: code, decision, error, discussion, planning, completion, milestone, reflections, handoff'
-                },
-                tags: {
-                  type: 'array',
-                  items: { type: 'string' },
-                  description: 'Optional tags for categorization and filtering (e.g., ["bug-fix", "authentication"]). A `ref:<slug>` tag (grammar `ref:[a-z0-9-]+`) creates a memorable named pointer resolvable via context_search({tags:["ref:<slug>"]}); a malformed ref slug is normalized on write and reported, not rejected.'
-                }
-              },
-              required: ['content', 'type'],
-              additionalProperties: true
-            },
+            inputSchema: buildInputSchema('context_store', {
+              content: 'The context content to store',
+              type: 'Context type: code, decision, error, discussion, planning, completion, milestone, reflections, handoff, lessons',
+              tags: 'Optional tags for categorization, filtering, and RECORD LINKING. Threading tags wire this context into the linked story: `task:<id8>` (belongs to a task thread), `decision:<id8>` (ladders to a decision), `context:<uuid>`, plus lens axes `scope:company|product` / `owner:engineering|product|marketing|rnd|accounting` / `tranche:safe|measured`. A `ref:<slug>` tag (`ref:[a-z0-9-]+`) is a memorable named pointer resolvable via context_search({tags:["ref:<slug>"]}). Malformed ref/threading tags are normalized on write and reported, never rejected.',
+              relevanceScore: 'Optional importance score 0–10 (default 5) feeding the hierarchical-memory ranking',
+              metadata: 'Optional structured metadata (jsonb object) stored on the context. The tool-native way to carry STRUCTURED back-links, e.g. {"parent_task":"<uuid>","parent_decision":"<uuid>","origin_context":"<uuid>"} — round-trips and is retrievable via context_search.',
+              projectId: 'Project ID or name to store under (defaults to current project)',
+              sessionId: 'Session ID to attribute this context to (defaults to the active session)'
+            }),
           },
           {
             name: 'context_search',
