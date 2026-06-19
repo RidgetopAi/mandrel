@@ -1,4 +1,5 @@
 import { smartSearchHandler } from '../handlers/smartSearch.js';
+import { buildHonestyHeader } from '../handlers/context.js';
 import { projectHandler } from '../handlers/project.js';
 import { formatMcpError } from '../utils/mcpFormatter.js';
 import type { McpResponse } from '../utils/mcpFormatter.js';
@@ -57,6 +58,13 @@ class SearchRoutes {
         };
       }
 
+      // HONESTY FLOOR (task b02446d7): smart_search rows sort DESC by relevanceScore,
+      // and the per-row display IS that score as a percentage — so it is already
+      // display-consistent (task e520d129 needs no number change here). Prepend an
+      // honest header when the best row is below the floor. relevanceScore is a
+      // fraction in [0,1]; the floor helper takes a 0–100 number.
+      const honestyHeader = buildHonestyHeader(results[0].relevanceScore * 100);
+
       const resultsList = results.map((result, index) => {
         const typeIcon = {
           context: '📝',
@@ -79,7 +87,8 @@ class SearchRoutes {
       return {
         content: [{
           type: 'text',
-          text: `🔍 Smart Search Results (${results.length})\n\n${resultsList}\n\n` +
+          text: (honestyHeader ? honestyHeader + '\n\n' : '') +
+                `🔍 Smart Search Results (${results.length})\n\n${resultsList}\n\n` +
                 `🎯 Searched: [${args.includeTypes?.join(', ') || 'context, component, decision'}]\n` +
                 `💡 Refine with different includeTypes or broader query`
         }],

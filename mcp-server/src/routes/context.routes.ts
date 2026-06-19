@@ -1,4 +1,4 @@
-import { contextHandler } from '../handlers/context.js';
+import { contextHandler, buildHonestyHeader } from '../handlers/context.js';
 import { projectHandler } from '../handlers/project.js';
 import { SessionTrackingMiddleware } from '../api/middleware/sessionTracking.js';
 import { formatMcpError } from '../utils/mcpFormatter.js';
@@ -226,11 +226,25 @@ class ContextRoutes {
         };
       }
 
+      // DISPLAY CONSISTENCY (task e520d129): show `relevance` — the sort-key score
+      // the row actually ranked on — NOT raw vector `similarity`, so the displayed
+      // number agrees with the order (#1 is always the highest). `relevance` falls
+      // back to `similarity` (baseline mode emits them equal).
+      const relevanceOf = (r: typeof results[number]): number =>
+        r.relevance !== undefined ? r.relevance
+        : r.similarity !== undefined ? r.similarity
+        : 0;
+
+      // HONESTY FLOOR (task b02446d7): if the BEST row is below the floor, prepend an
+      // honest header instead of presenting low-relevance rows as confident. Uses the
+      // SAME relevance number as the sort key, so the header agrees with row #1.
+      const honestyHeader = buildHonestyHeader(relevanceOf(results[0]));
+
       const searchSummary = `🔍 Found ${results.length} matching contexts for: "${args.query}"\n\n`;
       const resultsList = results.map((result, index) => {
         const timeAgo = this.getTimeAgo(result.createdAt);
-        const similarity = result.similarity !== undefined ? result.similarity : 0;
-        return `${index + 1}. **${result.contextType}** (similarity: ${similarity.toFixed(1)}%, ${timeAgo})\n` +
+        const relevance = relevanceOf(result);
+        return `${index + 1}. **${result.contextType}** (relevance: ${relevance.toFixed(1)}%, ${timeAgo})\n` +
                `   Content: ${result.content}\n` +
                `   Tags: [${result.tags.join(', ')}]\n` +
                `   ID: ${result.id}`;
@@ -239,7 +253,7 @@ class ContextRoutes {
       return {
         content: [{
           type: 'text',
-          text: searchSummary + resultsList
+          text: (honestyHeader ? honestyHeader + '\n\n' : '') + searchSummary + resultsList
         }],
       };
     } catch (error) {
