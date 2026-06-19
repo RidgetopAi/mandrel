@@ -291,12 +291,25 @@ deploy_prod() {
   # Rebuild the two code packages. mcp-server is compiled (tsc→dist) and RUN from
   # dist; the command backend runs tsx (live src) but the frontend is a static
   # build served by nginx. npm ci only when deps actually changed.
+  # mcp-server (tsc) and frontend (CRA) are BUILT on the box and need their
+  # devDependencies (typescript, react-scripts). Prod systemd runs with
+  # NODE_ENV=production, under which `npm ci` OMITS devDeps — so we MUST pass
+  # --include=dev or the on-box build fails ("react-scripts: not found").
+  # Run npm ci when deps changed, OR node_modules is absent, OR the build
+  # toolchain binary is missing (e.g. a prior prod-mode install omitted devDeps).
   local pkg
   for pkg in mcp-server mandrel-command/frontend mandrel-command/backend; do
     [[ -d "$dir/$pkg" ]] || continue
-    if [[ -n "$deps_changed" ]] && grep -q "^$pkg/package" <<<"$deps_changed"; then
-      info "prod: deps changed in $pkg → npm ci"
-      if ! ( cd "$dir/$pkg" && npm ci ) ; then bad "prod: npm ci failed in $pkg"; return 1; fi
+    local need_ci=""
+    if [[ -n "$deps_changed" ]] && grep -q "^$pkg/package" <<<"$deps_changed"; then need_ci=1; fi
+    [[ -d "$dir/$pkg/node_modules" ]] || need_ci=1
+    case "$pkg" in
+      mcp-server)                [[ -x "$dir/$pkg/node_modules/.bin/tsc" ]]           || need_ci=1 ;;
+      mandrel-command/frontend)  [[ -x "$dir/$pkg/node_modules/.bin/react-scripts" ]] || need_ci=1 ;;
+    esac
+    if [[ -n "$need_ci" ]]; then
+      info "prod: npm ci --include=dev in $pkg"
+      if ! ( cd "$dir/$pkg" && npm ci --include=dev ) ; then bad "prod: npm ci failed in $pkg"; return 1; fi
     fi
   done
   info "prod: building mcp-server (tsc) + frontend (CRA)"
