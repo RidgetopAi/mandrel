@@ -66,6 +66,85 @@ export interface SearchResult extends ContextEntry {
   combined_score?: number;
 }
 
+/**
+ * Hierarchical-memory ranking BLEND weights — made configurable (task a85726eb).
+ *
+ * context_search combines four signals into `combined_score`:
+ *   similarity  — cosine similarity to the query (the semantic match)
+ *   recency     — EXP time-decay of created_at (half-life configurable)
+ *   importance  — relevance_score/10
+ *   type_weight — milestone 1.0 … discussion 0.4
+ *
+ * Historically these were HARDCODED into the SQL:
+ *   BALANCED  = (similarity + recency + importance + type) / 4   → 0.25 each
+ *   RECENCY   = 0.05·sim + 0.90·recency + 0.025·imp + 0.025·type
+ *
+ * They are now lifted into env-overridable config so a ranking sweep can change the
+ * blend WITHOUT editing code. The DEFAULTS below reproduce the previous hardcoded
+ * behavior EXACTLY: BALANCED 0.25/0.25/0.25/0.25 is algebraically identical to the
+ * old `(a+b+c+d)/4`, and the RECENCY defaults match the old literals. Decay
+ * half-lives (in days) are also configurable; defaults are the historical 30d
+ * (balanced) and 7d (recency-focused).
+ *
+ * Env overrides (all optional; bad/missing values fall back to the default):
+ *   MANDREL_RANK_BAL_SIM, MANDREL_RANK_BAL_REC, MANDREL_RANK_BAL_IMP, MANDREL_RANK_BAL_TYPE
+ *   MANDREL_RANK_REC_SIM, MANDREL_RANK_REC_REC, MANDREL_RANK_REC_IMP, MANDREL_RANK_REC_TYPE
+ *   MANDREL_RANK_BAL_HALFLIFE_DAYS (default 30), MANDREL_RANK_REC_HALFLIFE_DAYS (default 7)
+ *
+ * NOTE: weights are NOT auto-normalized — the defaults intentionally do not sum to 1
+ * for the recency profile (matching history). The sweep supplies its own sets.
+ */
+interface RankWeights {
+  similarity: number;
+  recency: number;
+  importance: number;
+  typeWeight: number;
+  halfLifeDays: number;
+}
+
+function envFloat(name: string, fallback: number): number {
+  const raw = process.env[name];
+  if (raw === undefined || raw === '') return fallback;
+  const v = Number(raw);
+  return Number.isFinite(v) ? v : fallback;
+}
+
+const RANK_WEIGHTS: { balanced: RankWeights; recency: RankWeights } = {
+  // BALANCED default: 0.25 each → identical to old (sim+rec+imp+type)/4
+  balanced: {
+    similarity: envFloat('MANDREL_RANK_BAL_SIM', 0.25),
+    recency: envFloat('MANDREL_RANK_BAL_REC', 0.25),
+    importance: envFloat('MANDREL_RANK_BAL_IMP', 0.25),
+    typeWeight: envFloat('MANDREL_RANK_BAL_TYPE', 0.25),
+    halfLifeDays: envFloat('MANDREL_RANK_BAL_HALFLIFE_DAYS', 30.0),
+  },
+  // RECENCY-FOCUSED default: matches old 0.05 / 0.90 / 0.025 / 0.025 literals
+  recency: {
+    similarity: envFloat('MANDREL_RANK_REC_SIM', 0.05),
+    recency: envFloat('MANDREL_RANK_REC_REC', 0.90),
+    importance: envFloat('MANDREL_RANK_REC_IMP', 0.025),
+    typeWeight: envFloat('MANDREL_RANK_REC_TYPE', 0.025),
+    halfLifeDays: envFloat('MANDREL_RANK_REC_HALFLIFE_DAYS', 7.0),
+  },
+};
+
+/**
+ * Build the SQL fragment for `combined_score` from a weight profile. The four
+ * signal expressions are passed in (so the SECONDS in the decay differ per mode),
+ * and each is multiplied by its configured weight. Numeric literals are emitted
+ * with full precision so the default 0.25 path is byte-equivalent in value to the
+ * historical `/4` form.
+ */
+function buildCombinedScoreSql(w: RankWeights, simExpr: string, recExpr: string,
+                               impExpr: string, typeExpr: string): string {
+  return `(
+              (${simExpr}) * ${w.similarity} +
+              (${recExpr}) * ${w.recency} +
+              (${impExpr}) * ${w.importance} +
+              (${typeExpr}) * ${w.typeWeight}
+            )`;
+}
+
 class ContextHandler {
 
   /**
@@ -350,19 +429,9 @@ class ContextHandler {
       // Build search query with filters
       let sql: string;
 
-      if (hierarchicalEnabled && isRecencyFocused) {
-        // Recency-focused: TEMPORAL FILTER + dominant recency weighting
-        // Instance #43: Added temporal filter (only last 60 days)
-        // Instance #43: Aggressive recency weight (90%) with 7-day halflife
-        // Addresses Instance #42+ finding: hierarchical failed on "recent" queries
-        sql = `
-          SELECT
-            id, project_id, session_id, context_type, content,
-            created_at, relevance_score, tags, metadata,
-            1 - (embedding <=> $1::vector) as similarity,
-            EXP(-EXTRACT(EPOCH FROM (NOW() - created_at)) / (7.0 * 24.0 * 3600)) as recency_score,
-            COALESCE(relevance_score, 5.0) / 10.0 as importance_score,
-            CASE context_type
+      // Shared signal expressions (referenced by both hierarchical branches and the
+      // configurable combined_score builder). Decay half-life (days) is per-profile.
+      const TYPE_WEIGHT_CASE = `CASE context_type
               WHEN 'milestone' THEN 1.0
               WHEN 'decision' THEN 0.9
               WHEN 'completion' THEN 0.8
@@ -370,58 +439,47 @@ class ContextHandler {
               WHEN 'planning' THEN 0.6
               WHEN 'code' THEN 0.5
               ELSE 0.4
-            END as type_weight,
-            (
-              ((1 - (embedding <=> $1::vector)) * 0.05) +
-              (EXP(-EXTRACT(EPOCH FROM (NOW() - created_at)) / (7.0 * 24.0 * 3600)) * 0.90) +
-              (COALESCE(relevance_score, 5.0) / 10.0 * 0.025) +
-              (CASE context_type
-                WHEN 'milestone' THEN 1.0
-                WHEN 'decision' THEN 0.9
-                WHEN 'completion' THEN 0.8
-                WHEN 'reflections' THEN 0.7
-                WHEN 'planning' THEN 0.6
-                WHEN 'code' THEN 0.5
-                ELSE 0.4
-              END * 0.025)
-            ) as combined_score
+            END`;
+      const SIM_EXPR = `1 - (embedding <=> $1::vector)`;
+      const IMP_EXPR = `COALESCE(relevance_score, 5.0) / 10.0`;
+      const recExprFor = (halfLifeDays: number) =>
+        `EXP(-EXTRACT(EPOCH FROM (NOW() - created_at)) / (${halfLifeDays} * 24.0 * 3600))`;
+
+      if (hierarchicalEnabled && isRecencyFocused) {
+        // Recency-focused: TEMPORAL FILTER + dominant recency weighting.
+        // Instance #43: temporal filter (last 60 days) + recency-dominant blend.
+        // Blend weights/half-life now from RANK_WEIGHTS.recency (defaults preserve
+        // the historical 0.05/0.90/0.025/0.025 @ 7-day half-life exactly).
+        const w = RANK_WEIGHTS.recency;
+        const REC_EXPR = recExprFor(w.halfLifeDays);
+        sql = `
+          SELECT
+            id, project_id, session_id, context_type, content,
+            created_at, relevance_score, tags, metadata,
+            ${SIM_EXPR} as similarity,
+            ${REC_EXPR} as recency_score,
+            ${IMP_EXPR} as importance_score,
+            ${TYPE_WEIGHT_CASE} as type_weight,
+            ${buildCombinedScoreSql(w, SIM_EXPR, REC_EXPR, IMP_EXPR, TYPE_WEIGHT_CASE)} as combined_score
           FROM contexts
           WHERE embedding IS NOT NULL
             AND created_at > NOW() - INTERVAL '60 days'
         `;
       } else if (hierarchicalEnabled) {
-        // Balanced: vector similarity + recency + importance + context type weights
-        // Instance #43: Fixed decay parameter - 30-day halflife (was 1-day)
+        // Balanced: vector similarity + recency + importance + context type weights.
+        // Instance #43: 30-day half-life. Blend weights/half-life now from
+        // RANK_WEIGHTS.balanced (defaults 0.25 each = the historical (a+b+c+d)/4).
+        const w = RANK_WEIGHTS.balanced;
+        const REC_EXPR = recExprFor(w.halfLifeDays);
         sql = `
           SELECT
             id, project_id, session_id, context_type, content,
             created_at, relevance_score, tags, metadata,
-            1 - (embedding <=> $1::vector) as similarity,
-            EXP(-EXTRACT(EPOCH FROM (NOW() - created_at)) / (30.0 * 24.0 * 3600)) as recency_score,
-            COALESCE(relevance_score, 5.0) / 10.0 as importance_score,
-            CASE context_type
-              WHEN 'milestone' THEN 1.0
-              WHEN 'decision' THEN 0.9
-              WHEN 'completion' THEN 0.8
-              WHEN 'reflections' THEN 0.7
-              WHEN 'planning' THEN 0.6
-              WHEN 'code' THEN 0.5
-              ELSE 0.4
-            END as type_weight,
-            (
-              (1 - (embedding <=> $1::vector)) +
-              EXP(-EXTRACT(EPOCH FROM (NOW() - created_at)) / (30.0 * 24.0 * 3600)) +
-              COALESCE(relevance_score, 5.0) / 10.0 +
-              CASE context_type
-                WHEN 'milestone' THEN 1.0
-                WHEN 'decision' THEN 0.9
-                WHEN 'completion' THEN 0.8
-                WHEN 'reflections' THEN 0.7
-                WHEN 'planning' THEN 0.6
-                WHEN 'code' THEN 0.5
-                ELSE 0.4
-              END
-            ) / 4.0 as combined_score
+            ${SIM_EXPR} as similarity,
+            ${REC_EXPR} as recency_score,
+            ${IMP_EXPR} as importance_score,
+            ${TYPE_WEIGHT_CASE} as type_weight,
+            ${buildCombinedScoreSql(w, SIM_EXPR, REC_EXPR, IMP_EXPR, TYPE_WEIGHT_CASE)} as combined_score
           FROM contexts
           WHERE embedding IS NOT NULL
         `;
