@@ -37,7 +37,8 @@ class TasksHandler {
         tags: string[] = [],
         dependencies: string[] = [],
         metadata: Record<string, any> = {},
-        connectionId?: string
+        connectionId?: string,
+        status?: Task['status']
     ): Promise<Task> {
         // Validate project exists before creating task
         const projectExists = await this.pool.query(
@@ -60,12 +61,16 @@ class TasksHandler {
             const { SessionTracker } = await import('../services/sessionTracker.js');
             const sessionId = await SessionTracker.getActiveSession(connectionId);
 
+            // `status` is optional: when omitted, COALESCE falls back to 'todo' (the
+            // same value as the column default) so callers who don't set it are
+            // unaffected; when provided (e.g. seeding a task straight into
+            // in_progress) it persists instead of being silently dropped.
             const result = await client.query(
                 `INSERT INTO tasks
-                 (project_id, session_id, title, description, type, priority, assigned_to, created_by, tags, dependencies, metadata)
-                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+                 (project_id, session_id, title, description, type, priority, status, assigned_to, created_by, tags, dependencies, metadata)
+                 VALUES ($1, $2, $3, $4, $5, $6, COALESCE($7, 'todo'), $8, $9, $10, $11, $12)
                  RETURNING *`,
-                [projectId, sessionId, title, description, type, priority, assignedTo, createdBy, tags, dependencies, metadata]
+                [projectId, sessionId, title, description, type, priority, status, assignedTo, createdBy, tags, dependencies, metadata]
             );
 
             // TS004-1: Update session activity after task creation

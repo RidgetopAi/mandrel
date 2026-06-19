@@ -399,18 +399,25 @@ export const AIDIS_TOOL_DEFINITIONS: ToolDefinition[] = [
 
           {
             name: 'task_create',
-            description: 'Create a new task for agent coordination',
-            inputSchema: {
-              type: 'object',
-              properties: {
-                title: {
-                  type: 'string',
-                  description: 'Task title'
-                }
-              },
-              required: ['title'],
-              additionalProperties: true
-            },
+            // DERIVE the model-facing schema from the zod validator (same schema-from-zod
+            // class fix as the retrieval tools). The old hand-written schema advertised
+            // ONLY `title`, so an agent asked to "create a bug" never saw the `type` param,
+            // never passed it, and the handler's .default('general') silently won — a
+            // wrong-success the tool-use eval caught. Now every accepted-and-validated
+            // field (incl. `type` with its enum) is surfaced and can never drift again.
+            description: 'Create a new task for agent coordination. Set `type` to the right kind (e.g. "bug", "feature") at creation time — task_update cannot change type afterward.',
+            inputSchema: buildInputSchema('task_create', {
+              title: 'Task title (required)',
+              description: 'Longer task description / details',
+              type: 'Task type — one of: feature, bug, bugfix, refactor, test, review, docs, documentation, devops, general (default: general). Pick the correct one at creation; type is immutable afterward.',
+              priority: 'Priority — one of: low, medium, high, urgent (default: medium)',
+              status: 'Initial status — one of: todo, in_progress, completed, blocked (default: todo)',
+              assignedTo: 'Assignee identifier (free-form string, e.g. an agent name)',
+              dependencies: 'Task IDs this task depends on (max 10)',
+              tags: 'Tags for categorization and filtering (e.g., ["backend", "urgent"])',
+              projectId: 'Project ID or name to create the task under (defaults to current project)',
+              metadata: 'Arbitrary structured metadata to attach to the task'
+            }),
           },
           {
             name: 'task_list',

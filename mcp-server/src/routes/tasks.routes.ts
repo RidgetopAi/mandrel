@@ -38,7 +38,8 @@ class TasksRoutes {
         args.tags,
         args.dependencies,
         args.metadata,
-        context?.connectionId
+        context?.connectionId,
+        args.status
       );
 
       // Activity tracking is already handled in tasksHandler.createTask()
