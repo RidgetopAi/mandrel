@@ -287,7 +287,14 @@ const taskSchemas = {
   list: z.object({
     status: z.enum(['todo', 'in_progress', 'completed', 'blocked']).optional(),
     priority: z.enum(['low', 'medium', 'high', 'urgent']).optional(),
-    assignedAgent: z.string().uuid().optional(),
+    // assignedTo (NOT assignedAgent): the handler reads args.assignedTo and the
+    // column is `assigned_to` (a simple string, not an FK/uuid — same as
+    // task_create/task_update/bulk_update). The prior `assignedAgent` name + .uuid()
+    // both diverged from the handler read, so this filter was silently dropped
+    // (zod .parse() strips the undeclared assignedTo → undefined at the handler).
+    assignedTo: z.string().optional(),
+    type: z.enum(['feature', 'bug', 'bugfix', 'refactor', 'test', 'review', 'docs', 'documentation', 'devops', 'general']).optional(),
+    tags: baseTags,
     limit: baseLimit
   }),
   

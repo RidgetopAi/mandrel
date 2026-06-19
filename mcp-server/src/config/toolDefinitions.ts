@@ -420,7 +420,9 @@ export const AIDIS_TOOL_DEFINITIONS: ToolDefinition[] = [
             inputSchema: buildInputSchema('task_list', {
               status: 'Filter by status (todo, in_progress, completed, blocked)',
               priority: 'Filter by priority (low, medium, high, urgent)',
-              assignedAgent: 'Filter by assigned agent (UUID)',
+              assignedTo: 'Filter by assignee (matches the assigned_to value set via task_create/task_update)',
+              type: 'Filter by task type (feature, bug, bugfix, refactor, test, review, docs, devops, general)',
+              tags: 'Filter by tags — returns tasks matching ANY of the provided tags',
               limit: 'Maximum number of tasks to return (default 10)'
             }),
           },

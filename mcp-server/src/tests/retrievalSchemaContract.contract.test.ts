@@ -32,7 +32,7 @@ import { validationSchemas } from '../middleware/validation.js';
 const EXPECTED_PARAMS: Record<string, string[]> = {
   context_search: ['id', 'query', 'type', 'tags', 'limit', 'minSimilarity', 'offset', 'projectId', 'sessionId'],
   decision_search: ['query', 'limit', 'decisionType', 'status', 'impactLevel', 'component', 'tags', 'projectId', 'includeOutcome'],
-  task_list: ['status', 'priority', 'assignedAgent', 'limit'],
+  task_list: ['status', 'priority', 'assignedTo', 'type', 'tags', 'limit'],
   smart_search: ['query', 'projectId', 'includeTypes', 'scope', 'limit'],
   context_get_recent: ['limit', 'projectId'],
   get_recommendations: ['context', 'projectId', 'type'],
