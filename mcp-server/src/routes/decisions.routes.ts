@@ -37,6 +37,8 @@ class DecisionsRoutes {
         impactLevel: args.impactLevel,
         alternativesConsidered: args.alternativesConsidered,
         problemStatement: args.problemStatement,
+        successCriteria: args.successCriteria,
+        implementationStatus: args.implementationStatus,
         affectedComponents: args.affectedComponents,
         tags: args.tags,
         projectId: projectId,
@@ -140,6 +142,8 @@ class DecisionsRoutes {
         decision_type: decision.decisionType,
         impact_level: decision.impactLevel,
         status: decision.status,
+        implementationStatus: decision.implementationStatus,
+        successCriteria: decision.successCriteria,
         outcomeStatus: decision.outcomeStatus,
         outcomeNotes: decision.outcomeNotes,
         lessonsLearned: decision.lessonsLearned,
@@ -181,9 +185,15 @@ class DecisionsRoutes {
 
       const decision = await decisionsHandler.updateDecision({
         decisionId: args.decisionId,
+        status: args.status,
         outcomeStatus: args.outcomeStatus,
         outcomeNotes: args.outcomeNotes,
-        lessonsLearned: args.lessonsLearned
+        lessonsLearned: args.lessonsLearned,
+        implementationStatus: args.implementationStatus,
+        successCriteria: args.successCriteria,
+        problemStatement: args.problemStatement,
+        supersededBy: args.supersededBy,
+        supersededReason: args.supersededReason
       });
 
       return {
@@ -192,6 +202,7 @@ class DecisionsRoutes {
           text: `✅ Decision updated successfully!\n\n` +
                 `📝 Title: ${decision.title}\n` +
                 `📊 Status: ${decision.status}\n` +
+                `🛠️  Implementation: ${decision.implementationStatus}\n` +
                 `🎯 Outcome: ${decision.outcomeStatus}\n` +
                 `📄 Notes: ${decision.outcomeNotes || 'None'}\n` +
                 `🧠 Lessons Learned: ${decision.lessonsLearned || 'None'}\n\n` +

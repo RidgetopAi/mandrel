@@ -32,6 +32,14 @@ import { validationSchemas } from '../middleware/validation.js';
 const EXPECTED_PARAMS: Record<string, string[]> = {
   context_search: ['id', 'query', 'type', 'tags', 'limit', 'minSimilarity', 'offset', 'projectId', 'sessionId'],
   decision_search: ['query', 'limit', 'decisionType', 'status', 'impactLevel', 'component', 'tags', 'projectId', 'includeOutcome'],
+  // Learning-loop wiring (task aff35ac1): decision_record/decision_update now DERIVE
+  // their model-facing inputSchema from the zod validator, so the params the model
+  // sees == the params the validator accepts == the params the handler reads.
+  decision_record: ['decisionType', 'title', 'description', 'rationale', 'impactLevel',
+    'alternativesConsidered', 'problemStatement', 'successCriteria', 'implementationStatus',
+    'affectedComponents', 'tags', 'projectId', 'metadata'],
+  decision_update: ['decisionId', 'status', 'outcomeStatus', 'outcomeNotes', 'lessonsLearned',
+    'implementationStatus', 'successCriteria', 'problemStatement', 'supersededBy', 'supersededReason'],
   task_list: ['status', 'priority', 'assignedTo', 'type', 'tags', 'limit'],
   smart_search: ['query', 'projectId', 'includeTypes', 'scope', 'limit'],
   context_get_recent: ['limit', 'projectId'],
