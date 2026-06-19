@@ -3,8 +3,11 @@
  *
  * Drives the REAL public tool path (zod validator → route handler → real migrated
  * Postgres, the disposable ci_* DB from scripts/ci.sh — never production) for the
- * technical-decision learning loop. Embeddings are not touched by decision tools, so
- * nothing is stubbed here; every DB read/write is real.
+ * technical-decision learning loop. decision_record/update now embed-on-write (task
+ * f04e7ab9), but the embedder is NOT stubbed here: in CI it falls back to the
+ * deterministic mock embedding, and these searches use exact-title queries that
+ * match strongly on the trgm/text signal regardless — so every DB read/write is real
+ * and the learning-loop field round-trip is unaffected by the embedding addition.
  *
  * WHAT THIS PROVES:
  *

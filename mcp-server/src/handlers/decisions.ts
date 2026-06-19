@@ -20,9 +20,44 @@
  */
 
 import { db } from '../config/database.js';
+import { embeddingService } from '../services/embedding.js';
 import { projectHandler } from './project.js';
 import { logDecisionEvent, logEvent } from '../middleware/eventLogger.js';
 import { logger } from '../utils/logger.js';
+
+/**
+ * Build the hybrid embedding text for a decision, mirroring how context_store
+ * combines title + tags + type + content. A decision's "content" is the union of
+ * its human-authored prose fields — title, description, rationale, and (when set)
+ * the problem statement and success criteria — so a semantically-equivalent query
+ * ('critical security decision', 'authentication') lands near the right row.
+ *
+ * Pure + side-effect-free so it can be reused by record, update, and the backfill.
+ */
+export function buildDecisionEmbeddingText(parts: {
+  decisionType?: string | null;
+  title?: string | null;
+  description?: string | null;
+  rationale?: string | null;
+  problemStatement?: string | null;
+  successCriteria?: string | null;
+  tags?: string[] | null;
+}): string {
+  return [
+    parts.decisionType ? `Type: ${parts.decisionType}` : '',
+    parts.tags && parts.tags.length ? `Tags: ${parts.tags.join(', ')}` : '',
+    parts.title || '',
+    parts.description || '',
+    parts.rationale || '',
+    parts.problemStatement || '',
+    parts.successCriteria || '',
+  ].map(s => (s || '').trim()).filter(Boolean).join('\n');
+}
+
+/** Format a JS number[] as a pgvector literal: `[a,b,c]`. */
+function toVectorLiteral(embedding: number[]): string {
+  return `[${embedding.join(',')}]`;
+}
 
 export interface TechnicalDecision {
   id: string;
@@ -50,6 +85,13 @@ export interface TechnicalDecision {
   outcomeNotes: string | null;
   lessonsLearned: string | null;
   implementationStatus: ImplementationStatus;
+  /**
+   * Vector-similarity score (0–100) to the search query, populated ONLY by
+   * searchDecisions when a semantic `query` was supplied. Mirrors the `similarity`
+   * surfaced by context_search so callers/UI can rank + display a relevance number.
+   * Undefined for record/update results and for filter-only searches.
+   */
+  similarity?: number;
 }
 
 export type DecisionType = 
@@ -170,14 +212,39 @@ class DecisionsHandler {
         // Could return warning but allow duplicate, or suggest linking
       }
 
+      // EMBED-ON-WRITE: generate a semantic embedding from the decision's prose,
+      // mirroring context_store. Reuses the SAME local embedder + 1536 dimensions
+      // contexts use (FREE — no paid API). If embedding generation fails, we degrade
+      // gracefully: store the decision WITHOUT an embedding (search falls back to the
+      // trgm path) rather than failing the whole record — the decision must persist.
+      const embeddingText = buildDecisionEmbeddingText({
+        decisionType: request.decisionType,
+        title: request.title,
+        description: request.description,
+        rationale: request.rationale,
+        problemStatement: request.problemStatement,
+        successCriteria: request.successCriteria,
+        tags: request.tags,
+      });
+      let embeddingLiteral: string | null = null;
+      try {
+        const embeddingResult = await embeddingService.generateEmbedding({ text: embeddingText });
+        embeddingLiteral = toVectorLiteral(embeddingResult.embedding);
+        logger.info(`🔮 Generated decision embedding (${embeddingResult.dimensions}D, model: ${embeddingResult.model})`);
+      } catch (embedError) {
+        logger.warn('⚠️  Failed to generate decision embedding — storing without it (trgm fallback applies)', {
+          metadata: { message: (embedError as Error)?.message }
+        });
+      }
+
       // Insert decision
       const result = await db.query(`
         INSERT INTO technical_decisions (
           project_id, session_id, decision_type, title, description, rationale,
           problem_statement, success_criteria, alternatives_considered,
           decided_by, stakeholders, impact_level, affected_components,
-          tags, category, implementation_status
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, COALESCE($16, 'planned'))
+          tags, category, implementation_status, embedding
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, COALESCE($16, 'planned'), $17::vector)
         RETURNING *
       `, [
         projectId,
@@ -195,7 +262,8 @@ class DecisionsHandler {
         request.affectedComponents || [],
         request.tags || [],
         request.category?.trim() || null,
-        request.implementationStatus || null
+        request.implementationStatus || null,
+        embeddingLiteral
       ]);
 
       const decision = this.mapDatabaseRowToDecision(result.rows[0]);
@@ -320,6 +388,38 @@ class DecisionsHandler {
 
       const decision = this.mapDatabaseRowToDecision(result.rows[0]);
 
+      // RE-EMBED ON TEXT CHANGE: if any field that feeds the embedding text changed
+      // (problem_statement or success_criteria are the only text fields update can
+      // touch), regenerate the embedding from the UPDATED row so semantic search
+      // stays in sync. Best-effort: a failure leaves the prior embedding intact and
+      // never fails the update.
+      const textChanged =
+        request.problemStatement !== undefined || request.successCriteria !== undefined;
+      if (textChanged) {
+        try {
+          const row = result.rows[0];
+          const embeddingText = buildDecisionEmbeddingText({
+            decisionType: row.decision_type,
+            title: row.title,
+            description: row.description,
+            rationale: row.rationale,
+            problemStatement: row.problem_statement,
+            successCriteria: row.success_criteria,
+            tags: row.tags,
+          });
+          const embeddingResult = await embeddingService.generateEmbedding({ text: embeddingText });
+          await db.query(
+            `UPDATE technical_decisions SET embedding = $1::vector WHERE id = $2`,
+            [toVectorLiteral(embeddingResult.embedding), decision.id]
+          );
+          logger.info(`🔮 Re-embedded decision ${decision.id.substring(0, 8)}... after text change`);
+        } catch (embedError) {
+          logger.warn('⚠️  Failed to re-embed decision after text change — prior embedding retained', {
+            metadata: { message: (embedError as Error)?.message }
+          });
+        }
+      }
+
       logger.info(`✅ Decision updated: ${decision.status} | Outcome: ${decision.outcomeStatus}`);
       
       // Log the decision update event
@@ -349,13 +449,71 @@ class DecisionsHandler {
 
     try {
       const projectId = await this.ensureProjectId(request.projectId);
-      
-      let sql = `
-        SELECT * FROM technical_decisions 
-        WHERE project_id = $1
-      `;
+
+      // SEMANTIC SEARCH (mirrors context_search): when a free-text query is given,
+      // rank by vector similarity `1 - (embedding <=> queryVec)` instead of plain
+      // text matching, so a semantically-equivalent query surfaces the right
+      // decision even with zero literal word overlap (the eval's failing case).
+      //
+      // The text/trgm signal is BLENDED in as a fallback so:
+      //   - un-embedded rows (legacy, pre-backfill) still match on their text, and
+      //   - an exact literal hit isn't demoted by a slightly-lower cosine score.
+      // A row with NEITHER signal (no embedding AND no text match) is excluded —
+      // same effect as the old ILIKE filter, so we never flood results with noise.
+      const isSemantic = !!(request.query && request.query.trim() && request.query !== '*');
+
+      let queryEmbeddingLiteral: string | null = null;
+      if (isSemantic) {
+        try {
+          const queryEmbedding = await embeddingService.generateEmbedding({ text: request.query!.trim() });
+          queryEmbeddingLiteral = toVectorLiteral(queryEmbedding.embedding);
+        } catch (embedError) {
+          // Degrade to pure text matching if the embedder is unavailable.
+          logger.warn('⚠️  Failed to embed decision search query — falling back to text matching', {
+            metadata: { message: (embedError as Error)?.message }
+          });
+        }
+      }
+
       const params: any[] = [projectId];
       let paramIndex = 2;
+
+      // Build the optional semantic-score SELECT expression. Cosine similarity in
+      // [0,1] (0 when the row has no embedding). Trgm word_similarity in [0,1] over
+      // the concatenated prose. Final score: max of the two — a row ranks on whichever
+      // signal is stronger, so semantic wins when present, text rescues legacy rows.
+      let scoreSelect = '';
+      let queryParamIdx = -1;
+      if (isSemantic) {
+        queryParamIdx = paramIndex;
+        params.push(request.query!.trim()); // text param for trgm fallback ($2)
+        paramIndex++;
+
+        if (queryEmbeddingLiteral !== null) {
+          const embParamIdx = paramIndex;
+          params.push(queryEmbeddingLiteral); // vector param ($3)
+          paramIndex++;
+          scoreSelect = `,
+        GREATEST(
+          CASE WHEN embedding IS NULL THEN 0
+               ELSE 1 - (embedding <=> $${embParamIdx}::vector) END,
+          word_similarity($${queryParamIdx},
+            coalesce(title,'') || ' ' || coalesce(description,'') || ' ' ||
+            coalesce(rationale,'') || ' ' || coalesce(problem_statement,''))
+        ) AS search_score`;
+        } else {
+          // Embedder unavailable → text-only score.
+          scoreSelect = `,
+        word_similarity($${queryParamIdx},
+          coalesce(title,'') || ' ' || coalesce(description,'') || ' ' ||
+          coalesce(rationale,'') || ' ' || coalesce(problem_statement,'')) AS search_score`;
+        }
+      }
+
+      let sql = `
+        SELECT *${scoreSelect} FROM technical_decisions
+        WHERE project_id = $1
+      `;
 
       // Add filters
       if (request.decisionType) {
@@ -388,14 +546,21 @@ class DecisionsHandler {
         paramIndex++;
       }
 
-      if (request.query && request.query !== '*') {
+      if (isSemantic) {
+        // Keep ONLY rows with a real signal: an embedding (semantic candidate) OR a
+        // text/trigram overlap. Mirrors the old ILIKE gate but additionally admits
+        // semantic-only matches that share no literal substring.
         sql += ` AND (
-          title ILIKE $${paramIndex} OR 
-          description ILIKE $${paramIndex} OR 
+          embedding IS NOT NULL OR
+          title ILIKE $${paramIndex} OR
+          description ILIKE $${paramIndex} OR
           rationale ILIKE $${paramIndex} OR
-          problem_statement ILIKE $${paramIndex}
+          problem_statement ILIKE $${paramIndex} OR
+          word_similarity($${queryParamIdx},
+            coalesce(title,'') || ' ' || coalesce(description,'') || ' ' ||
+            coalesce(rationale,'') || ' ' || coalesce(problem_statement,'')) > 0.1
         )`;
-        params.push(`%${request.query}%`);
+        params.push(`%${request.query!.trim()}%`);
         paramIndex++;
       }
 
@@ -411,13 +576,29 @@ class DecisionsHandler {
         paramIndex++;
       }
 
-      sql += ` ORDER BY decision_date DESC LIMIT $${paramIndex}`;
+      // Rank by semantic relevance when querying; else newest-first (unchanged).
+      if (isSemantic) {
+        sql += ` ORDER BY search_score DESC, decision_date DESC LIMIT $${paramIndex}`;
+      } else {
+        sql += ` ORDER BY decision_date DESC LIMIT $${paramIndex}`;
+      }
       params.push(request.limit || 20);
 
       const result = await db.query(sql, params);
-      const decisions = result.rows.map(row => this.mapDatabaseRowToDecision(row));
+      const decisions = result.rows.map(row => {
+        const decision = this.mapDatabaseRowToDecision(row);
+        // Surface the similarity/relevance the row ranked on (0–100), consistent
+        // with context_search. Only present on semantic searches.
+        if (row.search_score !== undefined && row.search_score !== null) {
+          const s = parseFloat(row.search_score);
+          decision.similarity = Number.isFinite(s)
+            ? Math.round(Math.max(0, Math.min(1, s)) * 100 * 10) / 10
+            : undefined;
+        }
+        return decision;
+      });
 
-      logger.info(`✅ Found ${decisions.length} matching decisions`);
+      logger.info(`✅ Found ${decisions.length} matching decisions${isSemantic ? ' (semantic ranking)' : ''}`);
       
       // Log the search event
       await logEvent({
