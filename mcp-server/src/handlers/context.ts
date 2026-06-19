@@ -16,6 +16,7 @@ import { projectHandler } from './project.js';
 import { logContextEvent, logHierarchicalMemorySearch } from '../middleware/eventLogger.js';
 import { logger } from '../utils/logger.js';
 import { isValidUuid } from '../utils/uuid.js';
+import { validateAndNormalizeRefTags } from '../utils/refs.js';
 
 export interface StoreContextRequest {
   projectId?: string;
@@ -44,6 +45,12 @@ export interface ContextEntry {
   tags: string[];
   metadata: Record<string, any>;
   embedding?: number[];
+  /**
+   * Non-fatal warnings produced while storing — currently ref-grammar normalization
+   * notes (e.g. a malformed `ref:` tag that was normalized or could not be fixed).
+   * Empty/absent on a clean store. The route surfaces these to the caller.
+   */
+  warnings?: string[];
 }
 
 export interface SearchContextRequest {
@@ -256,6 +263,19 @@ class ContextHandler {
         throw new Error('Context type is required');
       }
 
+      // REF-GRAMMAR VALIDATION (named refs first-class): validate/normalize any
+      // `ref:<slug>` tags at the write boundary so a typo'd/garbage ref can't
+      // silently break tags-only resolution. This WARNS + NORMALIZES (never rejects,
+      // never drops a tag); non-ref tags pass through untouched. The normalized tags
+      // are used for BOTH the embedding text and the stored row so the ref a user
+      // copies from the UI is exactly the ref that was indexed.
+      const refValidation = validateAndNormalizeRefTags(request.tags);
+      const normalizedTags = refValidation.tags;
+      const refWarnings = refValidation.warnings;
+      if (refWarnings.length > 0) {
+        logger.warn(`🏷️  Ref-grammar normalization: ${refWarnings.join(' ')}`);
+      }
+
       // Get or create project/session
       const projectId = await this.ensureProjectId(request.projectId);
       const sessionId = await this.ensureSessionId(request.sessionId, projectId, request.connectionId);
@@ -264,7 +284,7 @@ class ContextHandler {
       const extractedTitle = this.extractTitle(request.content);
       const embeddingText = [
         `Type: ${request.type}`,
-        request.tags?.length ? `Tags: ${request.tags.join(', ')}` : '',
+        normalizedTags.length ? `Tags: ${normalizedTags.join(', ')}` : '',
         extractedTitle,
         request.content.substring(0, 1000) // Limit content to avoid dilution
       ].filter(Boolean).join('\n');
@@ -284,7 +304,7 @@ class ContextHandler {
         content: request.content.trim(),
         embedding: JSON.stringify(embeddingResult.embedding), // PostgreSQL vector format
         relevance_score: request.relevanceScore || 5.0,
-        tags: request.tags || [],
+        tags: normalizedTags,
         metadata: JSON.stringify(request.metadata || {})
       };
 
@@ -379,9 +399,10 @@ class ContextHandler {
         content: request.content,
         createdAt: result.rows[0].created_at,
         relevanceScore: request.relevanceScore || 5.0,
-        tags: request.tags || [],
+        tags: normalizedTags,
         metadata: request.metadata || {},
-        embedding: embeddingResult.embedding
+        embedding: embeddingResult.embedding,
+        warnings: refWarnings.length > 0 ? refWarnings : undefined
       };
 
       if (process.env.AIDIS_DETAILED_LOGGING === 'true') {
