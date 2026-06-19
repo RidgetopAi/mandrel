@@ -41,6 +41,11 @@ const EXPECTED_PARAMS: Record<string, string[]> = {
   decision_update: ['decisionId', 'status', 'outcomeStatus', 'outcomeNotes', 'lessonsLearned',
     'implementationStatus', 'successCriteria', 'problemStatement', 'supersededBy', 'supersededReason'],
   task_list: ['status', 'priority', 'assignedTo', 'type', 'tags', 'limit'],
+  // task_create (36aa0549): the model-facing schema previously advertised ONLY
+  // `title`, hiding `type` (+ enum) and every other accepted field — so an agent
+  // asked for a "bug" silently got a `general` task. Now DERIVED from zod, so the
+  // declared schema advertises exactly the validated/accepted field set.
+  task_create: ['title', 'description', 'type', 'priority', 'status', 'assignedTo', 'dependencies', 'tags', 'projectId', 'metadata'],
   smart_search: ['query', 'projectId', 'includeTypes', 'scope', 'limit'],
   context_get_recent: ['limit', 'projectId'],
   get_recommendations: ['context', 'projectId', 'type'],
@@ -75,6 +80,21 @@ describe('retrieval schema-drift class guard (declared == zod)', () => {
       expect(declaredKeys, `declared keys for ${toolName}`).toEqual(zk);
     });
   }
+
+  test('task_create now DECLARES the `type` param WITH its enum (the headline drift fix)', () => {
+    const def = AIDIS_TOOL_DEFINITIONS.find(t => t.name === 'task_create')!;
+    const props = def.inputSchema.properties as Record<string, any>;
+    // The param the agent could not previously see.
+    expect(Object.keys(props)).toContain('type');
+    // The enum must be surfaced so the model knows 'bug' (etc.) is a legal value —
+    // not just a free-form string it has to guess at.
+    expect(props.type.enum).toEqual([
+      'feature', 'bug', 'bugfix', 'refactor', 'test', 'review',
+      'docs', 'documentation', 'devops', 'general',
+    ]);
+    // Only `title` is required; everything else (incl. type) is optional at the JSON layer.
+    expect(def.inputSchema.required ?? []).toEqual(['title']);
+  });
 
   test('context_search now DECLARES the `tags` param (the headline drift fix)', () => {
     const def = AIDIS_TOOL_DEFINITIONS.find(t => t.name === 'context_search')!;
