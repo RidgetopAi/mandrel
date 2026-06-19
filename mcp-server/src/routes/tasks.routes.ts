@@ -80,7 +80,8 @@ class TasksRoutes {
         args.tags,
         args.priority,
         args.phase,
-        args.statuses
+        args.statuses,
+        args.limit
       );
 
       if (tasks.length === 0) {

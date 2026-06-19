@@ -89,7 +89,8 @@ class TasksHandler {
         tags?: string[],
         priority?: string,
         phase?: string,
-        statuses?: string[]
+        statuses?: string[],
+        limit?: number
     ): Promise<Task[]> {
         const client = await this.pool.connect();
         try {
@@ -149,6 +150,15 @@ class TasksHandler {
                     ELSE 0
                 END DESC,
                 created_at DESC`;
+
+            // Apply LIMIT when provided. Previously absent: the zod-validated `limit`
+            // param was accepted but never reached SQL, so `limit:3` returned ALL
+            // rows. Guard the value (positive integer) before interpolating.
+            if (limit !== undefined && Number.isInteger(limit) && limit > 0) {
+                query += ` LIMIT $${paramIndex}`;
+                params.push(limit);
+                paramIndex++;
+            }
 
             const result = await client.query(query, params);
             return result.rows.map(row => this.mapTask(row));

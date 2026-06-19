@@ -9,6 +9,9 @@
  * Last Updated: 2025-10-05
  */
 
+import { zodToJsonSchema } from 'zod-to-json-schema';
+import { validationSchemas } from '../middleware/validation.js';
+
 /**
  * Tool Definition Interface
  * Matches the MCP SDK Tool type structure
@@ -21,6 +24,49 @@ export interface ToolDefinition {
     properties: Record<string, any>;
     required?: string[];
     additionalProperties?: boolean;
+  };
+}
+
+/**
+ * CLASS FIX (schema-drift keystone): generate the model-facing JSON inputSchema
+ * DIRECTLY from the zod schema that actually gates the request in
+ * middleware/validation.ts. The model can no longer be shown params the validator
+ * silently drops (zod uses .parse(), not .strict(), so undeclared/divergent params
+ * vanish without error). One source of truth → the two layers cannot diverge again.
+ *
+ * `humanDescriptions` lets us keep the friendly per-param help text (zod schemas
+ * don't carry it). It is OVERLAY ONLY — it can never add/rename a param that zod
+ * doesn't define, so it cannot reintroduce drift. A schema-match test asserts the
+ * derived `properties` keyset == the zod keyset for every retrieval tool.
+ */
+function buildInputSchema(
+  toolName: keyof typeof validationSchemas,
+  humanDescriptions: Record<string, string> = {}
+): ToolDefinition['inputSchema'] {
+  const zodSchema = validationSchemas[toolName];
+  // $refStrategy:'none' flattens .refine()/nested shapes to a plain object schema
+  // with top-level `properties` (verified for the refined context_search schema).
+  const json = zodToJsonSchema(zodSchema as any, {
+    target: 'jsonSchema7',
+    $refStrategy: 'none',
+  }) as any;
+
+  const properties: Record<string, any> = { ...(json.properties ?? {}) };
+
+  // Overlay human-friendly descriptions onto params zod already defines.
+  for (const [key, desc] of Object.entries(humanDescriptions)) {
+    if (properties[key]) {
+      properties[key] = { ...properties[key], description: desc };
+    }
+  }
+
+  return {
+    type: 'object',
+    properties,
+    required: Array.isArray(json.required) ? json.required : [],
+    // Keep additionalProperties:true to match historical MCP behavior (tolerant
+    // ingress); the zod validator remains the real gatekeeper for VALUES.
+    additionalProperties: true,
   };
 }
 
@@ -111,32 +157,26 @@ export const AIDIS_TOOL_DEFINITIONS: ToolDefinition[] = [
           },
           {
             name: 'context_search',
-            description: 'Search stored contexts using semantic similarity and filters, or fetch a specific context by ID',
-            inputSchema: {
-              type: 'object',
-              properties: {
-                id: {
-                  type: 'string',
-                  description: 'Context UUID for direct lookup (bypasses semantic search)'
-                },
-                query: {
-                  type: 'string',
-                  description: 'Search query using semantic similarity'
-                }
-              },
-              required: [],
-              additionalProperties: true
-            },
+            description: 'Search stored contexts using semantic similarity and filters, or fetch a specific context by ID. Provide at least one of: id, query, or a non-empty tags array (a tags-only call filters by tags).',
+            inputSchema: buildInputSchema('context_search', {
+              id: 'Context UUID for direct lookup (bypasses semantic search)',
+              query: 'Search query using semantic similarity (optional if id or tags provided)',
+              type: 'Filter by context type (code, decision, error, discussion, planning, completion, milestone, reflections, handoff, lessons)',
+              tags: 'Filter by tags (e.g., ["ref:cp-gaps"]); a non-empty tags array enables a tags-only search with no query',
+              limit: 'Maximum number of results to return (default 10)',
+              minSimilarity: 'Minimum similarity threshold (0-100) to include a result',
+              offset: 'Number of leading results to skip (pagination)',
+              projectId: 'Project ID or name to scope the search (defaults to current project)',
+              sessionId: 'Session ID to scope the search'
+            }),
           },
           {
             name: 'context_get_recent',
             description: 'Get recent contexts in chronological order (newest first)',
-            inputSchema: {
-              type: 'object',
-              properties: {},
-              required: [],
-              additionalProperties: true
-            },
+            inputSchema: buildInputSchema('context_get_recent', {
+              limit: 'Maximum number of recent contexts to return (default 5, max 20)',
+              projectId: 'Project ID or name to scope the results (defaults to current project)'
+            }),
           },
           {
             name: 'context_stats',
@@ -319,12 +359,17 @@ export const AIDIS_TOOL_DEFINITIONS: ToolDefinition[] = [
           {
             name: 'decision_search',
             description: 'Search technical decisions with various filters',
-            inputSchema: {
-              type: 'object',
-              properties: {},
-              required: [],
-              additionalProperties: true
-            },
+            inputSchema: buildInputSchema('decision_search', {
+              query: 'Search query (optional; omit for pure filter-based search)',
+              decisionType: 'Filter by decision type (architecture, library, framework, pattern, api_design, database, deployment, security, performance, ui_ux, testing, tooling, process, naming_convention, code_style)',
+              status: 'Filter by status (active, deprecated, superseded, under_review)',
+              impactLevel: 'Filter by impact level (low, medium, high, critical)',
+              component: 'Filter by affected component name',
+              tags: 'Filter by tags',
+              limit: 'Maximum number of results to return (default 10)',
+              projectId: 'Project ID or name to scope the search (defaults to current project)',
+              includeOutcome: 'Include recorded outcome/lessons in results'
+            }),
           },
           {
             name: 'decision_update',
@@ -372,12 +417,12 @@ export const AIDIS_TOOL_DEFINITIONS: ToolDefinition[] = [
           {
             name: 'task_list',
             description: 'List tasks with optional filtering',
-            inputSchema: {
-              type: 'object',
-              properties: {},
-              required: [],
-              additionalProperties: true
-            },
+            inputSchema: buildInputSchema('task_list', {
+              status: 'Filter by status (todo, in_progress, completed, blocked)',
+              priority: 'Filter by priority (low, medium, high, urgent)',
+              assignedAgent: 'Filter by assigned agent (UUID)',
+              limit: 'Maximum number of tasks to return (default 10)'
+            }),
           },
           {
             name: 'task_update',
@@ -401,17 +446,10 @@ export const AIDIS_TOOL_DEFINITIONS: ToolDefinition[] = [
           {
             name: 'task_details',
             description: 'Get detailed information for a specific task',
-            inputSchema: {
-              type: 'object',
-              properties: {
-                taskId: {
-                  type: 'string',
-                  description: 'Task ID'
-                }
-              },
-              required: ['taskId'],
-              additionalProperties: true
-            },
+            inputSchema: buildInputSchema('task_details', {
+              taskId: 'Task ID (UUID)',
+              projectId: 'Project ID or name to scope the lookup (defaults to current project)'
+            }),
           },
           {
             name: 'task_bulk_update',
@@ -442,32 +480,22 @@ export const AIDIS_TOOL_DEFINITIONS: ToolDefinition[] = [
           {
             name: 'smart_search',
             description: 'Intelligent search across all project data sources',
-            inputSchema: {
-              type: 'object',
-              properties: {
-                query: {
-                  type: 'string',
-                  description: 'Search query'
-                }
-              },
-              required: ['query'],
-              additionalProperties: true
-            },
+            inputSchema: buildInputSchema('smart_search', {
+              query: 'Search query',
+              scope: 'Limit search to one source (contexts, decisions, naming, agents, tasks, code, all)',
+              includeTypes: 'Restrict to specific result types',
+              limit: 'Maximum number of results to return (default 10)',
+              projectId: 'Project ID or name to scope the search (defaults to current project)'
+            }),
           },
           {
             name: 'get_recommendations',
             description: 'Get AI-powered recommendations for development',
-            inputSchema: {
-              type: 'object',
-              properties: {
-                context: {
-                  type: 'string',
-                  description: 'What you are working on'
-                }
-              },
-              required: ['context'],
-              additionalProperties: true
-            },
+            inputSchema: buildInputSchema('get_recommendations', {
+              context: 'What you are working on',
+              type: 'Recommendation type (naming, implementation, architecture, testing)',
+              projectId: 'Project ID or name to scope recommendations (defaults to current project)'
+            }),
           },
           {
             name: 'project_insights',

@@ -51,6 +51,7 @@ export interface SearchContextRequest {
   query: string;
   type?: string;
   limit?: number;
+  offset?: number;
   minSimilarity?: number;
   tags?: string[];
 }
@@ -465,6 +466,17 @@ class ContextHandler {
         sql += ` ORDER BY similarity DESC LIMIT $${paramIndex}`;
       }
       params.push(request.limit || 10);
+      paramIndex++;
+
+      // OFFSET pagination: zod accepts `offset` but it was previously never applied
+      // (silent no-op). Wire it through here. Only the ordering/scoring above is
+      // out-of-scope (the MEASURED ranking tranche) — OFFSET is plain pagination
+      // applied AFTER ordering, so it does not alter the sort.
+      if (request.offset !== undefined && Number.isInteger(request.offset) && request.offset > 0) {
+        sql += ` OFFSET $${paramIndex}`;
+        params.push(request.offset);
+        paramIndex++;
+      }
 
       logger.info('🔍 Executing vector similarity search...');
       const result = await db.query(sql, params);

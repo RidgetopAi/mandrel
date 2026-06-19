@@ -136,6 +136,69 @@ class ContextRoutes {
         };
       }
 
+      // TAGS-ONLY lookup: no id and no query, but a non-empty tags array. The
+      // semantic searchContext() path REQUIRES a query (it embeds request.query),
+      // so a tags-only request is answered here by the existing `tags && $1` GIN
+      // filter directly — NO dummy query needed. This does NOT touch the semantic
+      // ranking/scoring (the out-of-scope MEASURED tranche): it is a straight tag
+      // filter ordered newest-first.
+      if (!args.query && Array.isArray(args.tags) && args.tags.length > 0) {
+        const projectId = await this.resolveProjectId(args.projectId, context);
+        logger.info(`🔍 Context tags-only search: [${args.tags.join(', ')}]`);
+
+        const params: any[] = [args.tags];
+        let sql = `SELECT id, project_id, session_id, context_type, content,
+                          created_at, relevance_score, tags, metadata
+                   FROM contexts
+                   WHERE tags && $1`;
+        let pIdx = 2;
+        if (projectId) {
+          sql += ` AND project_id = $${pIdx}`;
+          params.push(projectId);
+          pIdx++;
+        }
+        if (args.type) {
+          sql += ` AND context_type = $${pIdx}`;
+          params.push(args.type);
+          pIdx++;
+        }
+        sql += ` ORDER BY created_at DESC LIMIT $${pIdx}`;
+        params.push(args.limit && Number.isInteger(args.limit) && args.limit > 0 ? args.limit : 10);
+        pIdx++;
+        if (args.offset && Number.isInteger(args.offset) && args.offset > 0) {
+          sql += ` OFFSET $${pIdx}`;
+          params.push(args.offset);
+          pIdx++;
+        }
+
+        const tagResult = await db.query(sql, params);
+
+        if (tagResult.rows.length === 0) {
+          return {
+            content: [{
+              type: 'text',
+              text: `🔍 No contexts found with tags: [${args.tags.join(', ')}]`
+            }],
+          };
+        }
+
+        const tagSummary = `🔍 Found ${tagResult.rows.length} contexts with tags [${args.tags.join(', ')}]\n\n`;
+        const tagList = tagResult.rows.map((row, index) => {
+          const timeAgo = this.getTimeAgo(row.created_at);
+          return `${index + 1}. **${row.context_type}** (${timeAgo})\n` +
+                 `   Content: ${row.content}\n` +
+                 `   Tags: [${(row.tags || []).join(', ')}]\n` +
+                 `   ID: ${row.id}`;
+        }).join('\n\n');
+
+        return {
+          content: [{
+            type: 'text',
+            text: tagSummary + tagList
+          }],
+        };
+      }
+
       logger.info(`🔍 Context search request: "${args.query}"`);
 
       const projectId = await this.resolveProjectId(args.projectId, context);
@@ -144,6 +207,7 @@ class ContextRoutes {
         type: args.type,
         tags: args.tags,
         limit: args.limit,
+        offset: args.offset,
         minSimilarity: args.minSimilarity,
         projectId: projectId
       });

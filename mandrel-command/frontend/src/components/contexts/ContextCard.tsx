@@ -3,7 +3,7 @@ import { Card, Tag, Typography, Space, Tooltip, Checkbox, Button, Dropdown, Menu
 import {
   EyeOutlined, EditOutlined, DeleteOutlined, ShareAltOutlined,
   CalendarOutlined, FolderOutlined, TagsOutlined,
-  FileMarkdownOutlined, CopyOutlined, FileTextOutlined
+  FileMarkdownOutlined, CopyOutlined, FileTextOutlined, DatabaseOutlined
 } from '@ant-design/icons';
 import type { Context } from '../../types/context';
 import {
@@ -55,6 +55,15 @@ const ContextCard: React.FC<ContextCardProps> = ({
 
   const truncatedContent = truncateContent(context.content, 120);
   const highlightedContent = highlightSearchTermsAsNodes(truncatedContent, searchTerm);
+
+  // Copyable id affordance on the COLLAPSED card. Previously the only copyable id
+  // lived in ContextDetail (after expanding). If the context carries a `ref:` tag,
+  // surface that ref as the copyable handle (it is the human-friendly stable
+  // reference); otherwise fall back to the short UUID prefix. Uses the same Ant
+  // `copyable` pattern as ContextDetail (copies the FULL value, shows a short label).
+  const refTag = context.tags?.find(tag => /^ref:/.test(tag));
+  const idChipLabel = refTag ?? `${context.id.slice(0, 8)}`;
+  const idChipCopyText = refTag ?? context.id;
 
   const actions = [
     <Tooltip title="View Details" key="view">
@@ -142,6 +151,19 @@ const ContextCard: React.FC<ContextCardProps> = ({
             <Tag color={typeColor} style={{ margin: 0 }}>
               {typeDisplayName}
             </Tag>
+            {/* Copyable id / ref handle (collapsed-card affordance) */}
+            <Tooltip title={refTag ? `Copy ref: ${refTag}` : `Copy context id: ${context.id}`}>
+              <Tag icon={<DatabaseOutlined />} style={{ margin: 0 }}>
+                <Text
+                  code
+                  style={{ fontSize: '12px' }}
+                  copyable={{ text: idChipCopyText, tooltips: ['Copy', 'Copied'] }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {idChipLabel}
+                </Text>
+              </Tag>
+            </Tooltip>
             {context.project_name && (
               <Tag icon={<FolderOutlined />} color="blue">
                 {context.project_name}

@@ -1,0 +1,113 @@
+/**
+ * Retrieval Ergonomics Contract Test (tags-only search + task_list limit)
+ *
+ * Drives the REAL route handlers + zod validator against a REAL migrated Postgres
+ * (the disposable ci_* DB from scripts/ci.sh — never production). Embeddings are
+ * stubbed (no native sharp/transformers in CI), but every DB read/write is real.
+ *
+ * PROVES:
+ *  1. zod accepts a TAGS-ONLY context_search (no id, no query) — the relaxed
+ *     .refine. Previously it threw "Either 'id' or 'query' must be provided".
+ *  2. context_search({tags:[...]}) returns the matching context via the existing
+ *     `tags && $1` GIN filter — NO dummy query needed.
+ *  3. task_list `limit` is now applied (LIMIT in SQL): limit:N returns at most N
+ *     even when more tasks exist. Previously `limit` was a silent no-op.
+ */
+
+import { describe, test, expect, beforeAll, afterAll, vi } from 'vitest';
+
+// Stub embeddings (same approach as smartSearchRetrieval.contract.test.ts).
+vi.mock('../services/embedding.js', () => ({
+  embeddingService: {
+    generateEmbedding: vi.fn(async () => ({
+      embedding: new Array(1536).fill(0).map((_v, i) => ((i % 7) - 3) / 10),
+      dimensions: 1536,
+      model: 'mock',
+    })),
+  },
+}));
+
+import { db } from '../config/database.js';
+import { contextHandler } from '../handlers/context.js';
+import { tasksHandler } from '../handlers/tasks.js';
+import { contextRoutes } from '../routes/context.routes.js';
+import { validateToolArguments } from '../middleware/validation.js';
+
+const STAMP = Date.now();
+const PROJ_NAME = `retrieval-ergonomics-${STAMP}`;
+const REF_TAG = `ref:cp-gaps-${STAMP}`;
+
+let projectId: string;
+
+function textOf(resp: any): string {
+  return resp?.content?.map((c: any) => c.text).join('\n') ?? '';
+}
+
+describe('retrieval ergonomics: tags-only search + task_list limit', () => {
+  beforeAll(async () => {
+    projectId = (await db.query(
+      `INSERT INTO projects (name, description) VALUES ($1, 'retrieval ergonomics fuse') RETURNING id`,
+      [PROJ_NAME]
+    )).rows[0].id;
+
+    // One context carrying the ref: tag (the tags-only target), plus a decoy.
+    await contextHandler.storeContext({
+      projectId, type: 'milestone',
+      content: 'The cross-project gaps milestone we want to fetch by tag alone',
+      tags: [REF_TAG, 'milestone'],
+    });
+    await contextHandler.storeContext({
+      projectId, type: 'discussion',
+      content: 'An unrelated context that must NOT match the ref tag',
+      tags: ['unrelated'],
+    });
+
+    // Five tasks so a LIMIT actually has something to cut.
+    for (let i = 0; i < 5; i++) {
+      await tasksHandler.createTask(projectId, `limit-test task ${i}`, undefined, 'general', 'medium');
+    }
+  });
+
+  afterAll(async () => {
+    if (projectId) {
+      try { await db.query('DELETE FROM contexts WHERE project_id = $1', [projectId]); } catch { /* ignore */ }
+      try { await db.query('DELETE FROM tasks WHERE project_id = $1', [projectId]); } catch { /* ignore */ }
+      try { await db.query('DELETE FROM sessions WHERE project_id = $1', [projectId]); } catch { /* ignore */ }
+      try { await db.query('DELETE FROM projects WHERE id = $1', [projectId]); } catch { /* ignore */ }
+    }
+    await db.end();
+  });
+
+  test('zod accepts a tags-only context_search (relaxed .refine)', () => {
+    // Must NOT throw — previously this raised "Either 'id' or 'query' must be provided".
+    const validated = validateToolArguments('context_search', { tags: [REF_TAG] });
+    expect(validated.tags).toEqual([REF_TAG]);
+    // A truly empty call (no id/query/tags) is still rejected.
+    expect(() => validateToolArguments('context_search', {})).toThrow();
+    // An empty tags array is NOT enough either.
+    expect(() => validateToolArguments('context_search', { tags: [] })).toThrow();
+  });
+
+  test('context_search({tags:[ref]}) returns the tagged context with NO query', async () => {
+    const resp = await contextRoutes.handleSearch({ tags: [REF_TAG], projectId });
+    const text = textOf(resp);
+    expect(text).toContain('milestone'); // the matched context type
+    expect(text).toContain('cross-project gaps milestone'); // its content
+    expect(text).not.toContain('must NOT match'); // decoy excluded
+  });
+
+  test('tags-only search returns empty cleanly for a non-existent tag', async () => {
+    const resp = await contextRoutes.handleSearch({ tags: [`ref:does-not-exist-${STAMP}`], projectId });
+    expect(textOf(resp)).toContain('No contexts found');
+  });
+
+  test('task_list limit is applied (LIMIT reaches SQL)', async () => {
+    const all = await tasksHandler.listTasks(projectId);
+    expect(all.length).toBeGreaterThanOrEqual(5); // baseline: more than the limit
+
+    const limited = await tasksHandler.listTasks(
+      projectId, undefined, undefined, undefined, undefined, undefined, undefined, undefined, 3
+    );
+    expect(limited.length).toBe(3); // previously this returned ALL rows
+  });
+});

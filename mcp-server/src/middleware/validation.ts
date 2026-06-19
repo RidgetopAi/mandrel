@@ -69,8 +69,11 @@ const contextSchemas = {
     offset: z.number().int().min(0).optional(),
     projectId: z.string().optional(),
     sessionId: z.string().optional()
-  }).refine(data => data.id || data.query, {
-    message: "Either 'id' or 'query' must be provided"
+  }).refine(data => data.id || data.query || (data.tags !== undefined && data.tags.length > 0), {
+    // Accept a TAGS-ONLY call (id OR query OR a non-empty tags array). A tags-only
+    // request is answered by the existing `tags && $1` GIN filter (no dummy query
+    // needed). Behavior when a query is present is unchanged.
+    message: "Provide at least one of: 'id', 'query', or a non-empty 'tags' array"
   }),
   
   get_recent: z.object({
@@ -380,7 +383,10 @@ const smartSearchSchemas = {
 // REST API endpoints at /api/v2/sessions/* handle UI analytics needs
 
 // Main validation schema registry
-const validationSchemas = {
+// EXPORTED so toolDefinitions.ts can DERIVE the model-facing inputSchema from the
+// same zod schema that actually gates the request — making the two physically
+// impossible to diverge (the 3-layer schema-drift class fix). See toolDefinitions.ts.
+export const validationSchemas = {
   // System Health (with backward compatibility aliases)
   mandrel_ping: aidisSystemSchemas.ping,
   mandrel_status: aidisSystemSchemas.status,
