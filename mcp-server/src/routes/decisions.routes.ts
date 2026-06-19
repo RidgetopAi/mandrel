@@ -155,6 +155,10 @@ class DecisionsRoutes {
         ),
         affected_components: decision.affectedComponents,
         tags: decision.tags,
+        // Semantic relevance (0–100) the row ranked on, when a free-text query was
+        // supplied — consistent with context_search's `similarity`. Absent for
+        // filter-only searches.
+        similarity: decision.similarity,
         created_at: decision.decisionDate.toISOString(),
         updated_at: decision.decisionDate.toISOString()
       }));

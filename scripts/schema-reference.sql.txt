@@ -719,6 +719,7 @@ COLUMN technical_decisions.decided_by | text | null=YES | default=
 COLUMN technical_decisions.decision_date | timestamp with time zone | null=YES | default=CURRENT_TIMESTAMP
 COLUMN technical_decisions.decision_type | character varying(50) | null=NO | default=
 COLUMN technical_decisions.description | text | null=NO | default=
+COLUMN technical_decisions.embedding | USER-DEFINED | null=YES | default=
 COLUMN technical_decisions.id | uuid | null=NO | default=gen_random_uuid()
 COLUMN technical_decisions.impact_level | character varying(20) | null=NO | default='medium'
 COLUMN technical_decisions.implementation_status | character varying(50) | null=YES | default='planned'
@@ -993,6 +994,7 @@ CONSTRAINT tasks FOREIGN_KEY fk_tasks_project :: FOREIGNKEYproject_idREFERENCESp
 CONSTRAINT tasks FOREIGN_KEY fk_tasks_session_id :: FOREIGNKEYsession_idREFERENCESsessionsidONDELETESETNULL
 CONSTRAINT tasks PRIMARY_KEY tasks_pkey :: PRIMARYKEYid
 CONSTRAINT technical_decisions CHECK technical_decisions_decision_type_check :: CHECKdecision_type=ANYARRAY'architecture','library','framework','pattern','api_design','database','deployment','security','performance','ui_ux','testing','tooling','process','naming_convention','code_style'
+CONSTRAINT technical_decisions CHECK technical_decisions_embedding_dimension_check :: CHECKembeddingISNULLORvector_dimsembedding=1536
 CONSTRAINT technical_decisions CHECK technical_decisions_impact_level_check :: CHECKimpact_level=ANYARRAY'low','medium','high','critical'
 CONSTRAINT technical_decisions CHECK technical_decisions_implementation_status_check :: CHECKimplementation_status=ANYARRAY'planned','in_progress','implemented','validated','deprecated'
 CONSTRAINT technical_decisions CHECK technical_decisions_outcome_status_check :: CHECKoutcome_status=ANYARRAY'unknown','successful','failed','mixed','too_early'
@@ -1334,6 +1336,7 @@ INDEX tasks.tasks_pkey :: CREATE UNIQUE INDEX tasks_pkey ON tasks USING btree (i
 INDEX technical_decisions.idx_technical_decisions_components_gin :: CREATE INDEX idx_technical_decisions_components_gin ON technical_decisions USING gin (affected_components)
 INDEX technical_decisions.idx_technical_decisions_content_fts :: CREATE INDEX idx_technical_decisions_content_fts ON technical_decisions USING gin (to_tsvector('english'::regconfig, (((((((title)::text || ' '::text) || description) || ' '::text) || rationale) || ' '::text) || COALESCE(problem_statement, ''::text))))
 INDEX technical_decisions.idx_technical_decisions_date :: CREATE INDEX idx_technical_decisions_date ON technical_decisions USING btree (decision_date DESC)
+INDEX technical_decisions.idx_technical_decisions_embedding_cosine :: CREATE INDEX idx_technical_decisions_embedding_cosine ON technical_decisions USING ivfflat (embedding vector_cosine_ops) WITH (lists='100')
 INDEX technical_decisions.idx_technical_decisions_impact :: CREATE INDEX idx_technical_decisions_impact ON technical_decisions USING btree (impact_level, project_id)
 INDEX technical_decisions.idx_technical_decisions_impl_commits :: CREATE INDEX idx_technical_decisions_impl_commits ON technical_decisions USING gin (implementing_commits)
 INDEX technical_decisions.idx_technical_decisions_project_type :: CREATE INDEX idx_technical_decisions_project_type ON technical_decisions USING btree (project_id, decision_type)
