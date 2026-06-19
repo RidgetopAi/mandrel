@@ -110,12 +110,18 @@ function envFloat(name: string, fallback: number): number {
 }
 
 const RANK_WEIGHTS: { balanced: RankWeights; recency: RankWeights } = {
-  // BALANCED default: 0.25 each → identical to old (sim+rec+imp+type)/4
+  // BALANCED default: similarity-dominant 0.70/0.10/0.10/0.10 (task a85726eb).
+  // The prior 0.25-each blend weighted semantic similarity at only 25%, so on
+  // data with real metadata variation (varied recency + context_type — i.e. all
+  // production data) recency/type DEMOTED the best semantic match: a measured
+  // -9 recall@1 pts on real LongMemEval session dates, up to -59 with varied
+  // type. 0.70 recovers it (no-op on uniform-metadata data → zero regression on
+  // the frozen eval baseline). See ref:ranking-blend-finding. Env-overridable.
   balanced: {
-    similarity: envFloat('MANDREL_RANK_BAL_SIM', 0.25),
-    recency: envFloat('MANDREL_RANK_BAL_REC', 0.25),
-    importance: envFloat('MANDREL_RANK_BAL_IMP', 0.25),
-    typeWeight: envFloat('MANDREL_RANK_BAL_TYPE', 0.25),
+    similarity: envFloat('MANDREL_RANK_BAL_SIM', 0.70),
+    recency: envFloat('MANDREL_RANK_BAL_REC', 0.10),
+    importance: envFloat('MANDREL_RANK_BAL_IMP', 0.10),
+    typeWeight: envFloat('MANDREL_RANK_BAL_TYPE', 0.10),
     halfLifeDays: envFloat('MANDREL_RANK_BAL_HALFLIFE_DAYS', 30.0),
   },
   // RECENCY-FOCUSED default: matches old 0.05 / 0.90 / 0.025 / 0.025 literals
