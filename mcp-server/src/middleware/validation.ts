@@ -58,6 +58,26 @@ const coercedBoolean = () =>
     return v; // leave non-coercible values for z.boolean() to reject
   }, z.boolean());
 
+/**
+ * Coerce a string-from-the-bridge integer into a real number BEFORE validation —
+ * the numeric sibling of coercedBoolean(). Same root cause: the HTTP bridge / MCP
+ * clients serialize args as JSON, so a numeric param (limit/offset) can arrive as
+ * the STRING "20" rather than the number 20, and a bare z.number() would reject it.
+ *
+ * Conservative: only a string that is a clean base-10 integer is converted; anything
+ * else (real number passes straight through; "abc", "1.5", "") is left untouched so
+ * the inner z.number().int() still REJECTS garbage rather than silently defaulting.
+ * Pass the inner schema (with .min/.max/.default) so each call sites its own bounds.
+ */
+const coercedInt = (inner: z.ZodTypeAny) =>
+  z.preprocess((v) => {
+    if (typeof v === 'string') {
+      const s = v.trim();
+      if (/^-?\d+$/.test(s)) return parseInt(s, 10);
+    }
+    return v; // number passes through; non-integer string left for z.number() to reject
+  }, inner);
+
 // Base validation schemas
 const baseMetadata = z.record(z.any()).optional();
 const baseName = z.string().min(1).max(255);
@@ -207,7 +227,16 @@ const projectSchemas = {
   }),
   
   list: z.object({
-    includeStats: z.union([z.boolean(), z.string().transform(val => val === 'true')]).optional().default(false)
+    includeStats: z.union([z.boolean(), z.string().transform(val => val === 'true')]).optional().default(false),
+    // PAGINATION (task 4b484c8f): project_list used to return EVERY project unbounded
+    // (output bloat as the project count grows). Add a bounded page window mirroring
+    // task_list's limit/offset, but with a project-appropriate DEFAULT of 20 (projects
+    // are far fewer than tasks; 20 fits a typical workspace without truncating). Both
+    // arrive as STRINGS over the bridge → coercedInt() (numeric sibling of
+    // coercedBoolean) so "20"/"40" validate. Truncation is reported honestly in-route
+    // (total vs returned + a "showing N of M" note) — never a silent cut.
+    limit: coercedInt(z.number().int().min(1).max(100).default(20)),
+    offset: coercedInt(z.number().int().min(0).optional())
   }),
   
   current: z.object({}),

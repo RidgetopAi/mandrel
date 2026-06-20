@@ -50,16 +50,28 @@ class ProjectRoutes {
       const sessionId = this.getSessionId(context);
 
       await projectHandler.initializeSession(sessionId); // Ensure session is initialized
-      const projects = await projectHandler.listProjects(args.includeStats !== false);
+      const allProjects = await projectHandler.listProjects(args.includeStats !== false);
 
-      if (projects.length === 0) {
+      // PAGINATION (task 4b484c8f): the validator supplies a bounded limit (default 20)
+      // and optional offset. listProjects() returns the full set (ordered updated_at
+      // DESC) and is shared by two internal callers that must keep seeing everything,
+      // so we page IN-ROUTE rather than changing the handler signature — the project
+      // set is small enough that an in-memory slice is cheap, and it lets us report an
+      // HONEST `total` (full count) vs `returned` (this page) without a second query.
+      const total = allProjects.length;
+      const offset = args.offset ?? 0;
+      const limit = args.limit; // always present (zod default 20)
+      const projects = allProjects.slice(offset, offset + limit);
+      const truncated = total > offset + projects.length || offset > 0;
+
+      if (total === 0) {
         return {
           content: [{
             type: 'text',
             text: `📋 No projects found\n\n` +
                   `Create your first project with: project_create`
           }],
-          structuredContent: { ok: true, results: [], total: 0 },
+          structuredContent: { ok: true, results: [], total: 0, returned: 0, offset, limit },
         };
       }
 
@@ -69,21 +81,37 @@ class ProjectRoutes {
           ? ` | Contexts: ${project.contextCount}`
           : '';
 
-        return `${index + 1}. **${project.name}**${isActive}\n` +
-               `   Description: ${project.description || 'No description'}\n` +
+        // VALUE-CLEANING (task 4b484c8f, Lesson 011): name + description are short,
+        // DB-sourced IDENTIFIER values rendered inline — run them through rawValue()
+        // BEFORE the literal `**` wrapper so a name literally stored as `**x**` shows
+        // as clean text, not `****x****`. (Same source-channel fix as project_current.)
+        return `${offset + index + 1}. **${rawValue(project.name)}**${isActive}\n` +
+               `   Description: ${project.description ? rawValue(project.description) : 'No description'}\n` +
                `   Status: ${project.status}${stats}\n` +
                `   ID: ${project.id}`;
       }).join('\n\n');
 
+      // Honest truncation note — never silently drop rows (task 4b484c8f).
+      const truncationNote = truncated
+        ? `\n\n📄 Showing ${projects.length} of ${total}` +
+          (offset > 0 ? ` (offset ${offset})` : '') +
+          ` — page with limit/offset (e.g. project_list limit:${limit} offset:${offset + limit}).`
+        : '';
+
       return {
         content: [{
           type: 'text',
-          text: `📋 Projects (${projects.length} total)\n\n${projectList}\n\n` +
+          text: `📋 Projects (${projects.length} of ${total})\n\n${projectList}${truncationNote}\n\n` +
                 `🔄 Switch projects with: project_switch <name-or-id>`
         }],
         structuredContent: {
+          ok: true,
           results: projects.map((p) => this.toRawProject(p)),
-          total: projects.length,
+          total,
+          returned: projects.length,
+          offset,
+          limit,
+          truncated,
         },
       };
     } catch (error) {
@@ -110,7 +138,9 @@ class ProjectRoutes {
       return {
         content: [{
           type: 'text',
-          text: `✅ Project created: "${project.name}" (${project.status}) — ID ${project.id}`,
+          // VALUE-CLEANING (task 4b484c8f): project name is a DB-sourced identifier
+          // rendered inline → rawValue() so stored markup never prints literal `**`.
+          text: `✅ Project created: "${rawValue(project.name)}" (${project.status}) — ID ${project.id}`,
         }],
         structuredContent: { action: 'created', project: this.toRawProject(project) },
       };
@@ -273,8 +303,11 @@ class ProjectRoutes {
       return {
         content: [{
           type: 'text',
-          text: `📋 Project Information: **${project.name}**${project.isActive ? ' 🟢 (CURRENT)' : ''}\n\n` +
-                `📄 Description: ${project.description || 'No description'}\n` +
+          // VALUE-CLEANING (task 4b484c8f, whole-class): name + description are short
+          // DB-sourced identifier values rendered inline → rawValue() at the source so
+          // markup stored in data never renders as literal `**` in the human text.
+          text: `📋 Project Information: **${rawValue(project.name)}**${project.isActive ? ' 🟢 (CURRENT)' : ''}\n\n` +
+                `📄 Description: ${project.description ? rawValue(project.description) : 'No description'}\n` +
                 `📊 Status: ${project.status}\n` +
                 `📈 Contexts: ${project.contextCount || 0}\n` +
                 `🔗 Git Repo: ${project.gitRepoUrl || 'None'}\n` +
@@ -282,7 +315,7 @@ class ProjectRoutes {
                 `⏰ Created: ${project.createdAt.toISOString().split('T')[0]}\n` +
                 `⏰ Updated: ${project.updatedAt.toISOString().split('T')[0]}\n` +
                 `🆔 ID: ${project.id}${metadataInfo}\n\n` +
-                `${project.isActive ? '🎯 This is your current active project' : '🔄 Switch to this project with: project_switch ' + project.name}`
+                `${project.isActive ? '🎯 This is your current active project' : '🔄 Switch to this project with: project_switch ' + rawValue(project.name)}`
         }],
         structuredContent: { found: true, project: this.toRawProject(project) },
       };
@@ -395,7 +428,7 @@ class ProjectRoutes {
         return {
           content: [{
             type: 'text',
-            text: `❌ Refusing to delete "${existing.name}": it is the active project for this session.\n\n` +
+            text: `❌ Refusing to delete "${rawValue(existing.name)}": it is the active project for this session.\n\n` +
                   `Owned data: ${counts.contexts} contexts, ${counts.decisions} decisions, ` +
                   `${counts.tasks} tasks, ${counts.sessions} sessions.\n` +
                   `💡 Switch to another project first: project_switch <other-project>`

@@ -1,7 +1,7 @@
 import { decisionsHandler } from '../handlers/decisions.js';
 import { projectHandler } from '../handlers/project.js';
 import { SessionTrackingMiddleware } from '../api/middleware/sessionTracking.js';
-import { formatMcpError } from '../utils/mcpFormatter.js';
+import { formatMcpError, rawValue } from '../utils/mcpFormatter.js';
 import type { McpResponse } from '../utils/mcpFormatter.js';
 import type { RouteContext } from './index.js';
 import { logger } from '../utils/logger.js';
@@ -69,7 +69,10 @@ class DecisionsRoutes {
       return {
         content: [{
           type: 'text',
-          text: `✅ Technical decision recorded! "${decision.title}"\n` +
+          // VALUE-CLEANING (task 4b484c8f): a decision TITLE is a short DB-sourced
+          // identifier rendered inline → rawValue() so stored `**` never prints literal.
+          // (description/rationale/problemStatement are long-form CONTENT — left as-is.)
+          text: `✅ Technical decision recorded! "${rawValue(decision.title)}"\n` +
                 `🎯 Type: ${decision.decisionType} | Impact: ${decision.impactLevel}\n` +
                 `🆔 ID: ${decision.id}`,
         }],
@@ -187,7 +190,7 @@ class DecisionsRoutes {
           : '';
 
         return `${index + 1}. **${decision.decisionType.toUpperCase()}** - ${decision.impactLevel} impact\n` +
-               `   📝 ${decision.title}\n` +
+               `   📝 ${rawValue(decision.title)}\n` +
                `   💡 ${decision.rationale.substring(0, 100)}${decision.rationale.length > 100 ? '...' : ''}\n` +
                `   📅 ${decision.decisionDate.toISOString().split('T')[0]} | Status: ${decision.status}${alternatives}\n` +
                // LEARNING-LOOP READ (part 2): render the outcome fields INTO the human-
@@ -320,7 +323,8 @@ class DecisionsRoutes {
       const alternativesText = decision.alternativesConsidered.length > 0
         ? `\n📋 Alternatives Considered:\n` +
           decision.alternativesConsidered.map(alt =>
-            `   • ${alt.name}: ${alt.reasonRejected}`
+            // alt.name is a short identifier → clean; reasonRejected is prose → leave.
+            `   • ${rawValue(alt.name)}: ${alt.reasonRejected}`
           ).join('\n')
         : '';
 
@@ -328,7 +332,10 @@ class DecisionsRoutes {
         `📄 Decision Details\n\n` +
         `🆔 ID: ${decision.id}\n` +
         `🎯 Type: ${decision.decisionType}\n` +
-        `📝 Title: ${decision.title}\n` +
+        // Title = short DB identifier → rawValue(). Description/Rationale/Problem/
+        // SuccessCriteria below are long-form CONTENT (may legitimately be markdown)
+        // → intentionally NOT stripped (task 4b484c8f: clean values, not content).
+        `📝 Title: ${rawValue(decision.title)}\n` +
         `⚡ Impact: ${decision.impactLevel}\n` +
         `📅 Date: ${decision.decisionDate.toISOString().split('T')[0]} | Status: ${decision.status}\n` +
         `📖 Description: ${decision.description}\n` +
@@ -431,7 +438,7 @@ class DecisionsRoutes {
       return {
         content: [{
           type: 'text',
-          text: `✅ Decision updated successfully! "${decision.title}"\n` +
+          text: `✅ Decision updated successfully! "${rawValue(decision.title)}"\n` +
                 `📊 Status: ${decision.status} | 🛠️  Implementation: ${decision.implementationStatus}\n` +
                 `🎯 Outcome: ${decision.outcomeStatus}`,
         }],

@@ -1,7 +1,7 @@
 import { smartSearchHandler } from '../handlers/smartSearch.js';
 import { buildHonestyHeader } from '../handlers/context.js';
 import { projectHandler } from '../handlers/project.js';
-import { formatMcpError } from '../utils/mcpFormatter.js';
+import { formatMcpError, rawValue } from '../utils/mcpFormatter.js';
 import type { McpResponse } from '../utils/mcpFormatter.js';
 import type { RouteContext } from './index.js';
 
@@ -79,7 +79,7 @@ class SearchRoutes {
         const relevanceBar = '▓'.repeat(Math.round(result.relevanceScore * 5));
         const sourceText = result.source ? ` (${result.source})` : '';
 
-        return `   ${index + 1}. **${result.title}** ${typeIcon}\n` +
+        return `   ${index + 1}. **${rawValue(result.title)}** ${typeIcon}\n` +
                `      💬 ${result.summary.substring(0, 80)}${result.summary.length > 80 ? '...' : ''}\n` +
                `      📊 Relevance: ${relevanceBar} (${Math.round(result.relevanceScore * 100)}%)${sourceText}\n` +
                `      🆔 ID: ${result.id}`;
@@ -157,7 +157,7 @@ class SearchRoutes {
         const actionableIcon = rec.actionable ? '✅' : 'ℹ️';
         const refsText = rec.references.length > 0 ? `\n      🔗 References: ${rec.references.length} items` : '';
 
-        return `   ${index + 1}. **${rec.title}** ${typeIcon} ${actionableIcon}\n` +
+        return `   ${index + 1}. **${rawValue(rec.title)}** ${typeIcon} ${actionableIcon}\n` +
                `      💬 ${rec.description}\n` +
                `      📊 Confidence: ${confidenceBar} (${Math.round(rec.confidence * 100)}%)${refsText}`;
       }).join('\n\n');

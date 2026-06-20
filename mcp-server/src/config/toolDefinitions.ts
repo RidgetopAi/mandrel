@@ -213,7 +213,9 @@ export const AIDIS_TOOL_DEFINITIONS: ToolDefinition[] = [
             // STRICT-MODE: derive from zod — surfaces the real `includeStats` param the
             // validator accepts (was hidden by a hand-written empty `{}`).
             inputSchema: buildInputSchema('project_list', {
-              includeStats: 'Include per-project statistics in the result (accepts true/false)'
+              includeStats: 'Include per-project statistics in the result (accepts true/false)',
+              limit: 'Max projects to return per page (default 20, max 100). Truncation is reported as "showing N of M".',
+              offset: 'Number of projects to skip for pagination (default 0). Page with limit+offset.'
             }),
           },
           {

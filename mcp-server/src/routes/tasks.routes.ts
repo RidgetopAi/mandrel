@@ -1,6 +1,6 @@
 import { tasksHandler } from '../handlers/tasks.js';
 import { projectHandler } from '../handlers/project.js';
-import { formatMcpError } from '../utils/mcpFormatter.js';
+import { formatMcpError, rawValue } from '../utils/mcpFormatter.js';
 import type { McpResponse } from '../utils/mcpFormatter.js';
 import type { RouteContext } from './index.js';
 import {
@@ -57,7 +57,10 @@ class TasksRoutes {
           type: 'text',
           // DUAL-CHANNEL: lean headline; full raw record in structuredContent.
           // Keeps stable markers ("Task created successfully", "Type:", "🆔 ID:").
-          text: `✅ Task created successfully! "${task.title}"\n` +
+          // VALUE-CLEANING (task 4b484c8f): task TITLE is a short DB identifier → rawValue()
+          // so stored markup never prints literal `**`. task.description (below in
+          // task_details) is long-form CONTENT and is intentionally left as markdown.
+          text: `✅ Task created successfully! "${rawValue(task.title)}"\n` +
                 `🎯 Type: ${task.type} | Priority: ${task.priority} | Status: ${task.status}\n` +
                 `🆔 ID: ${task.id}`,
         }],
@@ -131,7 +134,7 @@ class TasksRoutes {
         const assignedText = task.assignedTo ? ` (assigned to ${task.assignedTo})` : ' (unassigned)';
         const tagsText = task.tags.length > 0 ? `\n      🏷️  Tags: [${task.tags.join(', ')}]` : '';
 
-        return `   ${index + 1}. **${task.title}** ${statusIcon} ${priorityIcon}\n` +
+        return `   ${index + 1}. **${rawValue(task.title)}** ${statusIcon} ${priorityIcon}\n` +
                `      📝 Type: ${task.type}${assignedText}\n` +
                `      📊 Status: ${task.status} | Priority: ${task.priority}${tagsText}\n` +
                `      ⏰ Created: ${task.createdAt.toISOString().split('T')[0]}\n` +
@@ -369,7 +372,9 @@ class TasksRoutes {
                                group.completionPercentage >= 50 ? '🟡' :
                                group.completionPercentage >= 25 ? '🟠' : '🔴';
 
-          const groupName = group.group === 'ungrouped' ? 'No Group' : group.group;
+          // groupName can be a free-text DB value when groupBy=phase → clean it (short
+          // inline identifier, task 4b484c8f whole-class). Enum group keys pass through.
+          const groupName = group.group === 'ungrouped' ? 'No Group' : rawValue(group.group);
           responseText += `${progressIcon} **${groupName}**: ${group.completedTasks}/${group.totalTasks} (${group.completionPercentage}%)\n`;
 
           if (group.inProgressTasks > 0) {
@@ -496,7 +501,7 @@ class TasksRoutes {
           type: 'text',
           text: `📋 **Task Details** ${statusIcon} ${priorityIcon}\n\n` +
                 `🆔 **ID:** ${task.id}\n` +
-                `📌 **Title:** ${task.title}\n` +
+                `📌 **Title:** ${rawValue(task.title)}\n` +
                 `🔖 **Type:** ${task.type}\n` +
                 `📊 **Status:** ${task.status}\n` +
                 `⚡ **Priority:** ${task.priority}${assignedText}${createdByText}${tagsText}${dependenciesText}${descriptionText}\n\n` +
