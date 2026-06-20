@@ -56,8 +56,9 @@ send_alert() {
 check_service_health() {
     local issues=0
     
-    # Check if main services are running
-    if ! pgrep -f "tsx src/server.ts" > /dev/null && ! pgrep -f "tsx src/core-server.ts" > /dev/null; then
+    # Check if the MCP server is running. Entrypoint is now src/main.ts (dev, tsx) /
+    # dist/main.js (prod, node); `tsx src/server.ts` and `core-server.ts` are gone.
+    if ! pgrep -f "(dist/main\.js|src/main\.ts)" > /dev/null; then
         send_alert "CRITICAL" "No AIDIS services are running"
         ((issues++))
     fi
@@ -187,8 +188,7 @@ generate_status_report() {
   "timestamp": "$timestamp",
   "monitoring_status": "active",
   "service_health": {
-    "aidis_mcp_running": $(pgrep -f "tsx src/server.ts" > /dev/null && echo "true" || echo "false"),
-    "aidis_core_running": $(pgrep -f "tsx src/core-server.ts" > /dev/null && echo "true" || echo "false")
+    "aidis_mcp_running": $(pgrep -f "(dist/main\.js|src/main\.ts)" > /dev/null && echo "true" || echo "false")
   },
   "log_metrics": {
     "active_log_files": $(find "$LOGS_DIR" -name "*.log" 2>/dev/null | wc -l),

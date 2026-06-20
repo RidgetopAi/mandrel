@@ -221,6 +221,8 @@ backup_database() {
 
     # Create custom format backup (most flexible for restore)
     # Note: stderr goes to separate log file to avoid corrupting the backup
+    # shellcheck disable=SC2024  # intentional: redirect runs as the invoking user so the
+    # backup is invoker-owned; `sudo -u postgres` only elevates pg_dump's DB access.
     if sudo -u postgres pg_dump -Fc "$OLD_DB_NAME" > "$BACKUP_FILE" 2>"${BACKUP_FILE}.log"; then
         local backup_size=$(du -h "$BACKUP_FILE" | cut -f1)
         success "Backup created successfully ($backup_size)"

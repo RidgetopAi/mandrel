@@ -68,20 +68,16 @@ analyze_errors() {
 show_status() {
     print_header "Service Status and Recent Activity"
     
-    # Check if services are running
+    # Check if the MCP server is running. The entrypoint is now src/main.ts (dev,
+    # via tsx) / dist/main.js (prod, node) — the old `tsx src/server.ts` and the
+    # separate `core-server.ts` ("Core HTTP") process no longer exist.
     echo -e "${GREEN}🔍 Process Status:${NC}"
-    if pgrep -f "tsx src/server.ts" > /dev/null; then
-        echo "✅ AIDIS MCP Server: Running (PID: $(pgrep -f 'tsx src/server.ts'))"
+    if pgrep -f "(dist/main\.js|src/main\.ts)" > /dev/null; then
+        echo "✅ AIDIS MCP Server: Running (PID: $(pgrep -f '(dist/main\.js|src/main\.ts)' | tr '\n' ' '))"
     else
         echo -e "${RED}❌ AIDIS MCP Server: Not running${NC}"
     fi
-    
-    if pgrep -f "tsx src/core-server.ts" > /dev/null; then
-        echo "✅ AIDIS Core HTTP: Running (PID: $(pgrep -f 'tsx src/core-server.ts'))"
-    else
-        echo -e "${RED}❌ AIDIS Core HTTP: Not running${NC}"
-    fi
-    
+
     echo
     echo -e "${GREEN}📋 Recent Log Activity (last 50 lines):${NC}"
     find "$LOGS_DIR" -name "*.log" -exec tail -5 {} \; | head -50
@@ -234,9 +230,9 @@ show_health() {
     local health_score=0
     local max_score=5
     
-    # Check 1: Service processes
+    # Check 1: Service processes (entrypoint is now main.ts/main.js — see show_status)
     echo -e "${GREEN}🔍 Service Processes:${NC}"
-    if pgrep -f "tsx src/server.ts" > /dev/null || pgrep -f "tsx src/core-server.ts" > /dev/null; then
+    if pgrep -f "(dist/main\.js|src/main\.ts)" > /dev/null; then
         echo "✅ At least one AIDIS service is running"
         ((health_score++))
     else

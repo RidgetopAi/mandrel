@@ -155,7 +155,10 @@ traefik_connect() {  # $1=network
 # Archive a tenant's DB -> /root/decommissioned/<h>-<date>.sql.gz (600, gunzip -t verified).
 # Requires the postgres container to be UP. NEVER prints DB contents.
 archive_db() {  # $1=handle ; echoes archive path on success
-  local h="$1" pgc="mandrel-${h}-postgres" out
+  # SC2318: $h is not yet visible to pgc within the same `local`, so pgc became
+  # `mandrel--postgres` (handle dropped) and every archive failed. Split it.
+  local h="$1"
+  local pgc="mandrel-${h}-postgres" out
   mkdir -p "${DECOMM_DIR}"; chmod 700 "${DECOMM_DIR}"
   out="${DECOMM_DIR}/${h}-${TODAY}.sql.gz"
   docker ps --format '{{.Names}}' | grep -qx "${pgc}" \

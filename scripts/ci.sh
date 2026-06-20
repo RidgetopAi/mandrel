@@ -99,9 +99,14 @@ detect_scope() {
   # Union of committed diff (base..HEAD) AND uncommitted working-tree changes, so a
   # FE-only branch is detected whether or not the change is committed yet.
   local changed
+  # NOTE: a porcelain rename line is `R  old -> new` (and after `sed 's/^...//'`
+  # becomes `old -> new`). We must prefix-match the DESTINATION, not the source —
+  # otherwise a cross-dir rename like `frontend/x -> backend/y` keeps the FE source
+  # prefix and is wrongly classified FE-only. `sed 's/.* -> //'` keeps only the dest
+  # (it is a no-op on the `git diff --name-only` lines, which never contain ` -> `).
   changed="$( { git -C "$REPO_DIR" diff --name-only "$base" HEAD;
                 git -C "$REPO_DIR" status --porcelain | sed 's/^...//'; } \
-              | sed '/^[[:space:]]*$/d' | LC_ALL=C sort -u )"
+              | sed 's/.* -> //' | sed '/^[[:space:]]*$/d' | LC_ALL=C sort -u )"
   if [[ -z "$changed" ]]; then
     echo "scope: no changes vs '$DIFF_BASE' — running FULL (fail-safe; nothing to narrow on)"
     FE_ONLY=0; return
@@ -168,7 +173,11 @@ detect_scope
 hdr "STAGE L: eslint (errors fail; warnings tolerated at baseline)"
 # lint_pkg <label> <dir> -> echoes result, returns 0 on PASS (0 errors), 1 on FAIL
 lint_pkg() {  # <label> <dir>
-  local label="$1" dir="$2" log="/tmp/ci_lint_$(basename "$dir")_${SFX}.log"
+  # SC2318: split the `local` — within a single `local a=$2 b=$(...$a...)`, $a is NOT
+  # yet visible to b on the same line, so the log name lost its package basename and
+  # all packages clobbered one shared /tmp/ci_lint__*.log. Two statements fixes it.
+  local label="$1" dir="$2"
+  local log="/tmp/ci_lint_$(basename "$dir")_${SFX}.log"
   if [[ ! -f "$dir/package.json" ]] || ! node -e "process.exit((require('$dir/package.json').scripts||{}).lint?0:1)" 2>/dev/null; then
     echo "${YLW}  ${label}: no 'lint' script — skipping${RST}"
     return 0
@@ -314,9 +323,13 @@ for PKG in "$MCP_DIR" "$BACKEND_DIR"; do
   # those, install WORKSPACE-SCOPED from the workspace root; for standalone packages
   # (mcp-server) the in-dir `npm ci` is still correct.
   CMDDIR="$REPO_DIR/mandrel-command"
+  # NOTE: this loop only iterates MCP_DIR + BACKEND_DIR — the packages with a
+  # standalone `tsc --noEmit` type-check stage (Stages 2 & 3) that a stale hoisted
+  # tsc would silently break. The frontend has NO standalone type-check stage (it
+  # builds via react-scripts), so it never needs this pinned-tsc guarantee and is
+  # deliberately not in the loop; a `$FRONTEND_DIR)` case here would be dead code.
   case "$PKG" in
     "$BACKEND_DIR")  HEAL_CMD=( cd "$CMDDIR" '&&' npm ci -w mandrel-command-backend  --include-workspace-root=false ) ;;
-    "$FRONTEND_DIR") HEAL_CMD=( cd "$CMDDIR" '&&' npm ci -w mandrel-command-frontend --include-workspace-root=false ) ;;
     *)               HEAL_CMD=( cd "$PKG" '&&' npm ci ) ;;
   esac
   if ( eval "${HEAL_CMD[*]}" ) >/tmp/ci_npmci_${SFX}_$(basename "$PKG").log 2>&1; then

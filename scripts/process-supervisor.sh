@@ -55,7 +55,7 @@ check_health() {
 
 start_service() {
     log "Starting AIDIS MCP server..."
-    cd "$PROJECT_ROOT/mcp-server"
+    cd "$PROJECT_ROOT/mcp-server" || return 1
 
     # Start the service in background
     nohup npx tsx src/server.ts > "$PROJECT_ROOT/run/aidis-mcp.log" 2>&1 &
@@ -158,7 +158,7 @@ case "$1" in
         fi
 
         echo -e "${GREEN}Stopping AIDIS process supervisor...${NC}"
-        local supervisor_pid=$(cat "$PID_FILE")
+        supervisor_pid=$(cat "$PID_FILE")
         kill -TERM "$supervisor_pid" 2>/dev/null
         rm -f "$PID_FILE"
         echo "Process supervisor stopped"

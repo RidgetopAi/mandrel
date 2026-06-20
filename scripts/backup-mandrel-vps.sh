@@ -62,6 +62,8 @@ mkdir -p "$BACKUP_PATH"
 mv "$TMP_DUMP" "$BACKUP_PATH/"
 
 log "Creating schema backup..."
+# shellcheck disable=SC2024  # intentional: redirect runs as the invoking user (root) so
+# the backup file is root-owned; `sudo -u postgres` only elevates pg_dump's DB access.
 if ! sudo -u postgres pg_dump -d "$DB_NAME" --schema-only > "$BACKUP_PATH/${DB_NAME}_schema.sql"; then
     fail "schema-only dump failed for database '$DB_NAME'"
 fi

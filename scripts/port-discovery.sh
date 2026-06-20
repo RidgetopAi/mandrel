@@ -3,7 +3,7 @@
 # AIDIS Port Discovery Utility
 # Shows current port assignments for all AIDIS services
 
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/.." || exit 1
 
 REGISTRY_FILE="run/port-registry.json"
 

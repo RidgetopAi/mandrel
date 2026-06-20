@@ -83,8 +83,11 @@ RUN retry_net npm ci --ignore-scripts
 # Copy source code
 COPY . .
 
-# Validate TypeScript (but don't compile since we use tsx)
-RUN npx tsc --noEmit || echo "TypeScript validation completed"
+# NOTE: no in-image `tsc --noEmit` here. The previous `RUN npx tsc --noEmit || echo`
+# swallowed all TS errors (the `|| echo` always exits 0) AND .dockerignore excludes
+# tsconfig.json, so tsc ran without config — it gated nothing and was misleading.
+# The real type-check gate is ci.sh Stage 2 (mcp-server `npm run type-check`), run
+# before any image build; we don't ship tsconfig into the image just to re-gate it.
 
 # Stage 3: Production runtime (Debian-slim/glibc so onnxruntime-node runs natively)
 FROM node:22-slim AS runner
