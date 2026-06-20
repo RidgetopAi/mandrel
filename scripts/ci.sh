@@ -59,6 +59,66 @@ record() {  # record <stage label> <PASS|FAIL|SKIP>
   return 0
 }
 
+# =============================================================================
+# CHANGE-SCOPE detection — frontend-only worktrees skip the DB stages
+# =============================================================================
+# WHY: ci.sh used to die at the migrate stage (Stage 0b) for a frontend-only
+# worktree — provisioning + migrating a disposable Postgres just to validate a CRA
+# change is wasteful, and any DB hiccup false-RED'd a change that never touches the
+# data tier. A FE-only change (only mandrel-command/frontend/** differs from main)
+# does NOT need Postgres: it needs lint + FE tests + FE build. So we DETECT FE-only
+# and SKIP the DB-dependent stages (provision/migrate/schema-contract/mcp-server
+# tests+type-check/backend tests+type-check) while still running the full FE gate.
+#
+# FAIL-SAFE: the FULL-STACK path is the default. We only go FE-only when we can
+# POSITIVELY prove every changed path is under mandrel-command/frontend/. If the
+# diff base can't be resolved (detached/shallow/no main), or ANY non-FE path
+# changed, or there are no changes to compare, we run the FULL gate. Override:
+#   CI_SCOPE=full   force the full-stack gate (default behavior if unsure)
+#   CI_SCOPE=fe     force the frontend-only gate (escape hatch / manual)
+# Base ref is configurable for forks/PRs:  CI_DIFF_BASE (default: main).
+# =============================================================================
+FE_PREFIX="mandrel-command/frontend/"
+DIFF_BASE="${CI_DIFF_BASE:-main}"
+FE_ONLY=0   # 0 = full-stack (default, fail-safe); 1 = frontend-only
+
+detect_scope() {
+  # Explicit override wins.
+  case "${CI_SCOPE:-}" in
+    full) echo "scope: forced FULL via CI_SCOPE=full"; FE_ONLY=0; return ;;
+    fe)   echo "scope: forced FE-ONLY via CI_SCOPE=fe";  FE_ONLY=1; return ;;
+  esac
+  # Need git + a resolvable base to make a positive determination.
+  if ! command -v git >/dev/null 2>&1 || ! git -C "$REPO_DIR" rev-parse --git-dir >/dev/null 2>&1; then
+    echo "scope: no git / not a repo — running FULL (fail-safe)"; FE_ONLY=0; return
+  fi
+  local base
+  if ! base="$(git -C "$REPO_DIR" merge-base "$DIFF_BASE" HEAD 2>/dev/null)" || [[ -z "$base" ]]; then
+    echo "scope: cannot resolve merge-base with '$DIFF_BASE' — running FULL (fail-safe)"; FE_ONLY=0; return
+  fi
+  # Union of committed diff (base..HEAD) AND uncommitted working-tree changes, so a
+  # FE-only branch is detected whether or not the change is committed yet.
+  local changed
+  changed="$( { git -C "$REPO_DIR" diff --name-only "$base" HEAD;
+                git -C "$REPO_DIR" status --porcelain | sed 's/^...//'; } \
+              | sed '/^[[:space:]]*$/d' | LC_ALL=C sort -u )"
+  if [[ -z "$changed" ]]; then
+    echo "scope: no changes vs '$DIFF_BASE' — running FULL (fail-safe; nothing to narrow on)"
+    FE_ONLY=0; return
+  fi
+  # Positive proof: EVERY changed path must be under the FE prefix.
+  local nonfe
+  nonfe="$(grep -v "^${FE_PREFIX}" <<<"$changed" || true)"
+  if [[ -z "$nonfe" ]]; then
+    echo "scope: every changed path is under '${FE_PREFIX}' — FRONTEND-ONLY gate (DB stages skip)"
+    FE_ONLY=1
+  else
+    echo "scope: changes outside the frontend — running FULL gate. Non-FE paths:"
+    sed 's/^/    /' <<<"$nonfe"
+    FE_ONLY=0
+  fi
+}
+
 # --- Cleanup (always; even on failure) --------------------------------------
 cleanup() {
   hdr "CLEANUP"
@@ -80,6 +140,65 @@ case "$DBNAME" in
   ci_*) : ;;
   *) echo "${RED}REFUSING: disposable DB name '$DBNAME' is not ci_*-prefixed.${RST}"; exit 2 ;;
 esac
+
+# --- Determine change scope (FE-only vs full-stack) --------------------------
+hdr "CHANGE SCOPE"
+detect_scope
+
+# =============================================================================
+# STAGE L — eslint (ERROR-gated; warnings tolerated at the current baseline)
+# =============================================================================
+# WHY: eslint was NEVER enforced in CI — the frontend build even disables it
+# (DISABLE_ESLINT_PLUGIN=true react-scripts build). So lint errors could land on
+# main unnoticed. This stage wires `npm run lint` per package as a real gate.
+#
+# BOUNDED + HONEST (no fake-green, no rabbit-hole): the repo currently lints with
+# ZERO errors but a legacy WARNING backlog (mcp-server ~7, backend ~276,
+# frontend ~10 — all warnings, 0 errors). Fixing hundreds of legacy warnings is
+# out of scope for this CI-tooling pass. So we gate on ERRORS only:
+#   eslint ... --max-warnings=-1   (errors fail; warnings are reported, not fatal)
+# This is the existing baseline (each package's `npm run lint` already exits 0 on
+# warnings), made explicit + enforced. A NEW lint ERROR now fails the gate. The
+# legacy warning backlog is tracked as a separate follow-up task (see report).
+#
+# SCOPE-AWARE: FE-only runs lint the frontend lint only; full-stack lints all three.
+# --max-warnings=-1 means "no warning limit" in eslint (warnings never fail);
+# any error count > 0 makes eslint exit non-zero => stage FAILs => ci.sh RED.
+# =============================================================================
+hdr "STAGE L: eslint (errors fail; warnings tolerated at baseline)"
+# lint_pkg <label> <dir> -> echoes result, returns 0 on PASS (0 errors), 1 on FAIL
+lint_pkg() {  # <label> <dir>
+  local label="$1" dir="$2" log="/tmp/ci_lint_$(basename "$dir")_${SFX}.log"
+  if [[ ! -f "$dir/package.json" ]] || ! node -e "process.exit((require('$dir/package.json').scripts||{}).lint?0:1)" 2>/dev/null; then
+    echo "${YLW}  ${label}: no 'lint' script — skipping${RST}"
+    return 0
+  fi
+  # Append --max-warnings=-1 so warnings never fail; errors still do.
+  if ( cd "$dir" && npm run lint -- --max-warnings=-1 ) >"$log" 2>&1; then
+    local warns; warns=$(grep -cE 'warning' "$log" || true)
+    echo "${GRN}  ${label}: 0 errors (${warns} warning lines — tolerated baseline)${RST}"
+    return 0
+  else
+    echo "${RED}  ${label}: eslint reported ERROR(s) — gate fails. Log tail:${RST}"
+    grep -E 'error|problems' "$log" | tail -15 | sed 's/^/    /'
+    return 1
+  fi
+}
+LINT_OK=1
+if [[ "$FE_ONLY" -eq 1 ]]; then
+  lint_pkg "frontend" "$FRONTEND_DIR" || LINT_OK=0
+else
+  lint_pkg "mcp-server" "$MCP_DIR"   || LINT_OK=0
+  lint_pkg "backend"    "$BACKEND_DIR" || LINT_OK=0
+  lint_pkg "frontend"   "$FRONTEND_DIR" || LINT_OK=0
+fi
+if [[ "$LINT_OK" -eq 1 ]]; then
+  echo "${GRN}PASS: eslint — 0 errors across linted package(s).${RST}"
+  record "L. eslint (error-gated)" "PASS"
+else
+  echo "${RED}FAIL: eslint found error(s). Fix the new error(s) above (warnings are tolerated at baseline).${RST}"
+  record "L. eslint (error-gated)" "FAIL"
+fi
 
 # =============================================================================
 # STAGE S — secret scan (gitleaks) — the CI backstop to the pre-commit hook.
@@ -127,6 +246,29 @@ else
   echo "or add a documented allowlist entry to .gitleaks.toml (never a real shape).${RST}"
   record "S. secret scan (gitleaks)" "FAIL"
 fi
+
+# =============================================================================
+# DB + BACKEND + MCP stages — run for FULL-STACK changes only.
+# A frontend-only worktree (FE_ONLY=1) does NOT touch the data tier, so we SKIP
+# everything from toolchain-integrity through backend tests (provision/migrate/
+# schema-contract/mcp-server tests+type-check/backend type-check+tests) and go
+# straight to the frontend gate (STAGE 4b + 5). The full-stack path below is
+# UNCHANGED — it is simply wrapped in the FE_ONLY guard.
+# =============================================================================
+if [[ "$FE_ONLY" -eq 1 ]]; then
+  hdr "DB/BACKEND STAGES — SKIPPED (frontend-only change)"
+  echo "${YLW}FE-only change detected: skipping DB provisioning + all backend/mcp stages."
+  echo "The frontend gate (lint + tests + build) still runs and must pass.${RST}"
+  record "0a. toolchain integrity (TS pin)" "SKIP"
+  record "0a2. prod-install topology (static)" "SKIP"
+  record "0. provision disposable Postgres" "SKIP"
+  record "0b. migrate disposable DB" "SKIP"
+  record "0c. schema-contract gate" "SKIP"
+  record "1. mcp-server tests (full vitest)" "SKIP"
+  record "2. mcp-server type-check" "SKIP"
+  record "3. backend type-check" "SKIP"
+  record "4. backend tests" "SKIP"
+else
 
 # =============================================================================
 # STAGE 0a — toolchain integrity (pinned TypeScript resolves LOCALLY)
@@ -356,6 +498,8 @@ else
   echo "${RED}FAIL: backend tests${RST}"
   record "4. backend tests" "FAIL"
 fi
+
+fi  # end FE_ONLY guard (DB + backend + mcp stages)
 
 # =============================================================================
 # STAGE 4b — frontend tests (react-scripts test, CI mode)

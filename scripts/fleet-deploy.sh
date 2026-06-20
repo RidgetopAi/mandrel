@@ -292,9 +292,20 @@ retry_http() {  # <expected_code> <url>
 # Error taxonomy proven against the live bridge (healthServer.handleMcpToolExpress):
 #   * healthy  → HTTP 200, body has "success":true
 #   * tool/runtime error (incl. a DB column error) → HTTP 500, body "success":false
-# We fail the smoke if: HTTP != 200, OR body lacks "success":true, OR body carries
-# "isError":true / "ok":false (defense-in-depth for tools that surface errors inside
-# their content), OR the literal incident signature `column ... does not exist`.
+#
+# DECISION (PASS/FAIL must be read off the ERROR CHANNEL, not arbitrary body text):
+#   A response is an ERROR iff the error channel says so:
+#       HTTP != 200, OR "success":false, OR "isError":true, OR "ok":false.
+#   ONLY when the channel already flags an error do we additionally surface the
+#   literal incident signature (`column ... does not exist`) — as extra detail in
+#   the failure message, NOT as an independent trigger.
+#   A healthy response (HTTP 200 + "success":true + none of isError/ok flags) PASSES
+#   even if a row's content happens to contain the string "does not exist" (e.g. a
+#   task TITLE). Previously we grepped the FULL body for "does not exist", so a legit
+#   row text could false-RED a perfectly healthy deploy. The old behavior was
+#   fail-safe (false-RED only), so tightening it removes a false-positive without
+#   weakening real detection: a genuine schema break still rides the error channel
+#   (HTTP 500 / success:false) and is caught here.
 #
 # Retries for up to HEALTH_TIMEOUT (the app may still be warming the tool layer
 # right after a restart), then fails.
@@ -313,9 +324,15 @@ deep_tool_smoke() {  # <label> <base_url>   e.g. deep_tool_smoke "prod" http://1
     body="${resp%$'\n'*}"
     last="$body"
 
-    if [[ "$code" == "200" ]] \
-       && grep -q '"success":[[:space:]]*true' <<<"$body" \
-       && ! grep -qiE '"isError":[[:space:]]*true|"ok":[[:space:]]*false|column [^ ]* does not exist|does not exist' <<<"$body"; then
+    # --- Read the ERROR CHANNEL only (not arbitrary body content) -------------
+    # channel_error=1 if ANY error signal is present on the channel.
+    local channel_error=0
+    [[ "$code" != "200" ]] && channel_error=1
+    if ! grep -q '"success":[[:space:]]*true' <<<"$body"; then channel_error=1; fi
+    if grep -qiE '"isError":[[:space:]]*true|"ok":[[:space:]]*false' <<<"$body"; then channel_error=1; fi
+
+    if [[ "$channel_error" -eq 0 ]]; then
+      # Healthy on the error channel → PASS, regardless of any row text.
       ok "$label: deep tool smoke (task_list) non-error (HTTP $code)"
       return 0
     fi
@@ -324,7 +341,13 @@ deep_tool_smoke() {  # <label> <base_url>   e.g. deep_tool_smoke "prod" http://1
     # retries for transient 000/connection-refused right after restart.
     sleep 3
   done
-  bad "$label: deep tool smoke (task_list) FAILED — last HTTP=$code; this is the schema/data-layer break the shallow smoke misses (e.g. un-migrated DB). Response head: $(printf '%.200s' "$last")"
+  # FAIL: surface the incident signature as extra detail ONLY when present in the
+  # (already error-channel-flagged) last response, to speed diagnosis.
+  local detail=""
+  if grep -qiE 'column [^ ]* does not exist|does not exist' <<<"$last"; then
+    detail=" [incident signature 'does not exist' present in error body]"
+  fi
+  bad "$label: deep tool smoke (task_list) FAILED — last HTTP=$code; this is the schema/data-layer break the shallow smoke misses (e.g. un-migrated DB).${detail} Response head: $(printf '%.200s' "$last")"
   return 1
 }
 
