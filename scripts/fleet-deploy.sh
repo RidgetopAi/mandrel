@@ -223,6 +223,14 @@ deploy_instance() {  # <handle>
       return 1
     fi
     ok "$h: mcp /api/v2/sessions/start non-5xx ($sess_code)"
+
+    # (5) DEEP real-surface smoke: a real tool query must NOT error. The bridge
+    #     tool route is unauthenticated on every instance (see deep_tool_smoke), so
+    #     ALL instances — staging canary AND customers — get the deep schema smoke,
+    #     not just shallow health. This is what would have caught the v0.5.8 break.
+    if ! deep_tool_smoke "$h" "http://127.0.0.1:${mcp_port}"; then
+      return 1
+    fi
   fi
 
   # (2) backend /api/health == 200
@@ -260,6 +268,134 @@ retry_http() {  # <expected_code> <url>
     sleep 3
   done
   return 1
+}
+
+# =============================================================================
+# DEEP (real-surface) tool smoke — exercise the DB SCHEMA through a real tool call
+# =============================================================================
+# WHY: the shallow smoke (/healthz, /api/health, initialize-version) stayed GREEN
+# through the v0.5.8 incident — the server was UP and reported the right version,
+# but task_list threw "column archived_at does not exist" because the schema was
+# un-migrated. Liveness/version probes can't see a schema/data-layer break. This
+# probe POSTs a REAL tool query to the on-box bridge and asserts the response is
+# NOT an error, so a missing-column / un-migrated DB fails the deploy RED.
+#
+# The bridge tool route (POST /mcp/tools/:toolName) is UNAUTHENTICATED on every
+# instance — bearerAuth guards only the remote /mcp Streamable route, NOT the
+# on-box /mcp/tools/* bridge (see mcp-server/src/middleware/bearerAuth.ts). So this
+# deep smoke needs NO token and works identically for prod AND tenant containers.
+#
+# We use `task_list limit:1` — it reads the tasks table (the exact table whose
+# missing `archived_at` column broke the incident). An EMPTY result set still
+# returns success (the query ran), so we assert non-error, NOT non-empty.
+#
+# Error taxonomy proven against the live bridge (healthServer.handleMcpToolExpress):
+#   * healthy  → HTTP 200, body has "success":true
+#   * tool/runtime error (incl. a DB column error) → HTTP 500, body "success":false
+# We fail the smoke if: HTTP != 200, OR body lacks "success":true, OR body carries
+# "isError":true / "ok":false (defense-in-depth for tools that surface errors inside
+# their content), OR the literal incident signature `column ... does not exist`.
+#
+# Retries for up to HEALTH_TIMEOUT (the app may still be warming the tool layer
+# right after a restart), then fails.
+deep_tool_smoke() {  # <label> <base_url>   e.g. deep_tool_smoke "prod" http://127.0.0.1:8080
+  local label="$1" base="$2"
+  local url="${base%/}/mcp/tools/task_list"
+  local deadline=$(( SECONDS + HEALTH_TIMEOUT ))
+  local body code last=""
+  while (( SECONDS < deadline )); do
+    # Capture body + HTTP code in one call; body and code separated by a sentinel.
+    local resp
+    resp="$(curl -s -w $'\n%{http_code}' --max-time 8 \
+      -X POST "$url" -H 'Content-Type: application/json' \
+      -d '{"arguments":{"limit":1}}' 2>/dev/null || printf '\n000')"
+    code="${resp##*$'\n'}"
+    body="${resp%$'\n'*}"
+    last="$body"
+
+    if [[ "$code" == "200" ]] \
+       && grep -q '"success":[[:space:]]*true' <<<"$body" \
+       && ! grep -qiE '"isError":[[:space:]]*true|"ok":[[:space:]]*false|column [^ ]* does not exist|does not exist' <<<"$body"; then
+      ok "$label: deep tool smoke (task_list) non-error (HTTP $code)"
+      return 0
+    fi
+    # A 5xx / success:false is a hard error — don't keep retrying a real break for
+    # the full window if the schema is genuinely wrong; but allow a few warmup
+    # retries for transient 000/connection-refused right after restart.
+    sleep 3
+  done
+  bad "$label: deep tool smoke (task_list) FAILED — last HTTP=$code; this is the schema/data-layer break the shallow smoke misses (e.g. un-migrated DB). Response head: $(printf '%.200s' "$last")"
+  return 1
+}
+
+# =============================================================================
+# PROD migrations — run the project's OWN runner against the prod host DB
+# =============================================================================
+# This is the fix for the recurring incident where a migration-bearing release
+# (e.g. v0.5.8 / migrations 046+047) shipped to prod but the schema was never
+# migrated, so the new code hit columns that didn't exist (task_list →
+# "column archived_at does not exist") until someone hand-ran the migrations.
+# Tenant CONTAINERS already do this on every boot (mcp-server/docker-entrypoint.sh
+# runs `tsx scripts/migrate.ts` before exec'ing the server); prod (systemd, not a
+# container) had no equivalent step. This replicates the tenants' contract for prod.
+#
+# CONTRACT (mirrors the container entrypoint exactly):
+#   * Uses the project's existing idempotent runner (tsx scripts/migrate.ts), which
+#     tracks applied files in _aidis_migrations, runs ONLY pending files in order,
+#     and is a clean no-op ("All migrations are up to date!") when nothing's pending.
+#     We do NOT hand-write SQL or reimplement migration logic.
+#   * ORDER: called AFTER build (so the runner's deps/tsx exist) and BEFORE the
+#     service restart, so the schema is migrated before the NEW code serves traffic.
+#     Our migrations are additive/backward-compatible, so the brief window where the
+#     OLD code runs against the already-migrated schema is safe.
+#   * Runs as $PROD_USER (the systemd User=) so it connects with the same DB role
+#     and never leaves root-owned artifacts.
+#
+# SECRETS: the env files (mcp-server/.env carries SURVEYOR_LLM_API_KEY; .env.secrets
+# carries DATABASE_PASSWORD / MCP_AUTH_TOKEN / JWT) are sourced ONLY inside the
+# $PROD_USER subshell's environment via `set -a; . <file>; set +a` — their VALUES are
+# never echoed and never reach the deploy log. The runner itself logs only DB
+# host/name/user (no secrets). `set +e`/explicit capture keeps `set -euo pipefail`
+# from masking the runner's real exit code.
+#
+# Returns 0 if migrations are applied (or already up to date), non-zero on failure.
+# Factored out so it is independently runnable/testable:
+#   PROD_DIR=/opt/mandrel PROD_USER=ridgetop \
+#     bash -c 'source scripts/fleet-deploy.sh ...'  # (or call prod_run_migrations)
+prod_run_migrations() {  # <prod_dir>
+  local dir="${1:-$PROD_DIR}"
+  local mcp="$dir/mcp-server"
+
+  if [[ ! -f "$mcp/scripts/migrate.ts" ]]; then
+    bad "prod: migration runner $mcp/scripts/migrate.ts missing — cannot migrate (fail closed)"
+    return 1
+  fi
+  if [[ ! -x "$mcp/node_modules/.bin/tsx" ]]; then
+    bad "prod: tsx not found at $mcp/node_modules/.bin/tsx — deps not installed? (fail closed)"
+    return 1
+  fi
+
+  info "prod: running DB migrations (tsx scripts/migrate.ts) as $PROD_USER — pending-only, idempotent"
+
+  # Source the env files INSIDE the $PROD_USER shell so secret VALUES live only in
+  # that subprocess env, never in this script's env or the log. The runner's stdout/
+  # stderr (DB host/name/user + per-migration progress) carries no secrets, so it is
+  # safe to stream straight to the deploy log.
+  if ! sudo -u "$PROD_USER" bash -c '
+        set -euo pipefail
+        cd "$1/mcp-server"
+        set -a
+        [ -f ./.env ] && . ./.env
+        [ -f "$1/.env.secrets" ] && . "$1/.env.secrets"
+        set +a
+        exec node_modules/.bin/tsx scripts/migrate.ts
+      ' _ "$dir"; then
+    bad "prod: DB migration FAILED — prod may be partially migrated (DB tier untouched by rollback; migrations are additive). Caller prints the exact git ROLLBACK; re-run pending migrations once the cause is fixed."
+    return 1
+  fi
+
+  ok "prod: DB migrations applied (or already up to date)"
+  return 0
 }
 
 # =============================================================================
@@ -328,6 +464,16 @@ deploy_prod() {
     return 1
   fi
 
+  # Run pending DB migrations BEFORE the restart so the schema is migrated before the
+  # NEW code serves traffic (the fix for prod silently shipping un-migrated releases;
+  # mirrors the tenant container entrypoint). Idempotent no-op when nothing's pending.
+  # GATE: if migrations fail, go RED with the same rollback guidance as other prod
+  # failure paths — do not restart onto a half-migrated DB.
+  if ! prod_run_migrations "$dir"; then
+    bad "prod: ROLLBACK: git -C $dir reset --hard $prev && rebuild && systemctl restart $PROD_SERVICES"
+    return 1
+  fi
+
   # Restart + health-gate.
   info "prod: restarting [$PROD_SERVICES]"
   if ! systemctl restart $PROD_SERVICES; then
@@ -365,6 +511,16 @@ deploy_prod() {
     return 1
   fi
   ok "prod: initialize reports v${live_ver}"
+
+  # DEEP real-surface smoke: a real tool query against the prod bridge must NOT
+  # error. This is the detection half of the fix — the shallow checks above all
+  # stayed GREEN during the v0.5.8 incident while task_list threw a missing-column
+  # error. The bridge tool route is unauthenticated on-box (no token needed).
+  if ! deep_tool_smoke "prod" "http://127.0.0.1:8080"; then
+    bad "prod: ROLLBACK: git -C $dir reset --hard $prev && rebuild && systemctl restart $PROD_SERVICES"
+    return 1
+  fi
+
   ok "prod: deploy + health + smoke GREEN"
   return 0
 }
