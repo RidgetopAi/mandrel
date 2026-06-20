@@ -18,11 +18,20 @@ export const SessionStatsService = {
       const projectFilter = projectId ? 'AND project_id = $1' : '';
       const params = projectId ? [projectId] : [];
 
+      // Exclude deploy-smoke litter sessions (task bc819ae5). Lesson 011: close the
+      // class so these analytics_events read paths can't leak smoke if ever routed.
+      // NULL agent_type rows are intentionally KEPT (the subquery only matches the
+      // explicit marker). Constant single-sourced from session/types.ts.
+      const excludeSmoke = `
+        AND session_id NOT IN (
+          SELECT id FROM sessions WHERE agent_type = '${DEPLOY_SMOKE_AGENT_TYPE}'
+        )`;
+
       // Get total sessions count
       const totalSessionsSql = `
         SELECT COUNT(DISTINCT session_id) as total
-        FROM analytics_events 
-        WHERE event_type = 'session_start' ${projectFilter}
+        FROM analytics_events
+        WHERE event_type = 'session_start' ${projectFilter} ${excludeSmoke}
       `;
 
       const totalResult = await db.query(totalSessionsSql, params);
@@ -31,8 +40,8 @@ export const SessionStatsService = {
       // Get average duration for completed sessions
       const avgDurationSql = `
         SELECT AVG(duration_ms) as avg_duration
-        FROM analytics_events 
-        WHERE event_type = 'session_end' ${projectFilter}
+        FROM analytics_events
+        WHERE event_type = 'session_end' ${projectFilter} ${excludeSmoke}
       `;
 
       const avgResult = await db.query(avgDurationSql, params);
@@ -43,6 +52,9 @@ export const SessionStatsService = {
         SELECT COUNT(DISTINCT ae1.session_id) as completed
         FROM analytics_events ae1
         WHERE ae1.event_type = 'session_start' ${projectFilter}
+        AND ae1.session_id NOT IN (
+          SELECT id FROM sessions WHERE agent_type = '${DEPLOY_SMOKE_AGENT_TYPE}'
+        )
         AND EXISTS (
           SELECT 1 FROM analytics_events ae2 
           WHERE ae2.session_id = ae1.session_id
@@ -59,10 +71,10 @@ export const SessionStatsService = {
         SELECT 
           DATE(timestamp) as date,
           COUNT(DISTINCT session_id) as count
-        FROM analytics_events 
-        WHERE event_type = 'session_start' 
-        AND timestamp >= NOW() - INTERVAL '30 days' 
-        ${projectFilter}
+        FROM analytics_events
+        WHERE event_type = 'session_start'
+        AND timestamp >= NOW() - INTERVAL '30 days'
+        ${projectFilter} ${excludeSmoke}
         GROUP BY DATE(timestamp)
         ORDER BY date DESC
       `;

@@ -106,10 +106,21 @@ beforeAll(async () => {
     endedAtSql: 'NULL',
     tags: [NORMAL_TAG],
   });
+
+  // analytics_events `session_start` rows for the analytics-events read path
+  // (getSessionStats reads FROM analytics_events, not sessions). The smoke writes
+  // one such row per deploy — assert getSessionStats excludes it (Lesson 011).
+  await db.query(
+    `INSERT INTO analytics_events (actor, project_id, session_id, event_type, timestamp)
+     VALUES ('ai', $1, $2, 'session_start', NOW()),
+            ('system', $1, $3, 'session_start', NOW())`,
+    [projectId, normalSessionId, smokeSessionId]
+  );
 });
 
 afterAll(async () => {
   try {
+    await db.query('DELETE FROM analytics_events WHERE project_id = $1', [projectId]);
     await db.query('DELETE FROM sessions WHERE project_id = $1', [projectId]);
     await db.query('DELETE FROM projects WHERE id = $1', [projectId]);
   } catch {
@@ -144,6 +155,14 @@ describe('deploy-smoke litter exclusion (task bc819ae5)', () => {
     // Top tags include the normal tag but NEVER the smoke tag.
     expect(stats.topTags).toContain(NORMAL_TAG);
     expect(stats.topTags).not.toContain(SMOKE_TAG);
+  });
+
+  test('getSessionStats (analytics_events path) EXCLUDES deploy-smoke from totalSessions', async () => {
+    const stats = await SessionStatsService.getSessionStats(projectId);
+
+    // Two `session_start` analytics_events were inserted (normal + smoke); only the
+    // non-smoke one must be counted. Pre-fix this returned 2 (smoke leaked through).
+    expect(stats.totalSessions).toBe(1);
   });
 
   test('duration-calc: an UNCLOSED session yields a sane (finite, >= 0) duration', async () => {

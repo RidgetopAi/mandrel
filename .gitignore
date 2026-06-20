@@ -250,6 +250,9 @@ docker-compose.ryushineo.yml
 # forward-migration runner (which scans migrations/ non-recursively) never auto-runs
 # them; they are documented code, not data dumps — keep them tracked.
 !mcp-server/database/migrations/rollback/*.sql
+# Operator runbook SQL (gated, Ridge-run): parameterized DDL/DML, no table dumps /
+# no app rows / no secrets — it's documented code that must ship (task bc819ae5).
+!scripts/purge-deploy-smoke-sessions.sql
 # ...but the backup/offsite SCRIPTS are code, not data dumps — keep them tracked
 # (they read secrets at runtime, never embed them; the gitleaks gate enforces that).
 !scripts/backup-*.sh
