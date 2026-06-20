@@ -15,6 +15,7 @@ import { SessionTracker, SessionData, SessionStats, ensureActiveSession, recordS
 import { SessionManagementHandler, SessionAnalyticsHandler, getSessionStatistics, recordSessionOperation as recordAnalyticsOperation, startSessionTracking } from '../handlers/sessionAnalytics.js';
 import { projectHandler } from '../handlers/project.js';
 import { SessionRepo } from '../services/session/infra/db/index.js';
+import { ActiveSessionStore } from '../services/session/state/index.js';
 
 // Mock database to avoid real DB operations in unit tests
 vi.mock('../config/database.js', () => ({
@@ -35,8 +36,13 @@ const mockDb = db as any;
 describe('SessionTracker Unit Tests', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    // Clear static state
-    (SessionTracker as any).activeSessionId = null;
+    // Clear active-session state. The session refactor moved the active-session
+    // pointer OFF `SessionTracker.activeSessionId` (now a dead no-op) into the
+    // connection-scoped `ActiveSessionStore` module Map. Resetting the real store is
+    // what actually isolates tests — without it, a session set by an earlier test
+    // (e.g. startSession) leaks into later getActiveSession/getSessionData tests and
+    // makes the suite order-dependent (the latent flake this hardening removes).
+    ActiveSessionStore.clearAll();
   });
 
   describe('startSession', () => {
@@ -95,40 +101,72 @@ describe('SessionTracker Unit Tests', () => {
     });
   });
 
+  // getActiveSession was deliberately changed by the session isolation + dangling-FK
+  // refactor, so these cases assert the CURRENT contract (not the removed pre-refactor
+  // behavior):
+  //   - a cached id is VALIDATED against the DB (SessionRepo.exists) before being
+  //     trusted — the dangling-FK guard — and self-heals (clears) on a miss;
+  //   - a cache MISS is connection-scoped: it returns null and does NOT implicitly hunt
+  //     for "the last session anywhere" unless the caller opts in with
+  //     { allowGlobalFallback: true }, which then consults SessionRepo.getLastActive().
+  // We assert at the SessionRepo collaborator boundary (the stable seam) rather than on
+  // raw db.query SQL, so internal query changes don't make this test brittle.
   describe('getActiveSession', () => {
-    it('should return cached active session without database query', async () => {
+    it('should return the cached active session after validating it still exists in the DB', async () => {
       const cachedSessionId = 'cached-session-123';
-      (SessionTracker as any).activeSessionId = cachedSessionId;
+      ActiveSessionStore.set(cachedSessionId); // default connection
+      vi.spyOn(SessionRepo, 'exists').mockResolvedValueOnce(true);
 
       const activeId = await SessionTracker.getActiveSession();
 
       expect(activeId).toBe(cachedSessionId);
-      expect(mockDb.query).not.toHaveBeenCalled(); // TS003-1: No DB query for cached hits
+      // The dangling-FK guard MUST validate the cached id against the DB.
+      expect(SessionRepo.exists).toHaveBeenCalledWith(cachedSessionId);
     });
 
-    it('should query database for active session if no cache', async () => {
-      mockDb.query.mockResolvedValueOnce({ rows: [{ id: 'db-session-456' }] });
+    it('should self-heal (clear) a cached id whose DB row no longer exists', async () => {
+      const staleSessionId = 'stale-session-999';
+      ActiveSessionStore.set(staleSessionId);
+      vi.spyOn(SessionRepo, 'exists').mockResolvedValueOnce(false); // row gone
 
       const activeId = await SessionTracker.getActiveSession();
+
+      // Falls through to a miss (no global fallback requested) and clears the stale entry.
+      expect(activeId).toBeNull();
+      expect(ActiveSessionStore.get()).toBeNull();
+    });
+
+    it('should return null on a connection-scoped miss WITHOUT an implicit global lookup', async () => {
+      const getLastActive = vi.spyOn(SessionRepo, 'getLastActive');
+
+      const activeId = await SessionTracker.getActiveSession(); // no cache, no opt-in
+
+      expect(activeId).toBeNull();
+      // Isolation: a miss must NOT silently grab "the most recent session anywhere".
+      expect(getLastActive).not.toHaveBeenCalled();
+    });
+
+    it('should consult the DB for the last-active session only when global fallback is opted in', async () => {
+      vi.spyOn(SessionRepo, 'getLastActive').mockResolvedValueOnce('db-session-456');
+
+      const activeId = await SessionTracker.getActiveSession(undefined, { allowGlobalFallback: true });
 
       expect(activeId).toBe('db-session-456');
-      expect(mockDb.query).toHaveBeenCalledWith(
-        expect.stringMatching(/SELECT id.*FROM sessions.*WHERE ended_at IS NULL/s)
-      );
+      expect(SessionRepo.getLastActive).toHaveBeenCalled();
     });
 
-    it('should return null if no active session found', async () => {
-      mockDb.query.mockResolvedValueOnce({ rows: [] });
+    it('should return null if no active session found (global fallback opted in, DB empty)', async () => {
+      vi.spyOn(SessionRepo, 'getLastActive').mockResolvedValueOnce(null);
 
-      const activeId = await SessionTracker.getActiveSession();
+      const activeId = await SessionTracker.getActiveSession(undefined, { allowGlobalFallback: true });
 
       expect(activeId).toBeNull();
     });
 
-    it('should handle database errors gracefully', async () => {
-      mockDb.query.mockRejectedValueOnce(new Error('DB connection error'));
+    it('should handle database errors gracefully (returns null, never throws)', async () => {
+      vi.spyOn(SessionRepo, 'getLastActive').mockRejectedValueOnce(new Error('DB connection error'));
 
-      const activeId = await SessionTracker.getActiveSession();
+      const activeId = await SessionTracker.getActiveSession(undefined, { allowGlobalFallback: true });
 
       expect(activeId).toBeNull();
     });
@@ -392,7 +430,8 @@ describe('SessionTracker Unit Tests', () => {
 describe('SessionManagementHandler Unit Tests', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    (SessionTracker as any).activeSessionId = null;
+    // See note above: reset the real connection-scoped store, not the dead field.
+    ActiveSessionStore.clearAll();
   });
 
   describe('assignSessionToProject', () => {
@@ -548,7 +587,8 @@ describe('SessionManagementHandler Unit Tests', () => {
 describe('Utility Functions Unit Tests', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    (SessionTracker as any).activeSessionId = null;
+    // See note above: reset the real connection-scoped store, not the dead field.
+    ActiveSessionStore.clearAll();
   });
 
   describe('ensureActiveSession', () => {

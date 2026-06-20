@@ -8,8 +8,8 @@
 # a non-zero exit MUST abort the deploy.
 #
 # Stages (each reported individually as PASS/FAIL):
-#   1. mcp-server tests       — disposable Postgres + real migrate.ts + the 4
-#                               vitest contract tests (embeddings are mocked).
+#   1. mcp-server tests       — disposable Postgres + real migrate.ts + the FULL
+#                               vitest suite (all src/**/*.test.ts; embeddings mocked).
 #   2. mcp-server type-check  — tsc --noEmit (must be 0 errors).
 #   3. backend type-check     — mandrel-command/backend tsc --noEmit.
 #   4. backend tests          — jest against the same disposable migrated DB
@@ -290,16 +290,24 @@ else
 fi
 
 # =============================================================================
-# STAGE 1 — mcp-server contract tests (the 4 *.contract.test.ts via vitest)
+# STAGE 1 — mcp-server tests (the FULL vitest suite, real DB)
 # =============================================================================
-hdr "STAGE 1: mcp-server contract tests (vitest, real DB)"
+# Runs the ENTIRE vitest suite (src/**/*.test.ts), not just *.contract.test.ts.
+# Rationale (task sprint0/test-gate, Lesson 011 — fix the class, not the instance):
+# scoping the gate to a hand-curated glob let non-contract test files (session.unit,
+# httpContract, remoteMcpTransport.integration, the parser/unit suites) ROT silently
+# outside the gate. Gating the whole suite means any test under src/** is enforced and
+# a new test file is covered the moment it lands — no glob to keep in sync. The vitest
+# config pins file-serial execution (fileParallelism:false / singleFork) so the suite
+# is order-independent and contention-free against the ONE shared disposable CI DB.
+hdr "STAGE 1: mcp-server tests (vitest — full suite, real DB)"
 if ( cd "$MCP_DIR" && db_env NODE_ENV="test" EMBEDDING_PREFER_LOCAL="false" \
-       npx vitest run src/tests/*.contract.test.ts ); then
-  echo "${GRN}PASS: mcp-server contract tests${RST}"
-  record "1. mcp-server contract tests" "PASS"
+       npx vitest run ); then
+  echo "${GRN}PASS: mcp-server tests${RST}"
+  record "1. mcp-server tests (full vitest)" "PASS"
 else
-  echo "${RED}FAIL: mcp-server contract tests${RST}"
-  record "1. mcp-server contract tests" "FAIL"
+  echo "${RED}FAIL: mcp-server tests${RST}"
+  record "1. mcp-server tests (full vitest)" "FAIL"
 fi
 
 # =============================================================================

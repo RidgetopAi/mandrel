@@ -51,10 +51,25 @@ const TEST_TOKEN = 'test-token-do-not-use-in-prod';
 const executorCalls: Array<{ tool: string; args: any; connectionId?: string }> = [];
 const stubExecutor = vi.fn(async (toolName: string, _args: any, ctx?: { connectionId?: string }) => {
   executorCalls.push({ tool: toolName, args: _args, connectionId: ctx?.connectionId });
+  // v0.5.8 dual-channel contract: EVERY tool now advertises an outputSchema in
+  // AIDIS_TOOL_DEFINITIONS, so the MCP SDK client REQUIRES the tool result to carry
+  // `structuredContent` (a result with only `content` is rejected with -32600
+  // "has an output schema but did not return structured content"). The real executor
+  // always returns both channels; the stub must mirror that so this integration test
+  // exercises the genuine transport+protocol path (not a contract the real server can't
+  // produce). The structuredContent shape here is intentionally minimal — this test
+  // proves transport/auth/session-isolation wiring, not per-tool schema conformance
+  // (that is covered by dualChannelOutput.contract.test.ts).
   if (toolName === 'mandrel_ping') {
-    return { content: [{ type: 'text', text: 'pong (stub)' }] };
+    return {
+      content: [{ type: 'text', text: 'pong (stub)' }],
+      structuredContent: { ok: true, message: 'pong (stub)' },
+    };
   }
-  return { content: [{ type: 'text', text: `stub:${toolName}` }] };
+  return {
+    content: [{ type: 'text', text: `stub:${toolName}` }],
+    structuredContent: { ok: true, tool: toolName },
+  };
 });
 
 const deps: McpHandlerDeps = {

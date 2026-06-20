@@ -189,7 +189,9 @@ describe('HTTP ↔ MCP contract', () => {
     expect(res.status).toBe(200);
     const success = expectSuccessEnvelope(body) as { result: { content?: Array<{ text: string }> } };
     const text = success.result.content?.[0]?.text ?? '';
-    expect(text).toMatch(/AIDIS/);
+    // Brand-agnostic: the product was renamed AIDIS → Mandrel (the help title now reads
+    // "Mandrel"); accept either so the contract guards the help SURFACE, not the old name.
+    expect(text).toMatch(/(?:AIDIS|Mandrel)/);
     expect(text).toMatch(/tool/i);
   });
 
