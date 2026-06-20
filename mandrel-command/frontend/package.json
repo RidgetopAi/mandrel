@@ -1,6 +1,6 @@
 {
   "name": "mandrel-command-frontend",
-  "version": "0.5.7",
+  "version": "0.5.8",
   "private": true,
   "dependencies": {
     "@ant-design/icons": "^5.6.1",
