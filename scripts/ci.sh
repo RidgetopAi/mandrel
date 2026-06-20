@@ -308,7 +308,18 @@ for PKG in "$MCP_DIR" "$BACKEND_DIR"; do
     continue
   fi
   echo "${YLW}  ${NAME}: local TS is '${GOT:-absent}', pin is ^${PIN} — self-healing with 'npm ci'…${RST}"
-  if ( cd "$PKG" && npm ci ) >/tmp/ci_npmci_${SFX}_$(basename "$PKG").log 2>&1; then
+  # Self-heal install. mandrel-command members (backend/frontend) no longer carry a
+  # per-member package-lock.json — the workspace-ROOT mandrel-command/package-lock.json
+  # is the single source of truth — so a member-local `npm ci` would EUSAGE-fail. For
+  # those, install WORKSPACE-SCOPED from the workspace root; for standalone packages
+  # (mcp-server) the in-dir `npm ci` is still correct.
+  CMDDIR="$REPO_DIR/mandrel-command"
+  case "$PKG" in
+    "$BACKEND_DIR")  HEAL_CMD=( cd "$CMDDIR" '&&' npm ci -w mandrel-command-backend  --include-workspace-root=false ) ;;
+    "$FRONTEND_DIR") HEAL_CMD=( cd "$CMDDIR" '&&' npm ci -w mandrel-command-frontend --include-workspace-root=false ) ;;
+    *)               HEAL_CMD=( cd "$PKG" '&&' npm ci ) ;;
+  esac
+  if ( eval "${HEAL_CMD[*]}" ) >/tmp/ci_npmci_${SFX}_$(basename "$PKG").log 2>&1; then
     GOT="$(ts_installed_major "$PKG")"
     if [[ "$GOT" == "$PIN" ]]; then
       echo "${GRN}  ${NAME}: healed — TS major now ${GOT} (matches pin ^${PIN})${RST}"

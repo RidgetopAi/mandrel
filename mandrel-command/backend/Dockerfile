@@ -1,31 +1,47 @@
-# Multi-stage build for AIDIS Command Backend
-# Optimized Node.js API server with minimal image size
+# Multi-stage build for Mandrel Command Backend
+# Optimized Node.js API server with minimal image size.
+#
+# BUILD CONTEXT: the mandrel-command/ npm-workspace ROOT (set in docker-compose.yml:
+#   context: ./mandrel-command, dockerfile: backend/Dockerfile). This is deliberate:
+#   the workspace-root package-lock.json is the SINGLE SOURCE OF TRUTH for every
+#   member (backend/frontend/shared), so there is no per-member lockfile to drift.
+#   We install WORKSPACE-SCOPED (`npm ci -w mandrel-command-backend`) so each image
+#   only gets THIS member's dependency tree resolved deterministically from the root
+#   lock — not all workspaces (no frontend/shared bloat).
 
-# Stage 1: Dependencies stage
+# Stage 1: Dependencies stage (production-only, for the runtime node_modules)
 FROM node:22-alpine AS deps
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
-# Copy package files for dependency resolution
-COPY package*.json ./
-# Install dependencies with cache optimization
-RUN npm ci --only=production --ignore-scripts && \
+# Copy the workspace manifests + the ROOT lockfile (single source of truth).
+# Member package.json files are required so the workspace graph resolves; .npmrc
+# carries workspace-wide npm settings (e.g. legacy-peer-deps for the CRA/TS5 peer).
+COPY package.json package-lock.json .npmrc ./
+COPY backend/package.json ./backend/
+COPY frontend/package.json ./frontend/
+COPY shared/package.json ./shared/
+
+# Production deps for ONLY this workspace member, deterministic from the root lock.
+RUN npm ci -w mandrel-command-backend --include-workspace-root=false \
+        --omit=dev --ignore-scripts && \
     npm cache clean --force
 
-# Stage 2: Build stage
+# Stage 2: Build stage (full deps incl. dev for tsc)
 FROM node:22-alpine AS builder
 WORKDIR /app
 
-# Copy package files
-COPY package*.json ./
-# Install all dependencies (including dev deps for build)
-RUN npm ci --ignore-scripts
+COPY package.json package-lock.json .npmrc ./
+COPY backend/package.json ./backend/
+COPY frontend/package.json ./frontend/
+COPY shared/package.json ./shared/
 
-# Copy source code
-COPY . .
+# All deps (incl. dev) for THIS member only, deterministic from the root lock.
+RUN npm ci -w mandrel-command-backend --include-workspace-root=false --ignore-scripts
 
-# Build TypeScript application (compiles src -> dist; start runs node dist/server.js)
-RUN npm run build
+# Copy this member's source and build it (tsc: backend/src -> backend/dist).
+COPY backend/ ./backend/
+RUN npm run build -w mandrel-command-backend
 
 # Stage 3: Production runtime
 FROM node:22-alpine AS runner
@@ -42,15 +58,19 @@ RUN addgroup -g 1001 -S aidis && \
 
 WORKDIR /app
 
-# Copy production dependencies from deps stage
+# Copy production dependencies. npm workspaces HOIST shared deps to the workspace
+# root /app/node_modules, with a few version-pinned packages under the member's own
+# /app/backend/node_modules — both are needed for Node's module resolution.
 COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/package*.json ./
+COPY --from=deps /app/backend/node_modules ./backend/node_modules
+COPY --from=deps /app/package.json ./package.json
+COPY --from=deps /app/backend/package.json ./backend/package.json
 
 # Copy built application
-COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/backend/dist ./backend/dist
 # .env.example is required at runtime: dotenv-safe validates process.env against it
 # (its absence throws and triggers process.exit(1) in production).
-COPY --from=builder /app/.env.example ./.env.example
+COPY --from=builder /app/backend/.env.example ./backend/.env.example
 
 # Create necessary directories with proper permissions
 RUN mkdir -p /app/logs /app/uploads /app/data && \
@@ -58,6 +78,10 @@ RUN mkdir -p /app/logs /app/uploads /app/data && \
 
 # Switch to non-root user
 USER aidis
+
+# The backend runs from its member dir; deps resolve via /app/backend/node_modules
+# and the hoisted /app/node_modules above it.
+WORKDIR /app/backend
 
 # Expose backend port
 EXPOSE 5000
@@ -75,5 +99,5 @@ ENV NODE_ENV=production \
 # Use dumb-init to handle signals properly
 ENTRYPOINT ["dumb-init", "--"]
 
-# Start the backend server
+# Start the backend server (package.json "start": node dist/server.js)
 CMD ["npm", "start"]
