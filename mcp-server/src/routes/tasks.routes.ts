@@ -45,22 +45,29 @@ class TasksRoutes {
       // Activity tracking is already handled in tasksHandler.createTask()
       // Removed duplicate SessionTrackingMiddleware.trackTaskCreated() call
 
-      const assignedText = task.assignedTo ? `\n🤖 Assigned To: ${task.assignedTo}` : '';
-      const tagsText = task.tags.length > 0 ? `\n🏷️  Tags: [${task.tags.join(', ')}]` : '';
-      const depsText = task.dependencies.length > 0 ? `\n⚡ Dependencies: [${task.dependencies.join(', ')}]` : '';
-
       return {
         content: [{
           type: 'text',
-          text: `✅ Task created successfully!\n\n` +
-                `📋 Title: ${task.title}\n` +
-                `🎯 Type: ${task.type}\n` +
-                `📊 Priority: ${task.priority}\n` +
-                `📈 Status: ${task.status}${assignedText}${tagsText}${depsText}\n` +
-                `⏰ Created: ${task.createdAt.toISOString().split('T')[0]}\n` +
-                `🆔 ID: ${task.id}\n\n` +
-                `🤝 Task is now available for agent coordination!`
+          // DUAL-CHANNEL: lean headline; full raw record in structuredContent.
+          // Keeps stable markers ("Task created successfully", "Type:", "🆔 ID:").
+          text: `✅ Task created successfully! "${task.title}"\n` +
+                `🎯 Type: ${task.type} | Priority: ${task.priority} | Status: ${task.status}\n` +
+                `🆔 ID: ${task.id}`,
         }],
+        structuredContent: {
+          action: 'created',
+          task: {
+            id: task.id,
+            title: task.title,
+            type: task.type,
+            status: task.status,
+            priority: task.priority,
+            assignedTo: task.assignedTo ?? null,
+            tags: task.tags,
+            dependencies: task.dependencies,
+            createdAt: task.createdAt.toISOString(),
+          },
+        },
       };
     } catch (error) {
       return formatMcpError(error as Error, 'task_create');
@@ -93,6 +100,7 @@ class TasksRoutes {
             text: `📋 No tasks found for this project\n\n` +
                   `💡 Create tasks with: task_create`
           }],
+          structuredContent: { ok: true, results: [], total: 0 },
         };
       }
 
@@ -130,6 +138,19 @@ class TasksRoutes {
                 `🔄 Update tasks with: task_update\n` +
                 `🤖 Assign to agents with: task_update`
         }],
+        structuredContent: {
+          results: tasks.map((task) => ({
+            id: task.id,
+            title: task.title,
+            type: task.type,
+            status: task.status,
+            priority: task.priority,
+            assignedTo: task.assignedTo ?? null,
+            tags: task.tags,
+            createdAt: task.createdAt.toISOString(),
+          })),
+          total: tasks.length,
+        },
       };
     } catch (error) {
       return formatMcpError(error as Error, 'task_list');
@@ -173,14 +194,22 @@ class TasksRoutes {
       if (args.assignedTo !== undefined) applied.push(`🤖 Assigned To: ${args.assignedTo}`);
       const appliedText = applied.length > 0 ? `\n${applied.join('\n')}` : '';
 
+      // Structured record of exactly what was applied (RAW values, no markup).
+      const appliedFields: Record<string, any> = { id: args.taskId };
+      if (args.status !== undefined) appliedFields.status = args.status;
+      if (args.priority !== undefined) appliedFields.priority = args.priority;
+      if (args.progress !== undefined) appliedFields.progress = args.progress;
+      if (args.assignedTo !== undefined) appliedFields.assignedTo = args.assignedTo;
+
       return {
         content: [{
           type: 'text',
-          text: `✅ Task updated successfully!\n\n` +
-                `📋 Task: ${args.taskId}${appliedText}\n` +
-                `⏰ Updated: ${new Date().toISOString().split('T')[0]}\n\n` +
-                `🤝 Changes visible to all coordinating agents!`
+          text: `✅ Task updated successfully! ${args.taskId}${appliedText}`,
         }],
+        structuredContent: {
+          action: 'updated',
+          task: appliedFields,
+        },
       };
     } catch (error) {
       return formatMcpError(error as Error, 'task_update');
@@ -203,52 +232,41 @@ class TasksRoutes {
         projectId: projectId
       }, context?.connectionId);
 
-      const taskBulkIconMap = {
-        todo: '⏰',
-        in_progress: '🔄',
-        blocked: '🚫',
-        completed: '✅',
-        cancelled: '❌'
-      } as const;
-      const statusIcon = args.status ? (taskBulkIconMap[args.status as keyof typeof taskBulkIconMap] || '❓') : '';
-
-      const updates = [];
-      if (args.status) updates.push(`Status: ${args.status} ${statusIcon}`);
-      if (args.assignedTo) updates.push(`Assigned To: ${args.assignedTo}`);
-      if (args.priority) updates.push(`Priority: ${args.priority}`);
-      if (args.notes) updates.push(`Notes: ${args.notes}`);
-      if (args.metadata) updates.push(`Metadata: Updated`);
-
-      const updatesText = updates.length > 0 ? `\n📊 Applied Updates:\n   ${updates.join('\n   ')}\n` : '';
+      // RAW applied-fields object (no markup/icons) for the machine channel.
+      const appliedUpdates: Record<string, any> = {};
+      if (args.status) appliedUpdates.status = args.status;
+      if (args.assignedTo) appliedUpdates.assignedTo = args.assignedTo;
+      if (args.priority) appliedUpdates.priority = args.priority;
+      if (args.notes) appliedUpdates.notes = args.notes;
+      if (args.metadata) appliedUpdates.metadata = args.metadata;
 
       return {
         content: [{
           type: 'text',
-          text: `✅ Bulk update completed successfully!\n\n` +
-                `📊 **Results Summary:**\n` +
-                `   • Total Requested: ${result.totalRequested}\n` +
-                `   • Successfully Updated: ${result.successfullyUpdated}\n` +
-                `   • Failed: ${result.failed}\n\n` +
-                `🆔 **Updated Task IDs:**\n   ${result.updatedTaskIds.slice(0, 10).join('\n   ')}` +
-                (result.updatedTaskIds.length > 10 ? `\n   ... and ${result.updatedTaskIds.length - 10} more` : '') +
-                updatesText +
-                `\n⏰ Updated: ${new Date().toISOString().split('T')[0]}\n\n` +
-                `🤝 Changes visible to all coordinating agents!\n\n` +
-                `💡 Use task_list to see updated tasks`
+          text: `✅ Bulk update: ${result.successfullyUpdated}/${result.totalRequested} updated` +
+                (result.failed > 0 ? `, ${result.failed} failed` : ''),
         }],
+        structuredContent: {
+          totalRequested: result.totalRequested,
+          successfullyUpdated: result.successfullyUpdated,
+          failed: result.failed,
+          appliedUpdates,
+          updatedTaskIds: result.updatedTaskIds,
+        },
       };
     } catch (error) {
       const err = error as Error;
       return {
         content: [{
           type: 'text',
-          text: `❌ Bulk update failed!\n\n` +
-                `🚨 **Error:** ${err.message}\n\n` +
-                `📊 **Request Details:**\n` +
-                `   • Task Count: ${args.task_ids?.length || 0}\n` +
-                `   • Task IDs: ${args.task_ids?.slice(0, 5).join(', ')}${args.task_ids?.length > 5 ? '...' : ''}\n\n` +
-                `💡 Verify task IDs exist and belong to the project using task_list`
+          text: `❌ Bulk update failed: ${err.message}`,
         }],
+        isError: true,
+        structuredContent: {
+          ok: false,
+          error: err.message,
+          requestedCount: args.task_ids?.length || 0,
+        },
       };
     }
   }
@@ -303,17 +321,23 @@ class TasksRoutes {
         content: [{
           type: "text",
           text: responseText
-        }]
+        }],
+        structuredContent: {
+          totalTasks: summary.totalTasks,
+          overallProgress: summary.overallProgress,
+          groupBy,
+          groupedProgress: summary.groupedProgress,
+        },
       };
     } catch (error) {
       const err = error as Error;
       return {
         content: [{
           type: "text",
-          text: `❌ Progress summary failed!\n\n` +
-                `🚨 **Error:** ${err.message}\n\n` +
-                `💡 Try: task_progress_summary(groupBy="phase")`
-        }]
+          text: `❌ Progress summary failed: ${err.message}`,
+        }],
+        isError: true,
+        structuredContent: { ok: false, error: err.message },
       };
     }
   }
@@ -337,7 +361,8 @@ class TasksRoutes {
                   `🆔 Task ID: ${args.taskId}\n` +
                   `📋 Project: ${projectId}\n\n` +
                   `💡 Use task_list to see available tasks`
-          }]
+          }],
+          structuredContent: { ok: true, found: false },
         };
       }
 
@@ -377,7 +402,28 @@ class TasksRoutes {
                 `⏰ **Created:** ${task.createdAt.toISOString()}\n` +
                 `🔄 **Updated:** ${task.updatedAt.toISOString()}${startedText}${completedText}${metadataText}\n\n` +
                 `💡 Update with: task_update(taskId="${task.id}", status="...", assignedTo="...")`
-        }]
+        }],
+        structuredContent: {
+          found: true,
+          task: {
+            id: task.id,
+            title: task.title,
+            type: task.type,
+            status: task.status,
+            priority: task.priority,
+            assignedTo: task.assignedTo ?? null,
+            createdBy: task.createdBy ?? null,
+            tags: task.tags,
+            dependencies: task.dependencies,
+            description: task.description ?? null,
+            progress: (task as any).progress ?? null,
+            metadata: task.metadata,
+            createdAt: task.createdAt.toISOString(),
+            updatedAt: task.updatedAt.toISOString(),
+            startedAt: task.startedAt ? task.startedAt.toISOString() : null,
+            completedAt: task.completedAt ? task.completedAt.toISOString() : null,
+          },
+        },
       };
     } catch (error) {
       return formatMcpError(error as Error, 'task_details');

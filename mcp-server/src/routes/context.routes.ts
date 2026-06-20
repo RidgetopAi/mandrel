@@ -80,24 +80,30 @@ class ContextRoutes {
       // threading tag (`task:`/`decision:`/`context:`/`scope:`/`owner:`/`tranche:`)
       // was malformed it was normalized (or flagged) at the write boundary — surface
       // that to the caller so a typo'd link is visible, not silent. Stored tags already
-      // reflect the normalized form.
-      const refWarnings = result.warnings && result.warnings.length > 0
-        ? `\n⚠️  Tag notes:\n` + result.warnings.map(w => `   • ${w}`).join('\n') + '\n'
-        : '';
-
+      // reflect the normalized form. (Now carried in both the lean text AND the
+      // structuredContent.context.warnings field.)
       return {
         content: [{
           type: 'text',
-          text: `✅ Context stored successfully!\n\n` +
-                `📝 ID: ${result.id}\n` +
-                `🏷️  Type: ${result.contextType}\n` +
-                `📊 Relevance: ${result.relevanceScore}/10\n` +
-                `🏷️  Tags: [${result.tags.join(', ')}]\n` +
-                refWarnings +
-                `⏰ Stored: ${result.createdAt.toISOString()}\n` +
-                `🔍 Content: "${result.content.length > 100 ? result.content.substring(0, 100) + '...' : result.content}"\n\n` +
-                `🎯 Context is now searchable via semantic similarity!`
+          // DUAL-CHANNEL: lean human glance; the machine reads structuredContent.
+          // Keeps the stable `🆔 ID:` marker so id-parsing consumers/tests still work.
+          text: `✅ Context stored successfully! (${result.contextType})\n🆔 ID: ${result.id}` +
+                (result.warnings && result.warnings.length > 0
+                  ? `\n⚠️  Tag notes:\n` + result.warnings.map(w => `   • ${w}`).join('\n')
+                  : ''),
         }],
+        structuredContent: {
+          action: 'created',
+          context: {
+            id: result.id,
+            contextType: result.contextType,
+            content: result.content,
+            tags: result.tags,
+            relevanceScore: result.relevanceScore,
+            createdAt: result.createdAt.toISOString(),
+            warnings: result.warnings ?? [],
+          },
+        },
       };
     } catch (error) {
       return formatMcpError(error as Error, 'context_store');
@@ -127,6 +133,7 @@ class ContextRoutes {
               type: 'text',
               text: `❌ Context not found: ${args.id}\n\n💡 Use context_get_recent to see recent context IDs`
             }],
+            structuredContent: { ok: true, results: [], total: 0 },
           };
         }
 
@@ -150,6 +157,21 @@ class ContextRoutes {
                   `⭐ Relevance: ${ctx.relevance_score}/10\n\n` +
                   `---\n\n${ctx.content}`
           }],
+          // SEARCH shape (a by-id lookup is a 1-result search) — RAW values.
+          structuredContent: {
+            results: [{
+              id: ctx.id,
+              contextType: ctx.context_type,
+              content: ctx.content,
+              tags: ctx.tags ?? [],
+              relevanceScore: ctx.relevance_score,
+              projectId: ctx.project_id,
+              sessionId: ctx.session_id,
+              metadata: meta,
+              createdAt: new Date(ctx.created_at).toISOString(),
+            }],
+            total: 1,
+          },
         };
       }
 
@@ -205,15 +227,31 @@ class ContextRoutes {
               type: 'text',
               text: `🔍 No contexts found with tags: [${args.tags.join(', ')}]`
             }],
+            structuredContent: { ok: true, results: [], total: 0 },
           };
         }
 
         const tagSummary = `🔍 Found ${tagResult.rows.length} contexts with tags [${args.tags.join(', ')}]\n\n`;
+        // RAW structured rows for the machine channel (parsed metadata, no markup).
+        const tagStructured = tagResult.rows.map((row) => {
+          const meta = typeof row.metadata === 'string' ? JSON.parse(row.metadata) : (row.metadata ?? {});
+          return {
+            id: row.id,
+            contextType: row.context_type,
+            content: row.content,
+            tags: row.tags ?? [],
+            relevanceScore: row.relevance_score,
+            projectId: row.project_id,
+            sessionId: row.session_id,
+            metadata: meta,
+            createdAt: new Date(row.created_at).toISOString(),
+          };
+        });
         const tagList = tagResult.rows.map((row, index) => {
           const timeAgo = this.getTimeAgo(row.created_at);
           // Surface each thread member's structured back-links (metadata) so a thread
           // fetched by its `task:`/`ref:` tag resolves end-to-end via tools alone.
-          const meta = typeof row.metadata === 'string' ? JSON.parse(row.metadata) : (row.metadata ?? {});
+          const meta = tagStructured[index].metadata;
           const metaLine = meta && Object.keys(meta).length > 0
             ? `\n   Metadata: ${JSON.stringify(meta)}`
             : '';
@@ -228,6 +266,7 @@ class ContextRoutes {
             type: 'text',
             text: tagSummary + tagList
           }],
+          structuredContent: { results: tagStructured, total: tagStructured.length },
         };
       }
 
@@ -255,6 +294,7 @@ class ContextRoutes {
                   `• Lower similarity threshold\n` +
                   `• Different tags`
           }],
+          structuredContent: { ok: true, results: [], total: 0 },
         };
       }
 
@@ -287,6 +327,19 @@ class ContextRoutes {
           type: 'text',
           text: (honestyHeader ? honestyHeader + '\n\n' : '') + searchSummary + resultsList
         }],
+        // RAW structured rows (no markup, no honesty-header prose) — the machine channel.
+        structuredContent: {
+          results: results.map((result) => ({
+            id: result.id,
+            contextType: result.contextType,
+            content: result.content,
+            tags: result.tags,
+            relevance: relevanceOf(result),
+            similarity: result.similarity,
+            createdAt: result.createdAt.toISOString(),
+          })),
+          total: results.length,
+        },
       };
     } catch (error) {
       return formatMcpError(error as Error, 'context_search');
@@ -313,6 +366,7 @@ class ContextRoutes {
                   `• Wrong project selected\n` +
                   `• Database connectivity issues`
           }],
+          structuredContent: { ok: true, results: [], total: 0 },
         };
       }
 
@@ -331,6 +385,16 @@ class ContextRoutes {
           type: 'text',
           text: `📋 Recent Contexts (${results.length} found)\n\n${contextList}`
         }],
+        structuredContent: {
+          results: results.map((ctx) => ({
+            id: ctx.id,
+            contextType: ctx.contextType,
+            content: ctx.content,
+            tags: ctx.tags,
+            createdAt: ctx.createdAt.toISOString(),
+          })),
+          total: results.length,
+        },
       };
     } catch (error) {
       return formatMcpError(error as Error, 'context_get_recent');
@@ -361,6 +425,12 @@ class ContextRoutes {
                 `📋 By Type:\n${typeBreakdown || '   (no contexts yet)'}\n\n` +
                 `🎯 All contexts are searchable via semantic similarity!`
         }],
+        structuredContent: {
+          totalContexts: stats.totalContexts,
+          embeddedContexts: stats.embeddedContexts,
+          recentContexts: stats.recentContexts,
+          contextsByType: stats.contextsByType,
+        },
       };
     } catch (error) {
       return formatMcpError(error as Error, 'context_stats');

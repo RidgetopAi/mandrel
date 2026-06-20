@@ -10,7 +10,34 @@ export interface McpResponse {
     resource?: string;
   }>;
   isError?: boolean;
-  data?: any; // Structured data for API consumers (optional)
+  /**
+   * Legacy structured-data sibling for API consumers. Kept for back-compat; the
+   * dual-channel seam (routes/index.ts) promotes it to `structuredContent` when a
+   * handler set it. Prefer setting `structuredContent` directly in new code.
+   */
+  data?: any;
+  /**
+   * MCP DUAL-CHANNEL OUTPUT (task 2c412458): the machine-readable JSON object that
+   * conforms to the tool's declared `outputSchema`. RAW field values only — NEVER
+   * marked-up text (that is the root-cause fix for the markdown-in-values class).
+   * Every tool emits one; the seam in routes/index.ts guarantees it's present.
+   */
+  structuredContent?: Record<string, any>;
+}
+
+/**
+ * Strip lightweight markdown emphasis from a RAW value so structuredContent never
+ * carries presentation markup (the markdown-in-values root-cause fix). Conservative:
+ * only removes `**bold**`/`__bold__`/`*italic*`/`_italic_` wrappers and backticks;
+ * leaves all other characters intact. Non-strings pass through unchanged.
+ */
+export function rawValue<T>(value: T): T {
+  if (typeof value !== 'string') return value;
+  return value
+    .replace(/\*\*(.+?)\*\*/g, '$1')
+    .replace(/__(.+?)__/g, '$1')
+    .replace(/\*(.+?)\*/g, '$1')
+    .replace(/`(.+?)`/g, '$1') as unknown as T;
 }
 
 export interface FormatOptions {

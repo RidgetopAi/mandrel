@@ -58,26 +58,29 @@ class DecisionsRoutes {
         context?.connectionId
       );
 
-      const alternativesText = decision.alternativesConsidered.length > 0
-        ? `\n📋 Alternatives Considered:\n` +
-          decision.alternativesConsidered.map(alt =>
-            `   • ${alt.name}: ${alt.reasonRejected}`
-          ).join('\n')
-        : '';
-
       return {
         content: [{
           type: 'text',
-          text: `✅ Technical decision recorded!\n\n` +
-                `🎯 Type: ${decision.decisionType}\n` +
-                `📝 Title: ${decision.title}\n` +
-                `⚡ Impact: ${decision.impactLevel}\n` +
-                `📅 Date: ${decision.decisionDate.toISOString().split('T')[0]}\n` +
-                `🏷️  Components: [${decision.affectedComponents.join(', ')}]\n` +
-                `🏷️  Tags: [${decision.tags.join(', ')}]\n` +
-                `🆔 ID: ${decision.id}${alternativesText}\n\n` +
-                `💡 Decision is now searchable and tracked for outcomes!`
+          text: `✅ Technical decision recorded! "${decision.title}"\n` +
+                `🎯 Type: ${decision.decisionType} | Impact: ${decision.impactLevel}\n` +
+                `🆔 ID: ${decision.id}`,
         }],
+        structuredContent: {
+          action: 'created',
+          decision: {
+            id: decision.id,
+            title: decision.title,
+            decisionType: decision.decisionType,
+            impactLevel: decision.impactLevel,
+            status: decision.status,
+            rationale: decision.rationale,
+            outcomeStatus: decision.outcomeStatus ?? null,
+            lessonsLearned: decision.lessonsLearned ?? null,
+            affectedComponents: decision.affectedComponents,
+            tags: decision.tags,
+            decisionDate: decision.decisionDate.toISOString(),
+          },
+        },
       };
     } catch (error) {
       return formatMcpError(error as Error, 'decision_record');
@@ -352,15 +355,22 @@ class DecisionsRoutes {
       return {
         content: [{
           type: 'text',
-          text: `✅ Decision updated successfully!\n\n` +
-                `📝 Title: ${decision.title}\n` +
-                `📊 Status: ${decision.status}\n` +
-                `🛠️  Implementation: ${decision.implementationStatus}\n` +
-                `🎯 Outcome: ${decision.outcomeStatus}\n` +
-                `📄 Notes: ${decision.outcomeNotes || 'None'}\n` +
-                `🧠 Lessons Learned: ${decision.lessonsLearned || 'None'}\n\n` +
-                `💡 Decision outcomes help improve future choices!`
+          text: `✅ Decision updated successfully! "${decision.title}"\n` +
+                `📊 Status: ${decision.status} | 🛠️  Implementation: ${decision.implementationStatus}\n` +
+                `🎯 Outcome: ${decision.outcomeStatus}`,
         }],
+        structuredContent: {
+          action: 'updated',
+          decision: {
+            id: decision.id,
+            title: decision.title,
+            status: decision.status,
+            implementationStatus: decision.implementationStatus,
+            outcomeStatus: decision.outcomeStatus ?? null,
+            outcomeNotes: decision.outcomeNotes ?? null,
+            lessonsLearned: decision.lessonsLearned ?? null,
+          },
+        },
       };
     } catch (error) {
       return formatMcpError(error as Error, 'decision_update');

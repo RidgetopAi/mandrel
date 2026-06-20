@@ -55,6 +55,7 @@ class SearchRoutes {
             text: `🔍 No results found for: "${args.query}"\n\n` +
                   `💡 Try broader search terms or different data sources`
           }],
+          structuredContent: { ok: true, results: [], total: 0 },
         };
       }
 
@@ -92,6 +93,17 @@ class SearchRoutes {
                 `🎯 Searched: [${args.includeTypes?.join(', ') || 'context, component, decision'}]\n` +
                 `💡 Refine with different includeTypes or broader query`
         }],
+        structuredContent: {
+          results: results.map((result) => ({
+            id: result.id,
+            type: result.type,
+            title: result.title,
+            summary: result.summary,
+            relevanceScore: result.relevanceScore,
+            source: result.source,
+          })),
+          total: results.length,
+        },
       };
     } catch (error) {
       return formatMcpError(error as Error, 'smart_search');
@@ -128,6 +140,7 @@ class SearchRoutes {
             text: `💡 No specific recommendations for: "${args.context}"\n\n` +
                   `🎯 Try different context or recommendation type`
           }],
+          structuredContent: { ok: true, results: [], total: 0 },
         };
       }
 
@@ -156,6 +169,17 @@ class SearchRoutes {
                 `✅ = Actionable | ℹ️ = Informational\n` +
                 `🎯 Type: ${args.type} recommendations`
         }],
+        structuredContent: {
+          results: recommendations.map((rec) => ({
+            type: rec.type,
+            title: rec.title,
+            summary: rec.description,
+            confidence: rec.confidence,
+            actionable: rec.actionable,
+            references: rec.references,
+          })),
+          total: recommendations.length,
+        },
       };
     } catch (error) {
       return formatMcpError(error as Error, 'get_recommendations');
@@ -217,6 +241,21 @@ class SearchRoutes {
                 `📋 Tasks: ${insights.taskStats.total}${gapsText}${issuesText}\n\n` +
                 `💡 Get specific recommendations with: get_recommendations`
         }],
+        structuredContent: {
+          codeHealth: {
+            level: insights.insights.codeHealth.level,
+            score: insights.insights.codeHealth.score,
+            issues: insights.insights.codeHealth.issues,
+          },
+          teamEfficiency: {
+            level: insights.insights.teamEfficiency.level,
+            completionRate: insights.insights.teamEfficiency.completionRate ?? 0,
+          },
+          knowledgeGaps: insights.insights.knowledgeGaps,
+          totalComponents: insights.codeStats.totalComponents,
+          decisionsTotal: insights.decisionStats.total,
+          tasksTotal: insights.taskStats.total,
+        },
       };
     } catch (error) {
       return formatMcpError(error as Error, 'project_insights');

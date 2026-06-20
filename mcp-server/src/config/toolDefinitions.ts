@@ -11,6 +11,12 @@
 
 import { zodToJsonSchema } from 'zod-to-json-schema';
 import { validationSchemas } from '../middleware/validation.js';
+import {
+  buildOutputSchema,
+  outputZodSchemas,
+  type OutputSchemaToolName,
+  type JsonObjectSchema,
+} from './outputSchemas.js';
 
 /**
  * Tool Definition Interface
@@ -25,6 +31,13 @@ export interface ToolDefinition {
     required?: string[];
     additionalProperties?: boolean;
   };
+  /**
+   * MCP dual-channel OUTPUT contract (task 2c412458). The JSON Schema that a tool's
+   * `structuredContent` conforms to. Attached table-driven (mirroring inputSchema)
+   * from config/outputSchemas.ts — see attachOutputSchemas() below. Every tool gets
+   * one; a contract test fails if any is missing.
+   */
+  outputSchema?: JsonObjectSchema;
 }
 
 /**
@@ -490,4 +503,28 @@ export const AIDIS_TOOL_DEFINITIONS: ToolDefinition[] = [
 
         // TC014: Metrics tools - Never implemented, ghost code removed (2025-10-24)
 ];
+
+/**
+ * DUAL-CHANNEL OUTPUT (task 2c412458): attach the table-driven `outputSchema` to
+ * EVERY tool definition from the single source of truth (config/outputSchemas.ts),
+ * exactly mirroring how buildInputSchema feeds inputSchema. Done in ONE place so a
+ * new tool can't ship without an output contract: if a definition's name has no
+ * entry in outputZodSchemas this throws at import time (fail fast, not silently
+ * shipping a tool with no machine-readable schema). The dualChannelOutput contract
+ * test is the permanent guard around this invariant.
+ */
+function attachOutputSchemas(defs: ToolDefinition[]): void {
+  for (const def of defs) {
+    if (!(def.name in outputZodSchemas)) {
+      throw new Error(
+        `[toolDefinitions] tool '${def.name}' has no outputSchema entry in ` +
+          `config/outputSchemas.ts — every tool MUST declare a dual-channel output ` +
+          `contract (task 2c412458). Add it to outputZodSchemas.`
+      );
+    }
+    def.outputSchema = buildOutputSchema(def.name as OutputSchemaToolName);
+  }
+}
+
+attachOutputSchemas(AIDIS_TOOL_DEFINITIONS);
 

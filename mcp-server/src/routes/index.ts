@@ -93,10 +93,55 @@ async function ensureSessionForAction(toolName: string, connectionId?: string): 
 }
 
 /**
+ * DUAL-CHANNEL OUTPUT SEAM (task 2c412458).
+ *
+ * THE ONE mechanism — not 29 copy-pastes. Every tool result flows back through
+ * `routeExecutor`, so this is the single place that guarantees the spec's
+ * `structuredContent` is present on EVERY response:
+ *
+ *   1. If a handler set `structuredContent` directly (the rich tools that build a
+ *      clean record/array), keep it.
+ *   2. Else if it set the legacy `data` sibling, PROMOTE that to `structuredContent`
+ *      (back-compat — generalizes the existing decisions-route `data` pattern to all).
+ *   3. Else synthesize a minimal `{ ok }` object so a tool that only returns prose
+ *      (system/status/ping) STILL carries a machine-readable success flag. No tool
+ *      is ever left without structuredContent — Brian's "all tools" bar.
+ *
+ * `ok` is always (re)stamped from the response's error flag so a consumer never has
+ * to infer success from text. The legacy `data` sibling is PRESERVED (back-compat
+ * for the Command UI + task-1 tests that read `.data`); structuredContent is the new
+ * canonical machine channel mirroring it.
+ */
+function ensureStructuredContent(resp: McpResponse): McpResponse {
+  const ok = resp.isError !== true;
+  let structured: Record<string, any>;
+
+  if (resp.structuredContent && typeof resp.structuredContent === 'object') {
+    structured = resp.structuredContent;
+  } else if (resp.data && typeof resp.data === 'object' && !Array.isArray(resp.data)) {
+    structured = resp.data;
+  } else if (resp.data !== undefined) {
+    // A primitive/array data payload — wrap it so structuredContent is always an object.
+    structured = { value: resp.data };
+  } else {
+    structured = {};
+  }
+
+  // Always stamp the machine-readable success flag (handlers may omit it).
+  if (structured.ok === undefined) structured.ok = ok;
+
+  return { ...resp, structuredContent: structured };
+}
+
+/**
  * Execute MCP Tool via Route Dispatcher
  * Central entry point for all 36 active MCP tools
  */
 export async function routeExecutor(toolName: string, args: any, context?: RouteContext): Promise<McpResponse> {
+  return ensureStructuredContent(await routeExecutorInner(toolName, args, context));
+}
+
+async function routeExecutorInner(toolName: string, args: any, context?: RouteContext): Promise<McpResponse> {
   try {
     // Log deprecation warning for old tool names
     const deprecatedTools = ['aidis_ping', 'aidis_status', 'aidis_help', 'aidis_explain', 'aidis_examples'];

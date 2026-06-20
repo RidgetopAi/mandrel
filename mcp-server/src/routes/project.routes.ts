@@ -1,6 +1,6 @@
 import { projectHandler } from '../handlers/project.js';
 import { switchProjectWithValidation } from '../services/projectSwitchValidator.js';
-import { formatMcpError } from '../utils/mcpFormatter.js';
+import { formatMcpError, rawValue } from '../utils/mcpFormatter.js';
 import type { McpResponse } from '../utils/mcpFormatter.js';
 import type { RouteContext } from './index.js';
 import { logger } from '../utils/logger.js';
@@ -17,6 +17,28 @@ class ProjectRoutes {
   private getSessionId(context?: RouteContext): string {
     // Use connectionId for session isolation, or fall back to default
     return context?.connectionId || 'default-session';
+  }
+
+  /**
+   * Build a clean, RAW structuredContent project record (markdown-in-values fix):
+   * project name/description are passed through rawValue() so a DB value containing
+   * `**bold**` never leaks markup into the machine-readable channel. This is the
+   * locked-in root-cause fix for the project_current markdown bug class.
+   */
+  private toRawProject(project: any): Record<string, any> {
+    return {
+      id: project.id,
+      name: rawValue(project.name),
+      description: project.description != null ? rawValue(project.description) : null,
+      status: project.status,
+      contextCount: project.contextCount ?? 0,
+      isActive: project.isActive ?? undefined,
+      gitRepoUrl: project.gitRepoUrl ?? null,
+      rootDirectory: project.rootDirectory ?? null,
+      metadata: project.metadata ?? {},
+      createdAt: project.createdAt ? project.createdAt.toISOString() : undefined,
+      updatedAt: project.updatedAt ? project.updatedAt.toISOString() : undefined,
+    };
   }
 
   /**
@@ -37,6 +59,7 @@ class ProjectRoutes {
             text: `📋 No projects found\n\n` +
                   `Create your first project with: project_create`
           }],
+          structuredContent: { ok: true, results: [], total: 0 },
         };
       }
 
@@ -58,6 +81,10 @@ class ProjectRoutes {
           text: `📋 Projects (${projects.length} total)\n\n${projectList}\n\n` +
                 `🔄 Switch projects with: project_switch <name-or-id>`
         }],
+        structuredContent: {
+          results: projects.map((p) => this.toRawProject(p)),
+          total: projects.length,
+        },
       };
     } catch (error) {
       return formatMcpError(error as Error, 'project_list');
@@ -83,14 +110,9 @@ class ProjectRoutes {
       return {
         content: [{
           type: 'text',
-          text: `✅ Project created successfully!\n\n` +
-                `📝 Name: ${project.name}\n` +
-                `📄 Description: ${project.description || 'None'}\n` +
-                `📊 Status: ${project.status}\n` +
-                `⏰ Created: ${project.createdAt.toISOString()}\n` +
-                `🆔 ID: ${project.id}\n\n` +
-                `💡 Switch to this project with: project_switch ${project.name}`
+          text: `✅ Project created: "${project.name}" (${project.status}) — ID ${project.id}`,
         }],
+        structuredContent: { action: 'created', project: this.toRawProject(project) },
       };
     } catch (error) {
       return formatMcpError(error as Error, 'project_create');
@@ -122,14 +144,9 @@ class ProjectRoutes {
       return {
         content: [{
           type: 'text',
-          text: `✅ Switched to project: **${project.name}** 🟢\n\n` +
-                `📄 Description: ${project.description || 'No description'}\n` +
-                `📊 Status: ${project.status}\n` +
-                `📈 Contexts: ${project.contextCount || 0}\n` +
-                `⏰ Last Updated: ${project.updatedAt.toISOString().split('T')[0]}\n\n` +
-                `🎯 All context operations will now use this project by default\n` +
-                `🛡️  Switch completed with TS012 validation framework`
+          text: `✅ Switched to project: ${rawValue(project.name)} (${project.status})`,
         }],
+        structuredContent: { action: 'switched', project: this.toRawProject(project) },
       };
     } catch (error) {
       logger.error(`❌ [TS012] Project switch failed`, error as Error);
@@ -173,6 +190,8 @@ class ProjectRoutes {
                 `**Error Details:** ${errorMessage}\n\n` +
                 `🛡️  Protected by TS012 validation framework`
         }],
+        isError: true,
+        structuredContent: { ok: false, action: 'switch_failed', error: errorMessage, target: args.project },
       };
     }
   }
@@ -198,31 +217,29 @@ class ProjectRoutes {
               text: `❌ No current project set and no projects available\n\n` +
                     `Create your first project with: project_create <name>`
             }],
+            structuredContent: { ok: true, found: false },
           };
         }
 
         return {
           content: [{
             type: 'text',
-            text: `🟢 Current Project: **${initializedProject.name}** (auto-selected)\n\n` +
-                  `📄 Description: ${initializedProject.description || 'No description'}\n` +
-                  `📊 Status: ${initializedProject.status}\n` +
-                  `📈 Contexts: ${initializedProject.contextCount || 0}\n` +
-                  `⏰ Last Updated: ${initializedProject.updatedAt.toISOString().split('T')[0]}`
+            text: `🟢 Current Project: ${rawValue(initializedProject.name)} (auto-selected, ${initializedProject.status})`,
           }],
+          structuredContent: {
+            found: true,
+            autoSelected: true,
+            project: this.toRawProject(initializedProject),
+          },
         };
       }
 
       return {
         content: [{
           type: 'text',
-          text: `🟢 Current Project: **${project.name}**\n\n` +
-                `📄 Description: ${project.description || 'No description'}\n` +
-                `📊 Status: ${project.status}\n` +
-                `📈 Contexts: ${project.contextCount || 0}\n` +
-                `⏰ Last Updated: ${project.updatedAt.toISOString().split('T')[0]}\n\n` +
-                `🔄 Switch projects with: project_switch <name-or-id>`
+          text: `🟢 Current Project: ${rawValue(project.name)} (${project.status})`,
         }],
+        structuredContent: { found: true, project: this.toRawProject(project) },
       };
     } catch (error) {
       return formatMcpError(error as Error, 'project_current');
@@ -245,6 +262,7 @@ class ProjectRoutes {
             text: `❌ Project "${args.project}" not found\n\n` +
                   `💡 List all projects with: project_list`
           }],
+          structuredContent: { ok: true, found: false },
         };
       }
 
@@ -266,6 +284,7 @@ class ProjectRoutes {
                 `🆔 ID: ${project.id}${metadataInfo}\n\n` +
                 `${project.isActive ? '🎯 This is your current active project' : '🔄 Switch to this project with: project_switch ' + project.name}`
         }],
+        structuredContent: { found: true, project: this.toRawProject(project) },
       };
     } catch (error) {
       return formatMcpError(error as Error, 'project_info');
@@ -330,15 +349,13 @@ class ProjectRoutes {
       return {
         content: [{
           type: 'text',
-          text: `✅ Project updated successfully!\n\n` +
-                `📝 Name: ${project.name}\n` +
-                `📄 Description: ${project.description || 'None'}\n` +
-                `📊 Status: ${project.status}\n` +
-                `🔗 Git Repo: ${project.gitRepoUrl || 'None'}\n` +
-                `📁 Root Directory: ${project.rootDirectory || 'None'}\n` +
-                `⏰ Updated: ${project.updatedAt.toISOString()}\n` +
-                `🆔 ID: ${project.id}`
+          text: `✅ Project updated: ${rawValue(project.name)} (${project.status}) — ID ${project.id}`,
         }],
+        structuredContent: {
+          action: 'updated',
+          project: this.toRawProject(project),
+          updatedFields: Object.keys(updates),
+        },
       };
     } catch (error) {
       return formatMcpError(error as Error, 'project_update');
@@ -397,15 +414,20 @@ class ProjectRoutes {
                   `📊 Owned data — Contexts: ${c.contexts} | Decisions: ${c.decisions} | ` +
                   `Tasks: ${c.tasks} | Sessions: ${c.sessions} (Total: ${c.total})`
           }],
+          structuredContent: { action: 'delete_refused', deleted: false, counts: c },
         };
       }
 
       return {
         content: [{
           type: 'text',
-          text: `${result.message}\n\n` +
-                `🆔 Deleted project ID: ${result.projectId}`
+          text: `🗑️  Deleted project — ID ${result.projectId}`,
         }],
+        structuredContent: {
+          action: 'deleted',
+          deleted: true,
+          project: { id: result.projectId },
+        },
       };
     } catch (error) {
       return formatMcpError(error as Error, 'project_delete');

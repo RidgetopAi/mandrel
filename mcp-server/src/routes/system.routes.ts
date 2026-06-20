@@ -24,6 +24,12 @@ class SystemRoutes {
           type: 'text',
           text: `🏓 Mandrel Pong! Message: "${message}" | Time: ${timestamp} | Status: Operational`,
         }],
+        structuredContent: {
+          ok: true,
+          message,
+          timestamp,
+          status: 'operational',
+        },
       };
     } catch (error) {
       return formatMcpError(error as Error, 'mandrel_ping');
@@ -49,7 +55,14 @@ class SystemRoutes {
                 `Status: Operational\n` +
                 `Uptime: ${uptimeStr}\n` +
                 `Process: ${process.pid}`
-        }]
+        }],
+        structuredContent: {
+          ok: true,
+          version: MANDREL_VERSION,
+          status: 'operational',
+          uptimeSeconds: Math.floor(uptime),
+          pid: process.pid,
+        },
       };
     } catch (error) {
       return formatMcpError(error as Error, 'mandrel_status');
