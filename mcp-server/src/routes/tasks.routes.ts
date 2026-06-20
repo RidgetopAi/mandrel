@@ -3,6 +3,12 @@ import { projectHandler } from '../handlers/project.js';
 import { formatMcpError } from '../utils/mcpFormatter.js';
 import type { McpResponse } from '../utils/mcpFormatter.js';
 import type { RouteContext } from './index.js';
+import {
+  resolveEntityId,
+  AmbiguousIdError,
+  IdNotFoundError,
+  ambiguousIdMessage,
+} from '../utils/idResolver.js';
 
 /**
  * Task Management Routes
@@ -160,13 +166,44 @@ class TasksRoutes {
   /**
    * Handle task update requests
    */
-  async handleUpdate(args: any): Promise<McpResponse> {
+  async handleUpdate(args: any, context?: RouteContext): Promise<McpResponse> {
     try {
+      // SHORT-ID RESOLUTION (task 131ef054): resolve a full UUID or 8+-hex short id →
+      // full UUID, SCOPED to this project (project-scoped table → a prefix can't collide
+      // across projects), BEFORE we mutate. Ambiguous / unknown short ids are surfaced as
+      // actionable errors and DO NOT mutate (resolution throws before the UPDATE runs).
+      const projectId = await this.resolveProjectId(args.projectId, context);
+      let resolvedId: string;
+      try {
+        resolvedId = await resolveEntityId('task', args.taskId, projectId);
+      } catch (e) {
+        if (e instanceof AmbiguousIdError) {
+          return {
+            content: [{ type: 'text', text: ambiguousIdMessage(e, 'task_update') }],
+            isError: true,
+            structuredContent: { ok: false, ambiguous: true,
+              candidates: e.candidates.map(c => c.id) },
+          };
+        }
+        if (e instanceof IdNotFoundError) {
+          return {
+            content: [{
+              type: 'text',
+              text: `❌ Task not found: ${args.taskId}\n\n` +
+                    `💡 The id may be wrong. Use task_list to see this project's tasks and copy a 🆔 ID.`
+            }],
+            isError: true,
+            structuredContent: { ok: false, found: false },
+          };
+        }
+        throw e;
+      }
+
       // A4: forward priority + progress (real columns) so they're actually written —
       // previously only status/assignedTo/metadata reached the handler, so a
       // priority/progress-only update returned success while writing nothing.
       await tasksHandler.updateTaskStatus(
-        args.taskId,
+        resolvedId,
         args.status,
         args.assignedTo,
         args.metadata,
@@ -194,8 +231,9 @@ class TasksRoutes {
       if (args.assignedTo !== undefined) applied.push(`🤖 Assigned To: ${args.assignedTo}`);
       const appliedText = applied.length > 0 ? `\n${applied.join('\n')}` : '';
 
-      // Structured record of exactly what was applied (RAW values, no markup).
-      const appliedFields: Record<string, any> = { id: args.taskId };
+      // Structured record of exactly what was applied (RAW values, no markup). Report the
+      // RESOLVED full id (not the short input) so the displayed id is unambiguous to copy.
+      const appliedFields: Record<string, any> = { id: resolvedId };
       if (args.status !== undefined) appliedFields.status = args.status;
       if (args.priority !== undefined) appliedFields.priority = args.priority;
       if (args.progress !== undefined) appliedFields.progress = args.progress;
@@ -204,7 +242,7 @@ class TasksRoutes {
       return {
         content: [{
           type: 'text',
-          text: `✅ Task updated successfully! ${args.taskId}${appliedText}`,
+          text: `✅ Task updated successfully! ${resolvedId}${appliedText}`,
         }],
         structuredContent: {
           action: 'updated',
@@ -223,7 +261,39 @@ class TasksRoutes {
     try {
       const projectId = await this.resolveProjectId(args.projectId, context);
 
-      const result = await tasksHandler.bulkUpdateTasks(args.task_ids, {
+      // SHORT-ID RESOLUTION (task 131ef054): resolve every id (full UUID or 8+-hex short
+      // id) → full UUID, SCOPED to this project, BEFORE the atomic bulk update. Any
+      // ambiguous / unknown id aborts the whole op (consistent with bulk's all-or-nothing
+      // transaction) with an actionable error — nothing is mutated.
+      const resolvedIds: string[] = [];
+      try {
+        for (const rawId of args.task_ids) {
+          resolvedIds.push(await resolveEntityId('task', rawId, projectId));
+        }
+      } catch (e) {
+        if (e instanceof AmbiguousIdError) {
+          return {
+            content: [{ type: 'text', text: ambiguousIdMessage(e, 'task_bulk_update') }],
+            isError: true,
+            structuredContent: { ok: false, ambiguous: true,
+              candidates: e.candidates.map(c => c.id) },
+          };
+        }
+        if (e instanceof IdNotFoundError) {
+          return {
+            content: [{
+              type: 'text',
+              text: `❌ Bulk update aborted: task not found "${e.shortId}"\n\n` +
+                    `💡 The id may be wrong. Use task_list to see this project's tasks; nothing was changed.`
+            }],
+            isError: true,
+            structuredContent: { ok: false, found: false },
+          };
+        }
+        throw e;
+      }
+
+      const result = await tasksHandler.bulkUpdateTasks(resolvedIds, {
         status: args.status,
         assignedTo: args.assignedTo,
         priority: args.priority,
@@ -349,9 +419,38 @@ class TasksRoutes {
     try {
       const projectId = await this.resolveProjectId(args.projectId, context);
 
+      // SHORT-ID RESOLUTION (task 131ef054): accept a full UUID or an 8+-hex short id and
+      // resolve it → full UUID, SCOPED to this project so a prefix can't collide across
+      // projects. Ambiguous prefix / unknown id surface as actionable errors below.
+      let resolvedId: string;
+      try {
+        resolvedId = await resolveEntityId('task', args.taskId, projectId);
+      } catch (e) {
+        if (e instanceof AmbiguousIdError) {
+          return {
+            content: [{ type: 'text', text: ambiguousIdMessage(e, 'task_details') }],
+            structuredContent: { ok: true, found: false, ambiguous: true,
+              candidates: e.candidates.map(c => c.id) },
+          };
+        }
+        if (e instanceof IdNotFoundError) {
+          return {
+            content: [{
+              type: 'text',
+              text: `❌ Task not found\n\n` +
+                    `🆔 Task ID: ${args.taskId}\n` +
+                    `📋 Project: ${projectId}\n\n` +
+                    `💡 The id may be wrong. Use task_list to see this project's tasks and copy a 🆔 ID.`
+            }],
+            structuredContent: { ok: true, found: false },
+          };
+        }
+        throw e;
+      }
+
       // Get single task with full details
       const tasks = await tasksHandler.listTasks(projectId);
-      const task = tasks.find(t => t.id === args.taskId);
+      const task = tasks.find(t => t.id === resolvedId);
 
       if (!task) {
         return {

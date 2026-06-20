@@ -116,8 +116,14 @@ function describeIssue(issue: z.ZodIssue): { field: string; line: string } {
       return { field, line: `'${field}' is not a valid ${String(is.validation)}.` };
     }
     case z.ZodIssueCode.custom: {
-      // .refine() failures (e.g. "provide at least one of …") already carry an
-      // actionable, hand-written message — surface it as-is.
+      // .refine() failures already carry an actionable, hand-written message. When the
+      // refine targets a SPECIFIC field (path is non-empty, e.g. the uuid-or-short-id
+      // validator on 'taskId'/'decisionId'), prefix the field name so the message names
+      // the offending param — existing field-name contract assertions expect it. Root
+      // refines (e.g. "provide at least one of …", path = []) stay verbatim.
+      if (issue.path.length > 0) {
+        return { field, line: `'${field}' ${issue.message}` };
+      }
       return { field, line: issue.message };
     }
     default:

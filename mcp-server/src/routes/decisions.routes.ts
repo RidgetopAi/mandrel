@@ -5,6 +5,13 @@ import { formatMcpError } from '../utils/mcpFormatter.js';
 import type { McpResponse } from '../utils/mcpFormatter.js';
 import type { RouteContext } from './index.js';
 import { logger } from '../utils/logger.js';
+import {
+  resolveEntityId,
+  isFullUuid,
+  AmbiguousIdError,
+  IdNotFoundError,
+  ambiguousIdMessage,
+} from '../utils/idResolver.js';
 
 /**
  * Technical Decisions Routes
@@ -258,17 +265,50 @@ class DecisionsRoutes {
         `(project ctx: ${projectId?.substring(0, 8) ?? 'none'})`
       );
 
+      // SHORT-ID RESOLUTION (task 131ef054): accept a full UUID or an 8+-hex short id.
+      // A full UUID resolves cross-project (back-compat: a valid id always resolves
+      // regardless of the caller's current project). A SHORT id is resolved with a
+      // parameterized prefix match SCOPED to the current project (when one is set) so a
+      // prefix can't collide across projects; ambiguous / unknown short ids surface as
+      // actionable errors below.
+      let resolvedId: string;
+      try {
+        resolvedId = isFullUuid(args.decisionId)
+          ? args.decisionId
+          : await resolveEntityId('decision', args.decisionId, projectId);
+      } catch (e) {
+        if (e instanceof AmbiguousIdError) {
+          return {
+            content: [{ type: 'text', text: ambiguousIdMessage(e, 'decision_get') }],
+            data: { found: false, ambiguous: true,
+              candidates: e.candidates.map(c => c.id), decisionId: args.decisionId }
+          };
+        }
+        if (e instanceof IdNotFoundError) {
+          return {
+            content: [{
+              type: 'text',
+              text: `❌ Decision not found: ${args.decisionId}\n\n` +
+                    `💡 The id may be wrong (a mistyped short id, or a stale full UUID).\n` +
+                    `   Use decision_search to find the decision and copy its 🆔 ID.`
+            }],
+            data: { found: false, decisionId: args.decisionId }
+          };
+        }
+        throw e;
+      }
+
       // Look up by id alone (no project scope) so a valid id always resolves regardless
       // of the caller's current project — keeps the tool usable cross-project.
-      const decision = await decisionsHandler.getDecisionById(args.decisionId);
+      const decision = await decisionsHandler.getDecisionById(resolvedId);
 
       if (!decision) {
         return {
           content: [{
             type: 'text',
             text: `❌ Decision not found: ${args.decisionId}\n\n` +
-                  `💡 The id may be wrong, or it may be a SHORT id — decision_get needs the FULL UUID.\n` +
-                  `   Use decision_search to find the decision and copy its full 🆔 ID.`
+                  `💡 The id may be wrong (a mistyped short id, or a stale full UUID).\n` +
+                  `   Use decision_search to find the decision and copy its 🆔 ID.`
           }],
           data: { found: false, decisionId: args.decisionId }
         };
@@ -335,12 +375,45 @@ class DecisionsRoutes {
   /**
    * Handle decision update requests
    */
-  async handleUpdate(args: any): Promise<McpResponse> {
+  async handleUpdate(args: any, context?: RouteContext): Promise<McpResponse> {
     try {
       logger.info(`📝 Decision update request: ${args.decisionId.substring(0, 8)}...`);
 
+      // SHORT-ID RESOLUTION (task 131ef054): resolve a full UUID or 8+-hex short id →
+      // full UUID BEFORE we mutate. A short id is resolved with a parameterized prefix
+      // match scoped to the current project (when set). Ambiguous / unknown ids surface
+      // as actionable errors and DO NOT mutate (resolution throws before the UPDATE).
+      const projectId = await this.resolveProjectId(args.projectId, context);
+      let resolvedId: string;
+      try {
+        resolvedId = isFullUuid(args.decisionId)
+          ? args.decisionId
+          : await resolveEntityId('decision', args.decisionId, projectId);
+      } catch (e) {
+        if (e instanceof AmbiguousIdError) {
+          return {
+            content: [{ type: 'text', text: ambiguousIdMessage(e, 'decision_update') }],
+            isError: true,
+            structuredContent: { ok: false, ambiguous: true,
+              candidates: e.candidates.map(c => c.id) },
+          };
+        }
+        if (e instanceof IdNotFoundError) {
+          return {
+            content: [{
+              type: 'text',
+              text: `❌ Decision not found: ${args.decisionId}\n\n` +
+                    `💡 The id may be wrong. Use decision_search to find the decision and copy its 🆔 ID.`
+            }],
+            isError: true,
+            structuredContent: { ok: false, found: false },
+          };
+        }
+        throw e;
+      }
+
       const decision = await decisionsHandler.updateDecision({
-        decisionId: args.decisionId,
+        decisionId: resolvedId,
         status: args.status,
         outcomeStatus: args.outcomeStatus,
         outcomeNotes: args.outcomeNotes,

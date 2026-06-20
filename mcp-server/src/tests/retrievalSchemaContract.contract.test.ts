@@ -53,8 +53,12 @@ const EXPECTED_PARAMS: Record<string, string[]> = {
     'alternativesConsidered', 'problemStatement', 'successCriteria', 'implementationStatus',
     'outcomeStatus', 'outcomeNotes', 'lessonsLearned',
     'affectedComponents', 'tags', 'projectId', 'metadata'],
+  // projectId (task 131ef054): scopes the SHORT-ID resolution of decisionId to one
+  // project (the resolver reads args.projectId via resolveProjectId). Declared so strict
+  // mode accepts it; it is NOT an updatable field (excluded from the update .refine).
   decision_update: ['decisionId', 'status', 'outcomeStatus', 'outcomeNotes', 'lessonsLearned',
-    'implementationStatus', 'successCriteria', 'problemStatement', 'supersededBy', 'supersededReason'],
+    'implementationStatus', 'successCriteria', 'problemStatement', 'supersededBy', 'supersededReason',
+    'projectId'],
   // task_list (A7): `offset` added for pagination (rows beyond limit=100 were unreachable).
   // projectId (5fd58eef strict-mode safety): the handler (tasks.routes.handleList) reads
   // args.projectId via resolveProjectId to scope the list — a real accepted-and-used
@@ -69,7 +73,9 @@ const EXPECTED_PARAMS: Record<string, string[]> = {
   // task_update (Guard 2 + A4/A5): now DERIVED from zod. Advertises priority/progress
   // (now real, written columns) + assignedTo; `notes` is intentionally ABSENT (no
   // such column — A4). Old hand-written schema hid all but taskId+status.
-  task_update: ['taskId', 'status', 'priority', 'assignedTo', 'progress'],
+  // projectId (task 131ef054): scopes the SHORT-ID resolution of taskId to one project
+  // (resolved via resolveProjectId). Declared so strict mode accepts it; not updatable.
+  task_update: ['taskId', 'status', 'priority', 'assignedTo', 'progress', 'projectId'],
   // task_bulk_update (Guard 2): now DERIVED from zod — every honored field is advertised.
   task_bulk_update: ['task_ids', 'status', 'assignedTo', 'priority', 'metadata', 'notes', 'projectId'],
   // project_* (A8): now DERIVED from zod so `metadata` (persisted by the handler) is

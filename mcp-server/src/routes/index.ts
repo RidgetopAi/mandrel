@@ -210,7 +210,7 @@ async function routeExecutorInner(toolName: string, args: any, context?: RouteCo
       case 'decision_get':
         return await decisionsRoutes.handleGet(args, context);
       case 'decision_update':
-        return await decisionsRoutes.handleUpdate(args);
+        return await decisionsRoutes.handleUpdate(args, context);
       case 'decision_stats':
         return await decisionsRoutes.handleStats(args, context);
 
@@ -220,7 +220,7 @@ async function routeExecutorInner(toolName: string, args: any, context?: RouteCo
       case 'task_list':
         return await tasksRoutes.handleList(args, context);
       case 'task_update':
-        return await tasksRoutes.handleUpdate(args);
+        return await tasksRoutes.handleUpdate(args, context);
       case 'task_details':
         return await tasksRoutes.handleDetails(args, context);
       case 'task_bulk_update':

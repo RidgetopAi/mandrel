@@ -6,6 +6,27 @@
 
 import { z } from 'zod';
 import { formatZodErrorMessage } from '../utils/actionableError.js';
+import { isUuidOrShortId } from '../utils/idResolver.js';
+
+/**
+ * SHORT-ID ACCEPTANCE (task 131ef054): an id field that accepts EITHER a full UUID OR
+ * an 8+-hex-char short id (the prefix our tool outputs are referenced by). Previously
+ * these fields were strict `.uuid()`, which rejected the short form every reference uses
+ * — a tool-only agent could not resolve a short id → full UUID through the public tools.
+ *
+ * This refinement still VALIDATES THE SHAPE (must be hex/uuid-shaped — non-hex garbage is
+ * rejected here with an actionable message), it just no longer demands a FULL uuid. The
+ * handler/db layer then resolves a short id → full UUID server-side (see idResolver.ts).
+ * It plays correctly with strict mode: the field is declared + value-validated; only the
+ * "must be a complete UUID" constraint is relaxed to "uuid OR short hex id".
+ */
+const uuidOrShortId = () =>
+  z.string().refine((v) => isUuidOrShortId(v), {
+    message:
+      'must be a full UUID or a short id (8+ hex characters — the prefix shown in 🆔 ID output). ' +
+      'Non-hex values are not valid ids. If unsure, use a *_search/*_list tool to find the ' +
+      'record and copy its full UUID.',
+  });
 
 /**
  * Coerce a string-from-the-bridge boolean into a real boolean.
@@ -277,9 +298,10 @@ const decisionSchemas = {
 
   // decision_get: fetch a SINGLE decision by id with FULL detail (all fields incl.
   // the learning-loop outcome fields). Mirrors context_search's `id` direct-lookup
-  // idiom (bypasses semantic search). Full UUID is the floor.
+  // idiom (bypasses semantic search). Accepts a full UUID OR an 8+-hex short id
+  // (task 131ef054) — the short id is resolved → full UUID in the handler.
   get: z.object({
-    decisionId: z.string().uuid(),
+    decisionId: uuidOrShortId(),
     projectId: z.string().optional()
   }),
   
@@ -291,7 +313,8 @@ const decisionSchemas = {
   // the handler reads (declared==handler boundary, Lesson 011 class fix), with the
   // learning-loop enums validated against the DB CHECK constraints.
   update: z.object({
-    decisionId: z.string().uuid(),
+    // Accepts a full UUID OR an 8+-hex short id (task 131ef054); resolved in the handler.
+    decisionId: uuidOrShortId(),
     status: z.enum(['active', 'deprecated', 'superseded', 'under_review']).optional(),
     // Learning-loop fields settable AFTER THE FACT (evaluate → correct).
     outcomeStatus: outcomeStatusEnum.optional(),
@@ -301,7 +324,11 @@ const decisionSchemas = {
     successCriteria: z.string().max(2000).optional(),
     problemStatement: z.string().max(2000).optional(),
     supersededBy: z.string().uuid().optional(),
-    supersededReason: z.string().max(2000).optional()
+    supersededReason: z.string().max(2000).optional(),
+    // projectId scopes the SHORT-ID resolution of decisionId to one project (task
+    // 131ef054). Optional + not an updatable field, so it's excluded from the .refine
+    // "at least one field to update" check below. Declared so strict mode accepts it.
+    projectId: z.string().optional()
   }).refine(
     data => data.status !== undefined || data.outcomeStatus !== undefined ||
             data.outcomeNotes !== undefined || data.lessonsLearned !== undefined ||
@@ -419,7 +446,9 @@ const taskSchemas = {
   }),
 
   update: z.object({
-    taskId: z.string().uuid(),
+    // Accepts a full UUID OR an 8+-hex short id (task 131ef054); resolved (project-scoped)
+    // in the handler.
+    taskId: uuidOrShortId(),
     status: taskStatusEnum.optional(),
     priority: taskPriorityEnum.optional(),
     // A5: assignees are free-form strings everywhere else (task_create / bulk_update)
@@ -431,7 +460,11 @@ const taskSchemas = {
     // route forwarded only status/assignedTo/metadata). `notes` was REMOVED: there is
     // no `notes` column on `tasks`, so advertising it as an updatable field would be a
     // promise the handler cannot keep (don't advertise unsupported params).
-    progress: z.number().int().min(0).max(100).optional()
+    progress: z.number().int().min(0).max(100).optional(),
+    // projectId scopes the SHORT-ID resolution of taskId to one project (task 131ef054).
+    // Optional + not an updatable field, so it's excluded from the .refine "at least one
+    // field to update" check below. Declared so strict mode accepts it.
+    projectId: z.string().optional()
   }).refine(
     data => data.status !== undefined || data.priority !== undefined ||
             data.assignedTo !== undefined || data.progress !== undefined,
@@ -439,7 +472,9 @@ const taskSchemas = {
   ),
 
   bulk_update: z.object({
-    task_ids: z.array(z.string().uuid()).min(1).max(50),
+    // Each id accepts a full UUID OR an 8+-hex short id (task 131ef054); resolved
+    // (project-scoped) in the handler before the atomic bulk update.
+    task_ids: z.array(uuidOrShortId()).min(1).max(50),
     status: taskStatusEnum.optional(),
     assignedTo: z.string().optional(),
     priority: taskPriorityEnum.optional(),
@@ -451,7 +486,9 @@ const taskSchemas = {
   }),
 
   details: z.object({
-    taskId: z.string().uuid(),
+    // Accepts a full UUID OR an 8+-hex short id (task 131ef054); resolved (project-scoped)
+    // in the handler.
+    taskId: uuidOrShortId(),
     projectId: z.string().optional()
   }),
 
