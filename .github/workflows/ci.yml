@@ -1,8 +1,41 @@
 name: CI
 
-# Build + test gate for ra-mandrel. Mirrors scripts/ci.sh stage-for-stage using
-# GitHub-native infra (a Postgres service container instead of a disposable
-# sudo-created DB). Green here = the tree is shippable.
+# =============================================================================
+# Build + test gate for ra-mandrel.
+#
+# SOURCE OF TRUTH: scripts/ci.sh is the authoritative, enforceable gate (it is
+# what guards merges/deploys locally and is called FIRST by fleet-deploy.sh).
+# This workflow MIRRORS ci.sh's stages on GitHub-native infra (a Postgres
+# service container instead of ci.sh's sudo-created disposable DB). It does NOT
+# call ci.sh directly: ci.sh provisions/cleans/queries its disposable DB as the
+# `postgres` OS superuser over a local socket (PGSUPER="sudo -u postgres"),
+# which does not exist on a GHA ubuntu runner (the DB is a TCP service container
+# reached as the `ci` role). Reworking ci.sh to support an external pre-provisioned
+# DB would dilute its `ci_*`-prefixed throwaway-DB safety guardrail that protects
+# the real `mandrel` DB on the VPS — out of scope. Instead we keep parity by
+# mirroring each high-value stage below, labelled to match ci.sh's stage IDs.
+#
+# PARITY MAP (ci.sh stage -> this workflow step):
+#   L   eslint (error-gated)              -> "STAGE L: eslint ..."
+#   S   secret scan (gitleaks)            -> "STAGE S: secret scan ..."
+#   0a2 prod-install topology (static)    -> "STAGE 0a2: prod-install topology"
+#   0b  migrate disposable DB             -> "STAGE 0b: migrate database"
+#   0c  schema-contract gate              -> "STAGE 0c: schema-contract gate"
+#   1   mcp-server tests (FULL vitest)    -> "STAGE 1: mcp-server tests (full vitest)"
+#   2   mcp-server type-check             -> "STAGE 2: mcp-server type-check"
+#   3   backend type-check                -> "STAGE 3: backend type-check"
+#   4   backend tests (jest)             -> "STAGE 4: backend tests"
+#   4b  frontend tests (react-scripts)    -> "STAGE 4b: frontend tests"
+#   5   frontend build                    -> "STAGE 5: frontend build"
+#
+# ci.sh's STAGE 0a (toolchain integrity / pinned-TS self-heal) is intentionally
+# NOT mirrored: it root-causes the stale-TS-hoist false-RED in fresh local agent
+# worktrees. GHA runs a clean `npm ci` from the lockfile every run, so the pinned
+# TypeScript major is always the locally-installed one — the failure mode that
+# stage guards cannot occur here. ci.sh's FE-only scope detection is also not
+# mirrored: GHA always runs the full gate (the safest superset). When you change
+# the gate, change scripts/ci.sh AND this file together — they must not drift.
+# =============================================================================
 on:
   push:
     branches: [main]
@@ -41,12 +74,11 @@ jobs:
           --health-retries 10
 
     # DB wiring: mcp-server/src/config/database.ts (used by migrate.ts AND the
-    # vitest contract tests) and the backend jest suites both read this exact
-    # DATABASE_* convention. Point them all at the service container on
-    # localhost:5432. EMBEDDING_PREFER_LOCAL=false keeps the contract tests'
-    # mocked embeddings offline (no model download). MANDREL_SKIP_DB_TESTS=true
-    # makes the backend's live-MCP-server-only suites self-skip (they need a
-    # running server, which is out of scope for this gate).
+    # vitest suite) and the backend jest suites all read this DATABASE_* convention.
+    # Point them at the service container on localhost:5432. EMBEDDING_PREFER_LOCAL
+    # =false keeps the tests' mocked embeddings offline (no model download).
+    # MANDREL_SKIP_DB_TESTS=true makes the backend's live-MCP-server-only suites
+    # self-skip (they need a running server, out of scope for this gate).
     env:
       DATABASE_HOST: localhost
       DATABASE_PORT: '5432'
@@ -56,16 +88,22 @@ jobs:
       NODE_ENV: test
       EMBEDDING_PREFER_LOCAL: 'false'
       MANDREL_SKIP_DB_TESTS: 'true'
+      # PGPASSWORD lets every raw `psql -h localhost -U ci` step (extensions,
+      # schema-contract) authenticate without inlining the password each time.
+      PGPASSWORD: ci_throwaway_pw
 
     steps:
       - name: Checkout
+        # fetch-depth: 0 — gitleaks `detect` is history-aware; it needs the full
+        # commit history, not the default shallow (depth 1) clone.
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Node 20
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          # Cache npm for all three package lockfiles.
           cache: npm
           cache-dependency-path: |
             mcp-server/package-lock.json
@@ -89,43 +127,115 @@ jobs:
         # TS5); the workspace install honors it.
         run: npm ci
 
-      # --- Install required Postgres extensions into the service DB -----------
+      # === STAGE L — eslint (error-gated; warnings tolerated at baseline) ======
+      # Mirrors ci.sh STAGE L. The repo lints with ZERO errors but a legacy
+      # WARNING backlog; we gate on ERRORS only via --max-warnings=-1 ("no warning
+      # limit" => warnings never fail, any error makes eslint exit non-zero =>
+      # the step fails the job). A NEW lint error now fails GitHub CI too.
+      - name: STAGE L - eslint mcp-server (errors fail)
+        working-directory: mcp-server
+        run: npm run lint -- --max-warnings=-1
+
+      - name: STAGE L - eslint backend (errors fail)
+        working-directory: mandrel-command/backend
+        run: npm run lint -- --max-warnings=-1
+
+      - name: STAGE L - eslint frontend (errors fail)
+        working-directory: mandrel-command/frontend
+        run: npm run lint -- --max-warnings=-1
+
+      # === STAGE S — secret scan (gitleaks) ====================================
+      # Mirrors ci.sh STAGE S. History-aware scan over the whole repo + git
+      # history using the repo's .gitleaks.toml. ANY finding fails the job.
+      # Fail-closed: the official action errors if a leak is found (exit-code 1).
+      - name: STAGE S - secret scan (gitleaks)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          # gitleaks-action's license env is only required for GitHub orgs; for a
+          # single repo it runs without one. Point it at the repo config.
+          GITLEAKS_CONFIG: .gitleaks.toml
+
+      # === STAGE 0a2 — prod-deploy install topology (fast static) ==============
+      # Mirrors ci.sh STAGE 0a2 (Lesson 013). Fast static assertions only (no npm
+      # install) that fleet-deploy's workspace-root prod install logic hasn't drifted.
+      - name: STAGE 0a2 - prod-install topology (static)
+        run: bash scripts/test/prod-install-topology.test.sh
+
+      # --- Install required Postgres extensions into the service DB ------------
       # The pgvector image only auto-runs init SQL on first volume init for the
       # default DB; run the repo's extensions file explicitly so `vector`,
       # `pg_trgm`, `pgcrypto`, `uuid-ossp` exist before migrate.ts runs.
       - name: Install Postgres extensions
-        env:
-          PGPASSWORD: ci_throwaway_pw
         run: |
           psql -h localhost -p 5432 -U ci -d mandrel_ci \
             -f mcp-server/database/init/00-extensions.sql
 
-      # --- STAGE 0b: migrate the CI database with the real migrate.ts ---------
-      - name: Migrate database (real migrate.ts)
+      # === STAGE 0b — migrate the CI database with the real migrate.ts =========
+      - name: STAGE 0b - migrate database (real migrate.ts)
         working-directory: mcp-server
         run: npx tsx scripts/migrate.ts
 
-      # --- STAGE 1: mcp-server contract tests (vitest, real DB) ---------------
-      - name: mcp-server contract tests
-        working-directory: mcp-server
-        run: npx vitest run src/tests/*.contract.test.ts
+      # === STAGE 0c — schema-contract gate (migrations reproduce reference) =====
+      # Mirrors ci.sh STAGE 0c. Extract the canonical fingerprint from the just-
+      # migrated DB (read-only SELECTs over the public catalog — the `ci` role that
+      # owns mandrel_ci can run it; no superuser needed) and diff it against the
+      # committed reference. Any drift fails the job.
+      - name: STAGE 0c - schema-contract gate
+        run: |
+          set -euo pipefail
+          FRESH="$(mktemp)"; REF="$(mktemp)"
+          psql -h localhost -p 5432 -U ci -d mandrel_ci -f scripts/schema-fingerprint.sql 2>/dev/null \
+            | grep -E '^(COLUMN|CONSTRAINT|INDEX|VIEW|SEQUENCE|ENUM) ' \
+            | LC_ALL=C sort > "$FRESH"
+          LINES="$(wc -l < "$FRESH")"
+          if [[ "$LINES" -lt 50 ]]; then
+            echo "FAIL: fingerprint extraction produced only ${LINES} lines — broken."
+            exit 1
+          fi
+          grep -v '^#' scripts/schema-reference.sql.txt | sed '/^[[:space:]]*$/d' | LC_ALL=C sort > "$REF"
+          if diff -u "$REF" "$FRESH"; then
+            echo "PASS: migrations reproduce the committed reference schema (${LINES} objects)."
+          else
+            echo "FAIL: SCHEMA DRIFT — committed migrations do NOT reproduce scripts/schema-reference.sql.txt"
+            echo "If intentional, regenerate + commit:  bash scripts/schema-contract.sh regenerate"
+            exit 1
+          fi
 
-      # --- STAGE 2: mcp-server type-check -------------------------------------
-      - name: mcp-server type-check
+      # === STAGE 1 — mcp-server tests (FULL vitest suite, real DB) ==============
+      # Mirrors ci.sh STAGE 1. Runs the ENTIRE vitest suite (src/**/*.test.ts), NOT
+      # just *.contract.test.ts — that hand-curated glob let non-contract suites rot
+      # outside the gate (Lesson 011: gate the whole class). The vitest config pins
+      # file-serial execution so the suite is order-independent against the one DB.
+      - name: STAGE 1 - mcp-server tests (full vitest)
+        working-directory: mcp-server
+        run: npx vitest run
+
+      # === STAGE 2 — mcp-server type-check =====================================
+      - name: STAGE 2 - mcp-server type-check
         working-directory: mcp-server
         run: npm run type-check
 
-      # --- STAGE 3: backend type-check ----------------------------------------
-      - name: backend type-check
+      # === STAGE 3 — backend type-check ========================================
+      - name: STAGE 3 - backend type-check
         working-directory: mandrel-command/backend
         run: npm run type-check
 
-      # --- STAGE 4: backend tests (jest, real DB) -----------------------------
-      - name: backend tests
+      # === STAGE 4 — backend tests (jest, real DB) =============================
+      - name: STAGE 4 - backend tests
         working-directory: mandrel-command/backend
         run: npx jest --runInBand --ci
 
-      # --- STAGE 5: frontend build (CRA compile gate) -------------------------
-      - name: frontend build
+      # === STAGE 4b — frontend tests (react-scripts test, CI mode) =============
+      # Mirrors ci.sh STAGE 4b. CI=true runs the suite ONCE and exits non-zero on
+      # failure (not watch mode). Enforces the frontend Jest/RTL guards (incl. the
+      # projectResolution default-project guards) at the gate.
+      - name: STAGE 4b - frontend tests
+        working-directory: mandrel-command/frontend
+        env:
+          CI: 'true'
+        run: npm test
+
+      # === STAGE 5 — frontend build (CRA compile gate) =========================
+      - name: STAGE 5 - frontend build
         working-directory: mandrel-command/frontend
         run: npm run build
