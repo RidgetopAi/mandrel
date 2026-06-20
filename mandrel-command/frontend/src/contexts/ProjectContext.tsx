@@ -8,9 +8,13 @@ import { useErrorHandler } from '../hooks/useErrorHandler';
 import { useSettings } from '../hooks/useSettings';
 import { logger } from '../utils/logger';
 import { isValidUuid, loadValidStoredProject } from '../utils/uuid';
+import {
+  parseAidisProjectName,
+  resolveRealProject,
+  selectFallbackProject,
+} from './projectResolution';
 
 const UNASSIGNED_PROJECT_ID = '00000000-0000-0000-0000-000000000000';
-const DEFAULT_BOOTSTRAP_PROJECT_NAME = 'aidis-bootstrap';
 const ACTIVE_STATUS: Project['status'] = 'active';
 const DEBUG = process.env.NODE_ENV !== 'production';
 
@@ -163,30 +167,17 @@ export const ProjectProvider: React.FC<ProjectProviderProps> = ({ children }) =>
       }
     }
 
-    // Fallback project selection hierarchy (when no user preference or session):
-    // 1. URL parameter (?project=name) - TODO: implement in future
-    // 1.5. User preference from localStorage (handled in loadCurrentProjectFromSession now)
+    // Durable fallback selection (Lesson 011: centralized in projectResolution
+    // so both call sites agree and the result is ALWAYS a real-UUID project).
+    // Priority: user preference -> last-active session's project ->
+    // most-recently-updated (last_activity) -> aidis-bootstrap -> first real.
     DEBUG && logger.log('🔧 ProjectContext: selectBootstrapProject - FALLBACK defaultProject:', defaultProject, 'available projects:', projectList.map(p => p.name));
-    if (defaultProject) {
-      const userPreferredProject = projectList.find((project: Project) => project.name === defaultProject);
-      if (userPreferredProject) {
-        DEBUG && logger.log('🎯 Using user-preferred project (fallback):', defaultProject);
-        return userPreferredProject;
-      } else {
-        logger.warn('⚠️ User-preferred project not found:', defaultProject, 'in projects:', projectList.map(p => p.name));
-      }
+    const fallback = selectFallbackProject(projectList, allSessions, defaultProject);
+    if (!fallback) {
+      logger.warn('⚠️ selectBootstrapProject found no real-UUID project to fall back to');
     }
-
-    // 2. Hardcoded "aidis-bootstrap" (existing fallback)
-    const bootstrapProject = projectList.find((project: Project) => project.name === DEFAULT_BOOTSTRAP_PROJECT_NAME);
-    if (bootstrapProject) {
-      return bootstrapProject;
-    }
-
-    // 3. First available project from API
-    const fallbackProject = projectList.find((project: Project) => project.id !== UNASSIGNED_PROJECT_ID);
-    return fallbackProject || null;
-  }, [allProjects, refetchProjects, defaultProject]);
+    return fallback;
+  }, [allProjects, allSessions, refetchProjects, defaultProject]);
 
   const loadCurrentProjectFromSession = useCallback(async (projectsFromRefresh?: Project[]) => {
     try {
@@ -230,40 +221,28 @@ export const ProjectProvider: React.FC<ProjectProviderProps> = ({ children }) =>
         const aidisResponse = await mandrelApi.getCurrentProject();
         if (aidisResponse?.content?.[0]?.text) {
           const aidisProjectText = aidisResponse.content[0].text;
-          // Parse project info from AIDIS response (contains project name/details)
-          const projectNameMatch = aidisProjectText.match(/Current project:\s*([^\n]+)/i);
-          if (projectNameMatch) {
-            const projectName = projectNameMatch[1].trim();
-            if (projectName && projectName !== 'None' && projectName !== 'unassigned') {
-              // Resolve the AIDIS project NAME to the real project (with a real
-              // UUID) from our loaded list. A synthetic `aidis-<name>` id is NOT
-              // a UUID and would 400 on every UUID-validated route (insights,
-              // sessions). Only fall back to a synthetic object if the name can't
-              // be resolved — and never let that synthetic id drive UUID routes.
-              const projectList = (projectsFromRefresh && projectsFromRefresh.length > 0)
-                ? projectsFromRefresh
-                : allProjects;
-              const realProject = projectList.find(
-                (p: Project) => p.name === projectName && p.id !== UNASSIGNED_PROJECT_ID
-              );
-              if (realProject) {
-                setCurrentProject(realProject);
-                DEBUG && logger.log('✅ Resolved AIDIS V2 project name to real project:', realProject.name, realProject.id);
-                return;
-              }
-              logger.warn('⚠️ AIDIS V2 project name not found in projects list, using synthetic id (insights disabled until a real project resolves):', projectName);
-              const aidisProject: Project = {
-                id: `aidis-${projectName.toLowerCase().replace(/\s+/g, '-')}`,
-                name: projectName,
-                status: ACTIVE_STATUS,
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString(),
-                description: `Project from AIDIS V2 API: ${projectName}`
-              };
-              setCurrentProject(aidisProject);
-              DEBUG && logger.log('✅ Loaded project from AIDIS V2 API (fallback, synthetic id):', aidisProject.name);
+          // Parse + sanitize the project NAME from the AIDIS response. The MCP
+          // route returns markdown bold (`**pi-ridgey**`); parseAidisProjectName
+          // strips the `**` so the name resolves to the real project instead of
+          // landing as an unmatched synthetic value (`aidis-**pi-ridgey**`).
+          const projectName = parseAidisProjectName(aidisProjectText);
+          if (projectName) {
+            const projectList = (projectsFromRefresh && projectsFromRefresh.length > 0)
+              ? projectsFromRefresh
+              : allProjects;
+            // Resolve to a REAL project (real UUID). A synthetic `aidis-<name>`
+            // id is NOT a UUID and would 400 on every UUID-validated route
+            // (insights/sessions) AND be echoed literally by the AntD <Select>.
+            const realProject = resolveRealProject(projectName, projectList);
+            if (realProject) {
+              setCurrentProject(realProject);
+              DEBUG && logger.log('✅ Resolved AIDIS V2 project name to real project:', realProject.name, realProject.id);
               return;
             }
+            // SAFEGUARD (the durable fix): name didn't resolve — do NOT build a
+            // synthetic id and early-return. Fall through to selectBootstrapProject
+            // so currentProject.id is always a real UUID.
+            logger.warn('⚠️ AIDIS V2 project name not found in projects list; falling back to bootstrap selection:', projectName);
           }
         }
       } catch (aidisError) {
@@ -369,34 +348,37 @@ export const ProjectProvider: React.FC<ProjectProviderProps> = ({ children }) =>
       const response = await mandrelApi.switchProject(projectName);
       if (response?.content?.[0]?.text) {
         // Prefer the real project (real UUID) from our loaded list so that
-        // UUID-validated routes (insights/sessions) keep working. Only synthesize
-        // an id if the name can't be resolved.
-        const realProject = allProjects.find(
-          (p: Project) => p.name === projectName && p.id !== UNASSIGNED_PROJECT_ID
-        );
+        // UUID-validated routes (insights/sessions) keep working. The MCP
+        // response echoes the name in markdown bold, so resolve against the
+        // sanitized name too (the caller passes a clean name, but the response
+        // text is the authoritative confirmation).
+        const confirmedName = parseAidisProjectName(response.content[0].text) ?? projectName;
+        const realProject =
+          resolveRealProject(confirmedName, allProjects) ??
+          resolveRealProject(projectName, allProjects);
         if (realProject) {
           setCurrentProject(realProject);
           DEBUG && logger.log('✅ Switched to real project via AIDIS V2:', realProject.name, realProject.id);
           return true;
         }
-        const switchedProject: Project = {
-          id: `aidis-${projectName.toLowerCase().replace(/\s+/g, '-')}`,
-          name: projectName,
-          status: ACTIVE_STATUS,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          description: `Project switched via AIDIS V2: ${projectName}`
-        };
-        setCurrentProject(switchedProject);
-        logger.warn('⚠️ Switched project not found in list, using synthetic id (UUID routes disabled until resolved):', projectName);
-        return true;
+        // SAFEGUARD (the durable fix): name didn't resolve to a real project — do
+        // NOT synthesize an `aidis-<name>` id. Fall back to a real-UUID project so
+        // the <Select> never echoes a synthetic value and no UUID route 400s.
+        const fallback = selectFallbackProject(allProjects, allSessions, defaultProject);
+        if (fallback) {
+          setCurrentProject(fallback);
+          logger.warn('⚠️ Switched project not found in list; selected real-UUID fallback instead of synthetic id:', projectName, '->', fallback.name);
+          return true;
+        }
+        logger.warn('⚠️ Switched project not found and no real-UUID fallback available:', projectName);
+        return false;
       }
       throw new Error('Project switch response was empty or invalid');
     };
 
     const result = await errorHandler.withErrorHandling(operation)();
     return result ?? false;
-  }, [errorHandler, allProjects]);
+  }, [errorHandler, allProjects, allSessions, defaultProject]);
 
   // Load projects only when authenticated AND settings are loaded
   useEffect(() => {
