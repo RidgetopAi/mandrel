@@ -62,6 +62,7 @@ const TOOL_TO_HANDLER: Record<string, { file: string; method: string }> = {
   // Decisions
   decision_record:      { file: 'decisions.routes.ts', method: 'handleRecord' },
   decision_search:      { file: 'decisions.routes.ts', method: 'handleSearch' },
+  decision_get:         { file: 'decisions.routes.ts', method: 'handleGet' },
   decision_update:      { file: 'decisions.routes.ts', method: 'handleUpdate' },
   // Tasks
   task_create:          { file: 'tasks.routes.ts',    method: 'handleCreate' },

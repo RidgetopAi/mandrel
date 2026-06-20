@@ -43,7 +43,8 @@ class NavigationHandler {
     ],
     'Technical Decisions': [
       { name: 'decision_record', description: 'Record a technical decision with context' },
-      { name: 'decision_search', description: 'Search technical decisions with filters' },
+      { name: 'decision_search', description: 'Search technical decisions with filters (incl. outcomeStatus)' },
+      { name: 'decision_get', description: 'Fetch a single decision by id with full detail (incl. outcome)' },
       { name: 'decision_update', description: 'Update decision status, outcomes, or lessons' },
       { name: 'decision_stats', description: 'Get technical decision statistics and analysis' }
     ],
@@ -293,6 +294,21 @@ class NavigationHandler {
         example: `decision_search({
   query: "database schema design",
   decisionType: "database"
+})`
+      },
+      {
+        title: 'Read back the failed decisions (learning loop)',
+        example: `decision_search({
+  outcomeStatus: "failed",
+  includeOutcome: true
+})`
+      }
+    ],
+    'decision_get': [
+      {
+        title: 'Fetch one decision by id with full outcome detail',
+        example: `decision_get({
+  decisionId: "123e4567-e89b-12d3-a456-426614174000"
 })`
       }
     ],

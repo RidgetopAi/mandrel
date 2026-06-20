@@ -36,7 +36,13 @@ const EXPECTED_PARAMS: Record<string, string[]> = {
   // advertises exactly the validated/accepted field set — and `metadata` is visible.
   context_store: ['content', 'type', 'tags', 'relevanceScore', 'metadata', 'projectId', 'sessionId'],
   context_search: ['id', 'query', 'type', 'tags', 'limit', 'minSimilarity', 'offset', 'projectId', 'sessionId'],
-  decision_search: ['query', 'limit', 'decisionType', 'status', 'impactLevel', 'component', 'tags', 'projectId', 'includeOutcome'],
+  // decision_search (learning-loop READ, task 13069495): `outcomeStatus` added — a
+  // SEPARATE filter from `status` that filters the outcome_status column (how a
+  // decision turned out), the moat-critical read for the GAP1 Evaluator.
+  decision_search: ['query', 'limit', 'decisionType', 'status', 'outcomeStatus', 'impactLevel', 'component', 'tags', 'projectId', 'includeOutcome'],
+  // decision_get (learning-loop READ, task 13069495): single-decision direct lookup
+  // by full UUID, mirroring context_search's `id` idiom.
+  decision_get: ['decisionId', 'projectId'],
   // Learning-loop wiring (task aff35ac1): decision_record/decision_update now DERIVE
   // their model-facing inputSchema from the zod validator, so the params the model
   // sees == the params the validator accepts == the params the handler reads.

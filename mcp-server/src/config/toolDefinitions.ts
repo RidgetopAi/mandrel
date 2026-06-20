@@ -292,13 +292,22 @@ export const AIDIS_TOOL_DEFINITIONS: ToolDefinition[] = [
             inputSchema: buildInputSchema('decision_search', {
               query: 'Search query (optional; omit for pure filter-based search)',
               decisionType: 'Filter by decision type (architecture, library, framework, pattern, api_design, database, deployment, security, performance, ui_ux, testing, tooling, process, naming_convention, code_style)',
-              status: 'Filter by status (active, deprecated, superseded, under_review)',
+              status: 'Filter by LIFECYCLE status (active, deprecated, superseded, under_review). NOTE: this is NOT the outcome — use outcomeStatus to filter how a decision turned out.',
+              outcomeStatus: 'Filter by OUTCOME (how it turned out) — one of EXACTLY: unknown, successful, failed, mixed, too_early. This is the learning-loop result column (separate from status); use it to read back e.g. all the decisions that FAILED.',
               impactLevel: 'Filter by impact level (low, medium, high, critical)',
               component: 'Filter by affected component name',
               tags: 'Filter by tags',
               limit: 'Maximum number of results to return (default 10)',
               projectId: 'Project ID or name to scope the search (defaults to current project)',
-              includeOutcome: 'Include recorded outcome/lessons in results'
+              includeOutcome: 'Include recorded outcome/lessons in results (accepts true/false)'
+            }),
+          },
+          {
+            name: 'decision_get',
+            description: 'Fetch a SINGLE technical decision by id with FULL detail — every field, including the learning-loop outcome (outcome_status, outcome notes, lessons learned). The precise by-id read for the learning loop; bypasses search. Use the full UUID (copy the 🆔 ID from decision_search/decision_record).',
+            inputSchema: buildInputSchema('decision_get', {
+              decisionId: 'REQUIRED. Full UUID of the decision to fetch.',
+              projectId: 'Optional. Project ID or name (informational scope; the decision resolves by id alone).'
             }),
           },
           {

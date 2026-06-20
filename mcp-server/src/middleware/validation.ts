@@ -6,6 +6,36 @@
 
 import { z } from 'zod';
 
+/**
+ * Coerce a string-from-the-bridge boolean into a real boolean.
+ *
+ * THE BUG CLASS (string-from-bridge): MCP clients / the HTTP bridge serialize
+ * everything as JSON strings, so a boolean param arrives as "true"/"false" (not a
+ * real boolean). A bare z.boolean() then rejects it with "Expected boolean, received
+ * string". And z.coerce.boolean() is WRONG here — it uses JS truthiness, so the
+ * NON-EMPTY string "false" coerces to `true` (a silent correctness bug).
+ *
+ * THE FIX: an explicit preprocess that maps the documented string forms to real
+ * booleans BEFORE validation, then validates as a boolean:
+ *   "true"  | "1" | "yes" | "on"            (case-insensitive) -> true
+ *   "false" | "0" | "no"  | "off" | ""      (case-insensitive) -> false
+ * Real booleans pass through untouched. Any OTHER value is left as-is so the inner
+ * z.boolean() still REJECTS garbage (e.g. "maybe") rather than silently defaulting.
+ *
+ * Reuse this for EVERY boolean tool param that can arrive over the bridge so the
+ * "Expected boolean, received string" class can't reappear tool-by-tool.
+ */
+const coercedBoolean = () =>
+  z.preprocess((v) => {
+    if (typeof v === 'boolean') return v;
+    if (typeof v === 'string') {
+      const s = v.trim().toLowerCase();
+      if (s === 'true' || s === '1' || s === 'yes' || s === 'on') return true;
+      if (s === 'false' || s === '0' || s === 'no' || s === 'off' || s === '') return false;
+    }
+    return v; // leave non-coercible values for z.boolean() to reject
+  }, z.boolean());
+
 // Base validation schemas
 const baseMetadata = z.record(z.any()).optional();
 const baseName = z.string().min(1).max(255);
@@ -221,12 +251,28 @@ const decisionSchemas = {
       'api_design', 'database', 'deployment', 'security', 'performance',
       'ui_ux', 'testing', 'tooling', 'process', 'naming_convention', 'code_style']).optional(),
     status: z.enum(['active', 'deprecated', 'superseded', 'under_review']).optional(),
+    // outcomeStatus is a SEPARATE column from `status` (the lifecycle): it filters the
+    // learning-loop result column (technical_decisions.outcome_status). This is the
+    // moat-critical READ filter for the GAP1 Evaluator — "show me the decisions that
+    // FAILED / SUCCEEDED" — which `status` (active/deprecated/…) cannot express. Enum
+    // matches the DB CHECK constraint exactly (outcomeStatusEnum, reused).
+    outcomeStatus: outcomeStatusEnum.optional(),
     impactLevel: z.enum(['low', 'medium', 'high', 'critical']).optional(),
     component: z.string().optional(),
     tags: baseTags.optional(),
     projectId: z.string().optional(),
-    includeOutcome: z.boolean().optional()
+    // includeOutcome arrives as a STRING over the bridge ("true"/"false"); coerce it
+    // so a tool-only client isn't rejected with "Expected boolean, received string".
+    includeOutcome: coercedBoolean().optional()
     // Note: dateFrom/dateTo excluded - complex date parsing not needed for AI ease-of-use
+  }),
+
+  // decision_get: fetch a SINGLE decision by id with FULL detail (all fields incl.
+  // the learning-loop outcome fields). Mirrors context_search's `id` direct-lookup
+  // idiom (bypasses semantic search). Full UUID is the floor.
+  get: z.object({
+    decisionId: z.string().uuid(),
+    projectId: z.string().optional()
   }),
   
   // DEFECT A FIX (decision_update was a no-op through the bridge): the zod schema
@@ -500,6 +546,7 @@ export const validationSchemas = {
   // Technical Decisions
   decision_record: decisionSchemas.record,
   decision_search: decisionSchemas.search,
+  decision_get: decisionSchemas.get,
   decision_update: decisionSchemas.update,
   decision_stats: decisionSchemas.stats,
   

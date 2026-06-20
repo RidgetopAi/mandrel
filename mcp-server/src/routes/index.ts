@@ -162,6 +162,8 @@ export async function routeExecutor(toolName: string, args: any, context?: Route
         return await decisionsRoutes.handleRecord(args, context);
       case 'decision_search':
         return await decisionsRoutes.handleSearch(args, context);
+      case 'decision_get':
+        return await decisionsRoutes.handleGet(args, context);
       case 'decision_update':
         return await decisionsRoutes.handleUpdate(args);
       case 'decision_stats':

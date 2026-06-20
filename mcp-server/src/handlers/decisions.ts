@@ -159,6 +159,11 @@ export interface SearchDecisionsRequest {
   projectId?: string;
   decisionType?: DecisionType;
   status?: DecisionStatus;
+  // outcomeStatus filters the learning-loop RESULT column (outcome_status), which is a
+  // DIFFERENT column from `status` (the active/deprecated/… lifecycle). This is the
+  // moat-critical read filter: "which decisions FAILED / SUCCEEDED?" — what the GAP1
+  // Evaluator needs and what `status` cannot express.
+  outcomeStatus?: OutcomeStatus;
   impactLevel?: ImpactLevel;
   component?: string;
   tags?: string[];
@@ -556,6 +561,15 @@ class DecisionsHandler {
         paramIndex++;
       }
 
+      // outcome_status is a SEPARATE column from `status` (lifecycle). This filters the
+      // learning-loop result so the GAP1 Evaluator can read back "all the failed/
+      // successful decisions" via the tool alone.
+      if (request.outcomeStatus) {
+        sql += ` AND outcome_status = $${paramIndex}`;
+        params.push(request.outcomeStatus);
+        paramIndex++;
+      }
+
       if (request.impactLevel) {
         sql += ` AND impact_level = $${paramIndex}`;
         params.push(request.impactLevel);
@@ -636,6 +650,7 @@ class DecisionsHandler {
           filters: {
             decisionType: request.decisionType,
             status: request.status,
+            outcomeStatus: request.outcomeStatus,
             impactLevel: request.impactLevel,
             component: request.component,
             tags: request.tags,
@@ -655,6 +670,34 @@ class DecisionsHandler {
       logger.error('❌ Failed to search decisions', error as Error);
       throw new Error(`Decision search failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
+  }
+
+  /**
+   * Fetch a SINGLE decision by its id with FULL detail (all fields, incl. the
+   * learning-loop outcome fields). Mirrors context_search's `id` direct-lookup idiom:
+   * a precise by-id read that bypasses semantic search entirely, so the GAP1 Evaluator
+   * (and any tool-only agent) can pull one decision's complete outcome record without
+   * re-running a fuzzy query.
+   *
+   * Returns null when no row matches the id — the route turns that into an actionable
+   * not-found error. `projectId`, when supplied, scopes the lookup (defence in depth
+   * for multi-project callers); omit it to look the decision up by id alone.
+   */
+  async getDecisionById(decisionId: string, projectId?: string): Promise<TechnicalDecision | null> {
+    logger.info(`🔎 Fetching decision by id: ${decisionId.substring(0, 8)}...`);
+
+    const params: any[] = [decisionId];
+    let sql = `SELECT * FROM technical_decisions WHERE id = $1`;
+    if (projectId) {
+      sql += ` AND project_id = $2`;
+      params.push(projectId);
+    }
+
+    const result = await db.query(sql, params);
+    if (result.rows.length === 0) {
+      return null;
+    }
+    return this.mapDatabaseRowToDecision(result.rows[0]);
   }
 
   /**
