@@ -57,6 +57,15 @@ ASSUME_YES=0
 HEALTH_TIMEOUT=60          # seconds to wait for healthy/smoke before declaring fail
 STAGING_HANDLE="staging"
 
+# Marker agent_type stamped on the session the deploy smoke creates via
+# /api/v2/sessions/start. The session write-path liveness probe MUST create a real
+# row (that is what it proves), but a marked row is identifiable: the smoke ends it
+# immediately (best-effort cleanup) AND the analytics layer excludes this marker
+# (migration 048 view + SessionStatsService) so a deploy never pollutes session
+# stats/list. Keep in lockstep with DEPLOY_SMOKE_AGENT_TYPE in
+# mcp-server/src/services/session/types.ts and migration 048.
+DEPLOY_SMOKE_AGENT_TYPE="deploy-smoke"
+
 # --- PROD (systemd /opt/mandrel) — deployed as the FINAL stage --------------
 # Prod is NOT a compose stack; it's the systemd internal instance. It used to be
 # excluded entirely, so it silently drifted behind the fleet every release (the
@@ -214,15 +223,11 @@ deploy_instance() {  # <handle>
     ok "$h: mcp /healthz 200 (port ${mcp_port})"
 
     # (3) deeper: mcp sessions/start path is non-5xx (DB write path alive).
-    local sess_code
-    sess_code="$(curl -s -o /dev/null -w '%{http_code}' --max-time 8 \
-      -X POST "http://127.0.0.1:${mcp_port}/api/v2/sessions/start" \
-      -H 'Content-Type: application/json' -d '{}' || echo 000)"
-    if [[ "$sess_code" =~ ^5 || "$sess_code" == "000" ]]; then
-      bad "$h: mcp /api/v2/sessions/start returned $sess_code (expected non-5xx)"
+    #     Litter-free: marks the session 'deploy-smoke' + ends it; analytics
+    #     excludes the marker (task bc819ae5). See session_smoke().
+    if ! session_smoke "$h" "http://127.0.0.1:${mcp_port}"; then
       return 1
     fi
-    ok "$h: mcp /api/v2/sessions/start non-5xx ($sess_code)"
 
     # (5) DEEP real-surface smoke: a real tool query must NOT error. The bridge
     #     tool route is unauthenticated on every instance (see deep_tool_smoke), so
@@ -349,6 +354,52 @@ deep_tool_smoke() {  # <label> <base_url>   e.g. deep_tool_smoke "prod" http://1
   fi
   bad "$label: deep tool smoke (task_list) FAILED — last HTTP=$code; this is the schema/data-layer break the shallow smoke misses (e.g. un-migrated DB).${detail} Response head: $(printf '%.200s' "$last")"
   return 1
+}
+
+# =============================================================================
+# SESSION write-path smoke (litter-free) — task bc819ae5
+# =============================================================================
+# Proves the session DB write-path is alive by POSTing /api/v2/sessions/start,
+# WITHOUT leaving litter in session analytics. Two-layer guarantee:
+#   (1) the started session is MARKED with agent_type='deploy-smoke' (sessionType
+#       → agent_type) so it is identifiable, and ENDED immediately (best-effort
+#       cleanup — a failed end never fails the deploy);
+#   (2) even if cleanup fails, the analytics read paths EXCLUDE this marker
+#       (migration 048 v_session_summaries + SessionStatsService), so a stray
+#       smoke row can never be counted.
+# Returns 0 if /start was non-5xx (write-path alive), 1 otherwise.
+session_smoke() {  # <label> <base_url>   e.g. session_smoke "$h" http://127.0.0.1:8080
+  local label="$1" base="${2%/}"
+  local resp code body sid
+  resp="$(curl -s -w $'\n%{http_code}' --max-time 8 \
+    -X POST "${base}/api/v2/sessions/start" \
+    -H 'Content-Type: application/json' \
+    -d "{\"title\":\"deploy smoke (fleet-deploy)\",\"sessionType\":\"${DEPLOY_SMOKE_AGENT_TYPE}\"}" \
+    2>/dev/null || printf '\n000')"
+  code="${resp##*$'\n'}"
+  body="${resp%$'\n'*}"
+
+  if [[ "$code" =~ ^5 || "$code" == "000" ]]; then
+    bad "$label: mcp /api/v2/sessions/start returned $code (expected non-5xx)"
+    return 1
+  fi
+  ok "$label: mcp /api/v2/sessions/start non-5xx ($code) [marked '${DEPLOY_SMOKE_AGENT_TYPE}']"
+
+  # Best-effort cleanup: parse the returned session id and end it so the row is
+  # closed immediately. Never fails the deploy — the analytics exclusion (layer 2)
+  # is the real guarantee; this just keeps the row count tidy.
+  sid="$(printf '%s' "$body" | grep -oE '"session_id"[[:space:]]*:[[:space:]]*"[0-9a-fA-F-]{36}"' | grep -oE '[0-9a-fA-F-]{36}' | head -1)"
+  if [[ -n "$sid" ]]; then
+    if curl -s -o /dev/null --max-time 8 -X POST "${base}/api/v2/sessions/${sid}/end" \
+        -H 'Content-Type: application/json' -d '{}' 2>/dev/null; then
+      ok "$label: deploy-smoke session ${sid:0:8}… ended (cleanup)"
+    else
+      warn "$label: could not end deploy-smoke session ${sid:0:8}… (excluded from analytics anyway)"
+    fi
+  else
+    warn "$label: /start gave no session_id to clean up (excluded from analytics anyway)"
+  fi
+  return 0
 }
 
 # =============================================================================

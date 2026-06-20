@@ -7,6 +7,7 @@ import { logger } from '../../../../utils/logger.js';
 import { SessionRepo, ActivityRepo } from '../../infra/db/index.js';
 import { calculateBasicProductivity, calculateWeightedProductivity } from '../productivity/index.js';
 import type { SessionStats } from '../../types.js';
+import { DEPLOY_SMOKE_AGENT_TYPE } from '../../types.js';
 
 export const SessionStatsService = {
   /**
@@ -77,6 +78,8 @@ export const SessionStatsService = {
         SELECT AVG(productivity_score) as avg_productivity
         FROM sessions
         WHERE ended_at IS NOT NULL ${projectFilter}
+          -- Exclude deploy-smoke litter sessions (task bc819ae5).
+          AND agent_type IS DISTINCT FROM '${DEPLOY_SMOKE_AGENT_TYPE}'
       `;
 
       const productivityResult = await db.query(productivitySql, params);
@@ -256,6 +259,8 @@ export const SessionStatsService = {
         WHERE ${projectId ? `s.project_id = $1` : 'TRUE'}
           ${dateFilter}
           ${phase2Filter}
+          -- Exclude deploy-smoke litter sessions (task bc819ae5).
+          AND s.agent_type IS DISTINCT FROM '${DEPLOY_SMOKE_AGENT_TYPE}'
       `;
 
       const overallResult = await db.query(overallStatsSQL, params);
@@ -268,6 +273,8 @@ export const SessionStatsService = {
           ${projectId ? `AND s.project_id = $1` : ''}
           ${dateFilter.replace('s.started_at', 'started_at')}
           ${phase2Filter.replace('s.productivity_score', 'productivity_score')}
+          -- Exclude deploy-smoke litter sessions (task bc819ae5).
+          AND s.agent_type IS DISTINCT FROM '${DEPLOY_SMOKE_AGENT_TYPE}'
         GROUP BY tag
         ORDER BY COUNT(*) DESC
         LIMIT 10
