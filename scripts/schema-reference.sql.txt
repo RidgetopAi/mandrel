@@ -214,6 +214,7 @@ COLUMN complexity_metrics.spindle_id | uuid | null=NO | default=
 COLUMN complexity_metrics.structural_complexity_score | numeric | null=YES | default=
 COLUMN complexity_metrics.thinking_duration_ms | integer | null=YES | default=
 COLUMN complexity_metrics.word_count | integer | null=NO | default=
+COLUMN contexts.archived_at | timestamp with time zone | null=YES | default=
 COLUMN contexts.commit_context_type | character varying(50) | null=YES | default=
 COLUMN contexts.content | text | null=NO | default=
 COLUMN contexts.context_type | character varying(50) | null=NO | default=
@@ -694,6 +695,7 @@ COLUMN surveyor_warnings.level | character varying(20) | null=NO | default=
 COLUMN surveyor_warnings.scan_id | uuid | null=NO | default=
 COLUMN surveyor_warnings.suggestion | jsonb | null=YES | default=
 COLUMN surveyor_warnings.title | text | null=NO | default=
+COLUMN tasks.archived_at | timestamp with time zone | null=YES | default=
 COLUMN tasks.assigned_to | character varying(200) | null=YES | default=
 COLUMN tasks.completed_at | timestamp with time zone | null=YES | default=
 COLUMN tasks.created_at | timestamp with time zone | null=YES | default=CURRENT_TIMESTAMP
@@ -714,6 +716,7 @@ COLUMN tasks.type | character varying(100) | null=NO | default='general'
 COLUMN tasks.updated_at | timestamp with time zone | null=YES | default=CURRENT_TIMESTAMP
 COLUMN technical_decisions.affected_components | ARRAY | null=YES | default=
 COLUMN technical_decisions.alternatives_considered | jsonb | null=YES | default='[]'
+COLUMN technical_decisions.archived_at | timestamp with time zone | null=YES | default=
 COLUMN technical_decisions.category | text | null=YES | default=
 COLUMN technical_decisions.decided_by | text | null=YES | default=
 COLUMN technical_decisions.decision_date | timestamp with time zone | null=YES | default=CURRENT_TIMESTAMP
@@ -1120,6 +1123,7 @@ INDEX contexts.idx_contexts_coordinates :: CREATE INDEX idx_contexts_coordinates
 INDEX contexts.idx_contexts_created_at :: CREATE INDEX idx_contexts_created_at ON contexts USING btree (created_at)
 INDEX contexts.idx_contexts_embedding_cosine :: CREATE INDEX idx_contexts_embedding_cosine ON contexts USING ivfflat (embedding_384_backup vector_cosine_ops) WITH (lists='100')
 INDEX contexts.idx_contexts_insights :: CREATE INDEX idx_contexts_insights ON contexts USING gin (related_insights)
+INDEX contexts.idx_contexts_live :: CREATE INDEX idx_contexts_live ON contexts USING btree (project_id) WHERE (archived_at IS NULL)
 INDEX contexts.idx_contexts_metadata_gin :: CREATE INDEX idx_contexts_metadata_gin ON contexts USING gin (metadata)
 INDEX contexts.idx_contexts_pattern_relevance :: CREATE INDEX idx_contexts_pattern_relevance ON contexts USING btree (pattern_relevance_score DESC) WHERE (pattern_relevance_score IS NOT NULL)
 INDEX contexts.idx_contexts_pattern_session :: CREATE INDEX idx_contexts_pattern_session ON contexts USING btree (pattern_session_id) WHERE (pattern_session_id IS NOT NULL)
@@ -1323,6 +1327,7 @@ INDEX tasks.idx_tasks_assigned_to :: CREATE INDEX idx_tasks_assigned_to ON tasks
 INDEX tasks.idx_tasks_compound_filter :: CREATE INDEX idx_tasks_compound_filter ON tasks USING btree (project_id, status, priority, type) WHERE ((status)::text <> 'cancelled'::text)
 INDEX tasks.idx_tasks_created_at :: CREATE INDEX idx_tasks_created_at ON tasks USING btree (created_at)
 INDEX tasks.idx_tasks_dependencies :: CREATE INDEX idx_tasks_dependencies ON tasks USING gin (dependencies)
+INDEX tasks.idx_tasks_live :: CREATE INDEX idx_tasks_live ON tasks USING btree (project_id) WHERE (archived_at IS NULL)
 INDEX tasks.idx_tasks_priority :: CREATE INDEX idx_tasks_priority ON tasks USING btree (priority)
 INDEX tasks.idx_tasks_project :: CREATE INDEX idx_tasks_project ON tasks USING btree (project_id)
 INDEX tasks.idx_tasks_project_id :: CREATE INDEX idx_tasks_project_id ON tasks USING btree (project_id)
@@ -1339,6 +1344,7 @@ INDEX technical_decisions.idx_technical_decisions_date :: CREATE INDEX idx_techn
 INDEX technical_decisions.idx_technical_decisions_embedding_cosine :: CREATE INDEX idx_technical_decisions_embedding_cosine ON technical_decisions USING ivfflat (embedding vector_cosine_ops) WITH (lists='100')
 INDEX technical_decisions.idx_technical_decisions_impact :: CREATE INDEX idx_technical_decisions_impact ON technical_decisions USING btree (impact_level, project_id)
 INDEX technical_decisions.idx_technical_decisions_impl_commits :: CREATE INDEX idx_technical_decisions_impl_commits ON technical_decisions USING gin (implementing_commits)
+INDEX technical_decisions.idx_technical_decisions_live :: CREATE INDEX idx_technical_decisions_live ON technical_decisions USING btree (project_id) WHERE (archived_at IS NULL)
 INDEX technical_decisions.idx_technical_decisions_project_type :: CREATE INDEX idx_technical_decisions_project_type ON technical_decisions USING btree (project_id, decision_type)
 INDEX technical_decisions.idx_technical_decisions_status :: CREATE INDEX idx_technical_decisions_status ON technical_decisions USING btree (status, project_id)
 INDEX technical_decisions.idx_technical_decisions_tags_gin :: CREATE INDEX idx_technical_decisions_tags_gin ON technical_decisions USING gin (tags)

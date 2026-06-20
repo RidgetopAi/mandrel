@@ -177,6 +177,9 @@ export interface SearchDecisionsRequest {
   // display/intent hint the search advertises; accepting it here keeps the
   // declared==forwarded==accepted contract intact (no silently-dropped param).
   includeOutcome?: boolean;
+  // SOFT-DELETE (task 7b28bed4): when falsy (default), exclude archived rows
+  // (archived_at IS NULL); when true, include archived rows too.
+  includeArchived?: boolean;
 }
 
 class DecisionsHandler {
@@ -547,6 +550,12 @@ class DecisionsHandler {
         SELECT *${scoreSelect} FROM technical_decisions
         WHERE project_id = $1
       `;
+
+      // SOFT-DELETE (task 7b28bed4): exclude archived decisions by DEFAULT (archived_at
+      // IS NULL); includeArchived:true returns them too. Constant predicate, no param.
+      if (!request.includeArchived) {
+        sql += ` AND archived_at IS NULL`;
+      }
 
       // Add filters
       if (request.decisionType) {
@@ -1012,6 +1021,61 @@ class DecisionsHandler {
       implementationStatus: row.implementation_status
     };
   }
+
+  /**
+   * SOFT-DELETE / ARCHIVE a decision (task 7b28bed4). Sets archived_at = now(), SCOPED to
+   * `projectId` (cannot archive another project's decision). REVERSIBLE — the row is NOT
+   * hard-deleted; it stays in the table and disappears only from the DEFAULT
+   * decision_search (which filters archived_at IS NULL). Idempotent. `decisionId` is a
+   * full UUID (short-id resolution happens in the route before this is called).
+   */
+  async archiveDecision(decisionId: string, projectId: string): Promise<DecisionArchiveResult> {
+    const updated = await db.query(
+      `UPDATE technical_decisions SET archived_at = now()
+       WHERE id = $1 AND project_id = $2 AND archived_at IS NULL
+       RETURNING id::text AS id, archived_at`,
+      [decisionId, projectId]
+    );
+    if (updated.rows.length === 1) {
+      return { found: true, alreadyArchived: false, id: updated.rows[0].id, archivedAt: updated.rows[0].archived_at };
+    }
+    const probe = await db.query(
+      `SELECT id::text AS id, archived_at FROM technical_decisions WHERE id = $1 AND project_id = $2`,
+      [decisionId, projectId]
+    );
+    if (probe.rows.length === 0) return { found: false };
+    return { found: true, alreadyArchived: true, id: probe.rows[0].id, archivedAt: probe.rows[0].archived_at };
+  }
+
+  /**
+   * RESTORE (un-archive) a decision (task 7b28bed4). Clears archived_at back to NULL,
+   * project-scoped. Idempotent. Mirror of archiveDecision.
+   */
+  async restoreDecision(decisionId: string, projectId: string): Promise<DecisionArchiveResult> {
+    const updated = await db.query(
+      `UPDATE technical_decisions SET archived_at = NULL
+       WHERE id = $1 AND project_id = $2 AND archived_at IS NOT NULL
+       RETURNING id::text AS id`,
+      [decisionId, projectId]
+    );
+    if (updated.rows.length === 1) {
+      return { found: true, alreadyArchived: false, id: updated.rows[0].id, archivedAt: null };
+    }
+    const probe = await db.query(
+      `SELECT id::text AS id FROM technical_decisions WHERE id = $1 AND project_id = $2`,
+      [decisionId, projectId]
+    );
+    if (probe.rows.length === 0) return { found: false };
+    return { found: true, alreadyArchived: true, id: probe.rows[0].id, archivedAt: null };
+  }
+}
+
+/** Result of a decision soft-delete archive/restore (task 7b28bed4). */
+export interface DecisionArchiveResult {
+  found: boolean;
+  alreadyArchived?: boolean;
+  id?: string;
+  archivedAt?: string | Date | null;
 }
 
 // Export singleton instance

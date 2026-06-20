@@ -99,7 +99,7 @@ export class IdNotFoundError extends Error {
 }
 
 /** What kind of record we're resolving — selects the table + label columns. */
-export type ResolvableEntity = 'task' | 'decision';
+export type ResolvableEntity = 'task' | 'decision' | 'context';
 
 interface EntityConfig {
   table: string;
@@ -119,6 +119,14 @@ const ENTITY_CONFIG: Record<ResolvableEntity, EntityConfig> = {
     table: 'technical_decisions',
     labelColumns: ['title', 'decision_type'],
     label: (r) => `"${r.title}" (${r.decision_type})`,
+  },
+  context: {
+    table: 'contexts',
+    // Contexts have no title — use the context_type + a short content snippet so an
+    // ambiguity candidate is still human-pickable.
+    labelColumns: ['context_type', 'content'],
+    label: (r) =>
+      `${r.context_type}: "${String(r.content ?? '').replace(/\s+/g, ' ').slice(0, 60)}…"`,
   },
 };
 
@@ -191,4 +199,47 @@ export function ambiguousIdMessage(err: AmbiguousIdError, toolName: string): str
     `${list}\n\n` +
     `💡 Re-run ${toolName} with the FULL id of the one you mean (copy it from the list above).`
   );
+}
+
+/**
+ * CENTRALIZED short-id error → McpResponse (task 7b28bed4). The delete/restore routes
+ * all need the SAME two branches the existing mutate routes hand-roll (Ambiguous → list
+ * candidates, no mutation; NotFound → actionable not-found pointing at the find tool).
+ * Factoring it here means the soft-delete tools can't drift from the established
+ * actionable-error contract (Lesson 011: one definition, not N copies). Returns an
+ * McpResponse to return, or `null` if `err` is neither id-error (caller rethrows).
+ *
+ * @param err       the thrown error
+ * @param toolName  the tool name (for the ambiguous-message re-run hint)
+ * @param entity    human label for the not-found message ('task'|'decision'|'context')
+ * @param rawId     the user-supplied id (echoed in not-found)
+ * @param findTool  the tool that lists ids (pointed at in not-found, e.g. 'task_list')
+ */
+export function idErrorResponse(
+  err: unknown,
+  toolName: string,
+  entity: string,
+  rawId: string,
+  findTool: string,
+): any | null {
+  if (err instanceof AmbiguousIdError) {
+    return {
+      content: [{ type: 'text', text: ambiguousIdMessage(err, toolName) }],
+      isError: true,
+      structuredContent: { ok: false, ambiguous: true, candidates: err.candidates.map((c) => c.id) },
+    };
+  }
+  if (err instanceof IdNotFoundError) {
+    const cap = entity.charAt(0).toUpperCase() + entity.slice(1);
+    return {
+      content: [{
+        type: 'text',
+        text: `❌ ${cap} not found: ${rawId}\n\n` +
+              `💡 The id may be wrong. Use ${findTool} to find the ${entity} and copy its 🆔 ID.`,
+      }],
+      isError: true,
+      structuredContent: { ok: false, found: false },
+    };
+  }
+  return null;
 }

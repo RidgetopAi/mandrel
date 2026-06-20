@@ -52,6 +52,9 @@ const TOOL_TO_HANDLER: Record<string, { file: string; method: string }> = {
   context_store:        { file: 'context.routes.ts',  method: 'handleStore' },
   context_search:       { file: 'context.routes.ts',  method: 'handleSearch' },
   context_get_recent:   { file: 'context.routes.ts',  method: 'handleGetRecent' },
+  // Soft-delete / archive (task 7b28bed4)
+  context_delete:       { file: 'context.routes.ts',  method: 'handleDelete' },
+  context_restore:      { file: 'context.routes.ts',  method: 'handleRestore' },
   // Project
   project_create:       { file: 'project.routes.ts',  method: 'handleCreate' },
   project_update:       { file: 'project.routes.ts',  method: 'handleUpdate' },
@@ -64,12 +67,16 @@ const TOOL_TO_HANDLER: Record<string, { file: string; method: string }> = {
   decision_search:      { file: 'decisions.routes.ts', method: 'handleSearch' },
   decision_get:         { file: 'decisions.routes.ts', method: 'handleGet' },
   decision_update:      { file: 'decisions.routes.ts', method: 'handleUpdate' },
+  decision_delete:      { file: 'decisions.routes.ts', method: 'handleDelete' },
+  decision_restore:     { file: 'decisions.routes.ts', method: 'handleRestore' },
   // Tasks
   task_create:          { file: 'tasks.routes.ts',    method: 'handleCreate' },
   task_list:            { file: 'tasks.routes.ts',    method: 'handleList' },
   task_update:          { file: 'tasks.routes.ts',    method: 'handleUpdate' },
   task_bulk_update:     { file: 'tasks.routes.ts',    method: 'handleBulkUpdate' },
   task_details:         { file: 'tasks.routes.ts',    method: 'handleDetails' },
+  task_delete:          { file: 'tasks.routes.ts',    method: 'handleDelete' },
+  task_restore:         { file: 'tasks.routes.ts',    method: 'handleRestore' },
   // Smart search
   smart_search:         { file: 'search.routes.ts',   method: 'handleSmartSearch' },
   get_recommendations:  { file: 'search.routes.ts',   method: 'handleRecommendations' },

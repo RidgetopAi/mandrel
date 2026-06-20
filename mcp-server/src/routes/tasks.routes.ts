@@ -8,6 +8,7 @@ import {
   AmbiguousIdError,
   IdNotFoundError,
   ambiguousIdMessage,
+  idErrorResponse,
 } from '../utils/idResolver.js';
 
 /**
@@ -96,7 +97,8 @@ class TasksRoutes {
         args.phase,
         args.statuses,
         args.limit,
-        args.offset // A7: forward pagination offset to the handler
+        args.offset, // A7: forward pagination offset to the handler
+        args.includeArchived // task 7b28bed4: default false → exclude archived tasks
       );
 
       if (tasks.length === 0) {
@@ -526,6 +528,95 @@ class TasksRoutes {
       };
     } catch (error) {
       return formatMcpError(error as Error, 'task_details');
+    }
+  }
+
+  /**
+   * Handle task SOFT-DELETE (archive) requests — task_delete (task 7b28bed4).
+   *
+   * Sets archived_at on the row so it disappears from the DEFAULT task_list while STILL
+   * EXISTING in the DB (reversible via task_restore). Accepts a full UUID or 8+-hex short
+   * id, resolved project-scoped BEFORE the mutation; ambiguous / unknown ids surface as
+   * actionable errors and mutate nothing. Idempotent (already-archived is a no-op).
+   */
+  async handleDelete(args: any, context?: RouteContext): Promise<McpResponse> {
+    try {
+      const projectId = await this.resolveProjectId(args.projectId, context);
+      let resolvedId: string;
+      try {
+        resolvedId = await resolveEntityId('task', args.taskId, projectId);
+      } catch (e) {
+        const handled = idErrorResponse(e, 'task_delete', 'task', args.taskId, 'task_list');
+        if (handled) return handled;
+        throw e;
+      }
+
+      const result = await tasksHandler.archiveTask(resolvedId, projectId);
+      if (!result.found) {
+        return {
+          content: [{ type: 'text',
+            text: `❌ Task not found: ${args.taskId}\n\n` +
+                  `💡 Use task_list to see this project's tasks and copy a 🆔 ID.` }],
+          isError: true,
+          structuredContent: { ok: false, found: false },
+        };
+      }
+      const verb = result.alreadyArchived ? 'was already archived' : 'archived';
+      return {
+        content: [{ type: 'text',
+          text: `🗑️  Task ${verb} (soft-delete) — ${result.id}\n` +
+                `💡 It is hidden from task_list but NOT deleted. Restore with: task_restore(taskId="${result.id}")` }],
+        structuredContent: {
+          action: 'archived',
+          task: { id: result.id, archivedAt: result.archivedAt },
+          alreadyArchived: result.alreadyArchived === true,
+        },
+      };
+    } catch (error) {
+      return formatMcpError(error as Error, 'task_delete');
+    }
+  }
+
+  /**
+   * Handle task RESTORE (un-archive) requests — task_restore (task 7b28bed4).
+   * Clears archived_at so the task returns to default listings. Mirror of handleDelete.
+   */
+  async handleRestore(args: any, context?: RouteContext): Promise<McpResponse> {
+    try {
+      const projectId = await this.resolveProjectId(args.projectId, context);
+      let resolvedId: string;
+      try {
+        // includeArchived semantics live in the resolver implicitly: it matches by id
+        // regardless of archived state, so an archived task is resolvable for restore.
+        resolvedId = await resolveEntityId('task', args.taskId, projectId);
+      } catch (e) {
+        const handled = idErrorResponse(e, 'task_restore', 'task', args.taskId, 'task_list');
+        if (handled) return handled;
+        throw e;
+      }
+
+      const result = await tasksHandler.restoreTask(resolvedId, projectId);
+      if (!result.found) {
+        return {
+          content: [{ type: 'text',
+            text: `❌ Task not found: ${args.taskId}\n\n` +
+                  `💡 Use task_list(includeArchived:true) to see archived tasks and copy a 🆔 ID.` }],
+          isError: true,
+          structuredContent: { ok: false, found: false },
+        };
+      }
+      const verb = result.alreadyArchived ? 'was already live (not archived)' : 'restored';
+      return {
+        content: [{ type: 'text',
+          text: `♻️  Task ${verb} — ${result.id}` }],
+        structuredContent: {
+          action: 'restored',
+          task: { id: result.id },
+          alreadyArchived: result.alreadyArchived === true,
+        },
+      };
+    } catch (error) {
+      return formatMcpError(error as Error, 'task_restore');
     }
   }
 }

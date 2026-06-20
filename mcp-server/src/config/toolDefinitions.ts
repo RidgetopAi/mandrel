@@ -188,6 +188,26 @@ export const AIDIS_TOOL_DEFINITIONS: ToolDefinition[] = [
             }),
           },
           {
+            // SOFT-DELETE / ARCHIVE (task 7b28bed4): reversible cleanup through the public
+            // tools (no raw SQL). Archives the row (sets archived_at) so it disappears from
+            // default context_search/context_get_recent while STILL existing — undo with
+            // context_restore. Accepts a full UUID or 8+-hex short id (task 131ef054).
+            name: 'context_delete',
+            description: 'Soft-delete (archive) a context — hides it from default search/recent but does NOT permanently delete it (reversible via context_restore). Accepts a full UUID or short id; project-scoped.',
+            inputSchema: buildInputSchema('context_delete', {
+              contextId: 'Context UUID or 8+-hex short id to archive (project-scoped)',
+              projectId: 'Project ID or name to scope the lookup (defaults to current project)'
+            }),
+          },
+          {
+            name: 'context_restore',
+            description: 'Restore (un-archive) a previously soft-deleted context so it appears in default search/recent again. Accepts a full UUID or short id; project-scoped.',
+            inputSchema: buildInputSchema('context_restore', {
+              contextId: 'Context UUID or 8+-hex short id to restore (project-scoped)',
+              projectId: 'Project ID or name to scope the lookup (defaults to current project)'
+            }),
+          },
+          {
             name: 'project_list',
             description: 'List all available projects with statistics',
             // STRICT-MODE: derive from zod — surfaces the real `includeStats` param the
@@ -333,6 +353,25 @@ export const AIDIS_TOOL_DEFINITIONS: ToolDefinition[] = [
               projectId: 'Project ID or name to scope the stats (defaults to current project)'
             }),
           },
+          {
+            // SOFT-DELETE / ARCHIVE (task 7b28bed4): reversible cleanup. Archives the row
+            // (sets archived_at) so it disappears from default decision_search while STILL
+            // existing — undo with decision_restore. Accepts full UUID or short id.
+            name: 'decision_delete',
+            description: 'Soft-delete (archive) a technical decision — hides it from default decision_search but does NOT permanently delete it (reversible via decision_restore). Accepts a full UUID or short id; project-scoped.',
+            inputSchema: buildInputSchema('decision_delete', {
+              decisionId: 'Decision UUID or 8+-hex short id to archive (project-scoped)',
+              projectId: 'Project ID or name to scope the lookup (defaults to current project)'
+            }),
+          },
+          {
+            name: 'decision_restore',
+            description: 'Restore (un-archive) a previously soft-deleted decision so it appears in default decision_search again. Accepts a full UUID or short id; project-scoped.',
+            inputSchema: buildInputSchema('decision_restore', {
+              decisionId: 'Decision UUID or 8+-hex short id to restore (project-scoped)',
+              projectId: 'Project ID or name to scope the lookup (defaults to current project)'
+            }),
+          },
 
 
 
@@ -423,6 +462,26 @@ export const AIDIS_TOOL_DEFINITIONS: ToolDefinition[] = [
               groupBy: 'Grouping for the summary — one of: phase, status, priority, type, assignedTo (default: phase)',
               projectId: 'Project ID or name to scope the summary (defaults to current project)'
             })
+          },
+          {
+            // SOFT-DELETE / ARCHIVE (task 7b28bed4): reversible cleanup. Archives the row
+            // (sets archived_at) so it disappears from default task_list while STILL
+            // existing — undo with task_restore. Distinct from the `cancelled` STATUS (a
+            // lifecycle state that stays listed). Accepts full UUID or short id.
+            name: 'task_delete',
+            description: 'Soft-delete (archive) a task — hides it from default task_list but does NOT permanently delete it (reversible via task_restore). Distinct from the cancelled status. Accepts a full UUID or short id; project-scoped.',
+            inputSchema: buildInputSchema('task_delete', {
+              taskId: 'Task UUID or 8+-hex short id to archive (project-scoped)',
+              projectId: 'Project ID or name to scope the lookup (defaults to current project)'
+            }),
+          },
+          {
+            name: 'task_restore',
+            description: 'Restore (un-archive) a previously soft-deleted task so it appears in default task_list again. Accepts a full UUID or short id; project-scoped.',
+            inputSchema: buildInputSchema('task_restore', {
+              taskId: 'Task UUID or 8+-hex short id to restore (project-scoped)',
+              projectId: 'Project ID or name to scope the lookup (defaults to current project)'
+            }),
           },
           {
             name: 'smart_search',

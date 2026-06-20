@@ -61,6 +61,9 @@ export interface SearchContextRequest {
   offset?: number;
   minSimilarity?: number;
   tags?: string[];
+  // SOFT-DELETE (task 7b28bed4): when falsy (default), exclude archived rows
+  // (archived_at IS NULL). When true, include archived rows too.
+  includeArchived?: boolean;
 }
 
 export interface SearchResult extends ContextEntry {
@@ -586,6 +589,15 @@ class ContextHandler {
       const params: any[] = [`[${queryEmbedding.embedding.join(',')}]`];
       let paramIndex = 2;
 
+      // SOFT-DELETE (task 7b28bed4): exclude archived contexts by DEFAULT. This is a
+      // plain additional WHERE predicate appended to whichever branch's base SQL was
+      // built above (all three end with a `WHERE embedding IS NOT NULL` we extend).
+      // includeArchived:true skips this so archived rows are returned too. No param
+      // needed (constant predicate).
+      if (!request.includeArchived) {
+        sql += ` AND archived_at IS NULL`;
+      }
+
       // Add filters
       if (request.projectId) {
         sql += ` AND project_id = $${paramIndex}`;
@@ -852,21 +864,25 @@ class ContextHandler {
   /**
    * Get recent contexts in chronological order (newest first)
    */
-  async getRecentContext(projectId?: string, limit: number = 5): Promise<SearchResult[]> {
+  async getRecentContext(projectId?: string, limit: number = 5, includeArchived: boolean = false): Promise<SearchResult[]> {
     logger.info(`📋 Getting ${limit} most recent contexts`);
 
     try {
       // Ensure we have a valid project
       const actualProjectId = await this.ensureProjectId(projectId);
 
+      // SOFT-DELETE (task 7b28bed4): exclude archived contexts by DEFAULT (archived_at IS
+      // NULL); includeArchived:true returns archived rows too.
+      const archivedFilter = includeArchived ? '' : ' AND archived_at IS NULL';
+
       // Build query to get recent contexts
       const sql = `
-        SELECT 
+        SELECT
           id, project_id, session_id, context_type, content,
           created_at, relevance_score, tags, metadata
-        FROM contexts 
-        WHERE project_id = $1
-        ORDER BY created_at DESC 
+        FROM contexts
+        WHERE project_id = $1${archivedFilter}
+        ORDER BY created_at DESC
         LIMIT $2
       `;
       
@@ -951,6 +967,78 @@ class ContextHandler {
       embeddedContexts: parseInt(embedded.rows[0].count)
     };
   }
+
+  /**
+   * SOFT-DELETE / ARCHIVE a context (task 7b28bed4).
+   *
+   * Sets archived_at = now() for the row, SCOPED to `projectId` (cannot archive another
+   * project's context). REVERSIBLE: the row is NOT hard-deleted — it stays in the table
+   * and disappears only from the DEFAULT list/search (which filter archived_at IS NULL),
+   * and restoreContext() clears archived_at back to NULL.
+   *
+   * Returns:
+   *   { found: false }                          — no such row in this project.
+   *   { found: true, alreadyArchived: true,  … } — was already archived (idempotent no-op).
+   *   { found: true, alreadyArchived: false, … } — newly archived now.
+   * The id is bound as a parameter (never concatenated); the short-id → UUID resolution
+   * happens in the route BEFORE this is called, so `contextId` here is a full UUID.
+   */
+  async archiveContext(contextId: string, projectId: string): Promise<ArchiveResult> {
+    // Only archive a row that is currently LIVE (archived_at IS NULL) AND in this
+    // project. The RETURNING tells us whether we actually flipped it. A separate
+    // existence probe distinguishes "not found" from "already archived" (idempotent).
+    const updated = await db.query(
+      `UPDATE contexts SET archived_at = now()
+       WHERE id = $1 AND project_id = $2 AND archived_at IS NULL
+       RETURNING id::text AS id, archived_at`,
+      [contextId, projectId]
+    );
+    if (updated.rows.length === 1) {
+      return { found: true, alreadyArchived: false, id: updated.rows[0].id, archivedAt: updated.rows[0].archived_at };
+    }
+    // Nothing flipped: either it doesn't exist in this project, or it's already archived.
+    const probe = await db.query(
+      `SELECT id::text AS id, archived_at FROM contexts WHERE id = $1 AND project_id = $2`,
+      [contextId, projectId]
+    );
+    if (probe.rows.length === 0) return { found: false };
+    return { found: true, alreadyArchived: true, id: probe.rows[0].id, archivedAt: probe.rows[0].archived_at };
+  }
+
+  /**
+   * RESTORE (un-archive) a context (task 7b28bed4). Clears archived_at back to NULL,
+   * project-scoped. Idempotent. Mirror of archiveContext.
+   */
+  async restoreContext(contextId: string, projectId: string): Promise<ArchiveResult> {
+    const updated = await db.query(
+      `UPDATE contexts SET archived_at = NULL
+       WHERE id = $1 AND project_id = $2 AND archived_at IS NOT NULL
+       RETURNING id::text AS id`,
+      [contextId, projectId]
+    );
+    if (updated.rows.length === 1) {
+      return { found: true, alreadyArchived: false, id: updated.rows[0].id, archivedAt: null };
+    }
+    const probe = await db.query(
+      `SELECT id::text AS id FROM contexts WHERE id = $1 AND project_id = $2`,
+      [contextId, projectId]
+    );
+    if (probe.rows.length === 0) return { found: false };
+    // Found but wasn't archived → restore is a no-op (already live).
+    return { found: true, alreadyArchived: true, id: probe.rows[0].id, archivedAt: null };
+  }
+}
+
+/**
+ * Result of a soft-delete archive/restore operation (task 7b28bed4). `alreadyArchived`
+ * doubles as "already in the target state" for both directions (archive: already
+ * archived; restore: already live) so the route can report an idempotent no-op.
+ */
+export interface ArchiveResult {
+  found: boolean;
+  alreadyArchived?: boolean;
+  id?: string;
+  archivedAt?: string | Date | null;
 }
 
 // Export singleton instance

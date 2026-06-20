@@ -29,7 +29,9 @@ class NavigationHandler {
       { name: 'context_store', description: 'Store development context with automatic embedding' },
       { name: 'context_search', description: 'Search contexts semantically or fetch by ID' },
       { name: 'context_get_recent', description: 'Get recent contexts chronologically (newest first)' },
-      { name: 'context_stats', description: 'Get context statistics for a project' }
+      { name: 'context_stats', description: 'Get context statistics for a project' },
+      { name: 'context_delete', description: 'Soft-delete (archive) a context — reversible, hidden from default search/recent' },
+      { name: 'context_restore', description: 'Restore (un-archive) a soft-deleted context' }
     ],
     'Project Management': [
       { name: 'project_list', description: 'List all available projects with statistics' },
@@ -46,7 +48,9 @@ class NavigationHandler {
       { name: 'decision_search', description: 'Search technical decisions with filters (incl. outcomeStatus)' },
       { name: 'decision_get', description: 'Fetch a single decision by id with full detail (incl. outcome)' },
       { name: 'decision_update', description: 'Update decision status, outcomes, or lessons' },
-      { name: 'decision_stats', description: 'Get technical decision statistics and analysis' }
+      { name: 'decision_stats', description: 'Get technical decision statistics and analysis' },
+      { name: 'decision_delete', description: 'Soft-delete (archive) a decision — reversible, hidden from default search' },
+      { name: 'decision_restore', description: 'Restore (un-archive) a soft-deleted decision' }
     ],
     'Task Management': [
       { name: 'task_create', description: 'Create a new task for coordination' },
@@ -54,7 +58,9 @@ class NavigationHandler {
       { name: 'task_update', description: 'Update task status and assignment' },
       { name: 'task_details', description: 'Get detailed information for a specific task' },
       { name: 'task_bulk_update', description: 'Update multiple tasks atomically with the same changes' },
-      { name: 'task_progress_summary', description: 'Get task progress summary with grouping and completion percentages' }
+      { name: 'task_progress_summary', description: 'Get task progress summary with grouping and completion percentages' },
+      { name: 'task_delete', description: 'Soft-delete (archive) a task — reversible, hidden from default task_list' },
+      { name: 'task_restore', description: 'Restore (un-archive) a soft-deleted task' }
     ],
     'Smart Search & AI': [
       { name: 'smart_search', description: 'Intelligent search across all project data' },
@@ -173,6 +179,27 @@ class NavigationHandler {
         example: `context_stats({
   projectId: "mobile-app"
 })`
+      }
+    ],
+    'context_delete': [
+      {
+        title: 'Soft-delete (archive) a context by short id',
+        example: `context_delete({
+  contextId: "a1b2c3d4"
+})`
+      }
+    ],
+    'context_restore': [
+      {
+        title: 'Restore a previously archived context',
+        example: `context_restore({
+  contextId: "a1b2c3d4"
+})`
+      },
+      {
+        title: 'See archived contexts first, then restore',
+        example: `context_search({ query: "old note", includeArchived: true })
+context_restore({ contextId: "a1b2c3d4" })`
       }
     ],
 
@@ -312,6 +339,22 @@ class NavigationHandler {
 })`
       }
     ],
+    'decision_delete': [
+      {
+        title: 'Soft-delete (archive) a decision by short id',
+        example: `decision_delete({
+  decisionId: "9f8e7d6c"
+})`
+      }
+    ],
+    'decision_restore': [
+      {
+        title: 'Restore a previously archived decision',
+        example: `decision_restore({
+  decisionId: "9f8e7d6c"
+})`
+      }
+    ],
 
     // Task Management
     'task_create': [
@@ -366,6 +409,27 @@ class NavigationHandler {
   taskId: "59823126-9442-45dd-87e7-3dfae691e41f",
   projectId: "my-project-id"
 })`
+      }
+    ],
+    'task_delete': [
+      {
+        title: 'Soft-delete (archive) a task by short id',
+        example: `task_delete({
+  taskId: "59823126"
+})`
+      }
+    ],
+    'task_restore': [
+      {
+        title: 'Restore a previously archived task',
+        example: `task_restore({
+  taskId: "59823126"
+})`
+      },
+      {
+        title: 'See archived tasks, then restore one',
+        example: `task_list({ includeArchived: true })
+task_restore({ taskId: "59823126" })`
       }
     ]
 

@@ -35,11 +35,12 @@ const EXPECTED_PARAMS: Record<string, string[]> = {
   // relevanceScore/projectId/sessionId. Now DERIVED from zod, so the declared schema
   // advertises exactly the validated/accepted field set — and `metadata` is visible.
   context_store: ['content', 'type', 'tags', 'relevanceScore', 'metadata', 'projectId', 'sessionId'],
-  context_search: ['id', 'query', 'type', 'tags', 'limit', 'minSimilarity', 'offset', 'projectId', 'sessionId'],
+  // includeArchived (task 7b28bed4): soft-delete read filter — default excludes archived.
+  context_search: ['id', 'query', 'type', 'tags', 'limit', 'minSimilarity', 'offset', 'projectId', 'sessionId', 'includeArchived'],
   // decision_search (learning-loop READ, task 13069495): `outcomeStatus` added — a
   // SEPARATE filter from `status` that filters the outcome_status column (how a
   // decision turned out), the moat-critical read for the GAP1 Evaluator.
-  decision_search: ['query', 'limit', 'decisionType', 'status', 'outcomeStatus', 'impactLevel', 'component', 'tags', 'projectId', 'includeOutcome'],
+  decision_search: ['query', 'limit', 'decisionType', 'status', 'outcomeStatus', 'impactLevel', 'component', 'tags', 'projectId', 'includeOutcome', 'includeArchived'],
   // decision_get (learning-loop READ, task 13069495): single-decision direct lookup
   // by full UUID, mirroring context_search's `id` idiom.
   decision_get: ['decisionId', 'projectId'],
@@ -64,7 +65,7 @@ const EXPECTED_PARAMS: Record<string, string[]> = {
   // args.projectId via resolveProjectId to scope the list — a real accepted-and-used
   // param that was missing from the schema, so under strict mode a legitimate
   // project-scoped task_list call would have been wrongly rejected. Declared, not dropped.
-  task_list: ['status', 'priority', 'assignedTo', 'type', 'tags', 'limit', 'offset', 'projectId'],
+  task_list: ['status', 'priority', 'assignedTo', 'type', 'tags', 'limit', 'offset', 'projectId', 'includeArchived'],
   // task_create (36aa0549): the model-facing schema previously advertised ONLY
   // `title`, hiding `type` (+ enum) and every other accepted field — so an agent
   // asked for a "bug" silently got a `general` task. Now DERIVED from zod, so the
@@ -86,9 +87,16 @@ const EXPECTED_PARAMS: Record<string, string[]> = {
   project_switch: ['project'],
   project_info: ['project'],
   smart_search: ['query', 'projectId', 'includeTypes', 'scope', 'limit'],
-  context_get_recent: ['limit', 'projectId'],
+  context_get_recent: ['limit', 'projectId', 'includeArchived'],
   get_recommendations: ['context', 'projectId', 'type'],
   task_details: ['taskId', 'projectId'],
+  // Soft-delete / archive tools (task 7b28bed4): id + optional project scope.
+  context_delete: ['contextId', 'projectId'],
+  context_restore: ['contextId', 'projectId'],
+  decision_delete: ['decisionId', 'projectId'],
+  decision_restore: ['decisionId', 'projectId'],
+  task_delete: ['taskId', 'projectId'],
+  task_restore: ['taskId', 'projectId'],
 };
 
 /** Extract the top-level zod object key set (unwraps a ZodEffects/.refine wrapper). */

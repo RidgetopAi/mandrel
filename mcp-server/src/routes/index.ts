@@ -185,6 +185,10 @@ async function routeExecutorInner(toolName: string, args: any, context?: RouteCo
         return await contextRoutes.handleGetRecent(args, context);
       case 'context_stats':
         return await contextRoutes.handleStats(args, context);
+      case 'context_delete':
+        return await contextRoutes.handleDelete(args, context);
+      case 'context_restore':
+        return await contextRoutes.handleRestore(args, context);
 
       // Project Management (8 tools) - pass context for session isolation
       case 'project_list':
@@ -213,6 +217,10 @@ async function routeExecutorInner(toolName: string, args: any, context?: RouteCo
         return await decisionsRoutes.handleUpdate(args, context);
       case 'decision_stats':
         return await decisionsRoutes.handleStats(args, context);
+      case 'decision_delete':
+        return await decisionsRoutes.handleDelete(args, context);
+      case 'decision_restore':
+        return await decisionsRoutes.handleRestore(args, context);
 
       // Task Management (6 tools) - pass context for session isolation
       case 'task_create':
@@ -227,6 +235,10 @@ async function routeExecutorInner(toolName: string, args: any, context?: RouteCo
         return await tasksRoutes.handleBulkUpdate(args, context);
       case 'task_progress_summary':
         return await tasksRoutes.handleProgressSummary(args, context);
+      case 'task_delete':
+        return await tasksRoutes.handleDelete(args, context);
+      case 'task_restore':
+        return await tasksRoutes.handleRestore(args, context);
 
       // Session Management (5 tools) - DELETED (2025-10-24)
       // Sessions auto-manage via SessionTracker service

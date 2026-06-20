@@ -6,10 +6,12 @@ import type { McpResponse } from '../utils/mcpFormatter.js';
 import type { RouteContext } from './index.js';
 import { db } from '../config/database.js';
 import { logger } from '../utils/logger.js';
+import { resolveEntityId, idErrorResponse } from '../utils/idResolver.js';
 
 /**
  * Context Management Routes
- * Handles: context_store, context_search, context_get_recent, context_stats
+ * Handles: context_store, context_search, context_get_recent, context_stats,
+ *          context_delete, context_restore
  */
 class ContextRoutes {
   /**
@@ -199,6 +201,10 @@ class ContextRoutes {
                           created_at, relevance_score, tags, metadata
                    FROM contexts
                    WHERE tags && $1`;
+        // SOFT-DELETE (task 7b28bed4): exclude archived by default on the tags-only path too.
+        if (!args.includeArchived) {
+          sql += ` AND archived_at IS NULL`;
+        }
         let pIdx = 2;
         if (projectId) {
           sql += ` AND project_id = $${pIdx}`;
@@ -280,7 +286,8 @@ class ContextRoutes {
         limit: args.limit,
         offset: args.offset,
         minSimilarity: args.minSimilarity,
-        projectId: projectId
+        projectId: projectId,
+        includeArchived: args.includeArchived // task 7b28bed4: default exclude archived
       });
 
       if (results.length === 0) {
@@ -354,7 +361,7 @@ class ContextRoutes {
       const projectId = await this.resolveProjectId(args.projectId, context);
       logger.info(`📋 Context get recent request (limit: ${args.limit || 5}, project: ${projectId?.substring(0, 8)}...)`);
 
-      const results = await contextHandler.getRecentContext(projectId, args.limit);
+      const results = await contextHandler.getRecentContext(projectId, args.limit, args.includeArchived);
 
       if (results.length === 0) {
         return {
@@ -434,6 +441,105 @@ class ContextRoutes {
       };
     } catch (error) {
       return formatMcpError(error as Error, 'context_stats');
+    }
+  }
+
+  /**
+   * Resolve the project id, REQUIRING one (delete/restore are project-scoped — we must
+   * never archive across projects). Throws an actionable error if no project is active.
+   */
+  private async requireProjectId(argsProjectId: string | undefined, context?: RouteContext): Promise<string> {
+    const projectId = await this.resolveProjectId(argsProjectId, context);
+    if (!projectId) {
+      throw new Error('No current project set. Use project_switch to set an active project (or pass projectId).');
+    }
+    return projectId;
+  }
+
+  /**
+   * Handle context SOFT-DELETE (archive) requests — context_delete (task 7b28bed4).
+   *
+   * Sets archived_at so the context disappears from default context_search /
+   * context_get_recent while STILL EXISTING in the DB (reversible via context_restore).
+   * Accepts a full UUID or 8+-hex short id, resolved project-scoped BEFORE the mutation;
+   * ambiguous / unknown ids surface as actionable errors and mutate nothing. Idempotent.
+   */
+  async handleDelete(args: any, context?: RouteContext): Promise<McpResponse> {
+    try {
+      const projectId = await this.requireProjectId(args.projectId, context);
+      let resolvedId: string;
+      try {
+        resolvedId = await resolveEntityId('context', args.contextId, projectId);
+      } catch (e) {
+        const handled = idErrorResponse(e, 'context_delete', 'context', args.contextId, 'context_get_recent');
+        if (handled) return handled;
+        throw e;
+      }
+
+      const result = await contextHandler.archiveContext(resolvedId, projectId);
+      if (!result.found) {
+        return {
+          content: [{ type: 'text',
+            text: `❌ Context not found: ${args.contextId}\n\n` +
+                  `💡 Use context_get_recent to see this project's contexts and copy an 🆔 ID.` }],
+          isError: true,
+          structuredContent: { ok: false, found: false },
+        };
+      }
+      const verb = result.alreadyArchived ? 'was already archived' : 'archived';
+      return {
+        content: [{ type: 'text',
+          text: `🗑️  Context ${verb} (soft-delete) — ${result.id}\n` +
+                `💡 Hidden from search/recent but NOT deleted. Restore with: context_restore(contextId="${result.id}")` }],
+        structuredContent: {
+          action: 'archived',
+          context: { id: result.id, archivedAt: result.archivedAt },
+          alreadyArchived: result.alreadyArchived === true,
+        },
+      };
+    } catch (error) {
+      return formatMcpError(error as Error, 'context_delete');
+    }
+  }
+
+  /**
+   * Handle context RESTORE (un-archive) requests — context_restore (task 7b28bed4).
+   * Clears archived_at so the context returns to default search/recent. Mirror of delete.
+   */
+  async handleRestore(args: any, context?: RouteContext): Promise<McpResponse> {
+    try {
+      const projectId = await this.requireProjectId(args.projectId, context);
+      let resolvedId: string;
+      try {
+        resolvedId = await resolveEntityId('context', args.contextId, projectId);
+      } catch (e) {
+        const handled = idErrorResponse(e, 'context_restore', 'context', args.contextId, 'context_get_recent');
+        if (handled) return handled;
+        throw e;
+      }
+
+      const result = await contextHandler.restoreContext(resolvedId, projectId);
+      if (!result.found) {
+        return {
+          content: [{ type: 'text',
+            text: `❌ Context not found: ${args.contextId}\n\n` +
+                  `💡 Use context_search(includeArchived:true) to see archived contexts and copy an 🆔 ID.` }],
+          isError: true,
+          structuredContent: { ok: false, found: false },
+        };
+      }
+      const verb = result.alreadyArchived ? 'was already live (not archived)' : 'restored';
+      return {
+        content: [{ type: 'text',
+          text: `♻️  Context ${verb} — ${result.id}` }],
+        structuredContent: {
+          action: 'restored',
+          context: { id: result.id },
+          alreadyArchived: result.alreadyArchived === true,
+        },
+      };
+    } catch (error) {
+      return formatMcpError(error as Error, 'context_restore');
     }
   }
 }

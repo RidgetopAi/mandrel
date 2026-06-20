@@ -120,7 +120,11 @@ const contextSchemas = {
     minSimilarity: z.number().min(0).max(100).optional(),
     offset: z.number().int().min(0).optional(),
     projectId: z.string().optional(),
-    sessionId: z.string().optional()
+    sessionId: z.string().optional(),
+    // SOFT-DELETE (task 7b28bed4): by DEFAULT exclude archived contexts (archived_at IS
+    // NULL). Pass includeArchived:true to also return archived rows. coercedBoolean() so
+    // the bridge's "true"/"false" string is accepted (never the truthiness footgun).
+    includeArchived: coercedBoolean().optional()
   }).refine(data => data.id || data.query || (data.tags !== undefined && data.tags.length > 0), {
     // Accept a TAGS-ONLY call (id OR query OR a non-empty tags array). A tags-only
     // request is answered by the existing `tags && $1` GIN filter (no dummy query
@@ -130,7 +134,9 @@ const contextSchemas = {
   
   get_recent: z.object({
     limit: z.number().int().min(1).max(20).default(5),
-    projectId: z.string().optional()
+    projectId: z.string().optional(),
+    // SOFT-DELETE (task 7b28bed4): exclude archived by default; includeArchived:true reveals them.
+    includeArchived: coercedBoolean().optional()
   }),
 
   // STRICT-MODE SAFETY (task 5fd58eef): the handler (context.routes.handleStats) reads
@@ -139,6 +145,18 @@ const contextSchemas = {
   // legitimate project-scoped call would have been wrongly rejected. Declare it (don't
   // drop it) — declared == accepted == handler-reads.
   stats: z.object({
+    projectId: z.string().optional()
+  }),
+
+  // SOFT-DELETE / ARCHIVE (task 7b28bed4): reversible cleanup through the public tool
+  // surface (no raw SQL). `delete` sets archived_at=now(); `restore` clears it. Both
+  // accept a full UUID OR an 8+-hex short id (resolved project-scoped in the handler).
+  delete: z.object({
+    contextId: uuidOrShortId(),
+    projectId: z.string().optional()
+  }),
+  restore: z.object({
+    contextId: uuidOrShortId(),
     projectId: z.string().optional()
   })
 };
@@ -292,7 +310,10 @@ const decisionSchemas = {
     projectId: z.string().optional(),
     // includeOutcome arrives as a STRING over the bridge ("true"/"false"); coerce it
     // so a tool-only client isn't rejected with "Expected boolean, received string".
-    includeOutcome: coercedBoolean().optional()
+    includeOutcome: coercedBoolean().optional(),
+    // SOFT-DELETE (task 7b28bed4): exclude archived decisions by default; includeArchived
+    // reveals them. coercedBoolean() for the same string-from-bridge reason as above.
+    includeArchived: coercedBoolean().optional()
     // Note: dateFrom/dateTo excluded - complex date parsing not needed for AI ease-of-use
   }),
 
@@ -342,6 +363,17 @@ const decisionSchemas = {
   // resolveProjectId to scope the stats — a real accepted-and-used param. Declare it so
   // strict mode doesn't reject a legitimate project-scoped call.
   stats: z.object({
+    projectId: z.string().optional()
+  }),
+
+  // SOFT-DELETE / ARCHIVE (task 7b28bed4): reversible cleanup. delete → archived_at=now();
+  // restore → archived_at=NULL. Accepts full UUID or 8+-hex short id (resolved in handler).
+  delete: z.object({
+    decisionId: uuidOrShortId(),
+    projectId: z.string().optional()
+  }),
+  restore: z.object({
+    decisionId: uuidOrShortId(),
     projectId: z.string().optional()
   })
 };
@@ -442,7 +474,10 @@ const taskSchemas = {
     // missing from the schema. Under strict mode a legitimate project-scoped task_list
     // call (the retrievalErgonomics contract exercises exactly this) would be wrongly
     // rejected. Declare it (don't drop it) — declared == accepted == handler-reads.
-    projectId: z.string().optional()
+    projectId: z.string().optional(),
+    // SOFT-DELETE (task 7b28bed4): exclude archived tasks by default; includeArchived
+    // reveals them. coercedBoolean() for the string-from-bridge boolean.
+    includeArchived: coercedBoolean().optional()
   }),
 
   update: z.object({
@@ -494,6 +529,19 @@ const taskSchemas = {
 
   progress_summary: z.object({
     groupBy: z.enum(['phase', 'status', 'priority', 'type', 'assignedTo']).optional().default('phase'),
+    projectId: z.string().optional()
+  }),
+
+  // SOFT-DELETE / ARCHIVE (task 7b28bed4): reversible cleanup. delete → archived_at=now();
+  // restore → archived_at=NULL. Distinct from the `cancelled` STATUS (a lifecycle state):
+  // archive removes a task from default listings entirely, reversibly. Accepts full UUID
+  // or 8+-hex short id (resolved project-scoped in the handler).
+  delete: z.object({
+    taskId: uuidOrShortId(),
+    projectId: z.string().optional()
+  }),
+  restore: z.object({
+    taskId: uuidOrShortId(),
     projectId: z.string().optional()
   })
 };
@@ -582,6 +630,9 @@ export const validationSchemas = {
   context_search: contextSchemas.search,
   context_get_recent: contextSchemas.get_recent,
   context_stats: contextSchemas.stats,
+  // Soft-delete / archive (task 7b28bed4)
+  context_delete: contextSchemas.delete,
+  context_restore: contextSchemas.restore,
   
   // Project Management
   project_create: projectSchemas.create,
@@ -605,6 +656,9 @@ export const validationSchemas = {
   decision_get: decisionSchemas.get,
   decision_update: decisionSchemas.update,
   decision_stats: decisionSchemas.stats,
+  // Soft-delete / archive (task 7b28bed4)
+  decision_delete: decisionSchemas.delete,
+  decision_restore: decisionSchemas.restore,
   
   // Multi-Agent Coordination
   agent_register: agentSchemas.register,
@@ -623,6 +677,9 @@ export const validationSchemas = {
   task_bulk_update: taskSchemas.bulk_update,
   task_details: taskSchemas.details,
   task_progress_summary: taskSchemas.progress_summary,
+  // Soft-delete / archive (task 7b28bed4)
+  task_delete: taskSchemas.delete,
+  task_restore: taskSchemas.restore,
   
   // Complexity Analysis
   complexity_analyze: complexitySchemas.analyze,

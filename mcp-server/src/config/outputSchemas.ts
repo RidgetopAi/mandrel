@@ -177,6 +177,9 @@ export const outputZodSchemas = {
   context_search: listShape(contextRecord),
   context_get_recent: listShape(contextRecord),
   context_stats: statusShape,
+  // Soft-delete / archive (task 7b28bed4) — mutate shape (the archived/restored record).
+  context_delete: mutateShape('context', contextRecord),
+  context_restore: mutateShape('context', contextRecord),
 
   // Project.
   project_list: listShape(projectRecord),
@@ -193,6 +196,9 @@ export const outputZodSchemas = {
   decision_get: getShape('decision', decisionRecord),
   decision_update: mutateShape('decision', decisionRecord),
   decision_stats: statusShape,
+  // Soft-delete / archive (task 7b28bed4).
+  decision_delete: mutateShape('decision', decisionRecord),
+  decision_restore: mutateShape('decision', decisionRecord),
 
   // Tasks.
   task_create: mutateShape('task', taskRecord),
@@ -201,6 +207,9 @@ export const outputZodSchemas = {
   task_details: getShape('task', taskRecord),
   task_bulk_update: statusShape,
   task_progress_summary: statusShape,
+  // Soft-delete / archive (task 7b28bed4).
+  task_delete: mutateShape('task', taskRecord),
+  task_restore: mutateShape('task', taskRecord),
 
   // Smart Search & AI.
   smart_search: listShape(searchResultItem),

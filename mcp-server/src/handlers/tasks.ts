@@ -96,11 +96,15 @@ class TasksHandler {
         phase?: string,
         statuses?: string[],
         limit?: number,
-        offset?: number
+        offset?: number,
+        includeArchived?: boolean
     ): Promise<Task[]> {
         const client = await this.pool.connect();
         try {
-            let query = `SELECT * FROM tasks WHERE project_id = $1`;
+            // SOFT-DELETE (task 7b28bed4): exclude archived tasks by DEFAULT (archived_at
+            // IS NULL); includeArchived:true returns them too. Constant predicate, no param.
+            const archivedFilter = includeArchived ? '' : ' AND archived_at IS NULL';
+            let query = `SELECT * FROM tasks WHERE project_id = $1${archivedFilter}`;
             const params: any[] = [projectId];
             let paramIndex = 2;
 
@@ -552,6 +556,54 @@ class TasksHandler {
         }
     }
 
+    /**
+     * SOFT-DELETE / ARCHIVE a task (task 7b28bed4). Sets archived_at = now(), SCOPED to
+     * `projectId` (cannot archive another project's task). REVERSIBLE — the row is NOT
+     * hard-deleted; it stays in the table and disappears only from the DEFAULT task_list
+     * (which filters archived_at IS NULL). Idempotent. Distinct from the `cancelled`
+     * STATUS, which is a lifecycle state the task keeps while still listed. `taskId` is a
+     * full UUID (short-id resolution happens in the route before this is called).
+     */
+    async archiveTask(taskId: string, projectId: string): Promise<TaskArchiveResult> {
+        const updated = await this.pool.query(
+            `UPDATE tasks SET archived_at = now()
+             WHERE id = $1 AND project_id = $2 AND archived_at IS NULL
+             RETURNING id::text AS id, archived_at`,
+            [taskId, projectId]
+        );
+        if (updated.rows.length === 1) {
+            return { found: true, alreadyArchived: false, id: updated.rows[0].id, archivedAt: updated.rows[0].archived_at };
+        }
+        const probe = await this.pool.query(
+            `SELECT id::text AS id, archived_at FROM tasks WHERE id = $1 AND project_id = $2`,
+            [taskId, projectId]
+        );
+        if (probe.rows.length === 0) return { found: false };
+        return { found: true, alreadyArchived: true, id: probe.rows[0].id, archivedAt: probe.rows[0].archived_at };
+    }
+
+    /**
+     * RESTORE (un-archive) a task (task 7b28bed4). Clears archived_at back to NULL,
+     * project-scoped. Idempotent. Mirror of archiveTask.
+     */
+    async restoreTask(taskId: string, projectId: string): Promise<TaskArchiveResult> {
+        const updated = await this.pool.query(
+            `UPDATE tasks SET archived_at = NULL
+             WHERE id = $1 AND project_id = $2 AND archived_at IS NOT NULL
+             RETURNING id::text AS id`,
+            [taskId, projectId]
+        );
+        if (updated.rows.length === 1) {
+            return { found: true, alreadyArchived: false, id: updated.rows[0].id, archivedAt: null };
+        }
+        const probe = await this.pool.query(
+            `SELECT id::text AS id FROM tasks WHERE id = $1 AND project_id = $2`,
+            [taskId, projectId]
+        );
+        if (probe.rows.length === 0) return { found: false };
+        return { found: true, alreadyArchived: true, id: probe.rows[0].id, archivedAt: null };
+    }
+
     private mapTask(row: any): Task {
         return {
             id: row.id,
@@ -574,6 +626,14 @@ class TasksHandler {
             updatedAt: row.updated_at
         };
     }
+}
+
+/** Result of a task soft-delete archive/restore (task 7b28bed4). */
+export interface TaskArchiveResult {
+    found: boolean;
+    alreadyArchived?: boolean;
+    id?: string;
+    archivedAt?: string | Date | null;
 }
 
 export const tasksHandler = new TasksHandler();

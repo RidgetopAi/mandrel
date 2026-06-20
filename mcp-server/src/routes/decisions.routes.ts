@@ -11,6 +11,7 @@ import {
   AmbiguousIdError,
   IdNotFoundError,
   ambiguousIdMessage,
+  idErrorResponse,
 } from '../utils/idResolver.js';
 
 /**
@@ -154,6 +155,8 @@ class DecisionsRoutes {
         tags: args.tags,
         limit: args.limit,
         includeOutcome: args.includeOutcome,
+        // SOFT-DELETE (task 7b28bed4): forward includeArchived (default exclude archived).
+        includeArchived: args.includeArchived,
         projectId: projectId
       });
 
@@ -499,6 +502,109 @@ class DecisionsRoutes {
       };
     } catch (error) {
       return formatMcpError(error as Error, 'decision_stats');
+    }
+  }
+
+  /**
+   * Resolve the project id, REQUIRING one (delete/restore are project-scoped — we must
+   * never archive across projects). Throws an actionable error if no project is active.
+   */
+  private async requireProjectId(argsProjectId: string | undefined, context?: RouteContext): Promise<string> {
+    const projectId = await this.resolveProjectId(argsProjectId, context);
+    if (!projectId) {
+      throw new Error('No current project set. Use project_switch to set an active project (or pass projectId).');
+    }
+    return projectId;
+  }
+
+  /**
+   * Handle decision SOFT-DELETE (archive) requests — decision_delete (task 7b28bed4).
+   *
+   * Sets archived_at so the decision disappears from the DEFAULT decision_search while
+   * STILL EXISTING in the DB (reversible via decision_restore). Accepts a full UUID or
+   * 8+-hex short id, resolved project-scoped BEFORE the mutation; ambiguous / unknown
+   * ids surface as actionable errors and mutate nothing. Idempotent.
+   */
+  async handleDelete(args: any, context?: RouteContext): Promise<McpResponse> {
+    try {
+      const projectId = await this.requireProjectId(args.projectId, context);
+      let resolvedId: string;
+      try {
+        resolvedId = isFullUuid(args.decisionId)
+          ? args.decisionId
+          : await resolveEntityId('decision', args.decisionId, projectId);
+      } catch (e) {
+        const handled = idErrorResponse(e, 'decision_delete', 'decision', args.decisionId, 'decision_search');
+        if (handled) return handled;
+        throw e;
+      }
+
+      const result = await decisionsHandler.archiveDecision(resolvedId, projectId);
+      if (!result.found) {
+        return {
+          content: [{ type: 'text',
+            text: `❌ Decision not found: ${args.decisionId}\n\n` +
+                  `💡 Use decision_search to find the decision and copy its 🆔 ID.` }],
+          isError: true,
+          structuredContent: { ok: false, found: false },
+        };
+      }
+      const verb = result.alreadyArchived ? 'was already archived' : 'archived';
+      return {
+        content: [{ type: 'text',
+          text: `🗑️  Decision ${verb} (soft-delete) — ${result.id}\n` +
+                `💡 Hidden from decision_search but NOT deleted. Restore with: decision_restore(decisionId="${result.id}")` }],
+        structuredContent: {
+          action: 'archived',
+          decision: { id: result.id, archivedAt: result.archivedAt },
+          alreadyArchived: result.alreadyArchived === true,
+        },
+      };
+    } catch (error) {
+      return formatMcpError(error as Error, 'decision_delete');
+    }
+  }
+
+  /**
+   * Handle decision RESTORE (un-archive) requests — decision_restore (task 7b28bed4).
+   * Clears archived_at so the decision returns to default search. Mirror of handleDelete.
+   */
+  async handleRestore(args: any, context?: RouteContext): Promise<McpResponse> {
+    try {
+      const projectId = await this.requireProjectId(args.projectId, context);
+      let resolvedId: string;
+      try {
+        resolvedId = isFullUuid(args.decisionId)
+          ? args.decisionId
+          : await resolveEntityId('decision', args.decisionId, projectId);
+      } catch (e) {
+        const handled = idErrorResponse(e, 'decision_restore', 'decision', args.decisionId, 'decision_search');
+        if (handled) return handled;
+        throw e;
+      }
+
+      const result = await decisionsHandler.restoreDecision(resolvedId, projectId);
+      if (!result.found) {
+        return {
+          content: [{ type: 'text',
+            text: `❌ Decision not found: ${args.decisionId}\n\n` +
+                  `💡 Use decision_search(includeArchived:true) to see archived decisions and copy a 🆔 ID.` }],
+          isError: true,
+          structuredContent: { ok: false, found: false },
+        };
+      }
+      const verb = result.alreadyArchived ? 'was already live (not archived)' : 'restored';
+      return {
+        content: [{ type: 'text',
+          text: `♻️  Decision ${verb} — ${result.id}` }],
+        structuredContent: {
+          action: 'restored',
+          decision: { id: result.id },
+          alreadyArchived: result.alreadyArchived === true,
+        },
+      };
+    } catch (error) {
+      return formatMcpError(error as Error, 'decision_restore');
     }
   }
 }
