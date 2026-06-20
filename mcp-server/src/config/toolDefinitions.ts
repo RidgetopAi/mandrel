@@ -77,9 +77,18 @@ function buildInputSchema(
     type: 'object',
     properties,
     required: Array.isArray(json.required) ? json.required : [],
-    // Keep additionalProperties:true to match historical MCP behavior (tolerant
-    // ingress); the zod validator remains the real gatekeeper for VALUES.
-    additionalProperties: true,
+    // STRICT MODE (task 5fd58eef): emit additionalProperties:false so the model gets an
+    // EXACT contract — exactly the params the zod validator declares, no more. This is
+    // safe because it's derived at the SOURCE from the same zod schema that gates the
+    // request, and the validator now ALSO rejects undeclared keys (validation.ts
+    // strict-key check), so advertised == accepted. zodToJsonSchema already emits
+    // additionalProperties:false for a plain zod object; we make the contract explicit
+    // here rather than relying on it (and to cover the refined/$ref-flattened shapes).
+    // SYNONYM SAFETY: decision tools accept AI-friendly synonyms (reasoning→rationale,
+    // etc.); those are normalized to the canonical param BEFORE strict validation runs
+    // (normalizeDecisionSynonyms in validation.ts), so strict mode never rejects a real
+    // synonym call — the model is simply shown the canonical names.
+    additionalProperties: false,
   };
 }
 
@@ -95,54 +104,36 @@ export const AIDIS_TOOL_DEFINITIONS: ToolDefinition[] = [
           {
             name: 'mandrel_ping',
             description: 'Test connectivity to Mandrel server',
-            inputSchema: {
-              type: 'object',
-              properties: {},
-              required: [],
-              additionalProperties: true
-            },
+            // STRICT-MODE (task 5fd58eef): derive from zod so the schema is strict AND
+            // surfaces the real `message` param the validator accepts (was hidden by a
+            // hand-written empty `{}` — a drift the table-driven source now closes).
+            inputSchema: buildInputSchema('mandrel_ping', {
+              message: 'Optional message echoed back by the server (connectivity check)'
+            }),
           },
           {
             name: 'mandrel_status',
             description: 'Get Mandrel server status and health information',
-            inputSchema: {
-              type: 'object',
-              properties: {},
-              required: [],
-              additionalProperties: true
-            },
+            inputSchema: buildInputSchema('mandrel_status'),
           },
           {
             name: 'mandrel_help',
             description: 'Display categorized list of all Mandrel tools',
-            inputSchema: {
-              type: 'object',
-              properties: {},
-              required: [],
-              additionalProperties: true
-            },
+            inputSchema: buildInputSchema('mandrel_help'),
           },
           {
             name: 'mandrel_explain',
             description: 'Get detailed help for a specific Mandrel tool',
-            inputSchema: {
-              type: 'object',
-              properties: {
-                toolName: { type: 'string', description: 'Name of the tool to explain (e.g., "context_search", "project_list")' }
-              },
-              required: ['toolName']
-            },
+            inputSchema: buildInputSchema('mandrel_explain', {
+              toolName: 'Name of the tool to explain (e.g., "context_search", "project_list")'
+            }),
           },
           {
             name: 'mandrel_examples',
             description: 'Get usage examples and patterns for a specific Mandrel tool',
-            inputSchema: {
-              type: 'object',
-              properties: {
-                toolName: { type: 'string', description: 'Name of the tool to get examples for (e.g., "context_search", "project_create")' }
-              },
-              required: ['toolName']
-            },
+            inputSchema: buildInputSchema('mandrel_examples', {
+              toolName: 'Name of the tool to get examples for (e.g., "context_search", "project_create")'
+            }),
           },
           {
             // SCHEMA-DRIFT CLASS FIX (tool-native linking, task 49ad7b4d): context_store
@@ -192,22 +183,18 @@ export const AIDIS_TOOL_DEFINITIONS: ToolDefinition[] = [
           {
             name: 'context_stats',
             description: 'Get context statistics for a project',
-            inputSchema: {
-              type: 'object',
-              properties: {},
-              required: [],
-              additionalProperties: true
-            },
+            inputSchema: buildInputSchema('context_stats', {
+              projectId: 'Project ID or name to scope the stats (defaults to current project)'
+            }),
           },
           {
             name: 'project_list',
             description: 'List all available projects with statistics',
-            inputSchema: {
-              type: 'object',
-              properties: {},
-              required: [],
-              additionalProperties: true
-            },
+            // STRICT-MODE: derive from zod — surfaces the real `includeStats` param the
+            // validator accepts (was hidden by a hand-written empty `{}`).
+            inputSchema: buildInputSchema('project_list', {
+              includeStats: 'Include per-project statistics in the result (accepts true/false)'
+            }),
           },
           {
             // A8: DERIVE from the zod validator (projectSchemas.create) so the
@@ -261,12 +248,7 @@ export const AIDIS_TOOL_DEFINITIONS: ToolDefinition[] = [
           {
             name: 'project_current',
             description: 'Get the currently active project information',
-            inputSchema: {
-              type: 'object',
-              properties: {},
-              required: [],
-              additionalProperties: true
-            },
+            inputSchema: buildInputSchema('project_current'),
           },
           {
             // A8: DERIVE from zod (projectSchemas.info).
@@ -347,12 +329,9 @@ export const AIDIS_TOOL_DEFINITIONS: ToolDefinition[] = [
           {
             name: 'decision_stats',
             description: 'Get technical decision statistics and analysis',
-            inputSchema: {
-              type: 'object',
-              properties: {},
-              required: [],
-              additionalProperties: true
-            },
+            inputSchema: buildInputSchema('decision_stats', {
+              projectId: 'Project ID or name to scope the stats (defaults to current project)'
+            }),
           },
 
 
@@ -388,7 +367,9 @@ export const AIDIS_TOOL_DEFINITIONS: ToolDefinition[] = [
               assignedTo: 'Filter by assignee (matches the assigned_to value set via task_create/task_update)',
               type: 'Filter by task type (feature, bug, bugfix, refactor, test, review, docs, devops, general)',
               tags: 'Filter by tags — returns tasks matching ANY of the provided tags',
-              limit: 'Maximum number of tasks to return (default 10)'
+              limit: 'Maximum number of tasks to return (default 10)',
+              offset: 'Number of leading results to skip (pagination)',
+              projectId: 'Project ID or name to scope the list (defaults to current project)'
             }),
           },
           {
@@ -436,12 +417,12 @@ export const AIDIS_TOOL_DEFINITIONS: ToolDefinition[] = [
           {
             name: 'task_progress_summary',
             description: 'Get task progress summary with grouping and completion percentages',
-            inputSchema: {
-              type: 'object',
-              properties: {},
-              required: [],
-              additionalProperties: true
-            }
+            // STRICT-MODE: derive from zod — surfaces the real `groupBy`/`projectId`
+            // params (was hidden by a hand-written empty `{}`).
+            inputSchema: buildInputSchema('task_progress_summary', {
+              groupBy: 'Grouping for the summary — one of: phase, status, priority, type, assignedTo (default: phase)',
+              projectId: 'Project ID or name to scope the summary (defaults to current project)'
+            })
           },
           {
             name: 'smart_search',
@@ -466,12 +447,11 @@ export const AIDIS_TOOL_DEFINITIONS: ToolDefinition[] = [
           {
             name: 'project_insights',
             description: 'Get comprehensive project health and insights',
-            inputSchema: {
-              type: 'object',
-              properties: {},
-              required: [],
-              additionalProperties: true
-            },
+            // STRICT-MODE: derive from zod — surfaces the real `projectId` param (was
+            // hidden by a hand-written empty `{}`).
+            inputSchema: buildInputSchema('project_insights', {
+              projectId: 'Project ID or name to scope insights (defaults to current project)'
+            }),
           },
 
         // Session Management Tools - DELETED (2025-10-24)

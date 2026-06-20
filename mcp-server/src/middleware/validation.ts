@@ -5,6 +5,7 @@
  */
 
 import { z } from 'zod';
+import { formatZodErrorMessage } from '../utils/actionableError.js';
 
 /**
  * Coerce a string-from-the-bridge boolean into a real boolean.
@@ -110,8 +111,15 @@ const contextSchemas = {
     limit: z.number().int().min(1).max(20).default(5),
     projectId: z.string().optional()
   }),
-  
-  stats: z.object({})
+
+  // STRICT-MODE SAFETY (task 5fd58eef): the handler (context.routes.handleStats) reads
+  // args.projectId via resolveProjectId to scope the stats, so projectId is a REAL,
+  // accepted-and-used param. It was missing from the zod schema, so under strict mode a
+  // legitimate project-scoped call would have been wrongly rejected. Declare it (don't
+  // drop it) — declared == accepted == handler-reads.
+  stats: z.object({
+    projectId: z.string().optional()
+  })
 };
 
 // Allowed project status values — must match the DB CHECK constraint on projects.status
@@ -303,7 +311,12 @@ const decisionSchemas = {
     { message: 'At least one field to update must be provided (status, outcomeStatus, outcomeNotes, lessonsLearned, implementationStatus, successCriteria, problemStatement, supersededBy, supersededReason)' }
   ),
 
-  stats: z.object({})
+  // STRICT-MODE SAFETY: decisions.routes.handleStats reads args.projectId via
+  // resolveProjectId to scope the stats — a real accepted-and-used param. Declare it so
+  // strict mode doesn't reject a legitimate project-scoped call.
+  stats: z.object({
+    projectId: z.string().optional()
+  })
 };
 
 // Multi-Agent Coordination Schemas
@@ -396,7 +409,13 @@ const taskSchemas = {
     // A7: pagination. Previously task_list had no offset, so with default limit 10
     // (max 100) any row beyond the first 100 was unreachable through the tool. Mirror
     // context_search's offset (z.number().int().min(0).optional()) so callers can page.
-    offset: z.number().int().min(0).optional()
+    offset: z.number().int().min(0).optional(),
+    // STRICT-MODE SAFETY (task 5fd58eef): tasks.routes.handleList reads args.projectId
+    // via resolveProjectId to scope the list — a REAL accepted-and-used param that was
+    // missing from the schema. Under strict mode a legitimate project-scoped task_list
+    // call (the retrievalErgonomics contract exercises exactly this) would be wrongly
+    // rejected. Declare it (don't drop it) — declared == accepted == handler-reads.
+    projectId: z.string().optional()
   }),
 
   update: z.object({
@@ -593,6 +612,26 @@ export const validationSchemas = {
 };
 
 /**
+ * STRICT MODE (task 5fd58eef): the set of param names a tool's zod schema declares.
+ * Unwraps the .refine()/.preprocess() wrappers (ZodEffects) to reach the underlying
+ * ZodObject so refined schemas (context_search, *_update) report their real keyset.
+ * One central derivation from the SAME zod schema that gates VALUES, so the advertised
+ * inputSchema (additionalProperties:false), the declared keys here, and the value
+ * validator can never drift apart. Returns null for a non-object schema (none today).
+ */
+function declaredKeys(schema: unknown): Set<string> | null {
+  let s: any = schema;
+  // Unwrap ZodEffects (refine/preprocess/transform) down to the inner object.
+  while (s && s._def && s._def.typeName === 'ZodEffects') {
+    s = s._def.schema;
+  }
+  if (s && s._def && s._def.typeName === 'ZodObject' && s.shape) {
+    return new Set(Object.keys(s.shape));
+  }
+  return null;
+}
+
+/**
  * Validate MCP tool arguments using Zod schemas
  * @param toolName Name of the MCP tool
  * @param args Arguments to validate
@@ -610,20 +649,46 @@ export function validateToolArguments(toolName: string, args: any) {
     throw new Error(`No validation schema found for tool: ${toolName}`);
   }
 
-  // Normalize synonyms for decision tools (AI-friendly parameter names)
+  // Normalize synonyms for decision tools (AI-friendly parameter names). This runs
+  // BEFORE the strict-key check so legitimate AI synonyms (reasoning→rationale, etc.)
+  // are mapped to canonical names and never tripped as "unknown params".
   if (toolName === 'decision_record' || toolName === 'decision_search' || toolName === 'decision_update') {
     args = normalizeDecisionSynonyms(toolName, args);
+  }
+
+  // STRICT-MODE ENFORCEMENT (task 5fd58eef): reject UNDECLARED params so the validator
+  // matches the strict (additionalProperties:false) inputSchema the model is shown.
+  // zod's .parse() silently STRIPS unknown keys (it doesn't reject them), which let the
+  // advertised contract and the accepted contract drift; this closes that gap centrally.
+  // Modeled as a ZodError so it flows through the SAME actionable-error formatter.
+  if (args && typeof args === 'object' && !Array.isArray(args)) {
+    const allowed = declaredKeys(schema);
+    if (allowed) {
+      const unknownKeys = Object.keys(args).filter((k) => !allowed.has(k));
+      if (unknownKeys.length > 0) {
+        const zErr = new z.ZodError([
+          {
+            code: z.ZodIssueCode.unrecognized_keys,
+            keys: unknownKeys,
+            path: [],
+            message: `Unrecognized key(s) in object: ${unknownKeys.map((k) => `'${k}'`).join(', ')}`,
+          },
+        ]);
+        throw new Error(formatZodErrorMessage(toolName, zErr));
+      }
+    }
   }
 
   try {
     return schema.parse(args);
   } catch (error) {
     if (error instanceof z.ZodError) {
-      const issues = error.issues.map(issue => 
-        `${issue.path.join('.')}: ${issue.message}`
-      ).join(', ');
-      
-      throw new Error(`Validation failed for ${toolName}: ${issues}`);
+      // ACTIONABLE ERRORS (task 5fd58eef / 3a14aa4a): drive a self-correcting message
+      // from the structured zod issues — field + allowed values/expected type + a
+      // corrected-call EXAMPLE — at this CENTRAL seam (not 30 bespoke strings). The
+      // "Validation failed for <tool>" prefix + field names are preserved so existing
+      // contract assertions stay green.
+      throw new Error(formatZodErrorMessage(toolName, error));
     }
     throw error;
   }

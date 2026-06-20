@@ -3,6 +3,8 @@
  * Standardizes response format across all MCP tools
  */
 
+import { actionableErrorText } from './actionableError.js';
+
 export interface McpResponse {
   content: Array<{
     type: 'text' | 'resource';
@@ -79,7 +81,14 @@ export function formatMcpError(
   error: Error | string,
   context?: string
 ): McpResponse {
-  const message = typeof error === 'string' ? error : error.message;
+  const rawMessage = typeof error === 'string' ? error : error.message;
+  // SECURE + ACTIONABLE (task 5fd58eef / 3a14aa4a): this is the central handler/route
+  // error seam. Sanitize the raw message so a leaky handler error can NEVER expose SQL,
+  // stack frames, connection strings, secret values, or internal paths to the model;
+  // an already-actionable validator message (Validation failed for …) passes through
+  // intact. The hand-built not-found messages (e.g. decision_get) are richer and live
+  // handler-side; this is the safe central fallback for everything else.
+  const message = actionableErrorText(rawMessage);
   const contextStr = context ? `\n\nContext: ${context}` : '';
 
   return {

@@ -56,7 +56,11 @@ const EXPECTED_PARAMS: Record<string, string[]> = {
   decision_update: ['decisionId', 'status', 'outcomeStatus', 'outcomeNotes', 'lessonsLearned',
     'implementationStatus', 'successCriteria', 'problemStatement', 'supersededBy', 'supersededReason'],
   // task_list (A7): `offset` added for pagination (rows beyond limit=100 were unreachable).
-  task_list: ['status', 'priority', 'assignedTo', 'type', 'tags', 'limit', 'offset'],
+  // projectId (5fd58eef strict-mode safety): the handler (tasks.routes.handleList) reads
+  // args.projectId via resolveProjectId to scope the list — a real accepted-and-used
+  // param that was missing from the schema, so under strict mode a legitimate
+  // project-scoped task_list call would have been wrongly rejected. Declared, not dropped.
+  task_list: ['status', 'priority', 'assignedTo', 'type', 'tags', 'limit', 'offset', 'projectId'],
   // task_create (36aa0549): the model-facing schema previously advertised ONLY
   // `title`, hiding `type` (+ enum) and every other accepted field — so an agent
   // asked for a "bug" silently got a `general` task. Now DERIVED from zod, so the
