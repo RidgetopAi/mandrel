@@ -283,4 +283,33 @@ describe('short-id resolution (task_update/task_details/decision_update/decision
     expect(() => validateToolArguments('task_details', { taskId: 'abcdef12' })).not.toThrow();
     expect(() => validateToolArguments('decision_get', { decisionId: 'abcdef12' })).not.toThrow();
   });
+
+  // ── CASE 4 (regression lock): SQL-wildcard ids are REJECTED at the validator ──
+  // The resolver does a parameterized prefix match (`id::text LIKE $1 || '%'`). The hex
+  // shape-check is the FIRST line of defence: a `%` or `_` in an id would be a LIKE
+  // metacharacter, so it must never reach the LIKE bind. The hex regex already rejects
+  // them (non-hex chars); these cases LOCK that against any future loosening of the
+  // validator (e.g. someone widening the allowed charset). 8 leading hex chars + a single
+  // wildcard proves it's the wildcard — not the length — that gets it rejected.
+  test('CASE 4: a SQL `%` wildcard in an id is REJECTED by the validator (LIKE-metachar guard)', () => {
+    expect(() => validateToolArguments('task_details', { taskId: 'abcd%f12' }))
+      .toThrow(/taskId/i);
+    expect(() => validateToolArguments('task_update', { taskId: 'abcd%f12', status: 'todo' }))
+      .toThrow(/taskId/i);
+    expect(() => validateToolArguments('decision_get', { decisionId: 'abcd%f12' }))
+      .toThrow(/decisionId/i);
+    expect(() => validateToolArguments('decision_update', { decisionId: 'abcd%f12', outcomeStatus: 'failed' }))
+      .toThrow(/decisionId/i);
+  });
+
+  test('CASE 4: a SQL `_` single-char wildcard in an id is REJECTED by the validator (LIKE-metachar guard)', () => {
+    expect(() => validateToolArguments('task_details', { taskId: 'abcd_f12' }))
+      .toThrow(/taskId/i);
+    expect(() => validateToolArguments('task_update', { taskId: 'abcd_f12', status: 'todo' }))
+      .toThrow(/taskId/i);
+    expect(() => validateToolArguments('decision_get', { decisionId: 'abcd_f12' }))
+      .toThrow(/decisionId/i);
+    expect(() => validateToolArguments('decision_update', { decisionId: 'abcd_f12', outcomeStatus: 'failed' }))
+      .toThrow(/decisionId/i);
+  });
 });
