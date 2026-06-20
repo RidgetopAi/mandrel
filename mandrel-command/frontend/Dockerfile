@@ -1,38 +1,56 @@
-# Multi-stage build for AIDIS Command Frontend
-# Optimized React application with nginx - size and performance optimized
+# Multi-stage build for Mandrel Command Frontend
+# Optimized React application with nginx - size and performance optimized.
+#
+# BUILD CONTEXT: the mandrel-command/ npm-workspace ROOT (set in docker-compose.yml:
+#   context: ./mandrel-command, dockerfile: frontend/Dockerfile). The workspace-root
+#   package-lock.json is the SINGLE SOURCE OF TRUTH; we install WORKSPACE-SCOPED
+#   (`npm ci -w mandrel-command-frontend`) so this image only gets the frontend's
+#   dependency tree resolved deterministically from the root lock — no backend/shared
+#   bloat. The frontend ships as a static nginx bundle, so node_modules is build-only.
 
 # Stage 1: Dependencies stage
 FROM node:22-alpine AS deps
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
-# Copy package files for dependency resolution (.npmrc sets legacy-peer-deps for CRA5+TS5)
-COPY package*.json .npmrc ./
-# Install dependencies with cache optimization
-RUN npm ci --ignore-scripts && \
+# Copy the workspace manifests + the ROOT lockfile (single source of truth).
+# .npmrc carries legacy-peer-deps=true (CRA react-scripts@5 declares an optional
+# typescript@^3||^4 peer; this app uses typescript@^5 — works, but npm needs the hint).
+COPY package.json package-lock.json .npmrc ./
+COPY backend/package.json ./backend/
+COPY frontend/package.json ./frontend/
+COPY shared/package.json ./shared/
+
+# Install deps for ONLY the frontend workspace member, deterministic from root lock.
+RUN npm ci -w mandrel-command-frontend --include-workspace-root=false \
+        --ignore-scripts && \
     npm cache clean --force
 
 # Stage 2: Build stage
 FROM node:22-alpine AS builder
 WORKDIR /app
 
-# Copy dependencies from deps stage
+# Reuse the resolved deps (hoisted to /app/node_modules + member-local under
+# /app/frontend/node_modules) and re-copy manifests so the workspace graph is intact.
 COPY --from=deps /app/node_modules ./node_modules
-COPY package*.json .npmrc ./
+COPY --from=deps /app/frontend/node_modules ./frontend/node_modules
+COPY package.json package-lock.json .npmrc ./
+COPY backend/package.json ./backend/
+COPY frontend/package.json ./frontend/
+COPY shared/package.json ./shared/
 
-# Copy source code
-COPY . .
+# Copy this member's source and build it (react-scripts -> frontend/build).
+COPY frontend/ ./frontend/
 
 # Build React application with optimizations
 ENV GENERATE_SOURCEMAP=false
 ENV INLINE_RUNTIME_CHUNK=false
-RUN npm run build
+RUN npm run build -w mandrel-command-frontend
 
-# Remove development files and clean build
-RUN rm -rf node_modules && \
-    rm -rf src && \
-    find build -name "*.map" -delete && \
-    find build -name "*.txt" ! -name "robots.txt" -delete
+# Remove dev artifacts and trim the static bundle (build-only deps are discarded
+# anyway because the production stage copies ONLY frontend/build).
+RUN find frontend/build -name "*.map" -delete && \
+    find frontend/build -name "*.txt" ! -name "robots.txt" -delete
 
 # Stage 3: Nginx production runtime
 FROM nginx:1.25-alpine AS production
@@ -43,10 +61,10 @@ RUN apk add --no-cache \
     && rm -rf /var/cache/apk/*
 
 # Copy built React app to nginx html directory
-COPY --from=builder /app/build /usr/share/nginx/html
+COPY --from=builder /app/frontend/build /usr/share/nginx/html
 
 # Install the nginx site config from a real file (listen 3000, SPA fallback, gzip)
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY frontend/nginx.conf /etc/nginx/conf.d/default.conf
 
 # Create non-root user and adjust permissions
 RUN addgroup -g 1001 -S aidis && \

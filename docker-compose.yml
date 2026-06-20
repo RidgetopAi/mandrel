@@ -90,8 +90,11 @@ services:
   # Mandrel Command Backend - REST API server
   mandrel-command-backend:
     build:
-      context: ./mandrel-command/backend
-      dockerfile: Dockerfile
+      # Build from the mandrel-command npm-workspace ROOT so the workspace-root
+      # package-lock.json is the single source of truth (no per-member lockfile).
+      # The Dockerfile installs workspace-scoped (npm ci -w) to avoid frontend bloat.
+      context: ./mandrel-command
+      dockerfile: backend/Dockerfile
     container_name: mandrel-command-backend
     restart: unless-stopped
     ports:
@@ -144,8 +147,10 @@ services:
   # Mandrel Command Frontend - React UI served via nginx
   mandrel-command-frontend:
     build:
-      context: ./mandrel-command/frontend
-      dockerfile: Dockerfile
+      # Build from the mandrel-command npm-workspace ROOT (single-source-of-truth
+      # lockfile). Workspace-scoped install (npm ci -w) keeps backend deps out.
+      context: ./mandrel-command
+      dockerfile: frontend/Dockerfile
     container_name: mandrel-command-frontend
     restart: unless-stopped
     ports:

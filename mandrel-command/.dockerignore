@@ -1,0 +1,101 @@
+# .dockerignore for the mandrel-command workspace-root build context.
+#
+# Both command images (backend + frontend) build from this directory as context
+# (docker-compose.yml: context: ./mandrel-command). Keep the context TIGHT: the
+# Dockerfiles COPY manifests + the relevant member source explicitly, so everything
+# heavy or irrelevant should be excluded to keep the build fast and the daemon
+# transfer small. node_modules in particular is ~1GB+ and must never be sent.
+
+# Dependencies — always reinstalled deterministically from the root lockfile.
+node_modules
+*/node_modules
+**/node_modules
+.npm
+.pnpm-debug.log*
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build outputs — regenerated inside the image.
+*/dist
+*/build
+**/dist
+**/build
+
+# Logs / runtime data
+logs/
+*/logs/
+*.log
+pids/
+*.pid
+*.seed
+*.pid.lock
+*/uploads/
+
+# Tests & coverage (not needed to build the runtime artifact)
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.ts
+**/*.spec.tsx
+coverage/
+*/coverage/
+.nyc_output
+.jest-cache
+
+# Git / VCS
+.git
+.gitignore
+.gitattributes
+
+# Editor / OS cruft
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+
+# Docs & misc (markdown, demos, helper scripts) — not part of the build.
+*.md
+!frontend/src/**/*.md
+!backend/src/**/*.md
+demo-*.js
+demo-*.md
+create-admin.js
+*/cookies.txt
+docs/
+*/docs/
+
+# Environment files — secrets must never enter the image (.env.example is allowlisted
+# below because dotenv-safe validates against it at runtime).
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+*/.env
+*/.env.local
+*/.env.development
+*/.env.test
+*/.env.production
+!.env.example
+!*/.env.example
+
+# Docker / compose files (no need to ship build configs into the image)
+docker-compose.yml
+docker-compose.*.yml
+Dockerfile*
+
+# OpenAPI generated dev files
+.openapi/
+*/.openapi/
+
+# Temp
+tmp/
+temp/
+*.tgz
+*.backup
+backups/
