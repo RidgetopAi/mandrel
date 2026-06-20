@@ -14,6 +14,9 @@
 #   3. backend type-check     — mandrel-command/backend tsc --noEmit.
 #   4. backend tests          — jest against the same disposable migrated DB
 #                               (infra-only suites skip via MANDREL_SKIP_DB_TESTS).
+#   4b. frontend tests        — mandrel-command/frontend react-scripts test in
+#                               CI=true mode (runs once, non-zero on failure).
+#                               Enforces the projectResolution guards (15 cases).
 #   5. frontend build         — mandrel-command/frontend CRA compile gate.
 #
 # Disposable infra: ONE throwaway Postgres DB + role per run, named with a
@@ -238,6 +241,7 @@ else
   record "2. mcp-server type-check" "FAIL"
   record "3. backend type-check" "FAIL"
   record "4. backend tests" "FAIL"
+  record "4b. frontend tests" "FAIL"
   record "5. frontend build" "FAIL"
   hdr "SUMMARY"; for i in "${!STAGE_NAMES[@]}"; do printf '  %-32s %s\n' "${STAGE_NAMES[$i]}" "${STAGE_RESULTS[$i]}"; done
   printf '\n%s########## RED ##########%s\n' "$RED" "$RST"
@@ -343,6 +347,42 @@ elif grep -qiE "No tests found|0 total|found 0 tests" "$BE_LOG"; then
 else
   echo "${RED}FAIL: backend tests${RST}"
   record "4. backend tests" "FAIL"
+fi
+
+# =============================================================================
+# STAGE 4b — frontend tests (react-scripts test, CI mode)
+# =============================================================================
+# Enforces the frontend Jest/RTL guards at the gate so frontend regressions (and
+# in particular the projectResolution default-project guards, 15 cases from the
+# v0.5.7 UI fix) can no longer slip through. CI=true makes react-scripts run the
+# suite ONCE and exit non-zero on any failure (NOT watch mode). Gates the same
+# way every other stage does: a non-zero rc => record FAIL => ci.sh goes RED.
+#
+# Unlike the backend stage, "no tests found" is treated as a FAILURE here: this
+# stage exists specifically to enforce existing frontend guards, so their silent
+# disappearance is a regression, not a benign skip.
+# =============================================================================
+hdr "STAGE 4b: frontend tests (react-scripts test, CI=true)"
+FE_LOG="/tmp/ci_frontend_test_${SFX}.log"
+set +e
+( cd "$FRONTEND_DIR" && CI=true npm test ) 2>&1 | tee "$FE_LOG"
+FE_RC=${PIPESTATUS[0]}
+set -e
+if [[ $FE_RC -ne 0 ]]; then
+  echo "${RED}FAIL: frontend tests (react-scripts test, CI=true)${RST}"
+  record "4b. frontend tests" "FAIL"
+elif grep -qiE "No tests found|Tests:[[:space:]]+0 total" "$FE_LOG"; then
+  # Precise zero-tests detection: react-scripts prints "No tests found", and the
+  # jest summary line is "Tests:   N passed/total". Anchor on those — do NOT match
+  # the bare "0 total" (the "Snapshots:   0 total" summary line is always present
+  # and would false-positive a healthy run).
+  echo "${RED}FAIL: frontend tests — react-scripts found ZERO tests."
+  echo "This stage enforces the existing frontend guards (incl. projectResolution);"
+  echo "their disappearance is a regression, not a skip.${RST}"
+  record "4b. frontend tests (no tests)" "FAIL"
+else
+  echo "${GRN}PASS: frontend tests${RST}"
+  record "4b. frontend tests" "PASS"
 fi
 
 # =============================================================================
