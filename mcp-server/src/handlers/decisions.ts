@@ -128,6 +128,11 @@ export interface RecordDecisionRequest {
   problemStatement?: string;
   successCriteria?: string;
   implementationStatus?: ImplementationStatus;
+  // A1: outcome fields are settable up front at record time (mirroring
+  // implementationStatus). Default outcome_status stays 'unknown' in the DB if unset.
+  outcomeStatus?: OutcomeStatus;
+  outcomeNotes?: string;
+  lessonsLearned?: string;
   alternativesConsidered?: Alternative[];
   decidedBy?: string;
   stakeholders?: string[];
@@ -161,6 +166,12 @@ export interface SearchDecisionsRequest {
   dateFrom?: Date;
   dateTo?: Date;
   limit?: number;
+  // A6: surfaced through the route so the filter the model can set actually arrives.
+  // The handler ALWAYS selects the outcome columns (SELECT *) and the route maps
+  // outcomeStatus/outcomeNotes/lessonsLearned into every result, so this is the
+  // display/intent hint the search advertises; accepting it here keeps the
+  // declared==forwarded==accepted contract intact (no silently-dropped param).
+  includeOutcome?: boolean;
 }
 
 class DecisionsHandler {
@@ -237,14 +248,20 @@ class DecisionsHandler {
         });
       }
 
-      // Insert decision
+      // Insert decision.
+      // A1: outcome_status/outcome_notes/lessons_learned are now persisted on CREATE
+      // (mirroring implementation_status, which already round-tripped on create).
+      // outcome_status COALESCEs to 'unknown' (the DB default) when the caller omits it,
+      // so existing callers are unaffected; when supplied (e.g. 'too_early') it sticks.
       const result = await db.query(`
         INSERT INTO technical_decisions (
           project_id, session_id, decision_type, title, description, rationale,
           problem_statement, success_criteria, alternatives_considered,
           decided_by, stakeholders, impact_level, affected_components,
-          tags, category, implementation_status, embedding
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, COALESCE($16, 'planned'), $17::vector)
+          tags, category, implementation_status,
+          outcome_status, outcome_notes, lessons_learned, embedding
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15,
+          COALESCE($16, 'planned'), COALESCE($17, 'unknown'), $18, $19, $20::vector)
         RETURNING *
       `, [
         projectId,
@@ -263,6 +280,9 @@ class DecisionsHandler {
         request.tags || [],
         request.category?.trim() || null,
         request.implementationStatus || null,
+        request.outcomeStatus || null,
+        request.outcomeNotes?.trim() || null,
+        request.lessonsLearned?.trim() || null,
         embeddingLiteral
       ]);
 
@@ -355,7 +375,15 @@ class DecisionsHandler {
       if (request.supersededBy !== undefined) {
         updateFields.push(`superseded_by = $${paramIndex}`);
         updateFields.push(`superseded_date = CURRENT_TIMESTAMP`);
-        updateFields.push(`status = 'superseded'`);
+        // A2: only auto-set status='superseded' here when the caller did NOT separately
+        // provide `status`. Previously this branch ALWAYS injected status='superseded'
+        // while the status branch above also emitted `status = $N` → two assignments to
+        // the same column → Postgres "multiple assignments to column status". When the
+        // caller passes status explicitly, that branch already set it (so we must not
+        // emit a second one); when they don't, supersession implies 'superseded'.
+        if (request.status === undefined) {
+          updateFields.push(`status = 'superseded'`);
+        }
         values.push(request.supersededBy);
         paramIndex++;
       }

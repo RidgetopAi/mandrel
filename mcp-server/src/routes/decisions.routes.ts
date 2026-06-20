@@ -39,6 +39,11 @@ class DecisionsRoutes {
         problemStatement: args.problemStatement,
         successCriteria: args.successCriteria,
         implementationStatus: args.implementationStatus,
+        // A1: forward the outcome fields so a decision recorded WITH a known outcome
+        // (or lessons) keeps them instead of having them silently dropped at the route.
+        outcomeStatus: args.outcomeStatus,
+        outcomeNotes: args.outcomeNotes,
+        lessonsLearned: args.lessonsLearned,
         affectedComponents: args.affectedComponents,
         tags: args.tags,
         projectId: projectId,
@@ -90,10 +95,15 @@ class DecisionsRoutes {
       const decisions = await decisionsHandler.searchDecisions({
         query: args.query,
         decisionType: args.decisionType,
+        // A6: forward `status` (the handler filters on it — decisions.ts) and
+        // `includeOutcome` (advertised in the zod schema); both were previously
+        // dropped at the route, so a status-filtered search silently ignored the filter.
+        status: args.status,
         impactLevel: args.impactLevel,
         component: args.component,
         tags: args.tags,
         limit: args.limit,
+        includeOutcome: args.includeOutcome,
         projectId: projectId
       });
 

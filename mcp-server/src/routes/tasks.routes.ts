@@ -82,7 +82,8 @@ class TasksRoutes {
         args.priority,
         args.phase,
         args.statuses,
-        args.limit
+        args.limit,
+        args.offset // A7: forward pagination offset to the handler
       );
 
       if (tasks.length === 0) {
@@ -140,7 +141,18 @@ class TasksRoutes {
    */
   async handleUpdate(args: any): Promise<McpResponse> {
     try {
-      await tasksHandler.updateTaskStatus(args.taskId, args.status, args.assignedTo, args.metadata);
+      // A4: forward priority + progress (real columns) so they're actually written —
+      // previously only status/assignedTo/metadata reached the handler, so a
+      // priority/progress-only update returned success while writing nothing.
+      await tasksHandler.updateTaskStatus(
+        args.taskId,
+        args.status,
+        args.assignedTo,
+        args.metadata,
+        undefined, // connectionId (not threaded on this route today)
+        args.priority,
+        args.progress
+      );
 
       const taskStatusIconMap = {
         todo: '⏰',
@@ -149,16 +161,23 @@ class TasksRoutes {
         completed: '✅',
         cancelled: '❌'
       } as const;
-      const statusIcon = taskStatusIconMap[args.status as keyof typeof taskStatusIconMap] || '❓';
+      const statusIcon = args.status
+        ? (taskStatusIconMap[args.status as keyof typeof taskStatusIconMap] || '❓')
+        : '';
 
-      const assignedText = args.assignedTo ? `\n🤖 Assigned To: ${args.assignedTo}` : '';
+      // Build a summary of exactly the fields that were updated (status is now optional).
+      const applied: string[] = [];
+      if (args.status !== undefined) applied.push(`📊 New Status: ${args.status} ${statusIcon}`);
+      if (args.priority !== undefined) applied.push(`⚡ Priority: ${args.priority}`);
+      if (args.progress !== undefined) applied.push(`📈 Progress: ${args.progress}%`);
+      if (args.assignedTo !== undefined) applied.push(`🤖 Assigned To: ${args.assignedTo}`);
+      const appliedText = applied.length > 0 ? `\n${applied.join('\n')}` : '';
 
       return {
         content: [{
           type: 'text',
           text: `✅ Task updated successfully!\n\n` +
-                `📋 Task: ${args.taskId}\n` +
-                `📊 New Status: ${args.status} ${statusIcon}${assignedText}\n` +
+                `📋 Task: ${args.taskId}${appliedText}\n` +
                 `⏰ Updated: ${new Date().toISOString().split('T')[0]}\n\n` +
                 `🤝 Changes visible to all coordinating agents!`
         }],

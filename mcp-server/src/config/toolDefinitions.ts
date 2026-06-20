@@ -197,106 +197,53 @@ export const AIDIS_TOOL_DEFINITIONS: ToolDefinition[] = [
             },
           },
           {
+            // A8: DERIVE from the zod validator (projectSchemas.create) so the
+            // model-facing schema can't hide an accepted param. The hand-written
+            // schema omitted `metadata` even though the validator accepts it and the
+            // handler persists it to projects.metadata — the same boundary-drift class
+            // already fixed for context_store/task_create. Now `metadata` is visible.
             name: 'project_create',
             description: 'Create a new project',
-            inputSchema: {
-              type: 'object',
-              properties: {
-                name: {
-                  type: 'string',
-                  description: 'Unique project name'
-                },
-                description: {
-                  type: 'string',
-                  description: 'Optional human-readable description of the project'
-                },
-                status: {
-                  type: 'string',
-                  enum: ['active', 'archived', 'completed', 'paused'],
-                  description: 'Optional initial status (default: active)'
-                },
-                gitRepoUrl: {
-                  type: 'string',
-                  description: 'Optional git repository URL'
-                },
-                rootDirectory: {
-                  type: 'string',
-                  description: 'Optional root directory path'
-                }
-              },
-              required: ['name'],
-              additionalProperties: true
-            },
+            inputSchema: buildInputSchema('project_create', {
+              name: 'Unique project name',
+              description: 'Optional human-readable description of the project',
+              status: 'Optional initial status — one of: active, archived, completed, paused (default: active)',
+              gitRepoUrl: 'Optional git repository URL',
+              rootDirectory: 'Optional root directory path',
+              metadata: 'Optional structured metadata (jsonb object) persisted on the project'
+            }),
           },
           {
+            // A8: DERIVE from zod (projectSchemas.update) — surfaces `metadata`, which
+            // the handler already persists but the hand-written schema hid.
             name: 'project_update',
-            description: 'Update an existing project (name, description, and/or status) identified by id or name',
-            inputSchema: {
-              type: 'object',
-              properties: {
-                project: {
-                  type: 'string',
-                  description: 'Project ID or name to update'
-                },
-                name: {
-                  type: 'string',
-                  description: 'New project name (must be unique)'
-                },
-                description: {
-                  type: 'string',
-                  description: 'New description (pass empty string to clear)'
-                },
-                status: {
-                  type: 'string',
-                  enum: ['active', 'archived', 'completed', 'paused'],
-                  description: 'New status'
-                },
-                gitRepoUrl: {
-                  type: 'string',
-                  description: 'New git repository URL'
-                },
-                rootDirectory: {
-                  type: 'string',
-                  description: 'New root directory path'
-                }
-              },
-              required: ['project'],
-              additionalProperties: true
-            },
+            description: 'Update an existing project (name, description, status, and/or metadata) identified by id or name',
+            inputSchema: buildInputSchema('project_update', {
+              project: 'Project ID or name to update',
+              name: 'New project name (must be unique)',
+              description: 'New description (pass empty string to clear)',
+              status: 'New status — one of: active, archived, completed, paused',
+              gitRepoUrl: 'New git repository URL',
+              rootDirectory: 'New root directory path',
+              metadata: 'New structured metadata (jsonb object) to persist on the project'
+            }),
           },
           {
+            // A8: DERIVE from zod (projectSchemas.delete).
             name: 'project_delete',
             description: 'Delete a project (by id or name). DESTRUCTIVE: cascade-deletes all owned contexts, decisions, tasks, and sessions. Refuses non-empty projects unless confirm:true.',
-            inputSchema: {
-              type: 'object',
-              properties: {
-                project: {
-                  type: 'string',
-                  description: 'Project ID or name to delete'
-                },
-                confirm: {
-                  type: 'boolean',
-                  description: 'Must be true to delete a non-empty project (acknowledges cascade-deletion of all owned data). Default: false'
-                }
-              },
-              required: ['project'],
-              additionalProperties: true
-            },
+            inputSchema: buildInputSchema('project_delete', {
+              project: 'Project ID or name to delete',
+              confirm: 'Must be true to delete a non-empty project (acknowledges cascade-deletion of all owned data). Default: false'
+            }),
           },
           {
+            // A8: DERIVE from zod (projectSchemas.switch).
             name: 'project_switch',
             description: 'Switch to a different project (sets it as current active project)',
-            inputSchema: {
-              type: 'object',
-              properties: {
-                project: {
-                  type: 'string',
-                  description: 'Project ID or name'
-                }
-              },
-              required: ['project'],
-              additionalProperties: true
-            },
+            inputSchema: buildInputSchema('project_switch', {
+              project: 'Project ID or name'
+            }),
           },
           {
             name: 'project_current',
@@ -309,19 +256,12 @@ export const AIDIS_TOOL_DEFINITIONS: ToolDefinition[] = [
             },
           },
           {
+            // A8: DERIVE from zod (projectSchemas.info).
             name: 'project_info',
             description: 'Get detailed information about a specific project',
-            inputSchema: {
-              type: 'object',
-              properties: {
-                project: {
-                  type: 'string',
-                  description: 'Project ID or name'
-                }
-              },
-              required: ['project'],
-              additionalProperties: true
-            },
+            inputSchema: buildInputSchema('project_info', {
+              project: 'Project ID or name'
+            }),
           },
           {
             name: 'decision_record',
@@ -430,23 +370,21 @@ export const AIDIS_TOOL_DEFINITIONS: ToolDefinition[] = [
             }),
           },
           {
+            // Guard 2 + A3/A4/A5: DERIVE from the zod validator so the model sees the
+            // FULL accepted field set. The old hand-written schema advertised ONLY
+            // taskId+status (and listed status as required), hiding priority/progress
+            // (now real, written fields) and assignedTo. Deriving from zod means
+            // declared == accepted == handler-reads and can't drift again. Note 'notes'
+            // is intentionally absent: there is no `notes` column on tasks (A4).
             name: 'task_update',
-            description: 'Update task status and assignment',
-            inputSchema: {
-              type: 'object',
-              properties: {
-                taskId: {
-                  type: 'string',
-                  description: 'Task ID'
-                },
-                status: {
-                  type: 'string',
-                  description: 'New status: todo, in_progress, blocked, completed, cancelled'
-                }
-              },
-              required: ['taskId', 'status'],
-              additionalProperties: true
-            },
+            description: 'Update a task — change any of status, priority, progress, or assignee (provide at least one). Status accepts: todo, in_progress, blocked, completed, cancelled.',
+            inputSchema: buildInputSchema('task_update', {
+              taskId: 'Task ID (UUID) — required',
+              status: 'New status — one of: todo, in_progress, blocked, completed, cancelled',
+              priority: 'New priority — one of: low, medium, high, urgent',
+              assignedTo: 'New assignee (free-form string, e.g. an agent name)',
+              progress: 'Completion percentage 0–100'
+            }),
           },
           {
             name: 'task_details',
@@ -457,20 +395,21 @@ export const AIDIS_TOOL_DEFINITIONS: ToolDefinition[] = [
             }),
           },
           {
+            // Guard 2: DERIVE from the zod validator (taskSchemas.bulk_update). The old
+            // hand-written schema advertised ONLY task_ids, hiding status/assignedTo/
+            // priority/metadata/notes — all of which the handler honors. Now the model
+            // sees exactly the accepted field set and the layers can't drift again.
             name: 'task_bulk_update',
             description: 'Update multiple tasks atomically with the same changes',
-            inputSchema: {
-              type: 'object',
-              properties: {
-                task_ids: {
-                  type: 'array',
-                  items: { type: 'string' },
-                  description: 'Task IDs to update'
-                }
-              },
-              required: ['task_ids'],
-              additionalProperties: true
-            },
+            inputSchema: buildInputSchema('task_bulk_update', {
+              task_ids: 'Task IDs (UUIDs) to update (1–50)',
+              status: 'New status for all — one of: todo, in_progress, blocked, completed, cancelled',
+              assignedTo: 'New assignee for all (free-form string)',
+              priority: 'New priority for all — one of: low, medium, high, urgent',
+              metadata: 'Structured metadata (jsonb object) to set on all',
+              notes: 'Notes to merge into each task\'s metadata',
+              projectId: 'Project ID to validate ownership against (optional)'
+            }),
           },
           {
             name: 'task_progress_summary',

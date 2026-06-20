@@ -200,6 +200,13 @@ const decisionSchemas = {
     // decision_update.outcomeStatus. implementationStatus tracks the build lifecycle.
     successCriteria: z.string().max(2000).optional(),
     implementationStatus: implementationStatusEnum.optional(),
+    // A1: outcome fields are also settable AT RECORD TIME (mirroring implementationStatus,
+    // which already round-trips on create). Previously zod's .parse() silently stripped
+    // these on create → a decision recorded with a known outcome lost it. outcomeStatus
+    // defaults to 'unknown' in the DB when unset; 'too_early' etc. are allowed.
+    outcomeStatus: outcomeStatusEnum.optional(),
+    outcomeNotes: z.string().max(2000).optional(),
+    lessonsLearned: z.string().max(2000).optional(),
     affectedComponents: z.array(z.string()).optional(),
     tags: baseTags.optional(),
     projectId: z.string().optional(),
@@ -301,50 +308,79 @@ const agentSchemas = {
   })
 };
 
+// Task enums — defined ONCE and reused across task_create/list/update/bulk_update
+// so the advertised + accepted value sets can never drift apart (Lesson 011: one
+// centralized definition, not N copies). taskStatusEnum INCLUDES 'cancelled' to
+// match the `tasks.status` column (varchar(50), no CHECK constraint — see the
+// COMMENT in 000_baseline_schema.sql which documents 'cancelled' as a real value).
+// Previously task_create/list/update advertised only todo/in_progress/completed/
+// blocked while task_bulk_update already allowed 'cancelled' → a status the DB
+// accepts was rejected by the validator on the single-task path (A3).
+const taskStatusEnum = z.enum(['todo', 'in_progress', 'blocked', 'completed', 'cancelled']);
+const taskPriorityEnum = z.enum(['low', 'medium', 'high', 'urgent']);
+const taskTypeEnum = z.enum(['feature', 'bug', 'bugfix', 'refactor', 'test', 'review', 'docs', 'documentation', 'devops', 'general']);
+
 // Task Management Schemas
 const taskSchemas = {
   create: z.object({
     title: z.string().min(1).max(255),
     description: z.string().max(2000).optional(),
-    type: z.enum(['feature', 'bug', 'bugfix', 'refactor', 'test', 'review', 'docs', 'documentation', 'devops', 'general']).optional().default('general'),
-    priority: z.enum(['low', 'medium', 'high', 'urgent']).optional().default('medium'),
-    status: z.enum(['todo', 'in_progress', 'completed', 'blocked']).optional(),
+    type: taskTypeEnum.optional().default('general'),
+    priority: taskPriorityEnum.optional().default('medium'),
+    status: taskStatusEnum.optional(),
     assignedTo: z.string().optional(),
     dependencies: z.array(z.string()).max(10).optional(),
     tags: baseTags,
     projectId: z.string().optional(),
     metadata: baseMetadata
   }),
-  
+
   list: z.object({
-    status: z.enum(['todo', 'in_progress', 'completed', 'blocked']).optional(),
-    priority: z.enum(['low', 'medium', 'high', 'urgent']).optional(),
+    status: taskStatusEnum.optional(),
+    priority: taskPriorityEnum.optional(),
     // assignedTo (NOT assignedAgent): the handler reads args.assignedTo and the
     // column is `assigned_to` (a simple string, not an FK/uuid — same as
     // task_create/task_update/bulk_update). The prior `assignedAgent` name + .uuid()
     // both diverged from the handler read, so this filter was silently dropped
     // (zod .parse() strips the undeclared assignedTo → undefined at the handler).
     assignedTo: z.string().optional(),
-    type: z.enum(['feature', 'bug', 'bugfix', 'refactor', 'test', 'review', 'docs', 'documentation', 'devops', 'general']).optional(),
+    type: taskTypeEnum.optional(),
     tags: baseTags,
-    limit: baseLimit
+    limit: baseLimit,
+    // A7: pagination. Previously task_list had no offset, so with default limit 10
+    // (max 100) any row beyond the first 100 was unreachable through the tool. Mirror
+    // context_search's offset (z.number().int().min(0).optional()) so callers can page.
+    offset: z.number().int().min(0).optional()
   }),
-  
+
   update: z.object({
     taskId: z.string().uuid(),
-    status: z.enum(['todo', 'in_progress', 'completed', 'blocked']).optional(),
-    priority: z.enum(['low', 'medium', 'high', 'urgent']).optional(),
-    assignedTo: z.string().uuid().optional(),
-    progress: z.number().min(0).max(100).optional(),
-    notes: z.string().max(2000).optional()
-  }),
+    status: taskStatusEnum.optional(),
+    priority: taskPriorityEnum.optional(),
+    // A5: assignees are free-form strings everywhere else (task_create / bulk_update)
+    // and the `assigned_to` column is varchar(200), NOT a uuid FK. The prior
+    // .uuid() here rejected every real (non-UUID) assignee. Align to a plain string.
+    assignedTo: z.string().optional(),
+    // A4: priority + progress are REAL columns on `tasks` and are now wired through
+    // route→handler (they were previously accepted by zod but silently dropped — the
+    // route forwarded only status/assignedTo/metadata). `notes` was REMOVED: there is
+    // no `notes` column on `tasks`, so advertising it as an updatable field would be a
+    // promise the handler cannot keep (don't advertise unsupported params).
+    progress: z.number().int().min(0).max(100).optional()
+  }).refine(
+    data => data.status !== undefined || data.priority !== undefined ||
+            data.assignedTo !== undefined || data.progress !== undefined,
+    { message: 'At least one field to update must be provided (status, priority, assignedTo, progress)' }
+  ),
 
   bulk_update: z.object({
     task_ids: z.array(z.string().uuid()).min(1).max(50),
-    status: z.enum(['todo', 'in_progress', 'blocked', 'completed', 'cancelled']).optional(),
+    status: taskStatusEnum.optional(),
     assignedTo: z.string().optional(),
-    priority: z.enum(['low', 'medium', 'high', 'urgent']).optional(),
+    priority: taskPriorityEnum.optional(),
     metadata: baseMetadata,
+    // bulk_update's `notes` IS supported — the handler merges it into the metadata
+    // jsonb column (see tasks.ts bulkUpdateTasks). Kept as-is (real, honored).
     notes: z.string().max(2000).optional(),
     projectId: z.string().optional()
   }),

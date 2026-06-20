@@ -40,17 +40,35 @@ const EXPECTED_PARAMS: Record<string, string[]> = {
   // Learning-loop wiring (task aff35ac1): decision_record/decision_update now DERIVE
   // their model-facing inputSchema from the zod validator, so the params the model
   // sees == the params the validator accepts == the params the handler reads.
+  // decision_record (A1): outcome fields (outcomeStatus/outcomeNotes/lessonsLearned)
+  // are now settable up front and persisted on create (mirroring implementationStatus),
+  // so they join the advertised+accepted set.
   decision_record: ['decisionType', 'title', 'description', 'rationale', 'impactLevel',
     'alternativesConsidered', 'problemStatement', 'successCriteria', 'implementationStatus',
+    'outcomeStatus', 'outcomeNotes', 'lessonsLearned',
     'affectedComponents', 'tags', 'projectId', 'metadata'],
   decision_update: ['decisionId', 'status', 'outcomeStatus', 'outcomeNotes', 'lessonsLearned',
     'implementationStatus', 'successCriteria', 'problemStatement', 'supersededBy', 'supersededReason'],
-  task_list: ['status', 'priority', 'assignedTo', 'type', 'tags', 'limit'],
+  // task_list (A7): `offset` added for pagination (rows beyond limit=100 were unreachable).
+  task_list: ['status', 'priority', 'assignedTo', 'type', 'tags', 'limit', 'offset'],
   // task_create (36aa0549): the model-facing schema previously advertised ONLY
   // `title`, hiding `type` (+ enum) and every other accepted field — so an agent
   // asked for a "bug" silently got a `general` task. Now DERIVED from zod, so the
   // declared schema advertises exactly the validated/accepted field set.
   task_create: ['title', 'description', 'type', 'priority', 'status', 'assignedTo', 'dependencies', 'tags', 'projectId', 'metadata'],
+  // task_update (Guard 2 + A4/A5): now DERIVED from zod. Advertises priority/progress
+  // (now real, written columns) + assignedTo; `notes` is intentionally ABSENT (no
+  // such column — A4). Old hand-written schema hid all but taskId+status.
+  task_update: ['taskId', 'status', 'priority', 'assignedTo', 'progress'],
+  // task_bulk_update (Guard 2): now DERIVED from zod — every honored field is advertised.
+  task_bulk_update: ['task_ids', 'status', 'assignedTo', 'priority', 'metadata', 'notes', 'projectId'],
+  // project_* (A8): now DERIVED from zod so `metadata` (persisted by the handler) is
+  // no longer hidden by a hand-written schema — boundary-drift class guard extended.
+  project_create: ['name', 'description', 'status', 'gitRepoUrl', 'rootDirectory', 'metadata'],
+  project_update: ['project', 'name', 'description', 'status', 'gitRepoUrl', 'rootDirectory', 'metadata'],
+  project_delete: ['project', 'confirm'],
+  project_switch: ['project'],
+  project_info: ['project'],
   smart_search: ['query', 'projectId', 'includeTypes', 'scope', 'limit'],
   context_get_recent: ['limit', 'projectId'],
   get_recommendations: ['context', 'projectId', 'type'],
