@@ -94,25 +94,20 @@ const EXEMPT_PARAMS: Record<string, Set<string>> = {
   context_store:  new Set(['sessionId']),
   context_search: new Set(['sessionId']),
 
-  // ── KNOWN PRE-EXISTING DRIFT (caught by THIS guard; OUT OF SCOPE for branch
-  //    fix/tool-contract-drift, which fixes A1–A8 only). Documented + flagged to
-  //    Ridge rather than silently swept or silently fixed (the fix touches other
-  //    domains). Remove the exemption when the underlying drop is fixed: ──────────
+  // ── DRIFT-CLEANUP (task 9c522977 — the two known-drift exemptions below were
+  //    RESOLVED, so they are no longer exempt; advertised == accepted == actually-works: ──
   //
-  // decision_record.metadata: the zod schema (decisionSchemas.record) advertises
-  //   `metadata`, but neither the route (handleRecord) nor the handler (recordDecision
-  //   / technical_decisions) persists it — there is no metadata column path for
-  //   decisions. The model is shown a param that goes nowhere. Fix is EITHER plumb
-  //   metadata through to a (new) column, OR drop it from the zod schema. Not in the
-  //   A1–A8 list, so flagged here. (Same boundary/route drift class as A4/A6/A8.)
-  decision_record: new Set(['metadata']),
+  // decision_record.metadata — RESOLVED via IMPLEMENT. Migration 047 adds a real
+  //   technical_decisions.metadata (jsonb, default {}), the handler (recordDecision)
+  //   now persists it and decision_get reads it back, and handleRecord forwards
+  //   args.metadata. The drift guard now ENFORCES that forward (no exemption) — the
+  //   `decisionMetadataRoundTrips` contract proves the end-to-end persist/read-back.
   //
-  // smart_search.scope: the zod schema (smartSearchSchemas.search) advertises
-  //   `scope` (contexts|decisions|…|all), but handleSmartSearch never forwards it and
-  //   smartSearchHandler.smartSearch() has no scope param — so scoping a smart_search
-  //   to one source is silently ignored. Adjacent to A9 (smart_search tuning, which
-  //   the task explicitly DEFERS), so left untouched and flagged here.
-  smart_search: new Set(['scope']),
+  // smart_search.scope — RESOLVED via DEPRECATE. `scope` was a redundant, singular-form
+  //   duplicate of includeTypes that the handler never read and that named DROPPED sources
+  //   (naming registry / agent system). It was REMOVED from smartSearchSchemas.search, so
+  //   it no longer appears in the zod keyset at all — nothing left to exempt. The
+  //   `smartSearchScopeDeprecated` assertion below proves it's no longer advertised.
 };
 
 /**
@@ -170,6 +165,31 @@ describe('route-layer contract drift class guard (every zod param is forwarded i
       ).toEqual([]);
     });
   }
+
+  // ── DRIFT-CLEANUP (task 9c522977): assert the two formerly-exempt lies are gone ──
+
+  test('smart_search.scope is DEPRECATED — no longer advertised (removed from the zod schema)', () => {
+    // DEPRECATE call: `scope` was a redundant duplicate of includeTypes naming dropped
+    // sources. Removing it from the validator means it's gone from the derived,
+    // model-facing inputSchema too (toolDefinitions buildInputSchema reads the same zod
+    // schema). Guard that it never silently creeps back as an advertised-but-ignored lie.
+    const keys = zodKeys((validationSchemas as any).smart_search);
+    expect(keys).not.toContain('scope');
+    // includeTypes IS the real, honored source filter — it must remain.
+    expect(keys).toContain('includeTypes');
+  });
+
+  test('decision_record.metadata is IMPLEMENTED — forwarded in handleRecord (no exemption)', () => {
+    // IMPLEMENT call: metadata now has a backing column (migration 047) and is persisted.
+    // The route MUST forward it; with no exemption, the generic per-tool guard above
+    // already enforces `args.metadata` is referenced in decisions.routes#handleRecord.
+    // This is a focused, self-documenting restatement of that expectation.
+    const body = extractMethodBody(readRoute('decisions.routes.ts'), 'handleRecord');
+    expect(body).not.toBe('');
+    expect(/\bargs\.metadata\b/.test(body)).toBe(true);
+    // And it must NOT be exempt anymore (the lie is gone).
+    expect(EXEMPT_PARAMS.decision_record).toBeUndefined();
+  });
 
   test('FUSE: the guard FAILS when a param is dropped (proves it actually guards)', () => {
     // Simulate the A4/A6 bug: a schema declares `priority` but the (fake) handler body

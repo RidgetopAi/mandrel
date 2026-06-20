@@ -65,18 +65,26 @@ const EXPECTED_PARAMS: Record<string, string[]> = {
   // args.projectId via resolveProjectId to scope the list — a real accepted-and-used
   // param that was missing from the schema, so under strict mode a legitimate
   // project-scoped task_list call would have been wrongly rejected. Declared, not dropped.
-  task_list: ['status', 'priority', 'assignedTo', 'type', 'tags', 'limit', 'offset', 'projectId', 'includeArchived'],
+  // DRIFT-CLEANUP (task 9c522977): `statuses` (multi-status IN-filter) and `phase`
+  // (phase-<n> tag filter) are REAL filters the handler honors (listTasks) but were
+  // read without being declared → rejected under strict mode. Now declared so the real
+  // capability is reachable through MCP (advertised == accepted == handler-reads).
+  task_list: ['status', 'statuses', 'priority', 'phase', 'assignedTo', 'type', 'tags', 'limit', 'offset', 'projectId', 'includeArchived'],
   // task_create (36aa0549): the model-facing schema previously advertised ONLY
   // `title`, hiding `type` (+ enum) and every other accepted field — so an agent
   // asked for a "bug" silently got a `general` task. Now DERIVED from zod, so the
   // declared schema advertises exactly the validated/accepted field set.
-  task_create: ['title', 'description', 'type', 'priority', 'status', 'assignedTo', 'dependencies', 'tags', 'projectId', 'metadata'],
+  // DRIFT-CLEANUP (task 9c522977): `createdBy` is a real column the handler writes; it
+  // was read (args.createdBy) but never declared → unreachable under strict mode. Declared.
+  task_create: ['title', 'description', 'type', 'priority', 'status', 'assignedTo', 'createdBy', 'dependencies', 'tags', 'projectId', 'metadata'],
   // task_update (Guard 2 + A4/A5): now DERIVED from zod. Advertises priority/progress
   // (now real, written columns) + assignedTo; `notes` is intentionally ABSENT (no
   // such column — A4). Old hand-written schema hid all but taskId+status.
   // projectId (task 131ef054): scopes the SHORT-ID resolution of taskId to one project
   // (resolved via resolveProjectId). Declared so strict mode accepts it; not updatable.
-  task_update: ['taskId', 'status', 'priority', 'assignedTo', 'progress', 'projectId'],
+  // DRIFT-CLEANUP (task 9c522977): `metadata` is a real column (tasks.metadata jsonb) the
+  // handler writes; it was read (args.metadata) but never declared → unreachable. Declared.
+  task_update: ['taskId', 'status', 'priority', 'assignedTo', 'progress', 'metadata', 'projectId'],
   // task_bulk_update (Guard 2): now DERIVED from zod — every honored field is advertised.
   task_bulk_update: ['task_ids', 'status', 'assignedTo', 'priority', 'metadata', 'notes', 'projectId'],
   // project_* (A8): now DERIVED from zod so `metadata` (persisted by the handler) is
@@ -86,7 +94,10 @@ const EXPECTED_PARAMS: Record<string, string[]> = {
   project_delete: ['project', 'confirm'],
   project_switch: ['project'],
   project_info: ['project'],
-  smart_search: ['query', 'projectId', 'includeTypes', 'scope', 'limit'],
+  // DRIFT-CLEANUP (task 9c522977): `scope` was DEPRECATED (removed) — a redundant
+  // duplicate of includeTypes that the handler never read and that named dropped sources
+  // (naming/agents). includeTypes is the real, honored source filter.
+  smart_search: ['query', 'projectId', 'includeTypes', 'limit'],
   context_get_recent: ['limit', 'projectId', 'includeArchived'],
   get_recommendations: ['context', 'projectId', 'type'],
   task_details: ['taskId', 'projectId'],

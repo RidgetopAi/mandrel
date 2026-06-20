@@ -86,6 +86,11 @@ export interface TechnicalDecision {
   lessonsLearned: string | null;
   implementationStatus: ImplementationStatus;
   /**
+   * Arbitrary structured annotations (jsonb, default {}). Persisted from
+   * decision_record(metadata:{...}) (migration 047); mirrors contexts/tasks metadata.
+   */
+  metadata: Record<string, any>;
+  /**
    * Vector-similarity score (0–100) to the search query, populated ONLY by
    * searchDecisions when a semantic `query` was supplied. Mirrors the `similarity`
    * surfaced by context_search so callers/UI can rank + display a relevance number.
@@ -140,6 +145,8 @@ export interface RecordDecisionRequest {
   affectedComponents?: string[];
   tags?: string[];
   category?: string;
+  /** Arbitrary structured annotations persisted to technical_decisions.metadata (jsonb). */
+  metadata?: Record<string, any>;
 }
 
 export interface UpdateDecisionRequest {
@@ -267,9 +274,10 @@ class DecisionsHandler {
           problem_statement, success_criteria, alternatives_considered,
           decided_by, stakeholders, impact_level, affected_components,
           tags, category, implementation_status,
-          outcome_status, outcome_notes, lessons_learned, embedding
+          outcome_status, outcome_notes, lessons_learned, embedding, metadata
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15,
-          COALESCE($16, 'planned'), COALESCE($17, 'unknown'), $18, $19, $20::vector)
+          COALESCE($16, 'planned'), COALESCE($17, 'unknown'), $18, $19, $20::vector,
+          COALESCE($21, '{}'::jsonb))
         RETURNING *
       `, [
         projectId,
@@ -291,7 +299,10 @@ class DecisionsHandler {
         request.outcomeStatus || null,
         request.outcomeNotes?.trim() || null,
         request.lessonsLearned?.trim() || null,
-        embeddingLiteral
+        embeddingLiteral,
+        // metadata: jsonb. COALESCE to '{}' when omitted so an absent metadata is an
+        // empty object (matching the column default), never NULL.
+        request.metadata ? JSON.stringify(request.metadata) : null
       ]);
 
       const decision = this.mapDatabaseRowToDecision(result.rows[0]);
@@ -1018,7 +1029,9 @@ class DecisionsHandler {
       outcomeStatus: row.outcome_status,
       outcomeNotes: row.outcome_notes,
       lessonsLearned: row.lessons_learned,
-      implementationStatus: row.implementation_status
+      implementationStatus: row.implementation_status,
+      // metadata jsonb → object (default {} when null). Mirrors tasks.mapTask.
+      metadata: row.metadata || {}
     };
   }
 

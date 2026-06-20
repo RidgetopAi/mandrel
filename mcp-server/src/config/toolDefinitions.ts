@@ -393,6 +393,7 @@ export const AIDIS_TOOL_DEFINITIONS: ToolDefinition[] = [
               priority: 'Priority — one of: low, medium, high, urgent (default: medium)',
               status: 'Initial status — one of: todo, in_progress, completed, blocked (default: todo)',
               assignedTo: 'Assignee identifier (free-form string, e.g. an agent name)',
+              createdBy: 'Who/what created the task (free-form string, e.g. an agent or person name)',
               dependencies: 'Task IDs this task depends on (max 10)',
               tags: 'Tags for categorization and filtering (e.g., ["backend", "urgent"])',
               projectId: 'Project ID or name to create the task under (defaults to current project)',
@@ -403,8 +404,10 @@ export const AIDIS_TOOL_DEFINITIONS: ToolDefinition[] = [
             name: 'task_list',
             description: 'List tasks with optional filtering',
             inputSchema: buildInputSchema('task_list', {
-              status: 'Filter by status (todo, in_progress, completed, blocked)',
+              status: 'Filter by a single status (todo, in_progress, blocked, completed, cancelled)',
+              statuses: 'Filter by MULTIPLE statuses (e.g. ["todo","in_progress"]) — takes precedence over `status` when set',
               priority: 'Filter by priority (low, medium, high, urgent)',
+              phase: 'Filter to a single phase — matches a `phase-<phase>` tag (e.g. phase:"3" matches the phase-3 tag)',
               assignedTo: 'Filter by assignee (matches the assigned_to value set via task_create/task_update)',
               type: 'Filter by task type (feature, bug, bugfix, refactor, test, review, docs, devops, general)',
               tags: 'Filter by tags — returns tasks matching ANY of the provided tags',
@@ -421,13 +424,14 @@ export const AIDIS_TOOL_DEFINITIONS: ToolDefinition[] = [
             // declared == accepted == handler-reads and can't drift again. Note 'notes'
             // is intentionally absent: there is no `notes` column on tasks (A4).
             name: 'task_update',
-            description: 'Update a task — change any of status, priority, progress, or assignee (provide at least one). Status accepts: todo, in_progress, blocked, completed, cancelled.',
+            description: 'Update a task — change any of status, priority, progress, assignee, or metadata (provide at least one). Status accepts: todo, in_progress, blocked, completed, cancelled.',
             inputSchema: buildInputSchema('task_update', {
               taskId: 'Task ID (UUID) — required',
               status: 'New status — one of: todo, in_progress, blocked, completed, cancelled',
               priority: 'New priority — one of: low, medium, high, urgent',
               assignedTo: 'New assignee (free-form string, e.g. an agent name)',
-              progress: 'Completion percentage 0–100'
+              progress: 'Completion percentage 0–100',
+              metadata: 'Structured metadata (jsonb object) to set on the task (replaces the existing metadata)'
             }),
           },
           {
@@ -490,8 +494,10 @@ export const AIDIS_TOOL_DEFINITIONS: ToolDefinition[] = [
             description: 'Intelligent search across all project data sources',
             inputSchema: buildInputSchema('smart_search', {
               query: 'Search query',
-              scope: 'Limit search to one source (contexts, decisions, naming, agents, tasks, code, all)',
-              includeTypes: 'Restrict to specific result types',
+              // DRIFT-FIX (task 9c522977): `scope` was DEPRECATED — it was a redundant,
+              // singular-form duplicate of includeTypes that the handler never read and
+              // named DROPPED sources (naming/agents). includeTypes is the real mechanism.
+              includeTypes: 'Limit the search to specific sources, e.g. ["context","decision","component"] (the searched sources today). Omit to search context+component+decision.',
               limit: 'Maximum number of results to return (default 10)',
               projectId: 'Project ID or name to scope the search (defaults to current project)'
             }),

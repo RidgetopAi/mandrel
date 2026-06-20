@@ -54,6 +54,11 @@ class DecisionsRoutes {
         lessonsLearned: args.lessonsLearned,
         affectedComponents: args.affectedComponents,
         tags: args.tags,
+        // DRIFT-FIX (task 9c522977): metadata was ADVERTISED in decisionSchemas.record
+        // but never forwarded here AND had no backing column — so it was silently
+        // dropped (advertised-but-not-persisted). Migration 047 adds technical_decisions.
+        // metadata (jsonb); now forward it so it actually persists + reads back.
+        metadata: args.metadata,
         projectId: projectId,
         connectionId: context?.connectionId
       });
@@ -89,6 +94,8 @@ class DecisionsRoutes {
             lessonsLearned: decision.lessonsLearned ?? null,
             affectedComponents: decision.affectedComponents,
             tags: decision.tags,
+            // DRIFT-FIX (task 9c522977): echo persisted metadata back on create.
+            metadata: decision.metadata,
             decisionDate: decision.decisionDate.toISOString(),
           },
         },
@@ -373,6 +380,9 @@ class DecisionsRoutes {
             alternatives: decision.alternativesConsidered,
             affected_components: decision.affectedComponents,
             tags: decision.tags,
+            // DRIFT-FIX (task 9c522977): metadata now persists (migration 047) and
+            // reads back here, so decision_record(metadata:{...}) round-trips.
+            metadata: decision.metadata,
             created_at: decision.decisionDate.toISOString()
           }
         }

@@ -476,6 +476,12 @@ const taskSchemas = {
     priority: taskPriorityEnum.optional().default('medium'),
     status: taskStatusEnum.optional(),
     assignedTo: z.string().optional(),
+    // DRIFT-FIX (task 9c522977, nit 4): createdBy is a REAL column (tasks.created_by, a
+    // free-form string — who/what created the task) and handleCreate already forwards
+    // args.createdBy into tasksHandler.createTask, but it was NEVER declared here. Under
+    // strict mode (task 5fd58eef) an undeclared key is REJECTED, so the genuine capability
+    // was unreachable through MCP. Declare it (string, like assignedTo) so it's reachable.
+    createdBy: z.string().optional(),
     dependencies: z.array(z.string()).max(10).optional(),
     tags: baseTags,
     projectId: z.string().optional(),
@@ -484,7 +490,18 @@ const taskSchemas = {
 
   list: z.object({
     status: taskStatusEnum.optional(),
+    // DRIFT-FIX (task 9c522977, nit 4): `statuses` is a REAL multi-status filter the
+    // handler honors (listTasks builds `status IN (...)` from it) and takes PRECEDENCE
+    // over the single `status` when present. It was read (args.statuses) but never
+    // declared, so strict mode rejected it → a genuinely-useful filter was unreachable.
+    // Declare it as an array of the same task-status enum so the values stay aligned.
+    statuses: z.array(taskStatusEnum).min(1).max(5).optional(),
     priority: taskPriorityEnum.optional(),
+    // DRIFT-FIX (task 9c522977, nit 4): `phase` is a REAL filter the handler honors
+    // (listTasks matches `phase-<phase>` against the tags array). Read (args.phase) but
+    // never declared → rejected under strict mode. Declare it (a short string; the
+    // handler prefixes it with `phase-` before matching the tags) so it's reachable.
+    phase: z.string().min(1).max(50).optional(),
     // assignedTo (NOT assignedAgent): the handler reads args.assignedTo and the
     // column is `assigned_to` (a simple string, not an FK/uuid — same as
     // task_create/task_update/bulk_update). The prior `assignedAgent` name + .uuid()
@@ -525,14 +542,21 @@ const taskSchemas = {
     // no `notes` column on `tasks`, so advertising it as an updatable field would be a
     // promise the handler cannot keep (don't advertise unsupported params).
     progress: z.number().int().min(0).max(100).optional(),
+    // DRIFT-FIX (task 9c522977, nit 4): metadata is a REAL column (tasks.metadata jsonb)
+    // and handleUpdate already forwards args.metadata into updateTaskStatus (which writes
+    // it), but it was NEVER declared here → rejected under strict mode, so updating a
+    // task's metadata through MCP was impossible. Declare it (baseMetadata, like
+    // task_create / task_bulk_update) so the existing persist path is reachable.
+    metadata: baseMetadata,
     // projectId scopes the SHORT-ID resolution of taskId to one project (task 131ef054).
     // Optional + not an updatable field, so it's excluded from the .refine "at least one
     // field to update" check below. Declared so strict mode accepts it.
     projectId: z.string().optional()
   }).refine(
     data => data.status !== undefined || data.priority !== undefined ||
-            data.assignedTo !== undefined || data.progress !== undefined,
-    { message: 'At least one field to update must be provided (status, priority, assignedTo, progress)' }
+            data.assignedTo !== undefined || data.progress !== undefined ||
+            data.metadata !== undefined,
+    { message: 'At least one field to update must be provided (status, priority, assignedTo, progress, metadata)' }
   ),
 
   bulk_update: z.object({
@@ -620,8 +644,15 @@ const smartSearchSchemas = {
   search: z.object({
     query: baseQuery,
     projectId: z.string().optional(),
+    // includeTypes is the REAL source filter the handler honors (it checks
+    // includeTypes.includes('context'|'decision'|'component')).
     includeTypes: z.array(z.string()).optional(),
-    scope: z.enum(['contexts', 'decisions', 'naming', 'agents', 'tasks', 'code', 'all']).optional(),
+    // DRIFT-FIX (task 9c522977): `scope` was DEPRECATED (removed). It was advertised but
+    // NEVER forwarded/read by handleSmartSearch / smartSearchHandler.smartSearch — a
+    // redundant, singular-form duplicate of includeTypes that additionally named sources
+    // that no longer exist (naming registry dropped in migration 034; agent system removed
+    // in migration 016). Removing it makes advertised == accepted == actually-works rather
+    // than advertising a no-op that names phantom sources. Use includeTypes instead.
     limit: baseLimit
   }),
 

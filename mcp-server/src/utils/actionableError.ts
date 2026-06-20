@@ -196,7 +196,15 @@ export function sanitizeErrorText(message: string): string {
  */
 export function actionableErrorText(message: string): string {
   const safe = sanitizeErrorText(message);
-  // Don't double-decorate an already-actionable validator message.
+  // An already-actionable message (a validator "Validation failed for …" message, or any
+  // hand-built message that already carries a 💡/📌 hint) is returned untouched — appending
+  // a second generic hint would just be noise / double-decoration.
   if (/Validation failed for /.test(safe) || /💡|📌/.test(safe)) return safe;
-  return safe;
+  // Otherwise this is a bare handler/route failure (e.g. "No current project set", a DB
+  // error). Append ONE generic self-correcting hint so the model gets a next step instead
+  // of a dead-end string. (Previously both branches returned `safe` — the early-return was
+  // a no-op and the intended hint was never appended; task 9c522977 nit 5.)
+  return `${safe}\n\n💡 If this looks like a bad argument, re-check the tool's parameters ` +
+         `(name, type, allowed values) and try again; use a *_search / *_list tool to find ` +
+         `a valid id if one is required.`;
 }

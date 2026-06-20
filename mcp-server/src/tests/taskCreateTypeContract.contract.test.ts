@@ -143,7 +143,9 @@ describe('task_create type-surfacing contract (36aa0549 fuse, zero SQL on write)
     const def = AIDIS_TOOL_DEFINITIONS.find(t => t.name === 'task_create')!;
     const props = def.inputSchema.properties as Record<string, any>;
     expect(Object.keys(props).sort()).toEqual(
-      ['assignedTo', 'dependencies', 'description', 'metadata', 'priority', 'projectId', 'status', 'tags', 'title', 'type'].sort()
+      // DRIFT-CLEANUP (task 9c522977): createdBy added — a real tasks.created_by column the
+      // handler writes, now declared so it's reachable under strict mode.
+      ['assignedTo', 'createdBy', 'dependencies', 'description', 'metadata', 'priority', 'projectId', 'status', 'tags', 'title', 'type'].sort()
     );
     expect(props.type.enum).toContain('bug');
     expect(props.type.enum).toContain('general');

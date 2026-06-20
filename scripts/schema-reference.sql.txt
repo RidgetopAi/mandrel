@@ -728,6 +728,7 @@ COLUMN technical_decisions.impact_level | character varying(20) | null=NO | defa
 COLUMN technical_decisions.implementation_status | character varying(50) | null=YES | default='planned'
 COLUMN technical_decisions.implementing_commits | ARRAY | null=YES | default='{}'
 COLUMN technical_decisions.lessons_learned | text | null=YES | default=
+COLUMN technical_decisions.metadata | jsonb | null=NO | default='{}'
 COLUMN technical_decisions.outcome_notes | text | null=YES | default=
 COLUMN technical_decisions.outcome_status | character varying(50) | null=YES | default='unknown'
 COLUMN technical_decisions.problem_statement | text | null=YES | default=
