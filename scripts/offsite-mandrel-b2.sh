@@ -35,21 +35,23 @@ log "=== Mandrel Off-site Backup Starting ==="
 command -v rclone >/dev/null 2>&1 || fail "rclone not found on PATH"
 [ -f "$RCLONE_CONF" ] || fail "rclone config missing at $RCLONE_CONF"
 
-# 1. Find the NEWEST timestamped folder under $BACKUP_DIR.
-#    Dated folders look like 20260608_030001. Ignore loose files (e.g. the
-#    latest_timestamp marker, any safety dump file at the top level).
+# 1. Find the NEWEST prod DB dump under $BACKUP_DIR.
+#    Selection is CONTENT-BASED, not mtime-of-dir-based: we pick the newest
+#    file matching a dated dump folder's *.backup (20260608_030001/*.backup) and
+#    take its parent folder. This is robust by construction — a SIBLING dir whose
+#    mtime is newer (e.g. tenants/, tenants-intraday/, prod-presync-*) can NEVER
+#    be selected, because it holds no top-level dated *.backup of its own.
+#    (Historical bug: `ls -1dt */` selected tenants/ once its mtime got bumped,
+#    silently breaking off-site for 4 days. Fixed permanently here.)
 cd "$BACKUP_DIR" || fail "cannot cd to $BACKUP_DIR"
-NEWEST=$(ls -1dt */ 2>/dev/null | head -n 1 | sed 's:/*$::')
-[ -n "$NEWEST" ] || fail "no timestamped backup folders found under $BACKUP_DIR"
-LOCAL_FOLDER="$BACKUP_DIR/$NEWEST"
+LOCAL_DUMP=$(ls -1t "$BACKUP_DIR"/20*_*/*.backup 2>/dev/null | head -n 1 || true)
+[ -n "$LOCAL_DUMP" ] || fail "no dated dump (20*_*/*.backup) found under $BACKUP_DIR"
+LOCAL_FOLDER=$(dirname "$LOCAL_DUMP")
+NEWEST=$(basename "$LOCAL_FOLDER")
 [ -d "$LOCAL_FOLDER" ] || fail "resolved newest '$LOCAL_FOLDER' is not a directory"
 
-log "Newest local backup folder: $NEWEST"
-
-# 1b. Confirm a real .backup dump exists locally before we bother uploading.
-LOCAL_DUMP=$(ls -1 "$LOCAL_FOLDER"/*.backup 2>/dev/null | head -n 1 || true)
-[ -n "$LOCAL_DUMP" ] || fail "no .backup dump file in $LOCAL_FOLDER"
 LOCAL_DUMP_BYTES=$(stat -c %s "$LOCAL_DUMP")
+log "Newest local dump folder: $NEWEST"
 log "Local dump: $(basename "$LOCAL_DUMP") (${LOCAL_DUMP_BYTES} bytes)"
 
 # 2. Upload the folder. rclone copy verifies each transfer by hash by default.

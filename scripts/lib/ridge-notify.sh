@@ -117,3 +117,61 @@ notify() {
     return 1
   fi
 }
+
+# notify_rich <title> <html_body> <level> <emoji>
+#   Ridge's OWN rich-update channel (the "see the flow" surface, 2026-06-20).
+#   <html_body> is sent AS-IS as Telegram HTML — TRUSTED (caller is Ridge, not user
+#   input) so it may use <b> <i> <u> <code> <pre> <a href>. Adds an italic footer.
+#   notify() stays the canonical ESCAPED path for cron alerts; this is purely additive
+#   (one source of truth preserved — notify() is untouched).
+notify_rich() {
+  local title="${1:-Ridge}" body="${2:-}" level="${3:-default}" emoji="${4:-}"
+  NOTIFY_LAST_OK=0
+  NOTIFY_LAST_HTTP="000"
+  local silent; silent="$(_notify_is_silent "$level")"
+  local stamp; stamp="$(date -u '+%H:%M UTC')"
+
+  local head="${emoji:+${emoji} }<b>$(_notify_html_esc "$title")</b>"
+  local text="${head}"
+  [[ -n "$body" ]] && text+=$'\n'"${body}"
+  text+=$'\n'"<i>— 🤖 Ridge · ${stamp}</i>"
+
+  if [[ "${NOTIFY_DRY_RUN:-0}" == "1" ]]; then
+    _notify_log "DRY_RUN rich: would send [$([ "$silent" = true ] && echo SILENT || echo LOUD)] title='${title}'"
+    NOTIFY_LAST_OK=1
+    return 0
+  fi
+  if [[ ! -r "$RIDGE_TELEGRAM_ENV" ]]; then
+    _notify_log "FATAL: cannot read $RIDGE_TELEGRAM_ENV (telegram creds). Rich alert NOT sent."
+    return 1
+  fi
+  # shellcheck disable=SC1090
+  . "$RIDGE_TELEGRAM_ENV"
+  if [[ -z "${TELEGRAM_BOT_TOKEN:-}" || -z "${TELEGRAM_CHAT_ID:-}" ]]; then
+    _notify_log "FATAL: TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID not set. Rich alert NOT sent."
+    return 1
+  fi
+
+  local resp http payload
+  resp="$(curl -s -w $'\n%{http_code}' -m 15 \
+    "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+    --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
+    --data-urlencode "text=${text}" \
+    --data-urlencode "parse_mode=HTML" \
+    --data-urlencode "disable_web_page_preview=true" \
+    --data-urlencode "disable_notification=${silent}" \
+    2>/dev/null || printf '\n000')"
+  http="$(printf '%s' "$resp" | tail -n1)"
+  payload="$(printf '%s' "$resp" | sed '$d')"
+
+  NOTIFY_LAST_HTTP="$http"
+  if [[ "$http" == "200" ]] && printf '%s' "$payload" | grep -q '"ok":true'; then
+    NOTIFY_LAST_OK=1
+    _notify_log "SENT rich [HTTP $http, ok:true, $([ "$silent" = true ] && echo silent || echo loud)] ${title}"
+    return 0
+  else
+    local desc; desc="$(printf '%s' "$payload" | grep -oE '"description":"[^"]*"' | head -1)"
+    _notify_log "FAILED rich [HTTP $http] Telegram rich alert not delivered: ${title} ${desc}"
+    return 1
+  fi
+}
