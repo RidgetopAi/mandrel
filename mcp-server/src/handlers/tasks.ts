@@ -95,7 +95,8 @@ class TasksHandler {
         priority?: string,
         phase?: string,
         statuses?: string[],
-        limit?: number
+        limit?: number,
+        offset?: number
     ): Promise<Task[]> {
         const client = await this.pool.connect();
         try {
@@ -165,6 +166,15 @@ class TasksHandler {
                 paramIndex++;
             }
 
+            // A7: pagination. Apply OFFSET when provided so rows beyond the (default 10,
+            // max 100) limit window are reachable. Mirrors context_search's offset. Guard
+            // to a non-negative integer before interpolating.
+            if (offset !== undefined && Number.isInteger(offset) && offset >= 0) {
+                query += ` OFFSET $${paramIndex}`;
+                params.push(offset);
+                paramIndex++;
+            }
+
             const result = await client.query(query, params);
             return result.rows.map(row => this.mapTask(row));
         } finally {
@@ -172,19 +182,48 @@ class TasksHandler {
         }
     }
 
-    async updateTaskStatus(taskId: string, status: string, assignedTo?: string, metadata?: any, connectionId?: string): Promise<void> {
+    async updateTaskStatus(
+        taskId: string,
+        status?: string,
+        assignedTo?: string,
+        metadata?: any,
+        connectionId?: string,
+        priority?: string,
+        progress?: number
+    ): Promise<void> {
         const client = await this.pool.connect();
         try {
-            const updates = ['status = $1', 'updated_at = CURRENT_TIMESTAMP'];
-            const params: any[] = [status];
-            let paramIndex = 2;
+            // status is now OPTIONAL: a caller may update only priority/progress/assignee
+            // without changing status. Build the SET clause from whatever was provided
+            // (the zod .refine guarantees at least one field is present).
+            const updates = ['updated_at = CURRENT_TIMESTAMP'];
+            const params: any[] = [];
+            let paramIndex = 1;
 
-            if (status === 'in_progress') updates.push(`started_at = CURRENT_TIMESTAMP`);
-            if (status === 'completed') updates.push(`completed_at = CURRENT_TIMESTAMP`);
+            if (status !== undefined) {
+                updates.push(`status = $${paramIndex}`);
+                params.push(status);
+                paramIndex++;
+                if (status === 'in_progress') updates.push(`started_at = CURRENT_TIMESTAMP`);
+                if (status === 'completed') updates.push(`completed_at = CURRENT_TIMESTAMP`);
+            }
 
             if (assignedTo !== undefined) {
                 updates.push(`assigned_to = $${paramIndex}`);
                 params.push(assignedTo);
+                paramIndex++;
+            }
+            // A4: priority + progress are REAL columns on `tasks`; previously the route
+            // forwarded only status/assignedTo/metadata so these were accepted by zod
+            // then silently dropped (task_update returned success but wrote nothing).
+            if (priority !== undefined) {
+                updates.push(`priority = $${paramIndex}`);
+                params.push(priority);
+                paramIndex++;
+            }
+            if (progress !== undefined) {
+                updates.push(`progress = $${paramIndex}`);
+                params.push(progress);
                 paramIndex++;
             }
             if (metadata !== undefined) {
