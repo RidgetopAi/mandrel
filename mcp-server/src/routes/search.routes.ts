@@ -4,6 +4,8 @@ import { projectHandler } from '../handlers/project.js';
 import { formatMcpError, rawValue } from '../utils/mcpFormatter.js';
 import type { McpResponse } from '../utils/mcpFormatter.js';
 import type { RouteContext } from './index.js';
+import { trustForRecords, type RecordRef, type Trust } from '../services/trust.js';
+import { TRUST_BAND_HINT, type TrustBand } from '../config/trustConfig.js';
 
 /**
  * Smart Search & AI Routes
@@ -22,6 +24,21 @@ class SearchRoutes {
     const sessionId = context?.connectionId || 'default-session';
     await projectHandler.initializeSession(sessionId);
     return await projectHandler.getCurrentProjectId(sessionId);
+  }
+
+  /**
+   * TRUST (T2b — THE MOAT): compact one-line human hint for a smart-search row.
+   * structuredContent carries the full trust object; this is the at-a-glance band.
+   */
+  static trustHint(trust: Trust): string {
+    const hint = TRUST_BAND_HINT[trust.band as TrustBand] ?? trust.band;
+    const scorePart = trust.score === null ? '' : ` (${trust.score.toFixed(2)})`;
+    const coldStart = trust.outcome.score === null ? ', cold-start' : '';
+    const abstainPart =
+      trust.abstain || trust.band === 'superseded' || trust.band === 'contradicted'
+        ? ' — abstain'
+        : '';
+    return `🔐 Trust: ${hint}${scorePart}${coldStart}${abstainPart}`;
   }
 
   /**
@@ -66,6 +83,25 @@ class SearchRoutes {
       // fraction in [0,1]; the floor helper takes a 0–100 number.
       const honestyHeader = buildHonestyHeader(results[0].relevanceScore * 100);
 
+      // TRUST (T2b — default-on): compute trust for the context/decision result items
+      // (the trustable record kinds; components/agents have no outcome graph). Indexed by
+      // result position so it zips back onto the rows. trustForRecord self-fetches each
+      // record's freshness date + (for decisions) its own outcome/supersession. Display-
+      // only, computed AFTER the existing relevance sort — order is unchanged.
+      const trustByIndex = new Map<number, Trust>();
+      const trustableIndexes: number[] = [];
+      const trustableRefs: RecordRef[] = [];
+      results.forEach((r, i) => {
+        if (r.type === 'context' || r.type === 'decision') {
+          trustableIndexes.push(i);
+          trustableRefs.push({ id: r.id, type: r.type });
+        }
+      });
+      if (trustableRefs.length > 0) {
+        const trusts = await trustForRecords(trustableRefs);
+        trustableIndexes.forEach((origIdx, k) => trustByIndex.set(origIdx, trusts[k]));
+      }
+
       const resultsList = results.map((result, index) => {
         const typeIcon = {
           context: '📝',
@@ -78,10 +114,12 @@ class SearchRoutes {
 
         const relevanceBar = '▓'.repeat(Math.round(result.relevanceScore * 5));
         const sourceText = result.source ? ` (${result.source})` : '';
+        const trust = trustByIndex.get(index);
+        const trustLine = trust ? `\n      ${SearchRoutes.trustHint(trust)}` : '';
 
         return `   ${index + 1}. **${rawValue(result.title)}** ${typeIcon}\n` +
                `      💬 ${result.summary.substring(0, 80)}${result.summary.length > 80 ? '...' : ''}\n` +
-               `      📊 Relevance: ${relevanceBar} (${Math.round(result.relevanceScore * 100)}%)${sourceText}\n` +
+               `      📊 Relevance: ${relevanceBar} (${Math.round(result.relevanceScore * 100)}%)${sourceText}${trustLine}\n` +
                `      🆔 ID: ${result.id}`;
       }).join('\n\n');
 
@@ -94,13 +132,16 @@ class SearchRoutes {
                 `💡 Refine with different includeTypes or broader query`
         }],
         structuredContent: {
-          results: results.map((result) => ({
+          results: results.map((result, index) => ({
             id: result.id,
             type: result.type,
             title: result.title,
             summary: result.summary,
             relevanceScore: result.relevanceScore,
             source: result.source,
+            // TRUST (T2b — default-on): present for context/decision items; absent for
+            // record kinds with no outcome graph (component/agent).
+            trust: trustByIndex.get(index),
           })),
           total: results.length,
         },

@@ -13,6 +13,8 @@ import {
   type RecallResponseFormat,
 } from '../config/recallConfig.js';
 import { autoMintFromTags } from '../services/links.js';
+import { trustForRecords, type RecordRef, type Trust } from '../services/trust.js';
+import { TRUST_BAND_HINT, type TrustBand } from '../config/trustConfig.js';
 
 /**
  * Context Management Routes
@@ -54,6 +56,45 @@ class ContextRoutes {
     if (diffHours > 0) return `${diffHours}h ago`;
     if (diffMins > 0) return `${diffMins}m ago`;
     return 'just now';
+  }
+
+  /**
+   * TRUST (T2b — THE MOAT): a compact one-line human hint for a recall row, e.g.
+   * "✅ trusted (0.78)" or "🌱 unproven (cold-start, no outcome yet)" or
+   * "⛔ superseded — abstain". The structuredContent carries the full trust object; this
+   * is just the at-a-glance band for the text channel. Cold-start (null score) is named
+   * explicitly so a reader knows it's "no evidence yet", NOT distrust.
+   */
+  private trustHint(trust: Trust): string {
+    const hint = TRUST_BAND_HINT[trust.band as TrustBand] ?? trust.band;
+    const scorePart =
+      trust.score === null
+        ? '' // (shouldn't happen — score is always reported; outcome.score is the nullable one)
+        : ` (${trust.score.toFixed(2)})`;
+    const coldStart = trust.outcome.score === null ? ', cold-start — lean on freshness' : '';
+    const abstainPart = trust.abstain && trust.band !== 'superseded' && trust.band !== 'contradicted'
+      ? ' — abstain'
+      : trust.band === 'superseded' || trust.band === 'contradicted'
+      ? ' — abstain'
+      : '';
+    return `🔐 Trust: ${hint}${scorePart}${coldStart}${abstainPart}`;
+  }
+
+  /**
+   * Compute trust for a page of context rows (DEFAULT-ON, T2b). Cheap — per returned row,
+   * after existing ordering (trust is SURFACED, not yet a ranker). Never throws (the
+   * service degrades to cold-start on a per-row error), so trust can't break recall.
+   * `rows` carry id + created_at (the freshness input). Returns Trust[] in input order.
+   */
+  private async trustForContextRows(
+    rows: Array<{ id: string; createdAt: Date | string }>
+  ): Promise<Trust[]> {
+    const refs: RecordRef[] = rows.map((r) => ({
+      id: r.id,
+      type: 'context',
+      createdAt: r.createdAt,
+    }));
+    return trustForRecords(refs);
   }
 
   /**
@@ -199,6 +240,10 @@ class ContextRoutes {
         const byIdFormat: RecallResponseFormat = args.response_format ?? 'detailed';
         const byIdPayload = applyRecallPayload(ctx.content, byIdFormat, ctx.id);
 
+        // TRUST (T2b — default-on): compute for this one record too, so a by-id zoom
+        // carries the same trust signal as a list row.
+        const [byIdTrust] = await this.trustForContextRows([{ id: ctx.id, createdAt: ctx.created_at }]);
+
         return {
           content: [{
             type: 'text',
@@ -206,7 +251,8 @@ class ContextRoutes {
                   `🆔 ID: ${ctx.id}\n` +
                   `📝 Type: ${ctx.context_type}\n` +
                   `📅 Created: ${new Date(ctx.created_at).toLocaleString()}${tags}${metadataText}\n` +
-                  `⭐ Relevance: ${ctx.relevance_score}/10\n\n` +
+                  `⭐ Relevance: ${ctx.relevance_score}/10\n` +
+                  `${this.trustHint(byIdTrust)}\n\n` +
                   `---\n\n${byIdPayload.content}`
           }],
           // SEARCH shape (a by-id lookup is a 1-result search) — RAW values. The machine
@@ -223,6 +269,7 @@ class ContextRoutes {
               sessionId: ctx.session_id,
               metadata: meta,
               createdAt: new Date(ctx.created_at).toISOString(),
+              trust: byIdTrust,
             }],
             total: 1,
           },
@@ -290,10 +337,15 @@ class ContextRoutes {
         }
 
         const tagSummary = `🔍 Found ${tagResult.rows.length} contexts with tags [${args.tags.join(', ')}]\n\n`;
+        // TRUST (T2b — default-on): computed per returned row, AFTER the existing
+        // newest-first ordering (display-only; trust is not yet a ranker).
+        const tagTrusts = await this.trustForContextRows(
+          tagResult.rows.map((row) => ({ id: row.id, createdAt: row.created_at }))
+        );
         // RAW structured rows for the machine channel (parsed metadata, no markup). RECALL
         // payload control (T1 item 1): carry the (truncated-or-full) content consistently
         // + a `truncated` flag, matching the text channel.
-        const tagStructured = tagResult.rows.map((row) => {
+        const tagStructured = tagResult.rows.map((row, index) => {
           const meta = typeof row.metadata === 'string' ? JSON.parse(row.metadata) : (row.metadata ?? {});
           const payload = applyRecallPayload(row.content, recallFormat, row.id);
           return {
@@ -307,6 +359,7 @@ class ContextRoutes {
             sessionId: row.session_id,
             metadata: meta,
             createdAt: new Date(row.created_at).toISOString(),
+            trust: tagTrusts[index],
           };
         });
         const tagList = tagResult.rows.map((row, index) => {
@@ -320,6 +373,7 @@ class ContextRoutes {
           // Same (truncated-or-full) content as the machine channel.
           return `${index + 1}. **${row.context_type}** (${timeAgo})\n` +
                  `   Content: ${tagStructured[index].content}\n` +
+                 `   ${this.trustHint(tagTrusts[index])}\n` +
                  `   Tags: [${(row.tags || []).join(', ')}]${metaLine}\n` +
                  `   ID: ${row.id}`;
         }).join('\n\n');
@@ -377,6 +431,11 @@ class ContextRoutes {
       const honestyHeader = buildHonestyHeader(relevanceOf(results[0]));
 
       const searchSummary = `🔍 Found ${results.length} matching contexts for: "${args.query}"\n\n`;
+      // TRUST (T2b — default-on): computed per returned row, AFTER existing ranking
+      // (display-only; trust is surfaced, not yet a ranker — order is unchanged).
+      const searchTrusts = await this.trustForContextRows(
+        results.map((r) => ({ id: r.id, createdAt: r.createdAt }))
+      );
       // RECALL payload control (T1 item 1): truncate each content per the resolved format,
       // computed ONCE so the text + machine channels carry the SAME value + truncated flag.
       const payloads = results.map((result) => applyRecallPayload(result.content, recallFormat, result.id));
@@ -385,6 +444,7 @@ class ContextRoutes {
         const relevance = relevanceOf(result);
         return `${index + 1}. **${result.contextType}** (relevance: ${relevance.toFixed(1)}%, ${timeAgo})\n` +
                `   Content: ${payloads[index].content}\n` +
+               `   ${this.trustHint(searchTrusts[index])}\n` +
                `   Tags: [${result.tags.join(', ')}]\n` +
                `   ID: ${result.id}`;
       }).join('\n\n');
@@ -408,6 +468,7 @@ class ContextRoutes {
             relevance: relevanceOf(result),
             similarity: result.similarity,
             createdAt: result.createdAt.toISOString(),
+            trust: searchTrusts[index],
           })),
           total: results.length,
         },
@@ -449,12 +510,19 @@ class ContextRoutes {
       // channels agree (truncated value + flag).
       const payloads = results.map((ctx) => applyRecallPayload(ctx.content, recallFormat, ctx.id));
 
+      // TRUST (T2b — default-on): the BOOT path carries trust too, so a fresh-session
+      // "read me in" knows which recalled records to lean on. Per-row, after ordering.
+      const recentTrusts = await this.trustForContextRows(
+        results.map((ctx) => ({ id: ctx.id, createdAt: ctx.createdAt }))
+      );
+
       // Format results for display
       const contextList = results.map((ctx, index) => {
         const timeAgo = this.getTimeAgo(ctx.createdAt);
 
         return `${index + 1}. **${ctx.contextType}** (${timeAgo})\n` +
                `   Content: ${payloads[index].content}\n` +
+               `   ${this.trustHint(recentTrusts[index])}\n` +
                `   Tags: [${ctx.tags.join(', ')}]\n` +
                `   ID: ${ctx.id}`;
       }).join('\n\n');
@@ -473,6 +541,7 @@ class ContextRoutes {
             tags: ctx.tags,
             metadata: ctx.metadata ?? {},
             createdAt: ctx.createdAt.toISOString(),
+            trust: recentTrusts[index],
           })),
           total: results.length,
         },
