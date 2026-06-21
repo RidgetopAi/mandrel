@@ -86,6 +86,10 @@ const TOOL_TO_HANDLER: Record<string, { file: string; method: string }> = {
   get_links:            { file: 'links.routes.ts',    method: 'handleGetLinks' },
   // recall_thread (T3)
   recall_thread:        { file: 'recall.routes.ts',   method: 'handleRecallThread' },
+  // Session active-thread anchor (T5b). thread_current/thread_clear take NO params
+  // (per-connection in-memory state read by connectionId), like the system tools — so
+  // they're excluded here exactly as the param-less system tools are.
+  thread_set:           { file: 'thread.routes.ts',   method: 'handleSet' },
 };
 
 /**
@@ -97,7 +101,10 @@ const TOOL_TO_HANDLER: Record<string, { file: string; method: string }> = {
 const EXEMPT_PARAMS: Record<string, Set<string>> = {
   // context_store/search forward the whole validated args object to contextRoutes,
   // which reads sessionId internally; the route references the rest via args.<x>.
-  context_store:  new Set(['sessionId']),
+  // noAutoThread (T5b opt-out): read via the CONFIG-named key
+  // `args[AUTO_THREAD_CONFIG.optOutFlag]` (Brian's no-hardcoded-variable rule), NOT a
+  // literal `args.noAutoThread` — so it's exempt from the literal-reference scan here.
+  context_store:  new Set(['sessionId', 'noAutoThread']),
   context_search: new Set(['sessionId']),
 
   // ── DRIFT-CLEANUP (task 9c522977 — the two known-drift exemptions below were

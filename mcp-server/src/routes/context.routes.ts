@@ -12,9 +12,16 @@ import {
   RECALL_DEFAULT_FORMAT,
   type RecallResponseFormat,
 } from '../config/recallConfig.js';
-import { autoMintFromTags, mintExplicitLinks, type LinkWarning } from '../services/links.js';
+import {
+  autoMintFromTags,
+  mintExplicitLinks,
+  autoThreadFromActiveAnchor,
+  type LinkWarning,
+  type AutoThreadItem,
+} from '../services/links.js';
 import { trustForRecords, type RecordRef, type Trust } from '../services/trust.js';
 import { TRUST_BAND_HINT, type TrustBand } from '../config/trustConfig.js';
+import { AUTO_THREAD_CONFIG } from '../config/autoThreadConfig.js';
 
 /**
  * Context Management Routes
@@ -160,6 +167,41 @@ class ContextRoutes {
         createdBy: 'links:context_store',
       });
 
+      // AUTO-THREAD (T5b, task ce5d119c, decision 9fbbcd08) — THE deterministic layer.
+      // After the row persists, IF the session has an active-thread anchor set, auto-mint
+      // record → active task (`informs`) and/or record → active decision (`decided_by`)
+      // via the SAME mintEdge path the tag/links surfaces use — so a capture during an
+      // active thread structurally CANNOT be born a graph leaf, with ZERO tags.
+      //
+      // OVERRIDE SEMANTICS (decision 9fbbcd08): SKIP auto-thread when EITHER
+      //   (a) the caller passed an explicit `links` arg — the writer is being explicit, OR
+      //   (b) the opt-out flag (config-named) is set on the call.
+      // Plus the global master switch (AUTO_THREAD_CONFIG.enabled). All knobs are config,
+      // not literals (Brian's no-hardcoded-variables rule).
+      //
+      // ROBUSTNESS: autoThreadFromActiveAnchor NEVER throws — a failed mint is logged, the
+      // record still saves (same contract as T5a). Surfaced in BOTH channels (text +
+      // structuredContent.context.autoThreaded), mirroring how T5a surfaces linksMinted.
+      const optedOut = args[AUTO_THREAD_CONFIG.optOutFlag] === true;
+      const wasExplicit = Array.isArray(args.links) && args.links.length > 0;
+      const activeThread = projectHandler.getActiveThread(sessionId);
+      let autoThreaded: AutoThreadItem[] = [];
+      if (AUTO_THREAD_CONFIG.enabled && !optedOut && !wasExplicit && activeThread) {
+        const threadResult = await autoThreadFromActiveAnchor({
+          fromId: result.id,
+          fromType: 'context',
+          anchor: activeThread,
+          activeTaskEdgeType: AUTO_THREAD_CONFIG.activeTaskEdgeType,
+          activeDecisionEdgeType: AUTO_THREAD_CONFIG.activeDecisionEdgeType,
+          projectId,
+          createdBy: 'auto:active_thread',
+        });
+        autoThreaded = threadResult.items;
+      }
+      const autoThreadLines = autoThreaded.map(
+        (a) => `${a.edgeType} → ${a.toType} ${a.toId}${a.created ? '' : ' (already threaded)'}`
+      );
+
       // LINKING-GRAMMAR warnings (tool-native linking): if a `ref:<slug>` OR a
       // threading tag (`task:`/`decision:`/`context:`/`scope:`/`owner:`/`tranche:`)
       // was malformed it was normalized (or flagged) at the write boundary — surface
@@ -180,6 +222,11 @@ class ContextRoutes {
                   : '') +
                 (linkWarningLines.length > 0
                   ? `\n⚠️  Link notes:\n` + linkWarningLines.map(w => `   • ${w}`).join('\n')
+                  : '') +
+                // T5b: surface the auto-threaded edges (active-thread anchor) in the text
+                // channel, mirroring how link notes are surfaced.
+                (autoThreadLines.length > 0
+                  ? `\n🧵 Auto-threaded:\n` + autoThreadLines.map(l => `   • ${l}`).join('\n')
                   : ''),
         }],
         structuredContent: {
@@ -196,6 +243,9 @@ class ContextRoutes {
             // machine reader sees exactly which explicit links were dropped + why.
             linkWarnings: linkResult.warnings,
             linksMinted: linkResult.minted,
+            // T5b: the active-thread edges auto-minted for this capture (empty when no
+            // active thread / opted out / explicit links given). Mirrors linksMinted.
+            autoThreaded,
           },
         },
       };

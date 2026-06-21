@@ -15,9 +15,9 @@ import { logger } from '../utils/logger.js';
 import { isValidUuid } from '../utils/uuid.js';
 import { ActiveSessionStore } from '../services/session/state/ActiveSessionStore.js';
 // Re-export types from shared types file (to avoid circular dependency with projectSwitchValidator)
-export type { ProjectInfo, CreateProjectRequest, SessionState } from '../types/project.js';
+export type { ProjectInfo, CreateProjectRequest, SessionState, ActiveThreadAnchor } from '../types/project.js';
 // Import for internal use
-import type { ProjectInfo, CreateProjectRequest, SessionState, ProjectChildCounts, DeleteProjectResult } from '../types/project.js';
+import type { ProjectInfo, CreateProjectRequest, SessionState, ProjectChildCounts, DeleteProjectResult, ActiveThreadAnchor } from '../types/project.js';
 
 class ProjectHandler {
   // In-memory session state (in production, this could be Redis/database)
@@ -333,6 +333,69 @@ class ProjectHandler {
       currentProjectId: null,
       sessionId
     };
+  }
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // ACTIVE-THREAD ANCHOR (Mandrel Core Redesign T5b, task ce5d119c) — the
+  // deterministic auto-threading layer's per-session state. Lives RIGHT HERE
+  // alongside setCurrentProject/getCurrentProjectId because it is the same kind of
+  // per-connection session state, keyed by connectionId the exact same way.
+  //
+  // IN-MEMORY (v1) — consistent with currentProjectId. DB-backed persistence for
+  // cross-restart durability is a deliberate future upgrade (a restart clears the
+  // anchor today, identical to how the in-memory current-project cache behaves).
+  // ───────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Set the session's active-thread anchor. Pass RESOLVED full UUIDs (the route resolves
+   * id8|uuid project-scoped BEFORE calling this). At least one of task/decision must be
+   * provided; an omitted side is left unchanged when merging, but here we MERGE over any
+   * existing anchor so `thread_set({task})` then `thread_set({decision})` accumulates both.
+   * Returns the resulting anchor.
+   */
+  setActiveThread(
+    anchor: { task?: string | null; decision?: string | null },
+    sessionId: string = this.defaultSessionId
+  ): ActiveThreadAnchor {
+    const existing = this.sessionStates.get(sessionId) || { currentProjectId: null, sessionId };
+    const prior: ActiveThreadAnchor = existing.activeThread ?? { taskId: null, decisionId: null };
+
+    const next: ActiveThreadAnchor = {
+      // `undefined` = "leave unchanged"; an explicit `null` clears that side.
+      taskId: anchor.task === undefined ? prior.taskId : anchor.task,
+      decisionId: anchor.decision === undefined ? prior.decisionId : anchor.decision,
+    };
+
+    this.sessionStates.set(sessionId, { ...existing, sessionId, activeThread: next });
+    logger.info(
+      `🧵 Active thread set for session ${sessionId}: task=${next.taskId?.substring(0, 8) ?? '-'} ` +
+        `decision=${next.decisionId?.substring(0, 8) ?? '-'}`
+    );
+    return next;
+  }
+
+  /**
+   * Get the session's active-thread anchor, or null if none is set (or both sides null).
+   */
+  getActiveThread(sessionId: string = this.defaultSessionId): ActiveThreadAnchor | null {
+    const anchor = this.sessionStates.get(sessionId)?.activeThread;
+    if (!anchor) return null;
+    if (!anchor.taskId && !anchor.decisionId) return null;
+    return anchor;
+  }
+
+  /**
+   * Clear the session's active-thread anchor. Idempotent — clearing when nothing is set
+   * is a no-op. Returns true iff something was actually cleared.
+   */
+  clearActiveThread(sessionId: string = this.defaultSessionId): boolean {
+    const existing = this.sessionStates.get(sessionId);
+    const had = !!(existing?.activeThread && (existing.activeThread.taskId || existing.activeThread.decisionId));
+    if (existing) {
+      this.sessionStates.set(sessionId, { ...existing, activeThread: undefined });
+    }
+    logger.info(`🧵 Active thread ${had ? 'cleared' : '(already empty)'} for session ${sessionId}`);
+    return had;
   }
 
   /**

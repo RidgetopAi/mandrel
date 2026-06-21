@@ -12,6 +12,7 @@ import { EDGE_TYPES, EDGE_NODE_TYPES } from '../config/edgeTypes.js';
 import { MAX_LINKS_PER_WRITE } from '../config/linksConfig.js';
 import { THREAD_ALTITUDES, THREAD_CONFIG } from '../config/threadConfig.js';
 import { TRUST_BANDS } from '../config/trustConfig.js';
+import { AUTO_THREAD_OPT_OUT_FLAG } from '../config/autoThreadConfig.js';
 
 /**
  * SHORT-ID ACCEPTANCE (task 131ef054): an id field that accepts EITHER a full UUID OR
@@ -172,6 +173,12 @@ const contextSchemas = {
     // EXPLICIT spec or shorthand. Robust: a bad/unresolvable link warns (never breaks the
     // store); the record + good links still persist.
     links: linksParam,
+    // AUTO-THREAD OPT-OUT (T5b, decision 9fbbcd08): when true, SKIP the automatic
+    // active-thread edges for this single write (the writer is being deliberate). The
+    // param NAME is sourced from config (AUTO_THREAD_OPT_OUT_FLAG) so the schema, the
+    // route check, and the docs can never drift. coercedBoolean() so "true"/"false" over
+    // the HTTP bridge are handled. [autoThreadOptOut] is a computed key from that config.
+    [AUTO_THREAD_OPT_OUT_FLAG]: coercedBoolean().optional(),
     projectId: z.string().optional(),
     sessionId: z.string().optional()
   }),
@@ -831,6 +838,26 @@ const recallThreadSchemas = {
   })
 };
 
+// Session active-thread anchor Schemas (Mandrel Core Redesign T5b, task ce5d119c) — THE
+// deterministic auto-threading layer's control surface. Ids accept a full UUID OR an
+// 8+-hex short id (uuidOrShortId, resolved project-scoped in the handler) exactly like
+// every other id-taking tool. thread_set requires at least one of task/decision (the
+// route enforces "at least one" with an actionable error — zod can't express "≥1 of an
+// optional set" without an awkward refine that would muddy the actionable message).
+const threadSchemas = {
+  // thread_set: set the session's active task and/or decision (the anchor captures thread onto).
+  thread_set: z.object({
+    task: uuidOrShortId().optional(),
+    decision: uuidOrShortId().optional(),
+    projectId: z.string().optional()
+  }),
+  // thread_current: show the active thread. No params — the anchor is per-connection
+  // session state read by connectionId (project scoping is irrelevant to the read).
+  thread_current: z.object({}),
+  // thread_clear: clear the active thread (idempotent). No params (per-connection state).
+  thread_clear: z.object({})
+};
+
 // Session Management Schemas - DELETED (2025-10-24)
 // Session MCP tools removed - sessions now auto-manage via SessionTracker service
 // REST API endpoints at /api/v2/sessions/* handle UI analytics needs
@@ -933,7 +960,13 @@ export const validationSchemas = {
   get_links: linkSchemas.get_links,
 
   // recall_thread (Mandrel Core Redesign T3) — the traversal-narrative headline tool
-  recall_thread: recallThreadSchemas.recall_thread
+  recall_thread: recallThreadSchemas.recall_thread,
+
+  // Session active-thread anchor (Mandrel Core Redesign T5b) — the deterministic
+  // auto-threading layer's set/read/clear control surface.
+  thread_set: threadSchemas.thread_set,
+  thread_current: threadSchemas.thread_current,
+  thread_clear: threadSchemas.thread_clear
 
   // Git Integration Tools - DELETED (C4, 2026-06-09)
   // 3 dormant git MCP tools (git_session_commits, git_commit_sessions,

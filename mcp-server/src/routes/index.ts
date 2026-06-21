@@ -18,6 +18,7 @@ import { tasksRoutes } from './tasks.routes.js';
 import { searchRoutes } from './search.routes.js';
 import { linksRoutes } from './links.routes.js';
 import { recallRoutes } from './recall.routes.js';
+import { threadRoutes } from './thread.routes.js';
 
 /**
  * Execution context passed through route handlers
@@ -267,6 +268,15 @@ async function routeExecutorInner(toolName: string, args: any, context?: RouteCo
       // recall_thread (Mandrel Core Redesign T3) — the traversal-narrative headline tool
       case 'recall_thread':
         return await recallRoutes.handleRecallThread(args, context);
+
+      // Session active-thread anchor (Mandrel Core Redesign T5b) — the deterministic
+      // auto-threading layer's set/read/clear control surface (PASSIVE: no session spawn).
+      case 'thread_set':
+        return await threadRoutes.handleSet(args, context);
+      case 'thread_current':
+        return await threadRoutes.handleCurrent(args, context);
+      case 'thread_clear':
+        return await threadRoutes.handleClear(args, context);
 
       // Unknown tool
       default:
