@@ -1,6 +1,6 @@
 {
   "name": "mandrel",
-  "version": "0.5.12",
+  "version": "0.5.13",
   "description": "AI Development Intelligence System - Persistent context management",
   "private": true,
   "scripts": {
