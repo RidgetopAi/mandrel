@@ -140,7 +140,11 @@ Close the CURATE half-gap so the story stays *true*.
 
 ## 5. Sequencing — tranches (additive, eval-gated, each shippable)
 
-> **Build status (2026-06-21):** T1 ✅ **shipped to our prod (v0.5.10)** + dogfood-proven; customer rollout gated. T2 split → **T2a graph foundation** (building) → **T2b trust** (config approved by Brian). Trust v1 config locked in §8.1. (Aside: caught + fixed a notify-channel HTML-escape bug that was silently dropping any alert containing `<`/`>` — commit `78ab0c4`.)
+> **Build status (2026-06-21) — REDESIGN COMPLETE on our prod (v0.5.13); customers held at v0.5.9 for Brian's CN1 rollout gate:**
+> - T1 ✅ fluidity (v0.5.10) · T2a ✅ graph (v0.5.11, 197 edges) · T2b ✅ **trust/the moat** (v0.5.12) · T3 ✅ **recall_thread** (v0.5.13) · T4 ✅ self-curation (runtime, propose-only) — each Foreman-built, Inspector-gated, deployed to our prod, dogfooded live.
+> - **Design refinement (locked):** `recall_thread` (Cap 2) is DETERMINISTIC — no server-side LLM (Mandrel is a product in customer containers; the consuming agent narrates). Server-side synthesis = possible premium tranche later.
+> - Trust v1 config + all tear-apart resolutions locked in §8.1.
+> - Caught + fixed by dogfooding: notify HTML-escape bug (`78ab0c4`); this doc was untracked under `docs/*` gitignore (now tracked, Lesson 012). Filed follow-ups: notify silent-mode footgun, proposer idempotency, metadataMerge param-bind, user-facing docs.
 
 | Tranche | Contents | Risk | Gate |
 |---------|----------|------|------|
