@@ -9,6 +9,8 @@ import { formatZodErrorMessage } from '../utils/actionableError.js';
 import { isUuidOrShortId } from '../utils/idResolver.js';
 import { RECALL_RESPONSE_FORMATS } from '../config/recallConfig.js';
 import { EDGE_TYPES, EDGE_NODE_TYPES } from '../config/edgeTypes.js';
+import { THREAD_ALTITUDES, THREAD_CONFIG } from '../config/threadConfig.js';
+import { TRUST_BANDS } from '../config/trustConfig.js';
 
 /**
  * SHORT-ID ACCEPTANCE (task 131ef054): an id field that accepts EITHER a full UUID OR
@@ -764,6 +766,31 @@ const linkSchemas = {
   })
 };
 
+// recall_thread Schema (Mandrel Core Redesign T3, task 73f9d280) — THE headline pull tool.
+// The altitude enum + edge-type enum + trust-band floor all DERIVE from the single-source
+// config modules (threadConfig / edgeTypes / trustConfig) so the schema, the inputSchema,
+// and the engine can never drift. Lenient inputs, strict declared output (the §7 discipline).
+const threadAltitudeEnum = z.enum(THREAD_ALTITUDES as unknown as [string, ...string[]]);
+const trustBandEnum = z.enum(TRUST_BANDS as unknown as [string, ...string[]]);
+const recallThreadSchemas = {
+  recall_thread: z.object({
+    // anchor: a ref:<slug>, OR a full UUID / 8+-hex short id of a context/decision/task.
+    // NOT uuidOrShortId() — a ref:<slug> is a legal anchor too, so accept any non-empty
+    // string here and resolve (robustly, actionable error) in the engine.
+    anchor: z.string().min(1).max(255),
+    // altitude: headline | summary | full — content depth per node (default summary in-route).
+    altitude: threadAltitudeEnum.optional(),
+    // optional edge-type filter restricting the walk (subset of the v1 domain).
+    edgeTypes: z.array(edgeTypeEnum).optional(),
+    // optional BFS depth; clamped to [1, maxDepth] in the engine. coercedInt for the bridge.
+    depth: coercedInt(z.number().int().min(1).max(THREAD_CONFIG.maxDepth)).optional(),
+    // optional trust floor: a BAND name (trusted/ok/unproven/stale/superseded/contradicted)
+    // OR a numeric score in [0,1]. Nodes below the floor are dropped (the anchor never is).
+    minTrust: z.union([trustBandEnum, z.number().min(0).max(1)]).optional(),
+    projectId: z.string().optional()
+  })
+};
+
 // Session Management Schemas - DELETED (2025-10-24)
 // Session MCP tools removed - sessions now auto-manage via SessionTracker service
 // REST API endpoints at /api/v2/sessions/* handle UI analytics needs
@@ -863,7 +890,10 @@ export const validationSchemas = {
   // Typed-edge graph (Mandrel Core Redesign T2a)
   link: linkSchemas.link,
   unlink: linkSchemas.unlink,
-  get_links: linkSchemas.get_links
+  get_links: linkSchemas.get_links,
+
+  // recall_thread (Mandrel Core Redesign T3) — the traversal-narrative headline tool
+  recall_thread: recallThreadSchemas.recall_thread
 
   // Git Integration Tools - DELETED (C4, 2026-06-09)
   // 3 dormant git MCP tools (git_session_commits, git_commit_sessions,

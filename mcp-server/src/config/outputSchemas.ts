@@ -159,6 +159,46 @@ const edgeRecord = z
   })
   .passthrough();
 
+/**
+ * recall_thread (T3) output shapes — the headline pull tool's consolidated thread.
+ * A thread NODE carries the ordered record + its trust (default-on, the moat) + optional
+ * content (present at summary/full, omitted at headline). A thread EDGE is the from→to×type
+ * triple of the collected subgraph. Raw values; the consumer narrates, never re-parses SQL.
+ */
+const threadNode = z
+  .object({
+    id: z.string(),
+    type: z.string(),
+    title: z.string().nullable().optional(),
+    trust: trustObject,
+    content: z.string().optional(),
+  })
+  .passthrough();
+
+const threadEdge = z
+  .object({
+    from: z.string(),
+    to: z.string(),
+    type: z.string(),
+  })
+  .passthrough();
+
+/** The full recall_thread structuredContent contract (spec §4 Capability 2). */
+const recallThreadShape = z
+  .object({
+    ok,
+    anchor: z.string(),
+    altitude: z.string(),
+    depthUsed: z.number(),
+    nodes: z.array(threadNode),
+    edges: z.array(threadEdge),
+    abstain: z.array(z.string()),
+    truncated: z.boolean(),
+    truncatedCount: z.number(),
+    total: z.number(),
+  })
+  .passthrough();
+
 /** A single smart-search / recommendation result item. */
 const searchResultItem = z
   .object({
@@ -268,6 +308,9 @@ export const outputZodSchemas = {
   link: mutateShape('edge', edgeRecord),
   unlink: mutateShape('edge', edgeRecord),
   get_links: listShape(edgeRecord),
+
+  // recall_thread (T3) — the consolidated traversal-narrative thread (bespoke shape).
+  recall_thread: recallThreadShape,
 } as const;
 
 export type OutputSchemaToolName = keyof typeof outputZodSchemas;

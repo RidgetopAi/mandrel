@@ -17,6 +17,7 @@ import { decisionsRoutes } from './decisions.routes.js';
 import { tasksRoutes } from './tasks.routes.js';
 import { searchRoutes } from './search.routes.js';
 import { linksRoutes } from './links.routes.js';
+import { recallRoutes } from './recall.routes.js';
 
 /**
  * Execution context passed through route handlers
@@ -262,6 +263,10 @@ async function routeExecutorInner(toolName: string, args: any, context?: RouteCo
         return await linksRoutes.handleUnlink(args, context);
       case 'get_links':
         return await linksRoutes.handleGetLinks(args, context);
+
+      // recall_thread (Mandrel Core Redesign T3) — the traversal-narrative headline tool
+      case 'recall_thread':
+        return await recallRoutes.handleRecallThread(args, context);
 
       // Unknown tool
       default:
