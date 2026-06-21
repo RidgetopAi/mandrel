@@ -43,6 +43,8 @@ archive/
 mcp-server-archive/
 docs/*
 !docs/DEPLOYMENT.md
+# Mandrel Core Redesign — anchor product artifact, versioned WITH the code it specifies (2026-06-21)
+!docs/MANDREL_CORE_REDESIGN.md
 # D3 (2026-06-09): organized doc homes — tracked, not scratch
 !docs/guides/
 !docs/archive/
