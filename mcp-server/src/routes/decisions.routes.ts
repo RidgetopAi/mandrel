@@ -13,6 +13,7 @@ import {
   ambiguousIdMessage,
   idErrorResponse,
 } from '../utils/idResolver.js';
+import { autoMintFromTags, autoMintFromDecision } from '../services/links.js';
 
 /**
  * Technical Decisions Routes
@@ -70,6 +71,26 @@ class DecisionsRoutes {
         decision.impactLevel,
         context?.connectionId
       );
+
+      // AUTO-MINT TYPED EDGES (T2a Q3 — near-free, at write-time). Two sources, both
+      // robust (never throw; unresolvable refs skipped so a typo can't break the record):
+      //   1. threading tags on the decision (task:/decision:/context:) → typed edges.
+      //   2. decision evidence/parent ids in metadata → `learned_from` edges, and any
+      //      supersededBy set at record time → a `supersedes` edge (mirrors the column).
+      await autoMintFromTags({
+        fromId: decision.id,
+        fromType: 'decision',
+        tags: decision.tags,
+        projectId,
+        createdBy: 'auto:decision_record',
+      });
+      await autoMintFromDecision({
+        decisionId: decision.id,
+        metadata: decision.metadata,
+        supersededBy: decision.supersededBy,
+        projectId,
+        createdBy: 'auto:decision_record',
+      });
 
       return {
         content: [{
@@ -451,6 +472,27 @@ class DecisionsRoutes {
         tags: args.tags,
         metadata: args.metadata
       });
+
+      // AUTO-MINT (T2a): supersession set on UPDATE mirrors a `supersedes` edge (the
+      // common path — decision_update is how a decision gets retired). Also re-mint any
+      // threading-tag edges if tags were edited. Robust: never throws (write already done).
+      const updateProjectId = await this.resolveProjectId(args.projectId, context);
+      await autoMintFromDecision({
+        decisionId: decision.id,
+        metadata: args.metadata,
+        supersededBy: args.supersededBy,
+        projectId: updateProjectId,
+        createdBy: 'auto:decision_update',
+      });
+      if (args.tags !== undefined) {
+        await autoMintFromTags({
+          fromId: decision.id,
+          fromType: 'decision',
+          tags: decision.tags,
+          projectId: updateProjectId,
+          createdBy: 'auto:decision_update',
+        });
+      }
 
       return {
         content: [{

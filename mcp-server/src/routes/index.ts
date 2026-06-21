@@ -16,6 +16,7 @@ import { projectRoutes } from './project.routes.js';
 import { decisionsRoutes } from './decisions.routes.js';
 import { tasksRoutes } from './tasks.routes.js';
 import { searchRoutes } from './search.routes.js';
+import { linksRoutes } from './links.routes.js';
 
 /**
  * Execution context passed through route handlers
@@ -253,6 +254,14 @@ async function routeExecutorInner(toolName: string, args: any, context?: RouteCo
         return await searchRoutes.handleRecommendations(args, context);
       case 'project_insights':
         return await searchRoutes.handleProjectInsights(args, context);
+
+      // Typed-edge graph (Mandrel Core Redesign T2a) - pass context for project scoping
+      case 'link':
+        return await linksRoutes.handleLink(args, context);
+      case 'unlink':
+        return await linksRoutes.handleUnlink(args, context);
+      case 'get_links':
+        return await linksRoutes.handleGetLinks(args, context);
 
       // Unknown tool
       default:

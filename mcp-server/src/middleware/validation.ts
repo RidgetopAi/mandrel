@@ -8,6 +8,7 @@ import { z } from 'zod';
 import { formatZodErrorMessage } from '../utils/actionableError.js';
 import { isUuidOrShortId } from '../utils/idResolver.js';
 import { RECALL_RESPONSE_FORMATS } from '../config/recallConfig.js';
+import { EDGE_TYPES, EDGE_NODE_TYPES } from '../config/edgeTypes.js';
 
 /**
  * SHORT-ID ACCEPTANCE (task 131ef054): an id field that accepts EITHER a full UUID OR
@@ -727,6 +728,42 @@ const smartSearchSchemas = {
   })
 };
 
+// TYPED-EDGE GRAPH Schemas (Mandrel Core Redesign T2a, task 8a296229).
+// The edge_type / node_type enums DERIVE from the single-source domain
+// (config/edgeTypes.ts) so the zod validation, the model-facing inputSchema, and the
+// DB CHECK can never drift. Ids accept a full UUID OR an 8+-hex short id (uuidOrShortId,
+// resolved project-scoped in the handler) exactly like every other id-taking tool.
+const edgeTypeEnum = z.enum(EDGE_TYPES as unknown as [string, ...string[]]);
+const edgeNodeTypeEnum = z.enum(EDGE_NODE_TYPES as unknown as [string, ...string[]]);
+const linkSchemas = {
+  // link: create a typed edge from → to for edges that can't be inferred, and to REPAIR.
+  link: z.object({
+    from: uuidOrShortId(),
+    fromType: edgeNodeTypeEnum,
+    to: uuidOrShortId(),
+    toType: edgeNodeTypeEnum,
+    edgeType: edgeTypeEnum,
+    metadata: baseMetadata,
+    projectId: z.string().optional()
+  }),
+  // unlink: remove a typed edge (the curate/repair counterpart).
+  unlink: z.object({
+    from: uuidOrShortId(),
+    to: uuidOrShortId(),
+    edgeType: edgeTypeEnum,
+    projectId: z.string().optional()
+  }),
+  // get_links: read a record's edges in both directions (T2b trust / T3 recall_thread).
+  get_links: z.object({
+    id: uuidOrShortId(),
+    // optional direction filter; defaults to 'both' in the handler.
+    direction: z.enum(['out', 'in', 'both']).optional(),
+    // optional edge-type filter (restrict the walk); validated against the domain.
+    edgeTypes: z.array(edgeTypeEnum).optional(),
+    projectId: z.string().optional()
+  })
+};
+
 // Session Management Schemas - DELETED (2025-10-24)
 // Session MCP tools removed - sessions now auto-manage via SessionTracker service
 // REST API endpoints at /api/v2/sessions/* handle UI analytics needs
@@ -821,7 +858,12 @@ export const validationSchemas = {
   
   // Smart Search & AI Recommendations
   smart_search: smartSearchSchemas.search,
-  get_recommendations: smartSearchSchemas.recommendations
+  get_recommendations: smartSearchSchemas.recommendations,
+
+  // Typed-edge graph (Mandrel Core Redesign T2a)
+  link: linkSchemas.link,
+  unlink: linkSchemas.unlink,
+  get_links: linkSchemas.get_links
 
   // Git Integration Tools - DELETED (C4, 2026-06-09)
   // 3 dormant git MCP tools (git_session_commits, git_commit_sessions,
