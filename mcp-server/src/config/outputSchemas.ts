@@ -199,6 +199,29 @@ const recallThreadShape = z
   })
   .passthrough();
 
+/**
+ * Session active-thread anchor (T5b) — the resolved active task/decision the session is
+ * threading onto. Nullable: `activeThread` is null when no thread is set (thread_current
+ * with nothing set, or after thread_clear). Raw ids + best-effort titles.
+ */
+const activeThreadAnchor = z
+  .object({
+    taskId: z.string().nullable(),
+    taskTitle: z.string().nullable().optional(),
+    decisionId: z.string().nullable(),
+    decisionTitle: z.string().nullable().optional(),
+  })
+  .passthrough();
+
+/** The thread_set / thread_current / thread_clear structuredContent contract (T5b). */
+const threadAnchorShape = z
+  .object({
+    ok,
+    action: z.string(),
+    activeThread: activeThreadAnchor.nullable(),
+  })
+  .passthrough();
+
 /** A single smart-search / recommendation result item. */
 const searchResultItem = z
   .object({
@@ -311,6 +334,11 @@ export const outputZodSchemas = {
 
   // recall_thread (T3) — the consolidated traversal-narrative thread (bespoke shape).
   recall_thread: recallThreadShape,
+
+  // Session active-thread anchor (T5b) — set/read/clear the deterministic auto-thread anchor.
+  thread_set: threadAnchorShape,
+  thread_current: threadAnchorShape,
+  thread_clear: threadAnchorShape,
 } as const;
 
 export type OutputSchemaToolName = keyof typeof outputZodSchemas;

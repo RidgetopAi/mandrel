@@ -154,6 +154,7 @@ export const AIDIS_TOOL_DEFINITIONS: ToolDefinition[] = [
               relevanceScore: 'Optional importance score 0–10 (default 5) feeding the hierarchical-memory ranking',
               metadata: 'Optional structured metadata (jsonb object) stored on the context. The tool-native way to carry STRUCTURED back-links, e.g. {"parent_task":"<uuid>","parent_decision":"<uuid>","origin_context":"<uuid>"} — round-trips and is retrievable via context_search.',
               links: 'Optional array of typed edges to mint FROM this context to other records (first-class linking). Each item is EITHER explicit {"edgeType":"<one of the edge-type vocab>","to":"<id8|uuid>","toType":"task|decision|context"} OR shorthand {"task":"<ref>"} | {"decision":"<ref>"} | {"context":"<ref>"} (→ informs / decided_by / learned_from). Refs accept an id8 or full UUID, resolved in the current project. A bad/unresolvable link is reported as a warning (link notes) but NEVER blocks the store — the context + the good links still save.',
+              noAutoThread: 'Optional. When true, SKIP the automatic active-thread edges for THIS store (the session has an active thread via thread_set, but this capture should not thread onto it). Auto-threading is also skipped automatically whenever you pass an explicit `links` arg.',
               projectId: 'Project ID or name to store under (defaults to current project)',
               sessionId: 'Session ID to attribute this context to (defaults to the active session)'
             }),
@@ -602,6 +603,30 @@ export const AIDIS_TOOL_DEFINITIONS: ToolDefinition[] = [
               minTrust: 'Optional trust floor — a band name (trusted|ok|unproven|stale|superseded|contradicted) OR a 0–1 score; nodes below it are hidden (the anchor never is)',
               projectId: 'Project to scope anchor/short-id resolution (defaults to current project)'
             }),
+          },
+
+          // ── Session active-thread anchor (Mandrel Core Redesign T5b) ──────────────
+          {
+            name: 'thread_set',
+            description:
+              'Set this session\'s ACTIVE THREAD — an active task and/or decision. While set, every context_store auto-threads its capture onto it (record → task `informs`, record → decision `decided_by`) with ZERO tags, so a capture made during an active thread structurally cannot be born a graph leaf. Provide at least one of task/decision (full UUID or 8+-hex short id; resolved project-scoped). Merges over any existing anchor (set task then decision to accumulate both). Idempotent edges (dedup).',
+            inputSchema: buildInputSchema('thread_set', {
+              task: 'Active task id (full UUID or 8+-hex short id) — captures get an `informs` edge to it',
+              decision: 'Active decision id (full UUID or 8+-hex short id) — captures get a `decided_by` edge to it',
+              projectId: 'Project to scope short-id resolution (defaults to current project)'
+            }),
+          },
+          {
+            name: 'thread_current',
+            description:
+              'Show this session\'s active thread (the active task/decision captures are auto-threading onto, with resolved titles), or a clear "no active thread" message if none is set.',
+            inputSchema: buildInputSchema('thread_current'),
+          },
+          {
+            name: 'thread_clear',
+            description:
+              'Clear this session\'s active thread so new captures no longer auto-thread. Idempotent — clearing when nothing is set is reported, not an error.',
+            inputSchema: buildInputSchema('thread_clear'),
           },
 
         // Session Management Tools - DELETED (2025-10-24)

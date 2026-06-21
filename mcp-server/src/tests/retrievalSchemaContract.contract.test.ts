@@ -36,7 +36,9 @@ const EXPECTED_PARAMS: Record<string, string[]> = {
   // advertises exactly the validated/accepted field set — and `metadata` is visible.
   // T5a (task 9535d967): `links` — the first-class explicit-edge write param (declared,
   // accepted, and minted post-persist; robust — a bad link warns, never breaks the store).
-  context_store: ['content', 'type', 'tags', 'relevanceScore', 'metadata', 'links', 'projectId', 'sessionId'],
+  // T5b (task ce5d119c): `noAutoThread` — per-call opt-out for the active-thread anchor's
+  // automatic edges (config-named AUTO_THREAD_OPT_OUT_FLAG). Declared, accepted, honored.
+  context_store: ['content', 'type', 'tags', 'relevanceScore', 'metadata', 'links', 'noAutoThread', 'projectId', 'sessionId'],
   // includeArchived (task 7b28bed4): soft-delete read filter — default excludes archived.
   // response_format (T1 item 1, task f54e6cf5): concise|detailed payload control.
   context_search: ['id', 'query', 'type', 'tags', 'limit', 'minSimilarity', 'offset', 'response_format', 'projectId', 'sessionId', 'includeArchived'],

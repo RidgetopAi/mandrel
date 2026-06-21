@@ -519,6 +519,100 @@ export async function mintExplicitLinks(
   return { minted, attempted, warnings };
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// AUTO-THREAD (T5b — the session active-thread anchor, task ce5d119c)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** What the active-thread auto-mint produced, surfaced in the store response. */
+export interface AutoThreadItem {
+  /** The edge type minted (informs | decided_by). */
+  edgeType: EdgeType;
+  /** The connected record's kind. */
+  toType: EdgeNodeType;
+  /** The connected record id (the active task / decision). */
+  toId: string;
+  /** True iff a NEW edge row was inserted (false on dedup — already threaded). */
+  created: boolean;
+}
+
+export interface AutoThreadResult {
+  /** Each active-thread edge minted-or-deduped (for surfacing + tests). */
+  items: AutoThreadItem[];
+  /** Count of edges NEWLY created (excludes dedup no-ops). */
+  minted: number;
+}
+
+/**
+ * AUTO-THREAD from the session's ACTIVE-THREAD ANCHOR (T5b — the deterministic layer).
+ * Called from context_store AFTER the row persists, IF an active thread is set AND the
+ * write didn't opt out / wasn't already being explicit (the route enforces those gates).
+ *
+ * Mints, via mintEdge (the SAME single mint path — no new mint code, Lesson 011):
+ *   record → active task     : `informs`     (ACTIVE_TASK_EDGE_TYPE — the moat edge)
+ *   record → active decision : `decided_by`  (ACTIVE_DECISION_EDGE_TYPE)
+ * — the SAME edges the `task:`/`decision:` threading tags + the links shorthand mint, so
+ * the automatic, tag, and explicit layers can never disagree about what an anchor means.
+ *
+ * ROBUSTNESS CONTRACT (identical to autoMintFromTags / mintExplicitLinks): this NEVER
+ * throws. A self-link, a stale anchor, or a DB hiccup minting one edge must not break (or
+ * roll back) the user's write — each edge is minted independently; failures are logged and
+ * swallowed. The record always saves. Edge-type values come from autoThreadConfig (sourced
+ * from edgeTypes.ts); the anchor ids are already RESOLVED full UUIDs (thread_set resolved
+ * them), so there is no ref resolution here.
+ */
+export async function autoThreadFromActiveAnchor(
+  args: {
+    fromId: string;
+    fromType: EdgeNodeType;
+    anchor: { taskId: string | null; decisionId: string | null };
+    activeTaskEdgeType: EdgeType;
+    activeDecisionEdgeType: EdgeType;
+    projectId: string | undefined;
+    createdBy: string;
+  },
+  pool: Pool = db
+): Promise<AutoThreadResult> {
+  const items: AutoThreadItem[] = [];
+  let minted = 0;
+
+  const targets: Array<{ toId: string; toType: EdgeNodeType; edgeType: EdgeType }> = [];
+  if (args.anchor.taskId) {
+    targets.push({ toId: args.anchor.taskId, toType: 'task', edgeType: args.activeTaskEdgeType });
+  }
+  if (args.anchor.decisionId) {
+    targets.push({ toId: args.anchor.decisionId, toType: 'decision', edgeType: args.activeDecisionEdgeType });
+  }
+
+  for (const t of targets) {
+    if (t.toId === args.fromId) continue; // would be a self-link → skip
+    try {
+      const res = await mintEdge(
+        {
+          fromId: args.fromId,
+          fromType: args.fromType,
+          toId: t.toId,
+          toType: t.toType,
+          edgeType: t.edgeType,
+          projectId: args.projectId ?? null,
+          createdBy: args.createdBy,
+          metadata: { source: 'active_thread' },
+        },
+        pool
+      );
+      items.push({ edgeType: t.edgeType, toType: t.toType, toId: t.toId, created: res.created });
+      if (res.created) minted++;
+    } catch (e) {
+      // A single edge failing must NEVER break the write (same contract as T5a).
+      logger.warn(
+        `🧵 auto-thread: failed to mint ${t.edgeType} edge to ${t.toType} ${t.toId} — write unaffected`,
+        { metadata: { error: (e as Error)?.message } }
+      );
+    }
+  }
+
+  return { items, minted };
+}
+
 /**
  * AUTO-MINT decision-specific edges (called from decision_record / decision_update):
  *   - evidence/parent ids carried in metadata (metadata.evidence: [id...] and
