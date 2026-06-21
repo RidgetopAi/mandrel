@@ -582,6 +582,26 @@ export const AIDIS_TOOL_DEFINITIONS: ToolDefinition[] = [
             }),
           },
 
+          // ── recall_thread (Mandrel Core Redesign T3) — THE headline pull tool ──────
+          {
+            name: 'recall_thread',
+            description:
+              'Read me in on the STORY of X, at altitude Y, and tell me what to TRUST — in ONE call. ' +
+              'Resolves the anchor (a ref:<slug>, or a context/decision/task id — id8 ok), traverses the ' +
+              'typed-edge graph BOTH directions (cycle-safe, capped), trust-annotates every node (the moat: ' +
+              'band/score/abstain), orders the nodes causally+temporally so it reads top-to-bottom as the story, ' +
+              'and surfaces an abstain list. Returns BOTH a clean structured thread AND a narratable text channel. ' +
+              'Deterministic — no LLM. Altitude: headline (1-liner/node) | summary (default, +snippet) | full (+full content).',
+            inputSchema: buildInputSchema('recall_thread', {
+              anchor: 'What to read in on: a ref:<slug> (e.g. ref:resume), or a context/decision/task id (full UUID or 8+-hex short id)',
+              altitude: 'Zoom per node: headline (title+type+trust) | summary (default, +snippet) | full (+full content)',
+              edgeTypes: 'Optional list of edge types to restrict the walk (default: all v1 edge types)',
+              depth: 'Optional BFS depth (hops from the anchor); clamped to the configured max. Default from config.',
+              minTrust: 'Optional trust floor — a band name (trusted|ok|unproven|stale|superseded|contradicted) OR a 0–1 score; nodes below it are hidden (the anchor never is)',
+              projectId: 'Project to scope anchor/short-id resolution (defaults to current project)'
+            }),
+          },
+
         // Session Management Tools - DELETED (2025-10-24)
         // The following 5 MCP tools were removed because sessions auto-manage themselves:
         // - session_assign → Auto-tracking via ensureActiveSession()

@@ -84,6 +84,8 @@ const TOOL_TO_HANDLER: Record<string, { file: string; method: string }> = {
   link:                 { file: 'links.routes.ts',    method: 'handleLink' },
   unlink:               { file: 'links.routes.ts',    method: 'handleUnlink' },
   get_links:            { file: 'links.routes.ts',    method: 'handleGetLinks' },
+  // recall_thread (T3)
+  recall_thread:        { file: 'recall.routes.ts',   method: 'handleRecallThread' },
 };
 
 /**
