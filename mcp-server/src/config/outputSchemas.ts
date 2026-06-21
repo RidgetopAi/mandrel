@@ -52,6 +52,29 @@ export interface JsonObjectSchema {
  */
 const ok = z.boolean();
 
+/**
+ * TRUST object (Mandrel Core Redesign T2b — THE MOAT). Surfaced DEFAULT-ON on every
+ * recalled record so the AI knows whether to rely on it. Shape per spec §4/§8.1:
+ *   band      — trusted | ok | unproven | stale | superseded | contradicted
+ *   score     — blended 0–1 (null only at cold-start, no outcome evidence yet)
+ *   outcome   — { score: 0–1 | null, samples } (the moat sub-signal)
+ *   freshness — 0–1 exponential decay by age
+ *   superseded/abstain — booleans (abstain = "do not rely on this")
+ * `.nullable().optional()` on score so the cold-start `unproven` (null score) validates.
+ */
+const trustObject = z
+  .object({
+    band: z.string(),
+    score: z.number().nullable(),
+    outcome: z
+      .object({ score: z.number().nullable(), samples: z.number() })
+      .passthrough(),
+    freshness: z.number(),
+    superseded: z.boolean(),
+    abstain: z.boolean(),
+  })
+  .passthrough();
+
 /** A single context record (raw values — NEVER marked-up). */
 const contextRecord = z
   .object({
@@ -66,6 +89,8 @@ const contextRecord = z
     sessionId: z.string().nullable().optional(),
     metadata: z.record(z.any()).optional(),
     createdAt: z.string().optional(),
+    // TRUST (T2b) — default-on on recall rows (context_search / context_get_recent).
+    trust: trustObject.optional(),
   })
   .passthrough();
 
@@ -81,6 +106,8 @@ const decisionRecord = z
     outcomeStatus: z.string().nullable().optional(),
     lessonsLearned: z.string().nullable().optional(),
     tags: z.array(z.string()).optional(),
+    // TRUST (T2b) — default-on on decision_search result rows.
+    trust: trustObject.optional(),
   })
   .passthrough();
 
@@ -141,6 +168,8 @@ const searchResultItem = z
     summary: z.string().optional(),
     relevanceScore: z.number().optional(),
     source: z.string().optional(),
+    // TRUST (T2b) — default-on on smart_search result rows (context/decision items).
+    trust: trustObject.optional(),
   })
   .passthrough();
 

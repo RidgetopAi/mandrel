@@ -14,6 +14,8 @@ import {
   idErrorResponse,
 } from '../utils/idResolver.js';
 import { autoMintFromTags, autoMintFromDecision } from '../services/links.js';
+import { trustForRecords, type RecordRef, type Trust } from '../services/trust.js';
+import { TRUST_BAND_HINT, type TrustBand } from '../config/trustConfig.js';
 
 /**
  * Technical Decisions Routes
@@ -163,6 +165,21 @@ class DecisionsRoutes {
   }
 
   /**
+   * TRUST (T2b — THE MOAT): the compact one-line human hint for a decision row, mirroring
+   * the context route's hint. The structuredContent carries the full trust object.
+   */
+  static trustHint(trust: Trust): string {
+    const hint = TRUST_BAND_HINT[trust.band as TrustBand] ?? trust.band;
+    const scorePart = trust.score === null ? '' : ` (${trust.score.toFixed(2)})`;
+    const coldStart = trust.outcome.score === null ? ', cold-start — lean on freshness' : '';
+    const abstainPart =
+      trust.abstain || trust.band === 'superseded' || trust.band === 'contradicted'
+        ? ' — abstain'
+        : '';
+    return `   🔐 Trust: ${hint}${scorePart}${coldStart}${abstainPart}`;
+  }
+
+  /**
    * Handle decision search requests
    */
   async handleSearch(args: any, context?: RouteContext): Promise<McpResponse> {
@@ -212,6 +229,19 @@ class DecisionsRoutes {
 
       const searchSummary = `🔍 Found ${decisions.length} technical decisions:\n\n`;
 
+      // TRUST (T2b — default-on): computed per returned decision, AFTER the existing
+      // ranking (semantic / newest-first). Each decision folds in its OWN outcome_status
+      // (direct loop ground-truth) plus any downstream-inherited outcomes via edges, and
+      // honors its own superseded_by column. Display-only; order unchanged.
+      const decisionRefs: RecordRef[] = decisions.map((d) => ({
+        id: d.id,
+        type: 'decision',
+        createdAt: d.decisionDate,
+        supersededBy: d.supersededBy,
+        ownOutcomeStatus: d.outcomeStatus,
+      }));
+      const decisionTrusts = await trustForRecords(decisionRefs);
+
       const resultDetails = decisions.map((decision, index) => {
         const alternatives = decision.alternativesConsidered.length > 0
           ? ` (${decision.alternativesConsidered.length} alternatives considered)`
@@ -226,11 +256,12 @@ class DecisionsRoutes {
                // reads the prose, so without this it is blind to outcome_status / lessons —
                // exactly what blocks the GAP1 Evaluator. Indented so it reads as a sub-block.
                DecisionsRoutes.renderOutcomeText(decision, '   ') +
+               DecisionsRoutes.trustHint(decisionTrusts[index]) + '\n' +
                `   🏷️  [${decision.tags.join(', ')}]`;
       }).join('\n\n');
 
       // Map decisions to structured format with proper field names for frontend
-      const structuredDecisions = decisions.map(decision => ({
+      const structuredDecisions = decisions.map((decision, index) => ({
         id: decision.id,
         project_id: decision.projectId,
         session_id: decision.sessionId,
@@ -258,6 +289,8 @@ class DecisionsRoutes {
         // supplied — consistent with context_search's `similarity`. Absent for
         // filter-only searches.
         similarity: decision.similarity,
+        // TRUST (T2b — default-on): the computed trust object for this decision row.
+        trust: decisionTrusts[index],
         created_at: decision.decisionDate.toISOString(),
         updated_at: decision.decisionDate.toISOString()
       }));
