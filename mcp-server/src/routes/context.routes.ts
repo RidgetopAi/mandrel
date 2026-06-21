@@ -6,7 +6,12 @@ import type { McpResponse } from '../utils/mcpFormatter.js';
 import type { RouteContext } from './index.js';
 import { db } from '../config/database.js';
 import { logger } from '../utils/logger.js';
-import { resolveEntityId, idErrorResponse } from '../utils/idResolver.js';
+import { resolveEntityId, idErrorResponse, isFullUuid } from '../utils/idResolver.js';
+import {
+  applyRecallPayload,
+  RECALL_DEFAULT_FORMAT,
+  type RecallResponseFormat,
+} from '../config/recallConfig.js';
 
 /**
  * Context Management Routes
@@ -118,15 +123,40 @@ class ContextRoutes {
    */
   async handleSearch(args: any, context?: RouteContext): Promise<McpResponse> {
     try {
+      // RECALL payload control (T1 item 1): default 'concise' (truncate each content +
+      // affordance) unless the caller asks for 'detailed' (full body). Resolved once here
+      // for the multi-row paths (tags-only + semantic). The by-id path defaults to
+      // 'detailed' separately (it's the explicit zoom target).
+      const recallFormat: RecallResponseFormat = args.response_format ?? RECALL_DEFAULT_FORMAT;
+
       // Direct lookup by ID - bypasses semantic search entirely
       if (args.id) {
         logger.info(`🔍 Context direct lookup by ID: ${args.id}`);
+
+        // SHORT-ID SYMMETRY (T1 item 2): accept a full UUID OR an 8+-hex short id. A full
+        // UUID looks up directly (back-compat); a short id is resolved project-scoped via
+        // the SAME parameterized, wildcard-rejecting resolver every other tool uses, so a
+        // tool-only agent can context_search by the id8 it copied from a list. Ambiguous /
+        // unknown short ids surface as actionable errors and read nothing.
+        let resolvedId: string;
+        if (isFullUuid(args.id)) {
+          resolvedId = args.id;
+        } else {
+          const projectIdForResolve = await this.resolveProjectId(args.projectId, context);
+          try {
+            resolvedId = await resolveEntityId('context', args.id, projectIdForResolve);
+          } catch (e) {
+            const handled = idErrorResponse(e, 'context_search', 'context', args.id, 'context_get_recent');
+            if (handled) return handled;
+            throw e;
+          }
+        }
 
         const result = await db.query(
           `SELECT id, project_id, session_id, context_type, content,
                   created_at, relevance_score, tags, metadata
            FROM contexts WHERE id = $1`,
-          [args.id]
+          [resolvedId]
         );
 
         if (result.rows.length === 0) {
@@ -149,6 +179,12 @@ class ContextRoutes {
           ? `\n📊 Metadata: ${JSON.stringify(meta)}`
           : '';
 
+        // RECALL payload control (T1 item 1): a by-id lookup is the explicit "zoom to this
+        // one" target, so it DEFAULTS to detailed (full body); it still honors an explicit
+        // response_format ('concise' truncates with the affordance) for consistency.
+        const byIdFormat: RecallResponseFormat = args.response_format ?? 'detailed';
+        const byIdPayload = applyRecallPayload(ctx.content, byIdFormat, ctx.id);
+
         return {
           content: [{
             type: 'text',
@@ -157,14 +193,16 @@ class ContextRoutes {
                   `📝 Type: ${ctx.context_type}\n` +
                   `📅 Created: ${new Date(ctx.created_at).toLocaleString()}${tags}${metadataText}\n` +
                   `⭐ Relevance: ${ctx.relevance_score}/10\n\n` +
-                  `---\n\n${ctx.content}`
+                  `---\n\n${byIdPayload.content}`
           }],
-          // SEARCH shape (a by-id lookup is a 1-result search) — RAW values.
+          // SEARCH shape (a by-id lookup is a 1-result search) — RAW values. The machine
+          // channel carries the SAME (truncated-or-full) value the text shows + a truncated flag.
           structuredContent: {
             results: [{
               id: ctx.id,
               contextType: ctx.context_type,
-              content: ctx.content,
+              content: byIdPayload.content,
+              truncated: byIdPayload.truncated,
               tags: ctx.tags ?? [],
               relevanceScore: ctx.relevance_score,
               projectId: ctx.project_id,
@@ -238,13 +276,17 @@ class ContextRoutes {
         }
 
         const tagSummary = `🔍 Found ${tagResult.rows.length} contexts with tags [${args.tags.join(', ')}]\n\n`;
-        // RAW structured rows for the machine channel (parsed metadata, no markup).
+        // RAW structured rows for the machine channel (parsed metadata, no markup). RECALL
+        // payload control (T1 item 1): carry the (truncated-or-full) content consistently
+        // + a `truncated` flag, matching the text channel.
         const tagStructured = tagResult.rows.map((row) => {
           const meta = typeof row.metadata === 'string' ? JSON.parse(row.metadata) : (row.metadata ?? {});
+          const payload = applyRecallPayload(row.content, recallFormat, row.id);
           return {
             id: row.id,
             contextType: row.context_type,
-            content: row.content,
+            content: payload.content,
+            truncated: payload.truncated,
             tags: row.tags ?? [],
             relevanceScore: row.relevance_score,
             projectId: row.project_id,
@@ -261,8 +303,9 @@ class ContextRoutes {
           const metaLine = meta && Object.keys(meta).length > 0
             ? `\n   Metadata: ${JSON.stringify(meta)}`
             : '';
+          // Same (truncated-or-full) content as the machine channel.
           return `${index + 1}. **${row.context_type}** (${timeAgo})\n` +
-                 `   Content: ${row.content}\n` +
+                 `   Content: ${tagStructured[index].content}\n` +
                  `   Tags: [${(row.tags || []).join(', ')}]${metaLine}\n` +
                  `   ID: ${row.id}`;
         }).join('\n\n');
@@ -320,11 +363,14 @@ class ContextRoutes {
       const honestyHeader = buildHonestyHeader(relevanceOf(results[0]));
 
       const searchSummary = `🔍 Found ${results.length} matching contexts for: "${args.query}"\n\n`;
+      // RECALL payload control (T1 item 1): truncate each content per the resolved format,
+      // computed ONCE so the text + machine channels carry the SAME value + truncated flag.
+      const payloads = results.map((result) => applyRecallPayload(result.content, recallFormat, result.id));
       const resultsList = results.map((result, index) => {
         const timeAgo = this.getTimeAgo(result.createdAt);
         const relevance = relevanceOf(result);
         return `${index + 1}. **${result.contextType}** (relevance: ${relevance.toFixed(1)}%, ${timeAgo})\n` +
-               `   Content: ${result.content}\n` +
+               `   Content: ${payloads[index].content}\n` +
                `   Tags: [${result.tags.join(', ')}]\n` +
                `   ID: ${result.id}`;
       }).join('\n\n');
@@ -335,12 +381,16 @@ class ContextRoutes {
           text: (honestyHeader ? honestyHeader + '\n\n' : '') + searchSummary + resultsList
         }],
         // RAW structured rows (no markup, no honesty-header prose) — the machine channel.
+        // METADATA SURFACE (T1 item 3): include `metadata` so written back-links are
+        // readable from a semantic search (it was indexed + stored but never returned here).
         structuredContent: {
-          results: results.map((result) => ({
+          results: results.map((result, index) => ({
             id: result.id,
             contextType: result.contextType,
-            content: result.content,
+            content: payloads[index].content,
+            truncated: payloads[index].truncated,
             tags: result.tags,
+            metadata: result.metadata ?? {},
             relevance: relevanceOf(result),
             similarity: result.similarity,
             createdAt: result.createdAt.toISOString(),
@@ -361,6 +411,10 @@ class ContextRoutes {
       const projectId = await this.resolveProjectId(args.projectId, context);
       logger.info(`📋 Context get recent request (limit: ${args.limit || 5}, project: ${projectId?.substring(0, 8)}...)`);
 
+      // RECALL payload control (T1 item 1): the boot path. Default 'concise' (truncate) so
+      // a fresh-session recall doesn't dump full bodies ×N into the model window.
+      const recallFormat: RecallResponseFormat = args.response_format ?? RECALL_DEFAULT_FORMAT;
+
       const results = await contextHandler.getRecentContext(projectId, args.limit, args.includeArchived);
 
       if (results.length === 0) {
@@ -377,12 +431,16 @@ class ContextRoutes {
         };
       }
 
+      // RECALL payload control (T1 item 1): compute payloads ONCE so text + machine
+      // channels agree (truncated value + flag).
+      const payloads = results.map((ctx) => applyRecallPayload(ctx.content, recallFormat, ctx.id));
+
       // Format results for display
       const contextList = results.map((ctx, index) => {
         const timeAgo = this.getTimeAgo(ctx.createdAt);
 
         return `${index + 1}. **${ctx.contextType}** (${timeAgo})\n` +
-               `   Content: ${ctx.content}\n` +
+               `   Content: ${payloads[index].content}\n` +
                `   Tags: [${ctx.tags.join(', ')}]\n` +
                `   ID: ${ctx.id}`;
       }).join('\n\n');
@@ -393,11 +451,13 @@ class ContextRoutes {
           text: `📋 Recent Contexts (${results.length} found)\n\n${contextList}`
         }],
         structuredContent: {
-          results: results.map((ctx) => ({
+          results: results.map((ctx, index) => ({
             id: ctx.id,
             contextType: ctx.contextType,
-            content: ctx.content,
+            content: payloads[index].content,
+            truncated: payloads[index].truncated,
             tags: ctx.tags,
+            metadata: ctx.metadata ?? {},
             createdAt: ctx.createdAt.toISOString(),
           })),
           total: results.length,
@@ -540,6 +600,86 @@ class ContextRoutes {
       };
     } catch (error) {
       return formatMcpError(error as Error, 'context_restore');
+    }
+  }
+
+  /**
+   * Handle context UPDATE (edit) requests — context_update (CURATE, T1 item 4).
+   *
+   * Edits a stored context: content, tags (re-tag/re-thread), metadata (MERGE — null
+   * deletes a key, T1 item 6), relevanceScore. Accepts a full UUID or 8+-hex short id,
+   * resolved project-scoped BEFORE the mutation; ambiguous / unknown ids surface as
+   * actionable errors and mutate nothing. The whole edit is project-scoped (never edits
+   * another project's context). Tag-normalization warnings are surfaced (warn-only).
+   */
+  async handleUpdate(args: any, context?: RouteContext): Promise<McpResponse> {
+    try {
+      const projectId = await this.requireProjectId(args.projectId, context);
+      let resolvedId: string;
+      try {
+        resolvedId = await resolveEntityId('context', args.contextId, projectId);
+      } catch (e) {
+        const handled = idErrorResponse(e, 'context_update', 'context', args.contextId, 'context_get_recent');
+        if (handled) return handled;
+        throw e;
+      }
+
+      const result = await contextHandler.updateContext({
+        contextId: resolvedId,
+        projectId,
+        content: args.content,
+        tags: args.tags,
+        metadata: args.metadata,
+        relevanceScore: args.relevanceScore,
+      });
+
+      if (!result.found || !result.context) {
+        return {
+          content: [{ type: 'text',
+            text: `❌ Context not found: ${args.contextId}\n\n` +
+                  `💡 Use context_get_recent to see this project's contexts and copy an 🆔 ID.` }],
+          isError: true,
+          structuredContent: { ok: false, found: false },
+        };
+      }
+
+      const ctx = result.context;
+      // Report exactly which fields were edited (RAW). metadata shows the MERGED result.
+      const applied: string[] = [];
+      if (args.content !== undefined) applied.push('content');
+      if (args.tags !== undefined) applied.push('tags');
+      if (args.metadata !== undefined) applied.push('metadata');
+      if (args.relevanceScore !== undefined) applied.push('relevanceScore');
+      const warnText = result.warnings && result.warnings.length > 0
+        ? `\n⚠️  Tag notes:\n` + result.warnings.map(w => `   • ${w}`).join('\n')
+        : '';
+
+      return {
+        content: [{
+          type: 'text',
+          text: `✅ Context updated — ${ctx.id}\n` +
+                `✏️  Edited: ${applied.join(', ')}\n` +
+                `🏷️  Tags: [${ctx.tags.join(', ')}]` +
+                (ctx.metadata && Object.keys(ctx.metadata).length > 0
+                  ? `\n📊 Metadata: ${JSON.stringify(ctx.metadata)}` : '') +
+                warnText,
+        }],
+        structuredContent: {
+          action: 'updated',
+          context: {
+            id: ctx.id,
+            contextType: ctx.contextType,
+            content: ctx.content,
+            tags: ctx.tags,
+            relevanceScore: ctx.relevanceScore,
+            metadata: ctx.metadata,
+            createdAt: ctx.createdAt.toISOString(),
+            warnings: result.warnings ?? [],
+          },
+        },
+      };
+    } catch (error) {
+      return formatMcpError(error as Error, 'context_update');
     }
   }
 }

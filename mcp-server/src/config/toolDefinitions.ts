@@ -161,13 +161,14 @@ export const AIDIS_TOOL_DEFINITIONS: ToolDefinition[] = [
             name: 'context_search',
             description: 'Search stored contexts using semantic similarity and filters, or fetch a specific context by ID. Provide at least one of: id, query, or a non-empty tags array (a tags-only call filters by tags).',
             inputSchema: buildInputSchema('context_search', {
-              id: 'Context UUID for direct lookup (bypasses semantic search)',
+              id: 'Context UUID or 8+-hex short id for direct lookup (bypasses semantic search; returns full content)',
               query: 'Search query using semantic similarity (optional if id or tags provided)',
               type: 'Filter by context type (code, decision, error, discussion, planning, completion, milestone, reflections, handoff, lessons)',
               tags: 'Filter by tags (e.g., ["ref:cp-gaps"]); a non-empty tags array enables a tags-only search with no query',
               limit: 'Maximum number of results to return (default 10)',
               minSimilarity: 'Minimum similarity threshold (0-100) to include a result',
               offset: 'Number of leading results to skip (pagination)',
+              response_format: 'Payload size: "concise" (DEFAULT — truncates each content with a "fetch full" affordance, keeps recall lean) or "detailed" (full content). Fetch one full record via context_search id:<id>.',
               projectId: 'Project ID or name to scope the search (defaults to current project)',
               sessionId: 'Session ID to scope the search'
             }),
@@ -177,7 +178,25 @@ export const AIDIS_TOOL_DEFINITIONS: ToolDefinition[] = [
             description: 'Get recent contexts in chronological order (newest first)',
             inputSchema: buildInputSchema('context_get_recent', {
               limit: 'Maximum number of recent contexts to return (default 5, max 20)',
+              response_format: 'Payload size: "concise" (DEFAULT — truncates each content with a "fetch full" affordance) or "detailed" (full content). The boot/recall path defaults to concise to stay lean.',
               projectId: 'Project ID or name to scope the results (defaults to current project)'
+            }),
+          },
+          {
+            // CURATE (T1 item 4 — redesign §4 Capability 4): context_update. Contexts were
+            // immutable after write; this makes the linking grammar REPAIRABLE — edit
+            // content, re-tag/re-thread, fix a metadata back-link, or adjust the score.
+            // DERIVED from the zod validator like every other tool. metadata is MERGED
+            // (null deletes a key), never a wholesale replace (T1 item 6).
+            name: 'context_update',
+            description: 'Edit a stored context (content, tags/re-thread, metadata, relevanceScore). Provide at least one field. metadata is MERGED over the existing object (set a key to null to delete it) — it is NOT replaced wholesale. Accepts a full UUID or short id; project-scoped.',
+            inputSchema: buildInputSchema('context_update', {
+              contextId: 'Context UUID or 8+-hex short id to edit (project-scoped)',
+              content: 'New full content (replaces the stored content; re-embeds for search)',
+              tags: 'New tag set (REPLACES tags) — re-tag/re-thread, e.g. ["task:9e25dac7","scope:product"]. Malformed threading/ref tags are normalized + reported, never rejected.',
+              metadata: 'Structured metadata to MERGE over the existing object (shallow). Set a key to null to DELETE just that key; omitted keys are preserved (no silent data loss).',
+              relevanceScore: 'New importance score 0–10',
+              projectId: 'Project ID or name to scope the lookup (defaults to current project)'
             }),
           },
           {
@@ -334,9 +353,9 @@ export const AIDIS_TOOL_DEFINITIONS: ToolDefinition[] = [
             // (outcomeStatus/outcomeNotes/lessonsLearned/...). Previously it advertised
             // only decisionId while the zod schema declared outcome/lessons that the
             // route never read — so the tool was a no-op through the bridge.
-            description: 'Update a decision after the fact — close the learning loop: set outcome_status + lessons_learned once you know how it turned out. Also updates status, implementation_status, or supersession.',
+            description: 'Update a decision after the fact — close the learning loop: set outcome_status + lessons_learned once you know how it turned out. Also edits status, implementation_status, supersession, and now title/description/tags/metadata. metadata is MERGED (set a key to null to delete it), not replaced.',
             inputSchema: buildInputSchema('decision_update', {
-              decisionId: 'REQUIRED. UUID of the decision to update',
+              decisionId: 'REQUIRED. UUID or 8+-hex short id of the decision to update',
               status: 'Optional. One of: active, deprecated, superseded, under_review',
               outcomeStatus: 'Optional. How the decision turned out — one of EXACTLY: unknown, successful, failed, mixed, too_early',
               outcomeNotes: 'Optional. Free-text notes on the outcome',
@@ -345,7 +364,11 @@ export const AIDIS_TOOL_DEFINITIONS: ToolDefinition[] = [
               successCriteria: 'Optional. Set/revise the success criteria the outcome is judged against',
               problemStatement: 'Optional. Set/revise the problem this decision solves',
               supersededBy: 'Optional. UUID of the decision that supersedes this one (also flips status to superseded)',
-              supersededReason: 'Optional. Why this decision was superseded'
+              supersededReason: 'Optional. Why this decision was superseded',
+              title: 'Optional. New decision title (re-embeds for search)',
+              description: 'Optional. New decision description (re-embeds for search)',
+              tags: 'Optional. New tag set (REPLACES tags) for searchability / re-threading',
+              metadata: 'Optional. Structured metadata to MERGE over the existing object (shallow). Set a key to null to DELETE it; omitted keys are preserved.'
             }),
           },
           {
@@ -424,14 +447,17 @@ export const AIDIS_TOOL_DEFINITIONS: ToolDefinition[] = [
             // declared == accepted == handler-reads and can't drift again. Note 'notes'
             // is intentionally absent: there is no `notes` column on tasks (A4).
             name: 'task_update',
-            description: 'Update a task — change any of status, priority, progress, assignee, or metadata (provide at least one). Status accepts: todo, in_progress, blocked, completed, cancelled.',
+            description: 'Update a task — change any of status, priority, progress, assignee, title, description, tags, or metadata (provide at least one). Status accepts: todo, in_progress, blocked, completed, cancelled. metadata is MERGED (set a key to null to delete it), not replaced.',
             inputSchema: buildInputSchema('task_update', {
-              taskId: 'Task ID (UUID) — required',
+              taskId: 'Task ID (UUID or 8+-hex short id) — required',
               status: 'New status — one of: todo, in_progress, blocked, completed, cancelled',
               priority: 'New priority — one of: low, medium, high, urgent',
               assignedTo: 'New assignee (free-form string, e.g. an agent name)',
               progress: 'Completion percentage 0–100',
-              metadata: 'Structured metadata (jsonb object) to set on the task (replaces the existing metadata)'
+              title: 'New task title',
+              description: 'New task description',
+              tags: 'New tag set (REPLACES tags) for categorization / re-threading',
+              metadata: 'Structured metadata to MERGE over the existing object (shallow). Set a key to null to DELETE it; omitted keys are preserved (no silent data loss).'
             }),
           },
           {

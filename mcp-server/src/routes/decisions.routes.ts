@@ -442,7 +442,14 @@ class DecisionsRoutes {
         successCriteria: args.successCriteria,
         problemStatement: args.problemStatement,
         supersededBy: args.supersededBy,
-        supersededReason: args.supersededReason
+        supersededReason: args.supersededReason,
+        // CURATE (T1 item 5): edit title/description/tags. T1 item 6: metadata is MERGED
+        // in the handler (null deletes a key). Forwarded raw — decision tags are not
+        // threading-normalized on record either, so we keep that behavior on update.
+        title: args.title,
+        description: args.description,
+        tags: args.tags,
+        metadata: args.metadata
       });
 
       return {
@@ -462,6 +469,11 @@ class DecisionsRoutes {
             outcomeStatus: decision.outcomeStatus ?? null,
             outcomeNotes: decision.outcomeNotes ?? null,
             lessonsLearned: decision.lessonsLearned ?? null,
+            // T1 item 5/6: echo the edited core fields so a tag/description/metadata edit
+            // is visible in the machine channel (decision_update can now touch these).
+            description: decision.description,
+            tags: decision.tags,
+            metadata: decision.metadata,
           },
         },
       };

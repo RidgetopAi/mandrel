@@ -1,6 +1,7 @@
 import { Pool } from 'pg';
 import { db } from '../config/database.js';
 import { logger } from '../utils/logger.js';
+import { metadataMergeSql } from '../utils/metadataMerge.js';
 
 export interface Task {
     id: string;
@@ -193,7 +194,10 @@ class TasksHandler {
         metadata?: any,
         connectionId?: string,
         priority?: string,
-        progress?: number
+        progress?: number,
+        title?: string,
+        description?: string,
+        tags?: string[]
     ): Promise<void> {
         const client = await this.pool.connect();
         try {
@@ -230,9 +234,29 @@ class TasksHandler {
                 params.push(progress);
                 paramIndex++;
             }
+            // CURATE (T1 item 5): edit title / description / tags after the fact.
+            if (title !== undefined) {
+                updates.push(`title = $${paramIndex}`);
+                params.push(title);
+                paramIndex++;
+            }
+            if (description !== undefined) {
+                updates.push(`description = $${paramIndex}`);
+                params.push(description);
+                paramIndex++;
+            }
+            if (tags !== undefined) {
+                updates.push(`tags = $${paramIndex}`);
+                params.push(tags);
+                paramIndex++;
+            }
             if (metadata !== undefined) {
-                updates.push(`metadata = $${paramIndex}`);
-                params.push(metadata);
+                // METADATA MERGE (T1 item 6): shallow-merge incoming over existing in SQL
+                // (atomic; no read-modify-write race) instead of the old wholesale REPLACE
+                // that silently dropped untouched keys. Explicit null deletes that key.
+                const { expr, value } = metadataMergeSql('metadata', paramIndex, metadata);
+                updates.push(`metadata = ${expr}`);
+                params.push(value);
                 paramIndex++;
             }
 
