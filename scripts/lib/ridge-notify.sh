@@ -41,9 +41,11 @@ _notify_log() { printf '%s notify: %s\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" "$*"
 
 # Telegram HTML-escape (text is sent with parse_mode=HTML so the title can be bold).
 _notify_html_esc() {
-  local s="${1:-}"
-  s="${s//&/&amp;}"; s="${s//</&lt;}"; s="${s//>/&gt;}"
-  printf '%s' "$s"
+  # Use sed, NOT bash ${//}: with patsub_replacement (on by default in bash 5.2+) an
+  # unescaped & in a ${//} replacement means "the matched text", which mangled
+  # &lt;/&gt; into <lt;/>gt; and broke delivery of any alert containing < or >.
+  # sed (& escaped as \&) is version-stable. Order matters: escape & first.
+  printf '%s' "${1:-}" | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g'
 }
 
 # Map an old-ntfy-style level to Telegram disable_notification (true=silent).
