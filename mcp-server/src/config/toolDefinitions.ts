@@ -547,6 +547,41 @@ export const AIDIS_TOOL_DEFINITIONS: ToolDefinition[] = [
             }),
           },
 
+          // ── Typed-Edge Graph (Mandrel Core Redesign T2a) ──────────────────────────
+          {
+            name: 'link',
+            description: 'Create a typed edge between two records (context/decision/task) — for edges that can\'t be inferred at write-time, and to REPAIR the graph. Edges carry STRUCTURE (tags carry labels). Edge type ∈ the v1 domain (decided_by, caused, built_by, supersedes, learned_from, proposed_by, informs, produced_outcome). Ids accept a full UUID or 8+-hex short id. Idempotent.',
+            inputSchema: buildInputSchema('link', {
+              from: 'Source record id (full UUID or 8+-hex short id) — the edge points FROM here',
+              fromType: 'Kind of the source record: context | decision | task',
+              to: 'Target record id (full UUID or 8+-hex short id) — the edge points TO here',
+              toType: 'Kind of the target record: context | decision | task',
+              edgeType: 'The typed edge (see the v1 domain). Stored from→to.',
+              metadata: 'Optional structured annotations on the edge (jsonb)',
+              projectId: 'Project to scope short-id resolution (defaults to current project)'
+            }),
+          },
+          {
+            name: 'unlink',
+            description: 'Remove a typed edge between two records (curate/repair). Idempotent — removing a non-existent edge is reported, not an error. Ids accept a full UUID or 8+-hex short id.',
+            inputSchema: buildInputSchema('unlink', {
+              from: 'Source record id (full UUID or 8+-hex short id)',
+              to: 'Target record id (full UUID or 8+-hex short id)',
+              edgeType: 'The typed edge to remove',
+              projectId: 'Project to scope short-id resolution (defaults to current project)'
+            }),
+          },
+          {
+            name: 'get_links',
+            description: 'Read a record\'s typed edges in BOTH directions, each carrying the connected record\'s id/type/title — the traversal primitive for trust + recall_thread. Zero raw SQL for the consumer. Accepts a full UUID or 8+-hex short id.',
+            inputSchema: buildInputSchema('get_links', {
+              id: 'The record id to read edges for (full UUID or 8+-hex short id)',
+              direction: 'Restrict to out (record is source), in (record is target), or both (default)',
+              edgeTypes: 'Optional list of edge types to restrict the walk (default: all)',
+              projectId: 'Project to scope short-id resolution (defaults to current project)'
+            }),
+          },
+
         // Session Management Tools - DELETED (2025-10-24)
         // The following 5 MCP tools were removed because sessions auto-manage themselves:
         // - session_assign → Auto-tracking via ensureActiveSession()

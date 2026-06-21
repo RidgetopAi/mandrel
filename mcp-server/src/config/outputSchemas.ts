@@ -116,6 +116,22 @@ const projectRecord = z
   })
   .passthrough();
 
+/**
+ * A single typed-edge result item (T2a) — the connected node hydrated for traversal.
+ * Raw values; the consumer (T2b trust / T3 recall_thread) reads this, never SQL.
+ */
+const edgeRecord = z
+  .object({
+    edgeType: z.string(),
+    direction: z.string(),
+    connectedId: z.string(),
+    connectedType: z.string(),
+    connectedTitle: z.string().nullable().optional(),
+    edgeId: z.string(),
+    metadata: z.record(z.any()).optional(),
+  })
+  .passthrough();
+
 /** A single smart-search / recommendation result item. */
 const searchResultItem = z
   .object({
@@ -217,6 +233,12 @@ export const outputZodSchemas = {
   smart_search: listShape(searchResultItem),
   get_recommendations: listShape(searchResultItem),
   project_insights: statusShape,
+
+  // Typed-edge graph (T2a). link/unlink are mutate-shaped (the affected edge + action);
+  // get_links is list-shaped (the connected edges, both directions).
+  link: mutateShape('edge', edgeRecord),
+  unlink: mutateShape('edge', edgeRecord),
+  get_links: listShape(edgeRecord),
 } as const;
 
 export type OutputSchemaToolName = keyof typeof outputZodSchemas;

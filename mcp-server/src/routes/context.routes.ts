@@ -12,6 +12,7 @@ import {
   RECALL_DEFAULT_FORMAT,
   type RecallResponseFormat,
 } from '../config/recallConfig.js';
+import { autoMintFromTags } from '../services/links.js';
 
 /**
  * Context Management Routes
@@ -82,6 +83,19 @@ class ContextRoutes {
         result.tags,
         context?.connectionId
       );
+
+      // AUTO-MINT TYPED EDGES (T2a Q3 — near-free, at write-time). The threading tags the
+      // writer already provided (task:/decision:/context:) ALSO mint typed edges from this
+      // context → the referent. Resolves id8→uuid project-scoped; a bad/unresolvable tag
+      // is skipped silently (never throws) so a typo can't break the store. Uses the
+      // NORMALIZED stored tags (result.tags) so a case-fixed tag still mints its edge.
+      await autoMintFromTags({
+        fromId: result.id,
+        fromType: 'context',
+        tags: result.tags,
+        projectId,
+        createdBy: 'auto:context_store',
+      });
 
       // LINKING-GRAMMAR warnings (tool-native linking): if a `ref:<slug>` OR a
       // threading tag (`task:`/`decision:`/`context:`/`scope:`/`owner:`/`tranche:`)

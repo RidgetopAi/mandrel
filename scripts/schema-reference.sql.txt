@@ -499,6 +499,16 @@ COLUMN git_file_changes.new_file_mode | character varying(10) | null=YES | defau
 COLUMN git_file_changes.old_file_mode | character varying(10) | null=YES | default=
 COLUMN git_file_changes.old_file_path | text | null=YES | default=
 COLUMN git_file_changes.project_id | uuid | null=NO | default=
+COLUMN links.created_at | timestamp with time zone | null=NO | default=now()
+COLUMN links.created_by | text | null=YES | default=
+COLUMN links.edge_type | text | null=NO | default=
+COLUMN links.from_id | uuid | null=NO | default=
+COLUMN links.from_type | text | null=NO | default=
+COLUMN links.id | uuid | null=NO | default=gen_random_uuid()
+COLUMN links.metadata | jsonb | null=NO | default='{}'
+COLUMN links.project_id | uuid | null=YES | default=
+COLUMN links.to_id | uuid | null=NO | default=
+COLUMN links.to_type | text | null=NO | default=
 COLUMN productivity_config.config_name | text | null=NO | default=
 COLUMN productivity_config.created_at | timestamp with time zone | null=YES | default=now()
 COLUMN productivity_config.formula_weights | jsonb | null=NO | default=
@@ -934,6 +944,12 @@ CONSTRAINT git_file_changes CHECK git_file_changes_lines_removed_check :: CHECKl
 CONSTRAINT git_file_changes FOREIGN_KEY git_file_changes_commit_id_fkey :: FOREIGNKEYcommit_idREFERENCESgit_commitsidONDELETECASCADE
 CONSTRAINT git_file_changes FOREIGN_KEY git_file_changes_project_id_fkey :: FOREIGNKEYproject_idREFERENCESprojectsidONDELETECASCADE
 CONSTRAINT git_file_changes PRIMARY_KEY git_file_changes_pkey :: PRIMARYKEYid
+CONSTRAINT links CHECK links_edge_type_check :: CHECKedge_type=ANYARRAY'decided_by','caused','built_by','supersedes','learned_from','proposed_by','informs','produced_outcome'
+CONSTRAINT links CHECK links_from_type_check :: CHECKfrom_type=ANYARRAY'context','decision','task'
+CONSTRAINT links CHECK links_to_type_check :: CHECKto_type=ANYARRAY'context','decision','task'
+CONSTRAINT links FOREIGN_KEY links_project_id_fkey :: FOREIGNKEYproject_idREFERENCESprojectsidONDELETECASCADE
+CONSTRAINT links PRIMARY_KEY links_pkey :: PRIMARYKEYid
+CONSTRAINT links UNIQUE links_from_to_edge_uniq :: UNIQUEfrom_id,to_id,edge_type
 CONSTRAINT productivity_config CHECK valid_config_name :: CHECKlengthconfig_name>0
 CONSTRAINT productivity_config PRIMARY_KEY productivity_config_pkey :: PRIMARYKEYid
 CONSTRAINT productivity_config UNIQUE productivity_config_config_name_key :: UNIQUEconfig_name
@@ -1238,6 +1254,11 @@ INDEX git_file_changes.idx_git_file_changes_complexity :: CREATE INDEX idx_git_f
 INDEX git_file_changes.idx_git_file_changes_file_type :: CREATE INDEX idx_git_file_changes_file_type ON git_file_changes USING btree (file_type, project_id) WHERE (file_type IS NOT NULL)
 INDEX git_file_changes.idx_git_file_changes_path_pattern :: CREATE INDEX idx_git_file_changes_path_pattern ON git_file_changes USING gin (to_tsvector('english'::regconfig, file_path))
 INDEX git_file_changes.idx_git_file_changes_project_path :: CREATE INDEX idx_git_file_changes_project_path ON git_file_changes USING btree (project_id, file_path, created_at DESC)
+INDEX links.idx_links_from :: CREATE INDEX idx_links_from ON links USING btree (from_id, edge_type)
+INDEX links.idx_links_project :: CREATE INDEX idx_links_project ON links USING btree (project_id)
+INDEX links.idx_links_to :: CREATE INDEX idx_links_to ON links USING btree (to_id, edge_type)
+INDEX links.links_from_to_edge_uniq :: CREATE UNIQUE INDEX links_from_to_edge_uniq ON links USING btree (from_id, to_id, edge_type)
+INDEX links.links_pkey :: CREATE UNIQUE INDEX links_pkey ON links USING btree (id)
 INDEX productivity_config.productivity_config_config_name_key :: CREATE UNIQUE INDEX productivity_config_config_name_key ON productivity_config USING btree (config_name)
 INDEX productivity_config.productivity_config_pkey :: CREATE UNIQUE INDEX productivity_config_pkey ON productivity_config USING btree (id)
 INDEX projects.idx_projects_created_at :: CREATE INDEX idx_projects_created_at ON projects USING btree (created_at)

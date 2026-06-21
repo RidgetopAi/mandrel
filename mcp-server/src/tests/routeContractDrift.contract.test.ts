@@ -80,6 +80,10 @@ const TOOL_TO_HANDLER: Record<string, { file: string; method: string }> = {
   // Smart search
   smart_search:         { file: 'search.routes.ts',   method: 'handleSmartSearch' },
   get_recommendations:  { file: 'search.routes.ts',   method: 'handleRecommendations' },
+  // Typed-edge graph (T2a)
+  link:                 { file: 'links.routes.ts',    method: 'handleLink' },
+  unlink:               { file: 'links.routes.ts',    method: 'handleUnlink' },
+  get_links:            { file: 'links.routes.ts',    method: 'handleGetLinks' },
 };
 
 /**
