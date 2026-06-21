@@ -135,7 +135,7 @@ function ensureStructuredContent(resp: McpResponse): McpResponse {
 
 /**
  * Execute MCP Tool via Route Dispatcher
- * Central entry point for all 36 active MCP tools
+ * Central entry point for all active MCP tools (context_update added in T1, task f54e6cf5)
  */
 export async function routeExecutor(toolName: string, args: any, context?: RouteContext): Promise<McpResponse> {
   return ensureStructuredContent(await routeExecutorInner(toolName, args, context));
@@ -183,6 +183,8 @@ async function routeExecutorInner(toolName: string, args: any, context?: RouteCo
         return await contextRoutes.handleSearch(args, context);
       case 'context_get_recent':
         return await contextRoutes.handleGetRecent(args, context);
+      case 'context_update':
+        return await contextRoutes.handleUpdate(args, context);
       case 'context_stats':
         return await contextRoutes.handleStats(args, context);
       case 'context_delete':

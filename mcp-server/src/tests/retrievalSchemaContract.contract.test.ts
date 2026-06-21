@@ -36,7 +36,8 @@ const EXPECTED_PARAMS: Record<string, string[]> = {
   // advertises exactly the validated/accepted field set — and `metadata` is visible.
   context_store: ['content', 'type', 'tags', 'relevanceScore', 'metadata', 'projectId', 'sessionId'],
   // includeArchived (task 7b28bed4): soft-delete read filter — default excludes archived.
-  context_search: ['id', 'query', 'type', 'tags', 'limit', 'minSimilarity', 'offset', 'projectId', 'sessionId', 'includeArchived'],
+  // response_format (T1 item 1, task f54e6cf5): concise|detailed payload control.
+  context_search: ['id', 'query', 'type', 'tags', 'limit', 'minSimilarity', 'offset', 'response_format', 'projectId', 'sessionId', 'includeArchived'],
   // decision_search (learning-loop READ, task 13069495): `outcomeStatus` added — a
   // SEPARATE filter from `status` that filters the outcome_status column (how a
   // decision turned out), the moat-critical read for the GAP1 Evaluator.
@@ -57,8 +58,11 @@ const EXPECTED_PARAMS: Record<string, string[]> = {
   // projectId (task 131ef054): scopes the SHORT-ID resolution of decisionId to one
   // project (the resolver reads args.projectId via resolveProjectId). Declared so strict
   // mode accepts it; it is NOT an updatable field (excluded from the update .refine).
+  // CURATE (T1 item 5/6, task f54e6cf5): title/description/tags/metadata are now editable
+  // (metadata is MERGED, not replaced). Added to the advertised+accepted set.
   decision_update: ['decisionId', 'status', 'outcomeStatus', 'outcomeNotes', 'lessonsLearned',
     'implementationStatus', 'successCriteria', 'problemStatement', 'supersededBy', 'supersededReason',
+    'title', 'description', 'tags', 'metadata',
     'projectId'],
   // task_list (A7): `offset` added for pagination (rows beyond limit=100 were unreachable).
   // projectId (5fd58eef strict-mode safety): the handler (tasks.routes.handleList) reads
@@ -84,7 +88,8 @@ const EXPECTED_PARAMS: Record<string, string[]> = {
   // (resolved via resolveProjectId). Declared so strict mode accepts it; not updatable.
   // DRIFT-CLEANUP (task 9c522977): `metadata` is a real column (tasks.metadata jsonb) the
   // handler writes; it was read (args.metadata) but never declared → unreachable. Declared.
-  task_update: ['taskId', 'status', 'priority', 'assignedTo', 'progress', 'metadata', 'projectId'],
+  // CURATE (T1 item 5, task f54e6cf5): title/description/tags now editable; metadata MERGED.
+  task_update: ['taskId', 'status', 'priority', 'assignedTo', 'progress', 'metadata', 'title', 'description', 'tags', 'projectId'],
   // task_bulk_update (Guard 2): now DERIVED from zod — every honored field is advertised.
   task_bulk_update: ['task_ids', 'status', 'assignedTo', 'priority', 'metadata', 'notes', 'projectId'],
   // project_* (A8): now DERIVED from zod so `metadata` (persisted by the handler) is
@@ -98,7 +103,11 @@ const EXPECTED_PARAMS: Record<string, string[]> = {
   // duplicate of includeTypes that the handler never read and that named dropped sources
   // (naming/agents). includeTypes is the real, honored source filter.
   smart_search: ['query', 'projectId', 'includeTypes', 'limit'],
-  context_get_recent: ['limit', 'projectId', 'includeArchived'],
+  // response_format (T1 item 1, task f54e6cf5): concise|detailed payload control.
+  context_get_recent: ['limit', 'response_format', 'projectId', 'includeArchived'],
+  // CURATE (T1 item 4, task f54e6cf5): context_update — edit content/tags/metadata/score.
+  // metadata is MERGED (null deletes a key), not replaced.
+  context_update: ['contextId', 'content', 'tags', 'metadata', 'relevanceScore', 'projectId'],
   get_recommendations: ['context', 'projectId', 'type'],
   task_details: ['taskId', 'projectId'],
   // Soft-delete / archive tools (task 7b28bed4): id + optional project scope.

@@ -7,6 +7,7 @@
 import { z } from 'zod';
 import { formatZodErrorMessage } from '../utils/actionableError.js';
 import { isUuidOrShortId } from '../utils/idResolver.js';
+import { RECALL_RESPONSE_FORMATS } from '../config/recallConfig.js';
 
 /**
  * SHORT-ID ACCEPTANCE (task 131ef054): an id field that accepts EITHER a full UUID OR
@@ -80,6 +81,11 @@ const coercedInt = (inner: z.ZodTypeAny) =>
 
 // Base validation schemas
 const baseMetadata = z.record(z.any()).optional();
+// RECALL payload control (T1 item 1): the read tools accept response_format to choose
+// concise (default, truncated) vs detailed (full content). Enum sourced from the single
+// config constant so the schema, route, and docs can't drift. Optional → route defaults
+// to concise via RECALL_DEFAULT_FORMAT.
+const recallResponseFormat = z.enum(RECALL_RESPONSE_FORMATS);
 const baseName = z.string().min(1).max(255);
 const baseDescription = z.string().max(2000).optional();
 const baseTags = z.array(z.string().max(50)).max(20).optional();
@@ -132,7 +138,13 @@ const contextSchemas = {
   }),
   
   search: z.object({
-    id: z.string().uuid().optional(), // Direct lookup by context ID - bypasses semantic search
+    // SHORT-ID SYMMETRY (T1 item 2): context_search.id used to be strict `.uuid()` while
+    // every mutate/detail tool already accepts an 8+-hex short id via uuidOrShortId().
+    // That asymmetry meant a tool-only agent who copied a short id from a list couldn't
+    // do a direct context_search by it. Now it accepts a full UUID OR an id8, resolved
+    // (project-scoped, parameterized, wildcard-rejecting) in the handler exactly like the
+    // other tools. Direct lookup by context id — bypasses semantic search.
+    id: uuidOrShortId().optional(),
     query: z.string().min(1).max(1000).optional(), // Optional when id is provided
     type: z.enum(['code', 'decision', 'error', 'discussion', 'planning', 'completion', 'milestone', 'reflections', 'handoff', 'lessons']).optional(),
     tags: baseTags,
@@ -141,6 +153,10 @@ const contextSchemas = {
     offset: z.number().int().min(0).optional(),
     projectId: z.string().optional(),
     sessionId: z.string().optional(),
+    // RECALL payload control (T1 item 1): 'concise' (default) truncates each content to
+    // RECALL_CONCISE_MAXLEN with a "fetch full" affordance; 'detailed' returns full
+    // content. Fixes the heaviest path dumping full bodies ×N. Default applied in-route.
+    response_format: recallResponseFormat.optional(),
     // SOFT-DELETE (task 7b28bed4): by DEFAULT exclude archived contexts (archived_at IS
     // NULL). Pass includeArchived:true to also return archived rows. coercedBoolean() so
     // the bridge's "true"/"false" string is accepted (never the truthiness footgun).
@@ -155,9 +171,35 @@ const contextSchemas = {
   get_recent: z.object({
     limit: z.number().int().min(1).max(20).default(5),
     projectId: z.string().optional(),
+    // RECALL payload control (T1 item 1): 'concise' (default) truncates each content;
+    // 'detailed' returns full content. Same policy + config as context_search.
+    response_format: recallResponseFormat.optional(),
     // SOFT-DELETE (task 7b28bed4): exclude archived by default; includeArchived:true reveals them.
     includeArchived: coercedBoolean().optional()
   }),
+
+  // CURATE (T1 item 4 — redesign §4 Capability 4): context_update. Contexts were
+  // IMMUTABLE after write (only soft-delete/restore existed), so a typo'd thread tag or a
+  // stale back-link couldn't be repaired — the linking grammar wasn't curate-able. This
+  // edits a stored context: content, tags (re-tag/re-thread), metadata (MERGE, not
+  // replace — T1 item 6), relevanceScore. Accepts a full UUID or 8+-hex short id
+  // (resolved project-scoped in the handler). Strict: only declared keys. At least one
+  // editable field required (contextId/projectId are not edits).
+  update: z.object({
+    contextId: uuidOrShortId(),
+    content: z.string().min(1).max(5_000_000).optional(), // same ceiling as store (anti-abuse, not a content cap)
+    tags: baseTags, // re-tag / re-thread (validated+normalized by the handler like store)
+    // metadata is MERGED shallow over the existing object (T1 item 6); an explicit null
+    // value DELETES that key. baseMetadata is z.record(z.any()), so null values are
+    // accepted here and interpreted as deletes by mergeMetadata.
+    metadata: baseMetadata,
+    relevanceScore: baseRelevanceScore,
+    projectId: z.string().optional()
+  }).refine(
+    data => data.content !== undefined || data.tags !== undefined ||
+            data.metadata !== undefined || data.relevanceScore !== undefined,
+    { message: 'At least one field to update must be provided (content, tags, metadata, relevanceScore)' }
+  ),
 
   // STRICT-MODE SAFETY (task 5fd58eef): the handler (context.routes.handleStats) reads
   // args.projectId via resolveProjectId to scope the stats, so projectId is a REAL,
@@ -375,6 +417,17 @@ const decisionSchemas = {
     problemStatement: z.string().max(2000).optional(),
     supersededBy: z.string().uuid().optional(),
     supersededReason: z.string().max(2000).optional(),
+    // CURATE (T1 item 5): edit title / description / tags after the fact (previously
+    // decision_update could touch only the learning-loop + supersession fields, never the
+    // core prose or tags). title/description match decision_record's bounds; tags
+    // re-tag/re-thread the decision. metadata is MERGED shallow (T1 item 6) — explicit
+    // null deletes a key. (decision_record already accepts metadata; this makes it
+    // editable.) title/description changes re-embed downstream (handler) so search stays
+    // in sync.
+    title: z.string().min(1).max(255).optional(),
+    description: z.string().min(1).max(5000).optional(),
+    tags: baseTags.optional(),
+    metadata: baseMetadata.optional(),
     // projectId scopes the SHORT-ID resolution of decisionId to one project (task
     // 131ef054). Optional + not an updatable field, so it's excluded from the .refine
     // "at least one field to update" check below. Declared so strict mode accepts it.
@@ -384,8 +437,10 @@ const decisionSchemas = {
             data.outcomeNotes !== undefined || data.lessonsLearned !== undefined ||
             data.implementationStatus !== undefined || data.successCriteria !== undefined ||
             data.problemStatement !== undefined || data.supersededBy !== undefined ||
-            data.supersededReason !== undefined,
-    { message: 'At least one field to update must be provided (status, outcomeStatus, outcomeNotes, lessonsLearned, implementationStatus, successCriteria, problemStatement, supersededBy, supersededReason)' }
+            data.supersededReason !== undefined || data.title !== undefined ||
+            data.description !== undefined || data.tags !== undefined ||
+            data.metadata !== undefined,
+    { message: 'At least one field to update must be provided (status, outcomeStatus, outcomeNotes, lessonsLearned, implementationStatus, successCriteria, problemStatement, supersededBy, supersededReason, title, description, tags, metadata)' }
   ),
 
   // STRICT-MODE SAFETY: decisions.routes.handleStats reads args.projectId via
@@ -547,7 +602,15 @@ const taskSchemas = {
     // it), but it was NEVER declared here → rejected under strict mode, so updating a
     // task's metadata through MCP was impossible. Declare it (baseMetadata, like
     // task_create / task_bulk_update) so the existing persist path is reachable.
+    // metadata is now MERGED shallow over existing (T1 item 6) — explicit null deletes a key.
     metadata: baseMetadata,
+    // CURATE (T1 item 5): edit title / description / tags after the fact (previously
+    // task_update could touch only status/priority/assignee/progress/metadata). title is
+    // a short identifier (≤255 here, well under the column's varchar(500)); description is
+    // long-form; tags re-tag/re-thread the task. Same strict-schema pattern.
+    title: z.string().min(1).max(255).optional(),
+    description: z.string().max(2000).optional(),
+    tags: baseTags,
     // projectId scopes the SHORT-ID resolution of taskId to one project (task 131ef054).
     // Optional + not an updatable field, so it's excluded from the .refine "at least one
     // field to update" check below. Declared so strict mode accepts it.
@@ -555,8 +618,9 @@ const taskSchemas = {
   }).refine(
     data => data.status !== undefined || data.priority !== undefined ||
             data.assignedTo !== undefined || data.progress !== undefined ||
-            data.metadata !== undefined,
-    { message: 'At least one field to update must be provided (status, priority, assignedTo, progress, metadata)' }
+            data.metadata !== undefined || data.title !== undefined ||
+            data.description !== undefined || data.tags !== undefined,
+    { message: 'At least one field to update must be provided (status, priority, assignedTo, progress, metadata, title, description, tags)' }
   ),
 
   bulk_update: z.object({
@@ -689,6 +753,8 @@ export const validationSchemas = {
   context_store: contextSchemas.store,
   context_search: contextSchemas.search,
   context_get_recent: contextSchemas.get_recent,
+  // CURATE (T1 item 4): edit a stored context (content / re-tag / metadata-merge / score).
+  context_update: contextSchemas.update,
   context_stats: contextSchemas.stats,
   // Soft-delete / archive (task 7b28bed4)
   context_delete: contextSchemas.delete,

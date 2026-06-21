@@ -24,6 +24,7 @@ import { embeddingService } from '../services/embedding.js';
 import { projectHandler } from './project.js';
 import { logDecisionEvent, logEvent } from '../middleware/eventLogger.js';
 import { logger } from '../utils/logger.js';
+import { metadataMergeSql } from '../utils/metadataMerge.js';
 
 /**
  * Build the hybrid embedding text for a decision, mirroring how context_store
@@ -160,6 +161,12 @@ export interface UpdateDecisionRequest {
   problemStatement?: string;
   supersededBy?: string;
   supersededReason?: string;
+  // CURATE (T1 item 5): editable core prose + tags. T1 item 6: metadata is MERGED
+  // (null deletes a key), never a wholesale replace.
+  title?: string;
+  description?: string;
+  tags?: string[];
+  metadata?: Record<string, any>;
 }
 
 export interface SearchDecisionsRequest {
@@ -413,6 +420,31 @@ class DecisionsHandler {
         paramIndex++;
       }
 
+      // CURATE (T1 item 5): edit core prose + tags after the fact.
+      if (request.title !== undefined) {
+        updateFields.push(`title = $${paramIndex}`);
+        values.push(request.title.trim());
+        paramIndex++;
+      }
+      if (request.description !== undefined) {
+        updateFields.push(`description = $${paramIndex}`);
+        values.push(request.description.trim());
+        paramIndex++;
+      }
+      if (request.tags !== undefined) {
+        updateFields.push(`tags = $${paramIndex}`);
+        values.push(request.tags);
+        paramIndex++;
+      }
+      // METADATA MERGE (T1 item 6): shallow-merge incoming over existing in SQL (atomic);
+      // explicit null deletes that key. Never a wholesale replace.
+      if (request.metadata !== undefined) {
+        const { expr, value } = metadataMergeSql('metadata', paramIndex, request.metadata);
+        updateFields.push(`metadata = ${expr}`);
+        values.push(value);
+        paramIndex++;
+      }
+
       if (updateFields.length === 0) {
         throw new Error('No update fields provided');
       }
@@ -435,13 +467,16 @@ class DecisionsHandler {
 
       const decision = this.mapDatabaseRowToDecision(result.rows[0]);
 
-      // RE-EMBED ON TEXT CHANGE: if any field that feeds the embedding text changed
-      // (problem_statement or success_criteria are the only text fields update can
-      // touch), regenerate the embedding from the UPDATED row so semantic search
-      // stays in sync. Best-effort: a failure leaves the prior embedding intact and
-      // never fails the update.
+      // RE-EMBED ON TEXT CHANGE: if any field that feeds the embedding text changed,
+      // regenerate the embedding from the UPDATED row so semantic search stays in sync.
+      // T1 item 5 added title/description/tags as editable — those ALSO feed
+      // buildDecisionEmbeddingText, so include them in the trigger (previously only
+      // problem_statement/success_criteria could change). Best-effort: a failure leaves
+      // the prior embedding intact and never fails the update.
       const textChanged =
-        request.problemStatement !== undefined || request.successCriteria !== undefined;
+        request.problemStatement !== undefined || request.successCriteria !== undefined ||
+        request.title !== undefined || request.description !== undefined ||
+        request.tags !== undefined;
       if (textChanged) {
         try {
           const row = result.rows[0];

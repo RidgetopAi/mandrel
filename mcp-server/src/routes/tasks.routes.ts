@@ -207,6 +207,8 @@ class TasksRoutes {
       // A4: forward priority + progress (real columns) so they're actually written —
       // previously only status/assignedTo/metadata reached the handler, so a
       // priority/progress-only update returned success while writing nothing.
+      // T1 item 5: forward title/description/tags (now editable). T1 item 6: metadata is
+      // MERGED in the handler (null deletes a key), no longer a wholesale replace.
       await tasksHandler.updateTaskStatus(
         resolvedId,
         args.status,
@@ -214,7 +216,10 @@ class TasksRoutes {
         args.metadata,
         undefined, // connectionId (not threaded on this route today)
         args.priority,
-        args.progress
+        args.progress,
+        args.title,
+        args.description,
+        args.tags
       );
 
       const taskStatusIconMap = {
@@ -234,6 +239,10 @@ class TasksRoutes {
       if (args.priority !== undefined) applied.push(`⚡ Priority: ${args.priority}`);
       if (args.progress !== undefined) applied.push(`📈 Progress: ${args.progress}%`);
       if (args.assignedTo !== undefined) applied.push(`🤖 Assigned To: ${args.assignedTo}`);
+      // T1 item 5: title/description/tags edits.
+      if (args.title !== undefined) applied.push(`📌 Title: ${rawValue(args.title)}`);
+      if (args.description !== undefined) applied.push(`📝 Description updated`);
+      if (args.tags !== undefined) applied.push(`🏷️  Tags: [${args.tags.join(', ')}]`);
       const appliedText = applied.length > 0 ? `\n${applied.join('\n')}` : '';
 
       // Structured record of exactly what was applied (RAW values, no markup). Report the
@@ -243,6 +252,9 @@ class TasksRoutes {
       if (args.priority !== undefined) appliedFields.priority = args.priority;
       if (args.progress !== undefined) appliedFields.progress = args.progress;
       if (args.assignedTo !== undefined) appliedFields.assignedTo = args.assignedTo;
+      if (args.title !== undefined) appliedFields.title = args.title;
+      if (args.description !== undefined) appliedFields.description = args.description;
+      if (args.tags !== undefined) appliedFields.tags = args.tags;
 
       return {
         content: [{

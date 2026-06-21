@@ -176,6 +176,8 @@ export const outputZodSchemas = {
   context_store: mutateShape('context', contextRecord),
   context_search: listShape(contextRecord),
   context_get_recent: listShape(contextRecord),
+  // CURATE (T1 item 4): context_update — mutate shape (the edited record).
+  context_update: mutateShape('context', contextRecord),
   context_stats: statusShape,
   // Soft-delete / archive (task 7b28bed4) — mutate shape (the archived/restored record).
   context_delete: mutateShape('context', contextRecord),

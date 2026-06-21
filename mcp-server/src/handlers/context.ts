@@ -17,6 +17,7 @@ import { logContextEvent, logHierarchicalMemorySearch } from '../middleware/even
 import { logger } from '../utils/logger.js';
 import { isValidUuid } from '../utils/uuid.js';
 import { validateAndNormalizeTags } from '../utils/threadingTags.js';
+import { metadataMergeSql } from '../utils/metadataMerge.js';
 
 export interface StoreContextRequest {
   projectId?: string;
@@ -1027,6 +1028,137 @@ class ContextHandler {
     // Found but wasn't archived → restore is a no-op (already live).
     return { found: true, alreadyArchived: true, id: probe.rows[0].id, archivedAt: null };
   }
+
+  /**
+   * UPDATE (edit) a stored context — CURATE (T1 item 4). Contexts were immutable after
+   * write; this makes the linking grammar REPAIRABLE: edit content, re-tag/re-thread,
+   * fix a metadata back-link, or adjust the relevance score. SCOPED to `projectId` (a
+   * context in another project is not editable). `contextId` is a full UUID (short-id →
+   * UUID resolution happens in the route before this is called).
+   *
+   * Semantics:
+   *   - `content`        → REPLACES content (and triggers a re-embed, below).
+   *   - `tags`           → REPLACES the tag set, after the SAME validate/normalize pass as
+   *                         store (so re-threading with a typo'd tag is warned, never
+   *                         silently broken); triggers a re-embed (tags feed the vector).
+   *   - `metadata`       → MERGED shallow over the existing metadata (T1 item 6); an
+   *                         explicit null value DELETES that key. NEVER a wholesale replace.
+   *   - `relevanceScore` → REPLACES the score.
+   * Only the provided fields are touched; omitted fields are left exactly as they were.
+   *
+   * Returns { found:false } when no such row in this project (route → actionable error),
+   * else the updated row + any tag-normalization warnings (surfaced to the caller).
+   */
+  async updateContext(request: UpdateContextRequest): Promise<UpdateContextResult> {
+    // Validate/normalize the incoming tags the SAME way store does, so a re-tag can't
+    // silently break a thread with a malformed join key (warn-only, never rejected).
+    let normalizedTags: string[] | undefined;
+    let refWarnings: string[] = [];
+    if (request.tags !== undefined) {
+      const tagValidation = validateAndNormalizeTags(request.tags);
+      normalizedTags = tagValidation.tags;
+      refWarnings = tagValidation.warnings;
+      if (refWarnings.length > 0) {
+        logger.warn(`🏷️  context_update linking-grammar normalization: ${refWarnings.join(' ')}`);
+      }
+    }
+
+    // Build the dynamic SET clause from ONLY the provided fields (the zod .refine
+    // guarantees at least one is present). Parameterized throughout — no concatenated
+    // user input.
+    const updates: string[] = [];
+    const params: any[] = [];
+    let paramIndex = 1;
+
+    if (request.content !== undefined) {
+      updates.push(`content = $${paramIndex}`);
+      params.push(request.content.trim());
+      paramIndex++;
+    }
+    if (normalizedTags !== undefined) {
+      updates.push(`tags = $${paramIndex}`);
+      params.push(normalizedTags);
+      paramIndex++;
+    }
+    if (request.metadata !== undefined) {
+      // METADATA MERGE (T1 item 6): shallow-merge incoming over existing in SQL (atomic,
+      // no read-modify-write race); explicit null values delete those keys.
+      const { expr, value } = metadataMergeSql('metadata', paramIndex, request.metadata);
+      updates.push(`metadata = ${expr}`);
+      params.push(value);
+      paramIndex++;
+    }
+    if (request.relevanceScore !== undefined) {
+      updates.push(`relevance_score = $${paramIndex}`);
+      params.push(request.relevanceScore);
+      paramIndex++;
+    }
+
+    // WHERE id = $n AND project_id = $n+1 (project-scoped; never edit across projects).
+    params.push(request.contextId);
+    const idIdx = paramIndex;
+    paramIndex++;
+    params.push(request.projectId);
+    const projIdx = paramIndex;
+    paramIndex++;
+
+    const sql = `
+      UPDATE contexts
+      SET ${updates.join(', ')}
+      WHERE id = $${idIdx} AND project_id = $${projIdx}
+      RETURNING id::text AS id, project_id, session_id, context_type, content,
+                created_at, relevance_score, tags, metadata
+    `;
+    const result = await db.query(sql, params);
+    if (result.rows.length === 0) {
+      return { found: false };
+    }
+    const row = result.rows[0];
+
+    // RE-EMBED ON TEXT/TAG CHANGE: content + tags feed the hybrid embedding (storeContext
+    // builds it from type + tags + title + content). If either changed, regenerate the
+    // embedding from the UPDATED row so semantic search stays in sync. Best-effort: a
+    // failure leaves the prior embedding intact and never fails the edit.
+    const embeddingAffected = request.content !== undefined || normalizedTags !== undefined;
+    if (embeddingAffected) {
+      try {
+        const tagsForEmbed: string[] = row.tags || [];
+        const extractedTitle = this.extractTitle(row.content);
+        const embeddingText = [
+          `Type: ${row.context_type}`,
+          tagsForEmbed.length ? `Tags: ${tagsForEmbed.join(', ')}` : '',
+          extractedTitle,
+          String(row.content).substring(0, 1000),
+        ].filter(Boolean).join('\n');
+        const embeddingResult = await embeddingService.generateEmbedding({ text: embeddingText });
+        await db.query(
+          `UPDATE contexts SET embedding = $1::vector WHERE id = $2`,
+          [`[${embeddingResult.embedding.join(',')}]`, row.id]
+        );
+        logger.info(`🔮 Re-embedded context ${String(row.id).substring(0, 8)}... after edit`);
+      } catch (embedError) {
+        logger.warn('⚠️  Failed to re-embed context after edit — prior embedding retained', {
+          metadata: { message: (embedError as Error)?.message }
+        });
+      }
+    }
+
+    return {
+      found: true,
+      context: {
+        id: row.id,
+        projectId: row.project_id,
+        sessionId: row.session_id,
+        contextType: row.context_type,
+        content: row.content,
+        createdAt: row.created_at,
+        relevanceScore: row.relevance_score,
+        tags: row.tags || [],
+        metadata: typeof row.metadata === 'string' ? JSON.parse(row.metadata) : (row.metadata ?? {}),
+      },
+      warnings: refWarnings.length > 0 ? refWarnings : undefined,
+    };
+  }
 }
 
 /**
@@ -1039,6 +1171,37 @@ export interface ArchiveResult {
   alreadyArchived?: boolean;
   id?: string;
   archivedAt?: string | Date | null;
+}
+
+/**
+ * context_update request (CURATE, T1 item 4). `contextId` is a full UUID (resolved in the
+ * route). Only the provided fields are edited; `metadata` is MERGED (null deletes a key).
+ */
+export interface UpdateContextRequest {
+  contextId: string;
+  projectId: string;
+  content?: string;
+  tags?: string[];
+  metadata?: Record<string, any>;
+  relevanceScore?: number;
+}
+
+/** Result of context_update. `found:false` → no such context in the project. */
+export interface UpdateContextResult {
+  found: boolean;
+  context?: {
+    id: string;
+    projectId: string;
+    sessionId: string | null;
+    contextType: string;
+    content: string;
+    createdAt: Date;
+    relevanceScore: number;
+    tags: string[];
+    metadata: Record<string, any>;
+  };
+  /** Tag-normalization warnings (re-tag with a malformed join key), surfaced to the caller. */
+  warnings?: string[];
 }
 
 // Export singleton instance
