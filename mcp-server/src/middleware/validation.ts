@@ -9,6 +9,7 @@ import { formatZodErrorMessage } from '../utils/actionableError.js';
 import { isUuidOrShortId } from '../utils/idResolver.js';
 import { RECALL_RESPONSE_FORMATS } from '../config/recallConfig.js';
 import { EDGE_TYPES, EDGE_NODE_TYPES } from '../config/edgeTypes.js';
+import { MAX_LINKS_PER_WRITE } from '../config/linksConfig.js';
 import { THREAD_ALTITUDES, THREAD_CONFIG } from '../config/threadConfig.js';
 import { TRUST_BANDS } from '../config/trustConfig.js';
 
@@ -96,6 +97,37 @@ const baseQuery = z.string().min(1).max(1000);
 const baseLimit = z.number().int().min(1).max(100).default(10);
 const baseRelevanceScore = z.number().min(0).max(10).optional();
 
+// TYPED-EDGE enums — DERIVED from the single-source domain (config/edgeTypes.ts) so the
+// zod validator, the model-facing inputSchema, AND the DB CHECK can never drift. Hoisted
+// here (above the schemas that use them) so both the explicit link/unlink/get_links tools
+// AND the first-class `links` write param (T5a) share ONE definition.
+const edgeTypeEnum = z.enum(EDGE_TYPES as unknown as [string, ...string[]]);
+const edgeNodeTypeEnum = z.enum(EDGE_NODE_TYPES as unknown as [string, ...string[]]);
+
+// FIRST-CLASS `links` WRITE PARAM (T5a, task 9535d967): an optional array on
+// context_store / decision_record. Each element is EITHER an explicit edge spec OR a
+// shorthand referent. The union is non-strict on extra keys at the spec level (the
+// service's normalizeLinkSpec is the authority on which form a spec is); we validate the
+// SHAPES the tool documents and reject the rest with an actionable message. The array
+// bound derives from MAX_LINKS_PER_WRITE (config — no hardcoded variable).
+//   (a) EXPLICIT : { edgeType, to, toType }
+//   (b) SHORTHAND: { task } | { decision } | { context }  → informs / decided_by / learned_from
+const explicitLinkSpec = z.object({
+  edgeType: edgeTypeEnum,
+  to: uuidOrShortId(),
+  toType: edgeNodeTypeEnum,
+});
+const shorthandTaskLink = z.object({ task: uuidOrShortId() });
+const shorthandDecisionLink = z.object({ decision: uuidOrShortId() });
+const shorthandContextLink = z.object({ context: uuidOrShortId() });
+const linkSpecSchema = z.union([
+  explicitLinkSpec,
+  shorthandTaskLink,
+  shorthandDecisionLink,
+  shorthandContextLink,
+]);
+const linksParam = z.array(linkSpecSchema).max(MAX_LINKS_PER_WRITE).optional();
+
 // System Health Schemas
 const mandrelSystemSchemas = {
   ping: z.object({
@@ -136,6 +168,10 @@ const contextSchemas = {
     tags: baseTags,
     relevanceScore: baseRelevanceScore,
     metadata: baseMetadata,
+    // FIRST-CLASS LINKS (T5a): mint typed edges from this context to other records, by
+    // EXPLICIT spec or shorthand. Robust: a bad/unresolvable link warns (never breaks the
+    // store); the record + good links still persist.
+    links: linksParam,
     projectId: z.string().optional(),
     sessionId: z.string().optional()
   }),
@@ -360,10 +396,14 @@ const decisionSchemas = {
     lessonsLearned: z.string().max(2000).optional(),
     affectedComponents: z.array(z.string()).optional(),
     tags: baseTags.optional(),
+    // FIRST-CLASS LINKS (T5a): mint typed edges from this decision to other records, by
+    // EXPLICIT spec or shorthand. Same robustness contract as context_store — a bad link
+    // warns (never breaks the record); the decision + good links still persist.
+    links: linksParam,
     projectId: z.string().optional(),
     metadata: baseMetadata.optional()
   }),
-  
+
   search: z.object({
     query: z.string().min(1).max(1000).optional(), // Make query optional for flexible filtering
     limit: baseLimit,
@@ -735,8 +775,8 @@ const smartSearchSchemas = {
 // (config/edgeTypes.ts) so the zod validation, the model-facing inputSchema, and the
 // DB CHECK can never drift. Ids accept a full UUID OR an 8+-hex short id (uuidOrShortId,
 // resolved project-scoped in the handler) exactly like every other id-taking tool.
-const edgeTypeEnum = z.enum(EDGE_TYPES as unknown as [string, ...string[]]);
-const edgeNodeTypeEnum = z.enum(EDGE_NODE_TYPES as unknown as [string, ...string[]]);
+// edgeTypeEnum / edgeNodeTypeEnum are defined ONCE at the top (hoisted so the T5a
+// `links` write param shares them). Reused here for the explicit link/unlink/get_links.
 const linkSchemas = {
   // link: create a typed edge from → to for edges that can't be inferred, and to REPAIR.
   link: z.object({

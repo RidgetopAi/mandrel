@@ -367,6 +367,158 @@ export async function autoMintFromTags(
   return { minted, attempted };
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// EXPLICIT LINKS (T5a — the first-class `links` write parameter, task 9535d967)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * One explicit link spec as it arrives from a context_store / decision_record call.
+ * EITHER form is accepted (the zod schema is the authority on shape):
+ *   (a) EXPLICIT  — { edgeType, to, toType }
+ *   (b) SHORTHAND — { task } | { decision } | { context }  (a single referent ref)
+ * The shorthand keys map to the SAME edges the threading-tag path mints, via
+ * tagToEdgeIntent (so the two surfaces can never drift): task→informs,
+ * decision→decided_by, context→learned_from.
+ */
+export interface LinkSpec {
+  edgeType?: string;
+  to?: string;
+  toType?: EdgeNodeType;
+  task?: string;
+  decision?: string;
+  context?: string;
+}
+
+/** A rejected explicit link, surfaced as a per-link WARNING (the write still succeeds). */
+export interface LinkWarning {
+  /** Human-readable reason the link was rejected. */
+  reason: string;
+  /** The offending spec (echoed back so the caller can see what was dropped). */
+  spec: LinkSpec;
+}
+
+export interface MintExplicitResult {
+  /** Edges newly created. */
+  minted: number;
+  /** Edges attempted (resolved + shape-valid; includes dedup no-ops). */
+  attempted: number;
+  /** One warning per REJECTED link (bad edge type / unresolvable ref / self-link). */
+  warnings: LinkWarning[];
+}
+
+/**
+ * Normalize one LinkSpec to a concrete edge intent (edgeType + toType + referent), or a
+ * rejection reason. The SHORTHAND keys reuse tagToEdgeIntent by constructing the
+ * equivalent threading tag (`task:<ref>` etc.) so the shorthand→edge mapping is literally
+ * the SAME code path as the tag mapping — it cannot drift (Lesson 011: one definition).
+ */
+function normalizeLinkSpec(
+  spec: LinkSpec
+): { edgeType: EdgeType; toType: EdgeNodeType; ref: string } | { reject: string } {
+  // SHORTHAND: exactly one of task/decision/context. Reuse tagToEdgeIntent's mapping.
+  const shorthandKey = (['task', 'decision', 'context'] as const).find(
+    (k) => spec[k] !== undefined && spec[k] !== null && spec[k] !== ''
+  );
+  if (shorthandKey) {
+    const ref = String(spec[shorthandKey]);
+    const intent = tagToEdgeIntent(`${shorthandKey}:${ref}`);
+    if (!intent) return { reject: `shorthand "${shorthandKey}" did not map to a known edge` };
+    return { edgeType: intent.edgeType, toType: intent.toType, ref: intent.ref };
+  }
+
+  // EXPLICIT: edgeType + to + toType. (The zod schema already shape-validates the union;
+  // this is defense-in-depth so the service is correct even if called directly.)
+  if (spec.edgeType && spec.to && spec.toType) {
+    if (!isEdgeType(spec.edgeType)) {
+      return { reject: `unknown edgeType "${spec.edgeType}" (see config/edgeTypes.ts)` };
+    }
+    if (!isEdgeNodeType(spec.toType)) {
+      return { reject: `unknown toType "${spec.toType}" (must be context|decision|task)` };
+    }
+    // tagToEdgeIntent lower-cases its ref; do the same for an explicit ref so an id8 with
+    // upper-case hex still resolves identically to the tag/shorthand path.
+    return { edgeType: spec.edgeType, toType: spec.toType, ref: spec.to.trim().toLowerCase() };
+  }
+
+  return { reject: 'link must be either { edgeType, to, toType } or { task|decision|context: <ref> }' };
+}
+
+/**
+ * MINT EXPLICIT LINKS from a context_store / decision_record `links` parameter (called
+ * AFTER the new record is persisted). Each spec is resolved + minted INDEPENDENTLY via
+ * mintEdge, reusing resolveRefSafe (project-scoped id8→uuid) so the resolution rules
+ * match the tag/shorthand path exactly.
+ *
+ * ROBUSTNESS CONTRACT (T5a): a bad/unresolvable/typo'd ref or an invalid edgeType must
+ * NEVER break or roll back the user's write. UNLIKE the silent tag path, `links` is
+ * EXPLICIT user intent — so each rejected link is returned as a WARNING (the caller
+ * surfaces it). The record still saves; every GOOD link still mints. This function never
+ * throws: a per-link failure becomes a warning, not an exception.
+ */
+export async function mintExplicitLinks(
+  args: {
+    fromId: string;
+    fromType: EdgeNodeType;
+    links: LinkSpec[] | undefined;
+    projectId: string | undefined;
+    createdBy: string;
+  },
+  pool: Pool = db
+): Promise<MintExplicitResult> {
+  const warnings: LinkWarning[] = [];
+  let minted = 0;
+  let attempted = 0;
+
+  for (const spec of args.links ?? []) {
+    const norm = normalizeLinkSpec(spec);
+    if ('reject' in norm) {
+      warnings.push({ reason: norm.reject, spec });
+      continue;
+    }
+    try {
+      const toId = await resolveRefSafe(norm.toType, norm.ref, args.projectId, pool);
+      if (!toId) {
+        warnings.push({
+          reason: `could not resolve ${norm.toType} "${norm.ref}" in this project`,
+          spec,
+        });
+        continue;
+      }
+      if (toId === args.fromId) {
+        warnings.push({ reason: 'self-link skipped (a record cannot link to itself)', spec });
+        continue;
+      }
+      attempted++;
+      const res = await mintEdge(
+        {
+          fromId: args.fromId,
+          fromType: args.fromType,
+          toId,
+          toType: norm.toType,
+          edgeType: norm.edgeType,
+          projectId: args.projectId ?? null,
+          createdBy: args.createdBy,
+          metadata: { source: 'links_param' },
+        },
+        pool
+      );
+      if (res.created) minted++;
+    } catch (e) {
+      // A single edge failing must never break the write — surface it as a warning.
+      const reason =
+        e instanceof InvalidEdgeError
+          ? e.message
+          : `failed to mint link (${(e as Error)?.message ?? 'error'})`;
+      warnings.push({ reason, spec });
+      logger.warn(`🔗 links: rejected explicit link — write unaffected`, {
+        metadata: { reason, error: (e as Error)?.message },
+      });
+    }
+  }
+
+  return { minted, attempted, warnings };
+}
+
 /**
  * AUTO-MINT decision-specific edges (called from decision_record / decision_update):
  *   - evidence/parent ids carried in metadata (metadata.evidence: [id...] and

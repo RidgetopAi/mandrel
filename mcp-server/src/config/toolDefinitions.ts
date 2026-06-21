@@ -153,6 +153,7 @@ export const AIDIS_TOOL_DEFINITIONS: ToolDefinition[] = [
               tags: 'Optional tags for categorization, filtering, and RECORD LINKING. Threading tags wire this context into the linked story: `task:<id8>` (belongs to a task thread), `decision:<id8>` (ladders to a decision), `context:<uuid>`, plus lens axes `scope:company|product` / `owner:engineering|product|marketing|rnd|accounting` / `tranche:safe|measured`. A `ref:<slug>` tag (`ref:[a-z0-9-]+`) is a memorable named pointer resolvable via context_search({tags:["ref:<slug>"]}). Malformed ref/threading tags are normalized on write and reported, never rejected.',
               relevanceScore: 'Optional importance score 0–10 (default 5) feeding the hierarchical-memory ranking',
               metadata: 'Optional structured metadata (jsonb object) stored on the context. The tool-native way to carry STRUCTURED back-links, e.g. {"parent_task":"<uuid>","parent_decision":"<uuid>","origin_context":"<uuid>"} — round-trips and is retrievable via context_search.',
+              links: 'Optional array of typed edges to mint FROM this context to other records (first-class linking). Each item is EITHER explicit {"edgeType":"<one of the edge-type vocab>","to":"<id8|uuid>","toType":"task|decision|context"} OR shorthand {"task":"<ref>"} | {"decision":"<ref>"} | {"context":"<ref>"} (→ informs / decided_by / learned_from). Refs accept an id8 or full UUID, resolved in the current project. A bad/unresolvable link is reported as a warning (link notes) but NEVER blocks the store — the context + the good links still save.',
               projectId: 'Project ID or name to store under (defaults to current project)',
               sessionId: 'Session ID to attribute this context to (defaults to the active session)'
             }),
@@ -318,6 +319,7 @@ export const AIDIS_TOOL_DEFINITIONS: ToolDefinition[] = [
               implementationStatus: 'Optional. One of: planned, in_progress, implemented, validated, deprecated (defaults to "planned")',
               affectedComponents: 'Optional. Array of component names this decision affects',
               tags: 'Optional. Array of tags for searchability',
+              links: 'Optional array of typed edges to mint FROM this decision to other records (first-class linking). Each item is EITHER explicit {"edgeType":"<one of the edge-type vocab>","to":"<id8|uuid>","toType":"task|decision|context"} OR shorthand {"task":"<ref>"} | {"decision":"<ref>"} | {"context":"<ref>"} (→ informs / decided_by / learned_from). Refs accept an id8 or full UUID, resolved in the current project. A bad/unresolvable link is reported as a warning (link notes) but NEVER blocks the record — the decision + the good links still save.',
               projectId: 'Optional. Project ID or name (defaults to current project)',
               metadata: 'Optional. Arbitrary metadata object'
             }),

@@ -34,7 +34,9 @@ const EXPECTED_PARAMS: Record<string, string[]> = {
   // content/type/tags, hiding `metadata` (the keystone for structured back-links) +
   // relevanceScore/projectId/sessionId. Now DERIVED from zod, so the declared schema
   // advertises exactly the validated/accepted field set — and `metadata` is visible.
-  context_store: ['content', 'type', 'tags', 'relevanceScore', 'metadata', 'projectId', 'sessionId'],
+  // T5a (task 9535d967): `links` — the first-class explicit-edge write param (declared,
+  // accepted, and minted post-persist; robust — a bad link warns, never breaks the store).
+  context_store: ['content', 'type', 'tags', 'relevanceScore', 'metadata', 'links', 'projectId', 'sessionId'],
   // includeArchived (task 7b28bed4): soft-delete read filter — default excludes archived.
   // response_format (T1 item 1, task f54e6cf5): concise|detailed payload control.
   context_search: ['id', 'query', 'type', 'tags', 'limit', 'minSimilarity', 'offset', 'response_format', 'projectId', 'sessionId', 'includeArchived'],
@@ -51,10 +53,12 @@ const EXPECTED_PARAMS: Record<string, string[]> = {
   // decision_record (A1): outcome fields (outcomeStatus/outcomeNotes/lessonsLearned)
   // are now settable up front and persisted on create (mirroring implementationStatus),
   // so they join the advertised+accepted set.
+  // T5a (task 9535d967): `links` — the first-class explicit-edge write param (declared,
+  // accepted, minted post-persist; robust — a bad link warns, never breaks the record).
   decision_record: ['decisionType', 'title', 'description', 'rationale', 'impactLevel',
     'alternativesConsidered', 'problemStatement', 'successCriteria', 'implementationStatus',
     'outcomeStatus', 'outcomeNotes', 'lessonsLearned',
-    'affectedComponents', 'tags', 'projectId', 'metadata'],
+    'affectedComponents', 'tags', 'links', 'projectId', 'metadata'],
   // projectId (task 131ef054): scopes the SHORT-ID resolution of decisionId to one
   // project (the resolver reads args.projectId via resolveProjectId). Declared so strict
   // mode accepts it; it is NOT an updatable field (excluded from the update .refine).
