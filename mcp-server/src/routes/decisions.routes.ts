@@ -13,7 +13,7 @@ import {
   ambiguousIdMessage,
   idErrorResponse,
 } from '../utils/idResolver.js';
-import { autoMintFromTags, autoMintFromDecision } from '../services/links.js';
+import { autoMintFromTags, autoMintFromDecision, mintExplicitLinks, type LinkWarning } from '../services/links.js';
 import { trustForRecords, type RecordRef, type Trust } from '../services/trust.js';
 import { TRUST_BAND_HINT, type TrustBand } from '../config/trustConfig.js';
 
@@ -32,6 +32,14 @@ class DecisionsRoutes {
     const projectId = await projectHandler.getCurrentProjectId(sessionId);
     return projectId || undefined;
   }
+  /**
+   * T5a: render explicit-link rejection WARNINGS as compact human lines for the text
+   * channel — mirrors the context route's surfacing so both write paths read identically.
+   */
+  static linkWarningLines(warnings: LinkWarning[]): string[] {
+    return warnings.map((w) => `${w.reason} (link: ${JSON.stringify(w.spec)})`);
+  }
+
   /**
    * Handle decision record requests
    */
@@ -94,6 +102,19 @@ class DecisionsRoutes {
         createdBy: 'auto:decision_record',
       });
 
+      // FIRST-CLASS LINKS (T5a, task 9535d967): the explicit `links` param — EXPLICIT user
+      // intent, so each REJECTED link is surfaced as a WARNING in BOTH channels (text +
+      // structuredContent.decision.linkWarnings) while the decision + every good link still
+      // persist. mintExplicitLinks never throws (a bad link can't break the record).
+      const linkResult = await mintExplicitLinks({
+        fromId: decision.id,
+        fromType: 'decision',
+        links: args.links,
+        projectId,
+        createdBy: 'links:decision_record',
+      });
+      const linkWarningLines = DecisionsRoutes.linkWarningLines(linkResult.warnings);
+
       return {
         content: [{
           type: 'text',
@@ -102,7 +123,10 @@ class DecisionsRoutes {
           // (description/rationale/problemStatement are long-form CONTENT — left as-is.)
           text: `✅ Technical decision recorded! "${rawValue(decision.title)}"\n` +
                 `🎯 Type: ${decision.decisionType} | Impact: ${decision.impactLevel}\n` +
-                `🆔 ID: ${decision.id}`,
+                `🆔 ID: ${decision.id}` +
+                (linkWarningLines.length > 0
+                  ? `\n⚠️  Link notes:\n` + linkWarningLines.map(w => `   • ${w}`).join('\n')
+                  : ''),
         }],
         structuredContent: {
           action: 'created',
@@ -120,6 +144,9 @@ class DecisionsRoutes {
             // DRIFT-FIX (task 9c522977): echo persisted metadata back on create.
             metadata: decision.metadata,
             decisionDate: decision.decisionDate.toISOString(),
+            // T5a: structured per-link rejections + count of edges minted.
+            linkWarnings: linkResult.warnings,
+            linksMinted: linkResult.minted,
           },
         },
       };

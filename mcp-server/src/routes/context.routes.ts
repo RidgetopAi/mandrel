@@ -12,7 +12,7 @@ import {
   RECALL_DEFAULT_FORMAT,
   type RecallResponseFormat,
 } from '../config/recallConfig.js';
-import { autoMintFromTags } from '../services/links.js';
+import { autoMintFromTags, mintExplicitLinks, type LinkWarning } from '../services/links.js';
 import { trustForRecords, type RecordRef, type Trust } from '../services/trust.js';
 import { TRUST_BAND_HINT, type TrustBand } from '../config/trustConfig.js';
 
@@ -42,6 +42,15 @@ class ContextRoutes {
     const projectId = await projectHandler.getCurrentProjectId(sessionId);
     return projectId || undefined;
   }
+  /**
+   * T5a: render explicit-link rejection WARNINGS as compact human lines for the text
+   * channel — "<reason> (link: <spec>)". Shared shape with the decision route's surfacing
+   * so the two write paths read identically. Static (pure) so it's reusable + testable.
+   */
+  static linkWarningLines(warnings: LinkWarning[]): string[] {
+    return warnings.map((w) => `${w.reason} (link: ${JSON.stringify(w.spec)})`);
+  }
+
   /**
    * Helper to format relative time
    */
@@ -138,12 +147,28 @@ class ContextRoutes {
         createdBy: 'auto:context_store',
       });
 
+      // FIRST-CLASS LINKS (T5a, task 9535d967): the explicit `links` param. Unlike the
+      // silent tag path, `links` is EXPLICIT user intent — so each REJECTED link (bad
+      // edgeType / unresolvable ref / self-link) is surfaced as a WARNING in BOTH channels
+      // (text + structuredContent.context.linkWarnings), while the record + every good
+      // link still persist. mintExplicitLinks never throws (a bad link can't break store).
+      const linkResult = await mintExplicitLinks({
+        fromId: result.id,
+        fromType: 'context',
+        links: args.links,
+        projectId,
+        createdBy: 'links:context_store',
+      });
+
       // LINKING-GRAMMAR warnings (tool-native linking): if a `ref:<slug>` OR a
       // threading tag (`task:`/`decision:`/`context:`/`scope:`/`owner:`/`tranche:`)
       // was malformed it was normalized (or flagged) at the write boundary — surface
       // that to the caller so a typo'd link is visible, not silent. Stored tags already
       // reflect the normalized form. (Now carried in both the lean text AND the
       // structuredContent.context.warnings field.)
+      // T5a: explicit-link rejections rendered as human-readable lines (text channel).
+      const linkWarningLines = ContextRoutes.linkWarningLines(linkResult.warnings);
+
       return {
         content: [{
           type: 'text',
@@ -152,6 +177,9 @@ class ContextRoutes {
           text: `✅ Context stored successfully! (${result.contextType})\n🆔 ID: ${result.id}` +
                 (result.warnings && result.warnings.length > 0
                   ? `\n⚠️  Tag notes:\n` + result.warnings.map(w => `   • ${w}`).join('\n')
+                  : '') +
+                (linkWarningLines.length > 0
+                  ? `\n⚠️  Link notes:\n` + linkWarningLines.map(w => `   • ${w}`).join('\n')
                   : ''),
         }],
         structuredContent: {
@@ -164,6 +192,10 @@ class ContextRoutes {
             relevanceScore: result.relevanceScore,
             createdAt: result.createdAt.toISOString(),
             warnings: result.warnings ?? [],
+            // T5a: structured per-link rejections (reason + the offending spec) so a
+            // machine reader sees exactly which explicit links were dropped + why.
+            linkWarnings: linkResult.warnings,
+            linksMinted: linkResult.minted,
           },
         },
       };
