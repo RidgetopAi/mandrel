@@ -23,13 +23,14 @@ You end up re-explaining context, re-justifying decisions, and re-solving proble
 
 ## The Solution
 
-Mandrel provides 27 specialized tools that integrate directly with AI agents via the [Model Context Protocol (MCP)](https://modelcontextprotocol.io/). These tools enable:
+Mandrel provides 44 specialized tools that integrate directly with AI agents via the [Model Context Protocol (MCP)](https://modelcontextprotocol.io/). These tools enable:
 
 - **Semantic Context Storage** — Store development context with 384-dimensional vector embeddings for similarity search
 - **Decision Tracking** — Record architectural decisions with rationale, alternatives considered, and outcomes
 - **Multi-Project Management** — Maintain separate knowledge bases across projects
 - **Task Coordination** — Track work in progress with status, dependencies, and progress metrics
 - **Smart Search** — Query across all stored knowledge using natural language
+- **Knowledge Graph & Thread Recall** — Link records with typed edges (`decided_by`, `caused`, `supersedes`, `learned_from`, …), auto-thread new captures onto the active task/decision, and replay the full story of any piece of work with `recall_thread` — each node carrying a trust signal
 
 When you start a new session, the AI agent retrieves relevant context automatically. Previous decisions, established patterns, and learned lessons are immediately available.
 
@@ -52,7 +53,7 @@ When you start a new session, the AI agent retrieves relevant context automatica
 │  MCP Server (TypeScript)                                         │
 │  ├── STDIO Transport (Port 5001) — Direct AI agent connection    │
 │  ├── HTTP Bridge (Port 8080) — REST API for tooling              │
-│  └── 27 MCP Tools — Context, Decisions, Tasks, Projects, Search  │
+│  └── 44 MCP Tools — Context, Decisions, Tasks, Projects, Search  │
 └───────────────────────────┬─────────────────────────────────────┘
                             │
                             ▼
@@ -144,7 +145,7 @@ curl http://localhost:8080/health
 
 **Expected successful output from health check:**
 ```json
-{"status":"ok","version":"1.0.0","uptime":123.456}
+{"status":"ok","version":"0.5.x","uptime":123.456}
 ```
 
 **Expected output from validate-install.sh:**
@@ -246,17 +247,18 @@ sudo -u postgres psql -c "ALTER USER mandrel WITH PASSWORD 'new_password';"
 
 ## MCP Tools Reference
 
-Mandrel provides 27 tools organized into 6 categories:
+Mandrel provides 44 tools organized into 8 categories:
 
 | Category | Tools | Purpose |
 |----------|-------|---------|
-| **System** | `mandrel_ping`, `mandrel_status` | Health checks and diagnostics |
+| **System Health** | `mandrel_ping`, `mandrel_status` | Health checks and diagnostics |
 | **Navigation** | `mandrel_help`, `mandrel_explain`, `mandrel_examples` | Tool discovery and documentation |
-| **Context** | `context_store`, `context_search`, `context_get_recent`, `context_stats` | Semantic knowledge storage |
-| **Projects** | `project_list`, `project_create`, `project_switch`, `project_current`, `project_info`, `project_insights` | Multi-project management |
-| **Decisions** | `decision_record`, `decision_search`, `decision_update`, `decision_stats` | Architectural decision tracking |
-| **Tasks** | `task_create`, `task_list`, `task_update`, `task_details`, `task_bulk_update`, `task_progress_summary` | Work coordination |
-| **Search** | `smart_search`, `get_recommendations` | Cross-domain AI-powered search |
+| **Context** | `context_store`, `context_search`, `context_get_recent`, `context_update`, `context_stats`, `context_delete`, `context_restore` | Semantic knowledge storage (+ edit / soft-delete / restore) |
+| **Projects** | `project_list`, `project_create`, `project_update`, `project_delete`, `project_switch`, `project_current`, `project_info`, `project_insights` | Multi-project management |
+| **Decisions** | `decision_record`, `decision_search`, `decision_get`, `decision_update`, `decision_stats`, `decision_delete`, `decision_restore` | Architectural decision tracking with outcomes |
+| **Tasks** | `task_create`, `task_list`, `task_update`, `task_details`, `task_bulk_update`, `task_progress_summary`, `task_delete`, `task_restore` | Work coordination |
+| **Smart Search & AI** | `smart_search`, `get_recommendations` | Cross-domain AI-powered search |
+| **Linking & Graph** | `link`, `unlink`, `get_links`, `recall_thread`, `thread_set`, `thread_current`, `thread_clear` | Typed-edge knowledge graph + thread recall — the memory "story" |
 
 ### Example: Storing Context
 
@@ -312,10 +314,9 @@ sudo systemctl status mandrel-command  # Web dashboard
 
 ## Project Stats
 
-- **~25,000 lines** of TypeScript (MCP server)
-- **27 MCP tools** (consolidated from 52 in earlier iterations)
+- **44 MCP tools** across 8 categories (incl. a typed-edge knowledge graph + thread recall)
 - **8 REST endpoints** for session analytics
-- **12 database tables** with vector embedding support
+- **PostgreSQL + pgvector** storage — 384D embeddings plus a typed-edge graph over contexts, decisions, and tasks
 - **Zero external API costs** for embeddings
 
 ---
