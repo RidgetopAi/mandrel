@@ -22,18 +22,10 @@ const optionalString = (maxLength = 255) =>
     .trim()
     .optional();
 
-const email = z.string()
-  .email('Please enter a valid email address')
-  .max(255, 'Email must be less than 255 characters');
-
 const url = z.union([
   z.string().url('Please enter a valid URL'),
   z.literal('')
 ]).optional();
-
-const positiveInteger = z.number()
-  .int('Must be an integer')
-  .positive('Must be a positive number');
 
 const tags = z.array(z.string().min(1).max(50))
   .max(10, 'Maximum 10 tags allowed')
@@ -255,12 +247,9 @@ export const validatePartial = <T>(schema: z.ZodSchema<T>, data: any): {
       return { success: true, data: result.data };
     }
 
-    // If full validation fails, check if it's just due to missing required fields
-    // In that case, we'll consider it a successful partial validation
-    const missingFieldErrors = result.errors?.filter(error =>
-      error.message.includes('required') || error.message.includes('is required')
-    ) || [];
-
+    // If full validation fails, check if it's just due to missing required fields.
+    // In that case (only "required" errors remain), we treat it as a successful
+    // partial validation.
     const otherErrors = result.errors?.filter(error =>
       !error.message.includes('required') && !error.message.includes('is required')
     ) || [];

@@ -316,7 +316,7 @@ class DatabasePoolManager {
         healthy: stats.healthStatus !== 'unhealthy',
         details: stats,
       };
-    } catch (error) {
+    } catch {
       return {
         healthy: false,
         details: this.getStats(),

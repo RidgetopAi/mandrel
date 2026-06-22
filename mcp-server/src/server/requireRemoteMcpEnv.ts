@@ -168,7 +168,6 @@ export function assertRemoteMcpEnvOrExit(
   // Log via the structured logger AND stderr so the named vars are impossible to miss
   // regardless of log routing/level.
   logger.error(fatal);
-  // eslint-disable-next-line no-console
   console.error(fatal);
   exit(1);
 }

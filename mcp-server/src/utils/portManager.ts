@@ -187,7 +187,7 @@ class PortManager {
           resolve(false);
         });
       });
-    } catch (error) {
+    } catch {
       return false;
     }
   }

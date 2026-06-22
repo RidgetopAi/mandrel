@@ -43,7 +43,7 @@ for (const configPath of envPaths) {
           process.env[key] = value;
         }
       }
-    } catch (error) {
+    } catch {
       logger.warn(`⚠️ [MCP] Failed to load config from: ${configPath}`);
     }
   }
@@ -125,7 +125,7 @@ export async function initializeDatabase(): Promise<void> {
       try {
         await client.query('CREATE EXTENSION IF NOT EXISTS vector');
         logger.info('✅ pgvector extension is ready');
-      } catch (error) {
+      } catch {
         logger.warn('⚠️  pgvector extension not available - vector search will be limited');
         logger.warn('Please install postgresql-pgvector package on your system');
       }
@@ -140,7 +140,7 @@ export async function initializeDatabase(): Promise<void> {
         `);
         await client.query('DROP TABLE vector_test');
         logger.info('✅ Vector operations confirmed working');
-      } catch (error) {
+      } catch {
         logger.warn('⚠️  Vector operations not available');
       }
     } else {
