@@ -184,6 +184,35 @@ npm run type-check            # TypeScript check
 npx tsx test-complete-mandrel.ts # Test all systems
 ```
 
+### Test database — ONE command for a CORRECT throwaway DB
+
+> **Footgun (read this before you `createdb` for tests):** a throwaway Postgres is
+> only correct if it has the required extensions. Tests use `similarity()` (pg_trgm)
+> and uuid functions (uuid-ossp); a plain `createdb` + `migrate.ts` **skips the
+> extensions** and those tests fail with confusing "function does not exist" errors.
+> Do NOT hand-roll provisioning — use the helper, which does the FULL correct
+> sequence (create role/db → run `00-extensions.sql` → `migrate.ts`), idempotently:
+
+```bash
+# Provision a correct, migrated throwaway DB (name MUST be ci_*-prefixed):
+bash scripts/provision-test-db.sh ci_mytest_$$
+
+# Point your tests at it (the helper prints the DB env on success):
+eval "$(bash scripts/provision-test-db.sh ci_mytest_$$ --print-env)"
+#   exports DATABASE_NAME / DATABASE_USER / DATABASE_PASSWORD / DATABASE_HOST / DATABASE_PORT
+
+# Tear it down (drops the ci_* DB + its derived ci_role_* role):
+bash scripts/drop-test-db.sh ci_mytest_$$
+#   (equivalent: scripts/provision-test-db.sh ci_mytest_$$ --drop)
+```
+
+- `scripts/ci.sh` CALLS this same helper — single source, so CI and ad-hoc DBs
+  can't drift. Host/port/super-user are env-configurable (`TEST_DB_HOST`,
+  `TEST_DB_PORT`, `PG_SUPERCMD`) with sane defaults (`localhost:5432`,
+  `sudo -u postgres`).
+- The helper REFUSES any name that isn't `ci_*`-prefixed — it can never touch
+  `mandrel` or a real DB.
+
 ### Process Management Scripts
 
 ```bash
