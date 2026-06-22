@@ -1,6 +1,6 @@
 {
   "name": "mandrel-command-backend",
-  "version": "0.5.15",
+  "version": "0.5.16",
   "description": "Mandrel Command Backend - REST API server",
   "main": "dist/server.js",
   "scripts": {
