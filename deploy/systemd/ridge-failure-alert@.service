@@ -1,0 +1,29 @@
+# =============================================================================
+# ridge-failure-alert@.service — OnFailure= alert target for Mandrel units
+# =============================================================================
+# Templated oneshot. systemd starts ridge-failure-alert@<unit>.service when a
+# watched service enters `failed` (via that service's OnFailure= drop-in). The
+# instance specifier %i is the failed unit name (it is the %n of the failer,
+# passed through the drop-in as OnFailure=ridge-failure-alert@%n.service).
+#
+# It runs scripts/systemd-failure-alert.sh, which Telegrams the unit + last
+# journal lines at URGENT. See deploy/systemd/INSTALL.md for the install steps.
+#
+# NOTE: ExecStart path below assumes the repo is checked out at /opt/mandrel
+# (the prod systemd tree). If your checkout differs, edit ExecStart or override
+# via a drop-in. Keep it in lockstep with where mandrel.service runs from.
+# =============================================================================
+[Unit]
+Description=Ridge failure alert for %i (Telegram on systemd OnFailure)
+# Don't let an alert for a failing unit itself trigger more alerts / loops.
+StartLimitIntervalSec=0
+
+[Service]
+Type=oneshot
+# %i is the failed unit name, e.g. "mandrel.service".
+ExecStart=/opt/mandrel/scripts/systemd-failure-alert.sh %i
+# The alert script reads Telegram creds from /root/.ridge-telegram.env via
+# ridge-notify.sh; run as root so it can read them and query the journal.
+User=root
+# Bound the alert so a hung curl can't wedge the OnFailure path.
+TimeoutStartSec=45
