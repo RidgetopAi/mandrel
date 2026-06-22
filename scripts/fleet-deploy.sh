@@ -33,7 +33,16 @@
 #   --only <handle>        Deploy a single instance (still CI+staging-gated
 #                          unless --skip-ci). <handle> may be a customer or
 #                          `staging` itself.
+#   --prune-first          Run the SAFE docker prune (build cache + dangling
+#                          images) BEFORE the pre-flight disk gate decides, then
+#                          re-check free space. Use when the gate would otherwise
+#                          abort on low disk. (Lesson 015.)
 #   --yes                  Non-interactive (assume yes to the confirm prompt).
+#
+# DISK HYGIENE (Lesson 015): a pre-flight free-space gate (fail-closed) refuses to
+# start if the docker data-root has < MIN_FREE_GB free; a successful roll prunes
+# build cache + dangling images behind it (PRUNE_AFTER). Both are config-driven
+# (MIN_FREE_GB / PRUNE_AFTER) — see the Defaults block.
 #
 # Usage:
 #   bash scripts/fleet-deploy.sh                       # full pipeline, all instances
@@ -56,6 +65,21 @@ ONLY=""
 ASSUME_YES=0
 HEALTH_TIMEOUT=60          # seconds to wait for healthy/smoke before declaring fail
 STAGING_HANDLE="staging"
+
+# --- Disk hygiene (Lesson 015) -----------------------------------------------
+# The 2026-06-21 incident: a staging build pushed the VPS to 100% disk mid-roll
+# and took a live customer down (fleet-wide ENOSPC). These knobs make the deploy
+# fail-closed on low disk and clean up the build cache it generates.
+#   MIN_FREE_GB     pre-flight headroom required on the docker data-root before any
+#                   build runs; deploy ABORTS below this (suggest --prune-first).
+#   PRUNE_AFTER     run the SAFE prune (build cache + dangling images) after a
+#                   successful roll. 1=on (default), 0=off.
+# Safe prune = `docker builder prune -af` + `docker image prune -f` ONLY. NEVER
+# --volumes (would nuke postgres/redis data) and NEVER `-a` on images (would remove
+# images that existing tenant containers still reference). See safe_docker_prune().
+MIN_FREE_GB="${MIN_FREE_GB:-25}"
+PRUNE_AFTER="${PRUNE_AFTER:-1}"
+PRUNE_FIRST=0             # set by --prune-first: prune (and re-check) before the gate decides
 
 # Marker agent_type stamped on the session the deploy smoke creates via
 # /api/v2/sessions/start. The session write-path liveness probe MUST create a real
@@ -103,6 +127,7 @@ while [[ $# -gt 0 ]]; do
     --skip-prod) DEPLOY_PROD=0; shift ;;
     --dry-run)  DRY_RUN=1; shift ;;
     --only)     ONLY="${2:?--only needs a handle}"; shift 2 ;;
+    --prune-first) PRUNE_FIRST=1; shift ;;
     --yes|-y)   ASSUME_YES=1; shift ;;
     -h|--help)  grep -E '^#' "$0" | sed 's/^# \{0,1\}//' | head -60; exit 0 ;;
     *) echo "${RED}Unknown flag: $1${RST}" >&2; exit 2 ;;
@@ -143,6 +168,83 @@ mapped_port() {  # <container> <internal_port>  -> host port or empty
   docker inspect "$1" --format \
     "{{range \$p,\$v := .NetworkSettings.Ports}}{{if eq \$p \"$2/tcp\"}}{{range \$v}}{{.HostPort}}{{end}}{{end}}{{end}}" \
     2>/dev/null || true
+}
+
+# =============================================================================
+# Disk hygiene (Lesson 015) — free-space gate + safe prune-behind
+# =============================================================================
+# WHY: `docker build`/`compose build` accumulate image layers + BuildKit cache and
+# never GC themselves. On 2026-06-21 a staging build pushed the VPS to 100% disk
+# mid-roll → fleet-wide ENOSPC → a live customer went down. So: gate on free disk
+# BEFORE building (fail-closed), and prune the disposable build artifacts AFTER a
+# green roll. Mirrors the existing fail-closed CI/migration gates.
+
+# Resolve the docker data-root (where builds/images live), then its free GB.
+docker_root_dir() {
+  docker info --format '{{.DockerRootDir}}' 2>/dev/null || echo /var/lib/docker
+}
+
+# Integer free GB on the filesystem backing the docker data-root (df -BG, floored).
+docker_root_free_gb() {
+  local dir; dir="$(docker_root_dir)"
+  [[ -d "$dir" ]] || dir="/"
+  df -BG -P "$dir" 2>/dev/null | awk 'NR==2 {gsub(/G/,"",$4); print $4+0}'
+}
+
+# SAFE prune ONLY — never data-destructive:
+#   * docker builder prune -af  → BuildKit build cache (disposable, biggest reclaim)
+#   * docker image prune -f     → DANGLING (untagged) images only
+# Explicitly NOT used: `--volumes` (would delete postgres/redis named data volumes)
+# and `image prune -a` (would remove tagged images that running tenant containers
+# still reference). These two commands never touch a running container or a named
+# volume. Logs reclaimed bytes. Returns 0 even if a prune sub-step is a no-op.
+safe_docker_prune() {
+  local before after dir
+  dir="$(docker_root_dir)"
+  before="$(docker_root_free_gb)"
+  info "disk: safe prune — docker builder prune -af && docker image prune -f (NO --volumes, NO image -a)"
+  if [[ $DRY_RUN -eq 1 ]]; then
+    info "disk: [dry-run] would run safe prune; current free on $dir = ${before}G"
+    return 0
+  fi
+  local rc1=0 rc2=0
+  docker builder prune -af 2>&1 | sed 's/^/    builder-prune: /' || rc1=$?
+  docker image  prune -f  2>&1 | sed 's/^/    image-prune:   /' || rc2=$?
+  after="$(docker_root_free_gb)"
+  if (( rc1 != 0 || rc2 != 0 )); then
+    warn "disk: a prune sub-step returned non-zero (builder=$rc1 image=$rc2) — continuing; free now ${after}G"
+  fi
+  ok "disk: safe prune done — free ${before}G → ${after}G on $dir"
+  return 0
+}
+
+# Pre-flight FREE-SPACE GATE (fail-closed). Runs for --dry-run too (so a dry-run
+# shows whether the gate WOULD pass). With --prune-first, runs the safe prune and
+# re-checks BEFORE deciding. Returns 0 if free >= MIN_FREE_GB, non-zero otherwise.
+preflight_disk_gate() {
+  local dir free
+  dir="$(docker_root_dir)"
+
+  if [[ $PRUNE_FIRST -eq 1 ]]; then
+    info "disk: --prune-first → pruning before the gate decides"
+    safe_docker_prune
+  fi
+
+  free="$(docker_root_free_gb)"
+  if ! [[ "$free" =~ ^[0-9]+$ ]]; then
+    bad "disk: could not read free space on docker data-root '$dir' (df failed) — failing closed"
+    return 1
+  fi
+
+  if (( free < MIN_FREE_GB )); then
+    bad "disk PRE-FLIGHT GATE: only ${free}G free on docker data-root '$dir', need >= ${MIN_FREE_GB}G."
+    info "disk: a build needs headroom; 100% disk = fleet-wide ENOSPC outage (Lesson 015)."
+    info "disk: REMEDY → re-run with --prune-first (safe: docker builder prune -af && docker image prune -f),"
+    info "disk:          or free space manually, then retry. Lower MIN_FREE_GB only if you understand the risk."
+    return 1
+  fi
+  ok "disk PRE-FLIGHT GATE: ${free}G free on '$dir' (>= ${MIN_FREE_GB}G required)"
+  return 0
 }
 
 # =============================================================================
@@ -651,11 +753,34 @@ echo "  Discovered:      ${ALL_HANDLES[*]:-<none>}"
 echo "  Customer roll:   ${ROLL_TARGETS[*]:-<none (none selected)>}"
 echo "  Order:           CI → staging → $( [[ ${#ROLL_TARGETS[@]} -gt 0 ]] && printf '%s → ' "${ROLL_TARGETS[@]}" || true )$( [[ $DEPLOY_PROD -eq 1 ]] && echo 'PROD' || echo '(no prod)' )"
 echo "  Prod deploy:     $( [[ $DEPLOY_PROD -eq 1 ]] && echo "$PROD_DIR @ ${PROD_REF:0:12} (clean reset --hard, rebuild, restart, smoke)" || echo 'SKIPPED (--skip-prod / targeted --only)' )"
+echo "  Disk gate:       fail-closed if docker data-root ($(docker_root_dir)) free < ${MIN_FREE_GB}G  [current: $(docker_root_free_gb)G free]$( [[ $PRUNE_FIRST -eq 1 ]] && echo ' (--prune-first: prune then re-check)' )"
+echo "  Prune-behind:    $( [[ $PRUNE_AFTER -eq 1 ]] && echo 'after a green roll: docker builder prune -af + image prune -f (safe, no --volumes/-a)' || echo 'disabled (PRUNE_AFTER=0)' )"
 echo "  Mode:            $( [[ $DRY_RUN -eq 1 ]] && echo 'DRY-RUN (deploy nothing)' || echo 'LIVE' )"
 echo "  Stop policy:     fleet roll STOPS on the first instance failure; remaining instances are NOT attempted."
 
+# =============================================================================
+# PRE-FLIGHT — disk free-space gate (Lesson 015, fail-closed)
+# =============================================================================
+# Runs for --dry-run too: a dry-run must SHOW whether the gate would pass before
+# any build is attempted. With --prune-first it prunes + re-checks here.
+hdr "PRE-FLIGHT: DISK FREE-SPACE GATE"
+if preflight_disk_gate; then
+  ok "disk gate would-pass — safe to build."
+  DISK_GATE_RESULT="PASS"
+else
+  DISK_GATE_RESULT="FAIL"
+  if [[ $DRY_RUN -eq 1 ]]; then
+    warn "disk gate WOULD ABORT this deploy (dry-run — nothing was changed)."
+  else
+    bad "disk gate ABORTED the deploy. No CI, no build, no instance was touched."
+    printf '\n%s##########  ABORTED: DISK GATE (free < %sG)  ##########%s\n' "$RED" "$MIN_FREE_GB" "$RST"
+    exit 1
+  fi
+fi
+
 if [[ $DRY_RUN -eq 1 ]]; then
   hdr "DRY-RUN — no changes made"
+  echo "  Disk gate:      $DISK_GATE_RESULT (would-${DISK_GATE_RESULT,,})"
   exit 0
 fi
 
@@ -758,9 +883,28 @@ if [[ $DEPLOY_PROD -eq 1 ]]; then
 fi
 
 # =============================================================================
+# PRUNE-BEHIND (Lesson 015) — clean up the build cache this deploy generated
+# =============================================================================
+# Only after a SUCCESSFUL roll (no customer failed, prod not failed). Safe prune
+# only — build cache + dangling images; never volumes, never tagged images a tenant
+# still references. Keeps the long-lived host from accumulating builds unbounded.
+PRUNE_RESULT="skipped"
+if [[ $PRUNE_AFTER -eq 1 ]]; then
+  if [[ -z "$FAILED" && "$PROD_RESULT" != "FAIL" ]]; then
+    hdr "PRUNE-BEHIND (safe: build cache + dangling images)"
+    safe_docker_prune
+    PRUNE_RESULT="done"
+  else
+    warn "prune-behind skipped — deploy did not finish green (don't reclaim while debugging a failure)."
+    PRUNE_RESULT="skipped (deploy not green)"
+  fi
+fi
+
+# =============================================================================
 # SUMMARY
 # =============================================================================
 hdr "SUMMARY"
+echo "  Disk gate:      ${DISK_GATE_RESULT:-PASS}"
 echo "  CI gate:        $( [[ $SKIP_CI -eq 1 ]] && echo 'SKIPPED' || echo 'GREEN' )"
 echo "  Staging bake:   $STAGING_RESULT"
 if [[ ${#ROLL_TARGETS[@]} -gt 0 ]]; then
@@ -777,6 +921,7 @@ if [[ ${#ROLL_TARGETS[@]} -gt 0 ]]; then
   echo "  Not attempted:  ${NOT_ATTEMPTED[*]:-<none>}"
 fi
 echo "  Prod deploy:    $PROD_RESULT"
+echo "  Prune-behind:   ${PRUNE_RESULT:-skipped}"
 
 if [[ -n "$FAILED" || "$PROD_RESULT" == "FAIL" ]]; then
   printf '\n%s##########  OVERALL: FAILED (%s)  ##########%s\n' "$RED" \
