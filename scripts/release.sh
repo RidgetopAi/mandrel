@@ -43,6 +43,26 @@ cd "$REPO_DIR"
 RED=$'\033[31m'; GRN=$'\033[32m'; YLW=$'\033[33m'; BLD=$'\033[1m'; RST=$'\033[0m'
 die() { echo "${RED}ERROR: $*${RST}" >&2; exit 1; }
 
+# The branch a release MUST be cut from. Config-overridable (e.g. for a hotfix
+# branch) but defaults to main. See assert_expected_branch below.
+EXPECTED_BRANCH="${EXPECTED_BRANCH:-main}"
+
+# Refuse to release off a stray branch. Near-miss 2026-06-20: subagents share ONE
+# working tree, so a leftover feature checkout made `release.sh 0.5.9` commit+tag
+# on the un-Inspected branch. Runs BEFORE any mutation (and before the dry-run
+# plan), so a wrong-branch invocation aborts up front with an actionable message.
+assert_expected_branch() {
+  local cur
+  cur="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo '')"
+  if [[ -z "$cur" || "$cur" == "HEAD" ]]; then
+    die "cannot determine git branch (detached HEAD or not a repo). Releases must be cut from '$EXPECTED_BRANCH'. Run: git checkout $EXPECTED_BRANCH"
+  fi
+  if [[ "$cur" != "$EXPECTED_BRANCH" ]]; then
+    die "on branch '$cur' but releases must be cut from '$EXPECTED_BRANCH'. The working tree may carry a subagent's leftover checkout. Run: git checkout $EXPECTED_BRANCH   (or set EXPECTED_BRANCH=$cur if this is intentional)."
+  fi
+  echo "${GRN}✓ on expected release branch '$cur'${RST}"
+}
+
 # The four package.json that MUST move in lockstep.
 PKGS=(
   "package.json"
@@ -64,6 +84,9 @@ while [[ $# -gt 0 ]]; do
     *) die "unknown argument: $1" ;;
   esac
 done
+
+# --- Branch guard (runs FIRST, before any read/plan/mutation) ----------------
+assert_expected_branch
 
 # --- Read current version (root is canonical) --------------------------------
 read_version() { # read_version <package.json path>

@@ -66,6 +66,13 @@ ASSUME_YES=0
 HEALTH_TIMEOUT=60          # seconds to wait for healthy/smoke before declaring fail
 STAGING_HANDLE="staging"
 
+# The git branch a fleet deploy MUST roll from. Config-overridable but defaults to
+# main. The working tree is SHARED across subagents (Foreman/Inspector), so it can
+# carry a leftover feature checkout — rolling the fleet off it would ship
+# un-Inspected code. assert_expected_branch (called at the top of PLAN, before any
+# CI/build/mutation and for --dry-run too) aborts up front if we're not on it.
+EXPECTED_BRANCH="${EXPECTED_BRANCH:-main}"
+
 # --- Disk hygiene (Lesson 015) -----------------------------------------------
 # The 2026-06-21 incident: a staging build pushed the VPS to 100% disk mid-roll
 # and took a live customer down (fleet-wide ENOSPC). These knobs make the deploy
@@ -111,6 +118,28 @@ info() { printf '%s[fleet-deploy]%s %s\n' "$CYN" "$RST" "$*"; }
 ok()   { printf '  %s[PASS]%s %s\n' "$GRN" "$RST" "$*"; }
 bad()  { printf '  %s[FAIL]%s %s\n' "$RED" "$RST" "$*"; }
 warn() { printf '%s[WARN]%s %s\n' "$YLW" "$RST" "$*"; }
+
+# Refuse to roll a deploy off a stray branch (near-miss 2026-06-20). Runs before
+# any CI/build/mutation AND for --dry-run, so a wrong-branch invocation aborts up
+# front with an actionable message instead of shipping un-Inspected code.
+current_git_branch() { git -C "$REPO_DIR" rev-parse --abbrev-ref HEAD 2>/dev/null || echo ''; }
+assert_expected_branch() {
+  local cur; cur="$(current_git_branch)"
+  if [[ -z "$cur" || "$cur" == "HEAD" ]]; then
+    bad "git: cannot determine branch (detached HEAD / not a repo). Deploys must roll from '$EXPECTED_BRANCH'."
+    info "git: REMEDY → git -C $REPO_DIR checkout $EXPECTED_BRANCH, then re-run."
+    printf '\n%s##########  ABORTED: BRANCH GUARD  ##########%s\n' "$RED" "$RST"
+    exit 2
+  fi
+  if [[ "$cur" != "$EXPECTED_BRANCH" ]]; then
+    bad "git: on branch '$cur' but deploys must roll from '$EXPECTED_BRANCH'."
+    info "git: the shared working tree may carry a subagent's leftover checkout — rolling off it would ship un-Inspected code."
+    info "git: REMEDY → git -C $REPO_DIR checkout $EXPECTED_BRANCH (or set EXPECTED_BRANCH=$cur if intentional), then re-run."
+    printf '\n%s##########  ABORTED: BRANCH GUARD (on %s, expected %s)  ##########%s\n' "$RED" "$cur" "$EXPECTED_BRANCH" "$RST"
+    exit 2
+  fi
+  ok "git: on expected deploy branch '$cur'"
+}
 
 # --- Shared PROD install logic (workspace-correct; Lesson 013) ---------------
 # Factored into a sourced lib so the acceptance test (scripts/test/) can exercise
@@ -745,7 +774,11 @@ fi
 # Print the plan
 # =============================================================================
 hdr "PLAN"
+# Branch guard FIRST — before disk gate, CI, build, or the dry-run exit, so a
+# wrong-branch invocation never proceeds (and a dry-run surfaces it too).
+assert_expected_branch
 echo "  Repo:            $REPO_DIR"
+echo "  Branch:          $(current_git_branch)  (expected: $EXPECTED_BRANCH)"
 echo "  Services:        $SERVICES"
 echo "  CI gate:         $( [[ $SKIP_CI -eq 1 ]] && echo 'SKIPPED (--skip-ci)' || echo 'run scripts/ci.sh (abort on RED)' )"
 echo "  Staging bake:    $( [[ $DEPLOY_STAGING -eq 1 ]] && echo "deploy + health-gate mandrel-$STAGING_HANDLE" || echo 'none' )"
