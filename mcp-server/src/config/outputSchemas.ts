@@ -49,6 +49,21 @@ export interface JsonObjectSchema {
  * so a consumer never has to infer success from prose. `.passthrough()` is used on
  * the record shapes below so a tool can include extra raw fields without the schema
  * rejecting them (tolerant egress; the REQUIRED keys are the contract).
+ *
+ * THE REQUIRED-SET RULE (task df4c3745 — the customer outputSchema-rejection fix):
+ *   A field may be `required` in an outputSchema ONLY if it is present on LITERALLY
+ *   EVERY return path of that tool — success AND error AND not-found AND ambiguous
+ *   AND empty. Structured output is a best-effort BONUS alongside the text channel:
+ *   the schema documents the typical shape, but it must NEVER reject a legitimate
+ *   response. A strict MCP client (e.g. Claude Code) validates structuredContent
+ *   against the advertised outputSchema and DISCARDS any response that fails — so an
+ *   over-strict `required` set silently breaks the customer surface.
+ *
+ *   In practice `ok` is the ONLY field guaranteed on every path: the dual-channel
+ *   SEAM (routes/index.ts ensureStructuredContent) stamps `ok` on EVERY response
+ *   (including bare error returns from formatMcpError, which carry no other fields).
+ *   So `ok` stays required; ALL descriptive fields are `.optional()` (they still
+ *   appear in `properties`, documenting the shape, just not in `required`).
  */
 const ok = z.boolean();
 
@@ -183,19 +198,25 @@ const threadEdge = z
   })
   .passthrough();
 
-/** The full recall_thread structuredContent contract (spec §4 Capability 2). */
+/**
+ * The full recall_thread structuredContent contract (spec §4 Capability 2).
+ * REQUIRED = `ok` ONLY: the unresolvable-anchor error path returns {ok:false,found:false}
+ * (none of the thread fields), so every descriptive field is optional. `found` documents
+ * the error-path discriminator. All present on the SUCCESS path; none guaranteed on error.
+ */
 const recallThreadShape = z
   .object({
     ok,
-    anchor: z.string(),
-    altitude: z.string(),
-    depthUsed: z.number(),
-    nodes: z.array(threadNode),
-    edges: z.array(threadEdge),
-    abstain: z.array(z.string()),
-    truncated: z.boolean(),
-    truncatedCount: z.number(),
-    total: z.number(),
+    found: z.boolean().optional(),
+    anchor: z.string().optional(),
+    altitude: z.string().optional(),
+    depthUsed: z.number().optional(),
+    nodes: z.array(threadNode).optional(),
+    edges: z.array(threadEdge).optional(),
+    abstain: z.array(z.string()).optional(),
+    truncated: z.boolean().optional(),
+    truncatedCount: z.number().optional(),
+    total: z.number().optional(),
   })
   .passthrough();
 
@@ -213,12 +234,19 @@ const activeThreadAnchor = z
   })
   .passthrough();
 
-/** The thread_set / thread_current / thread_clear structuredContent contract (T5b). */
+/**
+ * The thread_set / thread_current / thread_clear structuredContent contract (T5b).
+ * REQUIRED = `ok` ONLY: the rejected path (thread_set with neither task nor decision)
+ * returns {ok:false,action:'rejected'} with NO activeThread, an id-resolution error
+ * returns an actionable id-error shape, and a throw → formatMcpError → seam returns a
+ * bare {ok:false}. So `action`/`activeThread` are NOT on every path → optional. (The
+ * SUCCESS paths now also stamp ok:true — handler change in thread.routes.ts.)
+ */
 const threadAnchorShape = z
   .object({
     ok,
-    action: z.string(),
-    activeThread: activeThreadAnchor.nullable(),
+    action: z.string().optional(),
+    activeThread: activeThreadAnchor.nullable().optional(),
   })
   .passthrough();
 
@@ -240,28 +268,42 @@ const searchResultItem = z
 // SHARED SHAPES — list / get / mutate / status / stats
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** LIST/SEARCH shape: a typed `results` array + pagination counters. */
+/**
+ * LIST/SEARCH shape: a typed `results` array + pagination counters.
+ * REQUIRED = `ok` ONLY. The happy + empty paths carry results+total, but an error path
+ * (e.g. "no current project set" → formatMcpError → seam {ok:false}) carries neither, so
+ * `results`/`total` are optional (the schema still documents them in `properties`).
+ */
 const listShape = <T extends z.ZodTypeAny>(item: T) =>
   z
     .object({
       ok,
-      results: z.array(item),
-      total: z.number(),
+      results: z.array(item).optional(),
+      total: z.number().optional(),
       page: z.number().optional(),
       limit: z.number().optional(),
     })
     .passthrough();
 
-/** GET/DETAIL shape: `found` + one optional record. */
+/**
+ * GET/DETAIL shape: `found` + one optional record.
+ * REQUIRED = `ok` ONLY. A throw → formatMcpError → seam returns a bare {ok:false}
+ * with no `found`, so `found` is optional (present on the success + not-found paths).
+ */
 const getShape = <T extends z.ZodTypeAny>(recordKey: string, item: T) =>
   z
-    .object({ ok, found: z.boolean(), [recordKey]: item.optional() })
+    .object({ ok, found: z.boolean().optional(), [recordKey]: item.optional() })
     .passthrough();
 
-/** MUTATE shape: the affected record + the action performed. */
+/**
+ * MUTATE shape: the affected record + the action performed.
+ * REQUIRED = `ok` ONLY. The error/ambiguous/not-found paths ({ok:false,found:false} /
+ * {ok:false,ambiguous:true} / bare {ok:false}) omit `action`, so `action` is optional
+ * (present on every SUCCESS path). This is the exact task_create-error break dmclark hit.
+ */
 const mutateShape = <T extends z.ZodTypeAny>(recordKey: string, item: T) =>
   z
-    .object({ ok, action: z.string(), [recordKey]: item.optional() })
+    .object({ ok, action: z.string().optional(), [recordKey]: item.optional() })
     .passthrough();
 
 /** STATUS/STATS shape: free-form raw status payload (always has `ok`). */

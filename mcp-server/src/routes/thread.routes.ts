@@ -135,6 +135,10 @@ class ThreadRoutes {
       return {
         content: [{ type: 'text', text: lines.join('\n') }],
         structuredContent: {
+          // ok:true explicit (task df4c3745): the success path was omitting it (the seam
+          // stamps it, but emit it here so the handler return is self-consistent with the
+          // rejected path's {ok:false,...} and the schema's required `ok`).
+          ok: true,
           action: 'set',
           activeThread: {
             taskId: anchor.taskId,
@@ -165,7 +169,7 @@ class ThreadRoutes {
             text: '🧵 No active thread set for this session.\n\n' +
                   '💡 Use thread_set(task=… and/or decision=…) to anchor captures so they thread automatically.',
           }],
-          structuredContent: { action: 'current', activeThread: null },
+          structuredContent: { ok: true, action: 'current', activeThread: null },
         };
       }
 
@@ -180,6 +184,7 @@ class ThreadRoutes {
       return {
         content: [{ type: 'text', text: lines.join('\n') }],
         structuredContent: {
+          ok: true,
           action: 'current',
           activeThread: {
             taskId: anchor.taskId,
@@ -209,7 +214,7 @@ class ThreadRoutes {
             ? '🧵 Active thread cleared. New captures will no longer auto-thread.'
             : 'ℹ️  No active thread was set (nothing to clear).',
         }],
-        structuredContent: { action: cleared ? 'cleared' : 'absent', activeThread: null },
+        structuredContent: { ok: true, action: cleared ? 'cleared' : 'absent', activeThread: null },
       };
     } catch (error) {
       return formatMcpError(error as Error, 'thread_clear');
