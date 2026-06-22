@@ -200,6 +200,11 @@ bash scripts/provision-test-db.sh ci_mytest_$$
 # Point your tests at it (the helper prints the DB env on success):
 eval "$(bash scripts/provision-test-db.sh ci_mytest_$$ --print-env)"
 #   exports DATABASE_NAME / DATABASE_USER / DATABASE_PASSWORD / DATABASE_HOST / DATABASE_PORT
+#   The emitted password is DETERMINISTIC per dbname (set TEST_DB_PASS to pin one) and
+#   --print-env ENSURES the role exists + matches it, so the printed creds ALWAYS
+#   authenticate — even on a re-run / a second call. (--print-env does NOT migrate;
+#   it only guarantees authenticating creds + extensions. Run the bare command above
+#   first, or pass the same name without --print-env, if you need the schema migrated.)
 
 # Tear it down (drops the ci_* DB + its derived ci_role_* role):
 bash scripts/drop-test-db.sh ci_mytest_$$
