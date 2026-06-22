@@ -20,10 +20,25 @@
 # USAGE
 #   bash scripts/provision-test-db.sh <dbname>
 #   bash scripts/provision-test-db.sh <dbname> --no-migrate   # ext only, skip migrate
+#   bash scripts/provision-test-db.sh <dbname> --print-env    # ensure creds + print (no migrate)
 #   bash scripts/provision-test-db.sh <dbname> --drop         # teardown (drop db+role)
 #
 #   On success it prints the DB env you can source/eval to point tests at it:
 #       eval "$(bash scripts/provision-test-db.sh ci_mytest_$$ --print-env)"
+#       psql "host=$DATABASE_HOST port=$DATABASE_PORT dbname=$DATABASE_NAME user=$DATABASE_USER" ...
+#
+# DETERMINISTIC, ALWAYS-VALID CREDS (Mandrel task e3395ce8 — the --print-env footgun)
+#   A role's stored password is a one-way scram hash, so an existing role's password
+#   can NEVER be read back. The OLD --print-env minted a FRESH random password every
+#   call and ALTERed the role to it as a side effect — so creds captured from an
+#   EARLIER call (or another shell) silently stopped authenticating, failing tests
+#   with confusing auth errors. Fix: the throwaway password is DERIVED DETERMINISTICALLY
+#   from the dbname (same name -> same password, every call), and --print-env ENSURES
+#   the role exists + is set to exactly that password (idempotent). So the emitted
+#   DATABASE_PASSWORD ALWAYS authenticates against the role as it exists after the call,
+#   and repeated calls are coherent. Pass TEST_DB_PASS to pin an explicit password
+#   instead (what ci.sh does). --print-env does NOT run migrate (a provision concern;
+#   it only guarantees a usable, authenticating role/db/extensions for env capture).
 #
 # SAFETY
 #   The dbname MUST be ci_*-prefixed (throwaway convention). This script REFUSES
@@ -33,7 +48,7 @@
 # CONFIG (configs-not-hardcoded) — host/port/super-user from env, sane defaults:
 #   TEST_DB_HOST   (default: localhost)
 #   TEST_DB_PORT   (default: 5432)
-#   TEST_DB_PASS   (default: a throwaway random password; only used when creating)
+#   TEST_DB_PASS   (default: a per-dbname DETERMINISTIC throwaway password)
 #   PG_SUPERCMD    (default: "sudo -u postgres") — how to run psql/createdb as super
 # =============================================================================
 set -euo pipefail
@@ -101,16 +116,21 @@ fi
 # =============================================================================
 # PROVISION (idempotent: role -> db -> extensions -> migrate)
 # =============================================================================
-# A throwaway password is only ever used when the role is first created. On a
-# re-run the existing role keeps its password; we never print or depend on it
-# beyond wiring DATABASE_PASSWORD for migrate/tests in THIS invocation.
-DBPASS="${TEST_DB_PASS:-throwaway_$(date +%s%N | sha1sum | cut -c1-16)}"
+# Throwaway password. A role's stored password is a one-way scram hash and can
+# never be read back, so to make the emitted creds ALWAYS valid (and coherent
+# across separate calls — including a later bare --print-env) we DERIVE it
+# DETERMINISTICALLY from the dbname: same name -> same password, every invocation.
+# Pass TEST_DB_PASS to pin an explicit password instead (what ci.sh does). The
+# role is then ALTERed to exactly this value below, so what we print authenticates.
+DBPASS="${TEST_DB_PASS:-throwaway_$(printf '%s' "$DBNAME" | sha1sum | cut -c1-16)}"
 
 # Role: create if missing, else (re-run) RESET its password to the one we'll use.
-# WHY the reset: on a re-run the role already exists but with the previous run's
-# random password, which we no longer know — migrate/tests would then fail auth.
-# ALTER ROLE makes the password deterministic for THIS invocation so the helper is
-# truly idempotent (safe for ci.sh, which passes a fixed TEST_DB_PASS per run).
+# WHY the reset: on a re-run the role already exists, but since the password is a
+# one-way hash we can't read it back — and a prior run may have used a different
+# value (e.g. someone passed TEST_DB_PASS once and not the next time). ALTER ROLE
+# pins the password to the deterministic/explicit value we are about to EMIT, so the
+# printed DATABASE_PASSWORD always authenticates and the helper is truly idempotent
+# (safe for ci.sh, which passes a fixed TEST_DB_PASS per run).
 if [[ "$($PGSUPER psql -tAc "SELECT 1 FROM pg_roles WHERE rolname='${DBUSER}';" 2>/dev/null)" == "1" ]]; then
   $PGSUPER psql -q -c "ALTER ROLE \"$DBUSER\" LOGIN PASSWORD '$DBPASS';" >/dev/null
 else
@@ -132,8 +152,12 @@ if [[ "$MODE" != "print-env" ]]; then
 fi
 
 # Migrate with the real migrate.ts (the same one ci.sh + prod use).
-if [[ "$DO_MIGRATE" == "1" ]]; then
-  if [[ "$MODE" != "print-env" ]]; then say "Migrating '$DBNAME' with real migrate.ts ..."; fi
+# --print-env is a CRED/ENV-capture path, NOT a provisioner: it guarantees an
+# authenticating role/db/extensions but deliberately does NOT migrate (migrate is
+# a provision concern, is a surprising side effect for a "print" flag, and needs
+# node_modules that may be absent). Run a full provision first if you need schema.
+if [[ "$DO_MIGRATE" == "1" && "$MODE" != "print-env" ]]; then
+  say "Migrating '$DBNAME' with real migrate.ts ..."
   if ( cd "$MCP_DIR" && env \
         DATABASE_NAME="$DBNAME" \
         DATABASE_USER="$DBUSER" \
@@ -142,7 +166,7 @@ if [[ "$DO_MIGRATE" == "1" ]]; then
         DATABASE_PORT="$DBPORT" \
         NODE_ENV="development" \
         npx tsx scripts/migrate.ts ) >"/tmp/provision_test_db_${DBNAME}.log" 2>&1; then
-    if [[ "$MODE" != "print-env" ]]; then ok "Migration OK."; fi
+    ok "Migration OK."
   else
     warn "Migration FAILED — log tail:"; tail -25 "/tmp/provision_test_db_${DBNAME}.log" >&2
     die "Could not migrate '$DBNAME'."
