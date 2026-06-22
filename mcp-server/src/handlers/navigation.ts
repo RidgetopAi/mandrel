@@ -9,65 +9,35 @@
  * This transforms Mandrel from a flat list of mysterious tools into a discoverable, learnable system.
  */
 
-import { AIDIS_TOOL_DEFINITIONS } from '../config/toolDefinitions.js';
+import {
+  AIDIS_TOOL_DEFINITIONS,
+  CATEGORY_ORDER,
+  TOOL_CATEGORIES,
+  categoryForTool,
+} from '../config/toolDefinitions.js';
 
 class NavigationHandler {
   /**
-   * All Mandrel tools organized by category with descriptions
+   * Build the rendered catalog (category → [{name, description}]) DERIVED from the
+   * single source of truth: AIDIS_TOOL_DEFINITIONS for the tool set + descriptions,
+   * TOOL_CATEGORIES/CATEGORY_ORDER (config/toolDefinitions.ts) for the grouping + order.
+   *
+   * CATALOG-DRIFT CLASS FIX (task 43aa8c03): there is no longer a second hand-maintained
+   * `toolCatalog` here to drift from the definitions. Every tool that exists is rendered
+   * (the import-time coverage guard in toolDefinitions.ts + the helpCatalog contract test
+   * guarantee every tool is categorized exactly once), and the counts are computed from
+   * this derived structure — never hardcoded.
    */
-  private readonly toolCatalog = {
-    'System Health': [
-      { name: 'mandrel_ping', description: 'Test connectivity to Mandrel server' },
-      { name: 'mandrel_status', description: 'Get server status and health information' }
-    ],
-    'Navigation': [
-      { name: 'mandrel_help', description: 'Display categorized list of all Mandrel tools' },
-      { name: 'mandrel_explain', description: 'Get detailed help for a specific Mandrel tool' },
-      { name: 'mandrel_examples', description: 'Get usage examples and patterns for a specific Mandrel tool' }
-    ],
-    'Context Management': [
-      { name: 'context_store', description: 'Store development context with automatic embedding' },
-      { name: 'context_search', description: 'Search contexts semantically or fetch by ID' },
-      { name: 'context_get_recent', description: 'Get recent contexts chronologically (newest first)' },
-      { name: 'context_stats', description: 'Get context statistics for a project' },
-      { name: 'context_delete', description: 'Soft-delete (archive) a context — reversible, hidden from default search/recent' },
-      { name: 'context_restore', description: 'Restore (un-archive) a soft-deleted context' }
-    ],
-    'Project Management': [
-      { name: 'project_list', description: 'List all available projects with statistics' },
-      { name: 'project_create', description: 'Create a new project (name, optional description and status)' },
-      { name: 'project_update', description: 'Update a project\'s name, description, or status (by id or name)' },
-      { name: 'project_delete', description: 'Delete a project (by id or name); refuses non-empty projects without confirm' },
-      { name: 'project_switch', description: 'Switch to a different project (sets as current)' },
-      { name: 'project_current', description: 'Get the currently active project information' },
-      { name: 'project_info', description: 'Get detailed information about a specific project' },
-      { name: 'project_insights', description: 'Get comprehensive project health and insights' }
-    ],
-    'Technical Decisions': [
-      { name: 'decision_record', description: 'Record a technical decision with context' },
-      { name: 'decision_search', description: 'Search technical decisions with filters (incl. outcomeStatus)' },
-      { name: 'decision_get', description: 'Fetch a single decision by id with full detail (incl. outcome)' },
-      { name: 'decision_update', description: 'Update decision status, outcomes, or lessons' },
-      { name: 'decision_stats', description: 'Get technical decision statistics and analysis' },
-      { name: 'decision_delete', description: 'Soft-delete (archive) a decision — reversible, hidden from default search' },
-      { name: 'decision_restore', description: 'Restore (un-archive) a soft-deleted decision' }
-    ],
-    'Task Management': [
-      { name: 'task_create', description: 'Create a new task for coordination' },
-      { name: 'task_list', description: 'List tasks with optional filtering' },
-      { name: 'task_update', description: 'Update task status and assignment' },
-      { name: 'task_details', description: 'Get detailed information for a specific task' },
-      { name: 'task_bulk_update', description: 'Update multiple tasks atomically with the same changes' },
-      { name: 'task_progress_summary', description: 'Get task progress summary with grouping and completion percentages' },
-      { name: 'task_delete', description: 'Soft-delete (archive) a task — reversible, hidden from default task_list' },
-      { name: 'task_restore', description: 'Restore (un-archive) a soft-deleted task' }
-    ],
-    'Smart Search & AI': [
-      { name: 'smart_search', description: 'Intelligent search across all project data' },
-      { name: 'get_recommendations', description: 'Get AI-powered recommendations for development' }
-    ]
-  };
-
+  private buildCatalog(): Array<{ category: string; tools: Array<{ name: string; description: string }> }> {
+    const descByName = new Map(AIDIS_TOOL_DEFINITIONS.map((d) => [d.name, d.description]));
+    return CATEGORY_ORDER.map((category) => ({
+      category,
+      tools: TOOL_CATEGORIES[category].map((name) => ({
+        name,
+        description: descByName.get(name) ?? '',
+      })),
+    }));
+  }
 
   /**
    * Usage examples and common patterns for tools
@@ -481,16 +451,18 @@ task_restore({ taskId: "59823126" })`
    * Generate categorized help listing of all AIDIS tools
    */
   async getHelp(): Promise<any> {
-    // Dynamically count total tools across all categories
-    const totalTools = Object.values(this.toolCatalog).reduce((sum, tools) => sum + tools.length, 0);
-    const totalCategories = Object.keys(this.toolCatalog).length;
+    // Catalog DERIVED from the single source (AIDIS_TOOL_DEFINITIONS + TOOL_CATEGORIES).
+    const catalog = this.buildCatalog();
+    // Counts are computed from the derived catalog — never hardcoded.
+    const totalTools = catalog.reduce((sum, group) => sum + group.tools.length, 0);
+    const totalCategories = catalog.length;
 
     let helpText = '🚀 **Mandrel**\n\n';
     helpText += `**${totalTools} Tools Available Across ${totalCategories} Categories:**\n\n`;
 
-    for (const [category, tools] of Object.entries(this.toolCatalog)) {
+    for (const { category, tools } of catalog) {
       helpText += `## ${category} (${tools.length} tools)\n`;
-      
+
       for (const tool of tools) {
         helpText += `• **${tool.name}** - ${tool.description}\n`;
       }
@@ -524,22 +496,12 @@ task_restore({ taskId: "59823126" })`
   async explainTool(args: { toolName: string }): Promise<any> {
     const toolName = args.toolName.toLowerCase();
 
-    // Find the tool in our catalog
-    let toolFound = false;
-    let category = '';
-    let description = '';
+    // Resolve the tool from the SINGLE SOURCE (AIDIS_TOOL_DEFINITIONS) and its category
+    // from the same single source (TOOL_CATEGORIES via categoryForTool) — no separate
+    // catalog to disagree with what the MCP tools/list actually advertises.
+    const toolDef = AIDIS_TOOL_DEFINITIONS.find(t => t.name === toolName);
 
-    for (const [cat, tools] of Object.entries(this.toolCatalog)) {
-      const tool = tools.find(t => t.name === toolName);
-      if (tool) {
-        toolFound = true;
-        category = cat;
-        description = tool.description;
-        break;
-      }
-    }
-
-    if (!toolFound) {
+    if (!toolDef) {
       return {
         content: [
           {
@@ -550,19 +512,14 @@ task_restore({ taskId: "59823126" })`
       };
     }
 
+    const category = categoryForTool(toolName) ?? 'Uncategorized';
+    const description = toolDef.description;
+
     let explanation = `🔧 **${toolName}**\n\n`;
     explanation += `**Category:** ${category}\n`;
     explanation += `**Purpose:** ${description}\n\n`;
 
-    // Look up the tool definition from AIDIS_TOOL_DEFINITIONS (single source of truth)
-    const toolDef = AIDIS_TOOL_DEFINITIONS.find(t => t.name === toolName);
-
-    if (toolDef && toolDef.inputSchema) {
-      // Add extended description if available in inputSchema
-      if (toolDef.description && toolDef.description !== description) {
-        explanation += `**Description:** ${toolDef.description}\n\n`;
-      }
-
+    if (toolDef.inputSchema) {
       // Parse and display parameters from schema
       const requiredFields = toolDef.inputSchema.required || [];
       explanation += this.formatSchemaParameters(toolDef.inputSchema, requiredFields);
@@ -585,23 +542,17 @@ task_restore({ taskId: "59823126" })`
    */
   async getExamples(args: { toolName: string }): Promise<any> {
     const toolName = args.toolName.toLowerCase();
-    
-    // First check if the tool exists in our catalog
-    let toolExists = false;
-    for (const [_category, tools] of Object.entries(this.toolCatalog)) {
-      if (tools.find(t => t.name === toolName)) {
-        toolExists = true;
-        break;
-      }
-    }
+
+    // Existence is checked against the SINGLE SOURCE (AIDIS_TOOL_DEFINITIONS), so we
+    // never tell a caller a real, registered tool "doesn't exist". The curated example
+    // snippets below stay curated content, but a tool with no curated example degrades
+    // gracefully (point to mandrel_explain) — it is never reported as missing.
+    const toolExists = AIDIS_TOOL_DEFINITIONS.some(t => t.name === toolName);
 
     if (!toolExists) {
-      // Build list of available tools for helpful error message
-      const allTools: string[] = [];
-      for (const tools of Object.values(this.toolCatalog)) {
-        allTools.push(...tools.map(t => t.name));
-      }
-      
+      // Build list of available tools from the single source for a helpful error.
+      const allTools = AIDIS_TOOL_DEFINITIONS.map(t => t.name);
+
       return {
         content: [
           {
@@ -611,9 +562,9 @@ task_restore({ taskId: "59823126" })`
         ]
       };
     }
-    
+
     const examples = this.toolExamples[toolName as keyof typeof this.toolExamples];
-    
+
     if (!examples || examples.length === 0) {
       return {
         content: [
