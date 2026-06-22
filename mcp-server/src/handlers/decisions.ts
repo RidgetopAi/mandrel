@@ -356,9 +356,32 @@ class DecisionsHandler {
       const values: any[] = [];
       let paramIndex = 1;
 
-      if (request.status !== undefined) {
+      // STATUS — SINGLE SOURCE OF TRUTH (task 1a43bdf3).
+      // `status` can be set two ways: explicitly by the caller, or IMPLIED by
+      // `supersededBy` (supersession means the decision is, by definition,
+      // 'superseded'). The bug was that BOTH paths used to emit their own
+      // `status = …` fragment into the same UPDATE, so passing them together
+      // produced two assignments to one column → Postgres "multiple assignments
+      // to column status". The class-fix is to resolve ONE effective status here
+      // and emit AT MOST ONE `status =` fragment below — no path can ever add a
+      // second. Conflicts are rejected loudly rather than silently writing an
+      // incoherent row (e.g. status='active' WITH a superseded_by pointer).
+      const supersedes = request.supersededBy !== undefined;
+      let effectiveStatus: DecisionStatus | undefined = request.status;
+      if (supersedes) {
+        if (request.status !== undefined && request.status !== 'superseded') {
+          throw new Error(
+            `Conflicting update: supersededBy implies status='superseded', but ` +
+            `status='${request.status}' was also requested. Omit status (it is ` +
+            `implied) or pass status='superseded'.`
+          );
+        }
+        effectiveStatus = 'superseded';
+      }
+
+      if (effectiveStatus !== undefined) {
         updateFields.push(`status = $${paramIndex}`);
-        values.push(request.status);
+        values.push(effectiveStatus);
         paramIndex++;
       }
 
@@ -398,18 +421,12 @@ class DecisionsHandler {
         paramIndex++;
       }
 
-      if (request.supersededBy !== undefined) {
+      if (supersedes) {
         updateFields.push(`superseded_by = $${paramIndex}`);
         updateFields.push(`superseded_date = CURRENT_TIMESTAMP`);
-        // A2: only auto-set status='superseded' here when the caller did NOT separately
-        // provide `status`. Previously this branch ALWAYS injected status='superseded'
-        // while the status branch above also emitted `status = $N` → two assignments to
-        // the same column → Postgres "multiple assignments to column status". When the
-        // caller passes status explicitly, that branch already set it (so we must not
-        // emit a second one); when they don't, supersession implies 'superseded'.
-        if (request.status === undefined) {
-          updateFields.push(`status = 'superseded'`);
-        }
+        // NOTE: status='superseded' is NOT emitted here. The implied status is
+        // resolved once into `effectiveStatus` above and emitted as the single
+        // `status =` fragment — so this branch can never add a duplicate.
         values.push(request.supersededBy);
         paramIndex++;
       }

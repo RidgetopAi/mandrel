@@ -149,6 +149,40 @@ describe('tool-contract-drift fixes (public-tool path, real DB, zero SQL on writ
     expect(row.status).toBe('superseded');
   });
 
+  test("A2: status:'active' + supersededBy together is rejected as a conflict (no incoherent row written)", async () => {
+    // Edge case (task 1a43bdf3): supersededBy IMPLIES status='superseded'. Passing a
+    // *contradictory* explicit status (e.g. 'active') used to silently write an
+    // incoherent row — status='active' WITH a superseded_by pointer — instead of the
+    // old crash. The fix resolves a single effective status and rejects the conflict
+    // loudly rather than persisting nonsense. The agreeing case ('superseded' + by)
+    // and the implicit case (by alone) are covered above and must still pass.
+    const rec = await viaPublicTool('decision_record', {
+      decisionType: 'architecture',
+      title: `A2 conflict ${STAMP}`,
+      description: 'd', rationale: 'r', impactLevel: 'low', projectId,
+    }, (a) => decisionsRoutes.handleRecord(a));
+    const id = idFrom(textOf(rec));
+    const successorId = await recordSuccessor('conflict');
+
+    const resp = await viaPublicTool('decision_update', {
+      decisionId: id,
+      status: 'active',          // contradicts the supersession…
+      supersededBy: successorId, // …which implies status='superseded'
+    }, (a) => decisionsRoutes.handleUpdate(a));
+
+    // Surfaced as a clear, actionable error (not a 500/SQL crash, not a silent write).
+    expect(resp.isError).toBe(true);
+    expect(textOf(resp)).toMatch(/conflict/i);
+    expect(textOf(resp)).not.toMatch(/multiple assignments to column/i);
+
+    // CRUCIAL: the row was left UNTOUCHED — no incoherent (active + superseded_by) state.
+    const row = (await db.query(
+      'SELECT status, superseded_by FROM technical_decisions WHERE id = $1', [id]
+    )).rows[0];
+    expect(row.status).toBe('active');        // original status, unchanged
+    expect(row.superseded_by).toBeNull();     // no half-applied supersession
+  });
+
   // ---- A3: 'cancelled' accepted on the single-task path --------------------
   test("A3: task_update accepts status:'cancelled' (advertised + DB-allowed)", async () => {
     const created = await viaPublicTool('task_create',
