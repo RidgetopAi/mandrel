@@ -5,7 +5,7 @@ import {
 } from 'antd';
 import {
   EditOutlined, SaveOutlined, ShareAltOutlined,
-  DeleteOutlined, TagsOutlined, CalendarOutlined, DatabaseOutlined,
+  DeleteOutlined, CalendarOutlined, DatabaseOutlined,
   LinkOutlined, FolderOutlined, UserOutlined, CopyOutlined, DownOutlined, UpOutlined
 } from '@ant-design/icons';
 import { useContextStore } from '../../stores/contextStore';

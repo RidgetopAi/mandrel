@@ -3,7 +3,7 @@
  * Provides real-time validation with backend integration and error handling
  */
 
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { Form, FormInstance } from 'antd';
 import { z } from 'zod';
 import { validateData, validatePartial, formatFieldErrors, type FormFieldError } from '../validation/schemas';
@@ -61,7 +61,17 @@ export const useValidatedForm = <T extends Record<string, any>>(
   formActions: ValidatedFormActions<T>;
   errorHandler: ReturnType<typeof useErrorHandler>;
 } => {
-  const finalConfig = { ...DEFAULT_CONFIG, ...config };
+  // Merge defaults with caller config, memoised on `config` so the dependent
+  // useCallbacks below can list it honestly in their deps (satisfies
+  // exhaustive-deps without stale closures). NOTE: current call sites pass an
+  // inline config literal, so `config` changes identity every render and this
+  // recomputes each time — i.e. no real identity stability today; it's
+  // behaviourally identical to the raw spread. To gain actual stability, callers
+  // would need to memoise their config arg (or depend on individual fields here).
+  const finalConfig = useMemo(
+    () => ({ ...DEFAULT_CONFIG, ...config }),
+    [config]
+  );
   const [form] = Form.useForm();
 
   // Error handler integration with TR002-6
@@ -95,21 +105,6 @@ export const useValidatedForm = <T extends Record<string, any>>(
       }
     };
   }, []);
-
-  // Debounced validation function
-  const debouncedValidate = useCallback((field?: keyof T, value?: any) => {
-    if (debounceTimeoutRef.current) {
-      clearTimeout(debounceTimeoutRef.current);
-    }
-
-    debounceTimeoutRef.current = setTimeout(() => {
-      if (field && value !== undefined) {
-        validateField(field);
-      } else {
-        validateForm();
-      }
-    }, finalConfig.debounceMs);
-  }, [finalConfig.debounceMs]);
 
   // Validate single field
   const validateField = useCallback(async (field: keyof T): Promise<boolean> => {
@@ -176,10 +171,26 @@ export const useValidatedForm = <T extends Record<string, any>>(
       }));
       return false;
     }
-  }, [form, finalConfig.schema, finalConfig.onValidationError, errorHandler]);
+  }, [form, finalConfig, errorHandler]);
+
+  // Debounced validation function. Declared after validateField/validateForm so
+  // they can be listed as dependencies without a temporal-dead-zone reference.
+  const debouncedValidate = useCallback((field?: keyof T, value?: any) => {
+    if (debounceTimeoutRef.current) {
+      clearTimeout(debounceTimeoutRef.current);
+    }
+
+    debounceTimeoutRef.current = setTimeout(() => {
+      if (field && value !== undefined) {
+        validateField(field);
+      } else {
+        validateForm();
+      }
+    }, finalConfig.debounceMs);
+  }, [finalConfig.debounceMs, validateField, validateForm]);
 
   // Server-side validation (optional)
-  const validateWithServer = useCallback(async (data: T): Promise<{
+  const validateWithServer = useCallback(async (_data: T): Promise<{
     success: boolean;
     errors?: Record<string, string>;
   }> => {
@@ -189,13 +200,6 @@ export const useValidatedForm = <T extends Record<string, any>>(
 
     try {
       // Store validation context in AIDIS for server-side validation
-      const validationContext = {
-        component: finalConfig.componentName,
-        schema: finalConfig.schema.description || 'unknown',
-        data: JSON.stringify(data, null, 2),
-        timestamp: new Date().toISOString(),
-      };
-
       await mandrelApi.storeContext(
         `Form validation for ${finalConfig.componentName}`,
         'validation',
@@ -212,7 +216,7 @@ export const useValidatedForm = <T extends Record<string, any>>(
         errors: { general: 'Server validation failed' },
       };
     }
-  }, [finalConfig.enableServerValidation, finalConfig.componentName, finalConfig.schema]);
+  }, [finalConfig.enableServerValidation, finalConfig.componentName]);
 
   // Set field value with validation
   const setFieldValue = useCallback((field: keyof T, value: any) => {
@@ -311,9 +315,7 @@ export const useValidatedForm = <T extends Record<string, any>>(
     }
   }, [
     form,
-    finalConfig.schema,
-    finalConfig.onSubmitSuccess,
-    finalConfig.onSubmitError,
+    finalConfig,
     validateForm,
     validateWithServer,
     errorHandler,
@@ -344,17 +346,6 @@ export const useValidatedForm = <T extends Record<string, any>>(
   const clearServerErrors = useCallback(() => {
     setFormState(prev => ({ ...prev, serverErrors: {} }));
   }, []);
-
-  // Form field event handlers for real-time validation
-  const handleFieldChange = useCallback((field: keyof T) => (value: any) => {
-    setFieldValue(field, value);
-  }, [setFieldValue]);
-
-  const handleFieldBlur = useCallback((field: keyof T) => () => {
-    if (finalConfig.enableRealTimeValidation && finalConfig.validateOnBlur) {
-      validateField(field);
-    }
-  }, [finalConfig.enableRealTimeValidation, finalConfig.validateOnBlur, validateField]);
 
   // Enhanced form instance with validation events
   const enhancedForm = [form] as [FormInstance];

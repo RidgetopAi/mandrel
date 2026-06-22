@@ -235,7 +235,7 @@ export default class MandrelMcpServer {
             // Minimal logging for production
             logger.error(`✅ Deserialized ${param} array parameter (${parsed.length} items)`);
           }
-        } catch (error) {
+        } catch {
           // If parsing fails, leave as string - might be intentional
           // Silently continue - this is expected for non-array string parameters
         }
