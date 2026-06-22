@@ -683,3 +683,159 @@ function attachOutputSchemas(defs: ToolDefinition[]): void {
 
 attachOutputSchemas(AIDIS_TOOL_DEFINITIONS);
 
+/**
+ * SINGLE SOURCE OF CATEGORY TRUTH (catalog-drift class fix, task 43aa8c03).
+ *
+ * THE BUG CLASS this closes: mandrel_help used to render from a SEPARATE hardcoded
+ * catalog inside handlers/navigation.ts (`this.toolCatalog`). That second copy drifted
+ * from AIDIS_TOOL_DEFINITIONS — it omitted 8 real, advertised-and-working tools
+ * (context_update + the linking/thread tools) and reported the wrong count. Two
+ * hand-maintained lists of "what tools exist" inevitably diverge.
+ *
+ * THE FIX: categories live HERE, beside the tool definitions that are themselves the
+ * single source for the tool SET. `mandrel_help` derives its groups, its tool list, AND
+ * its counts from these two exports at runtime — there is no second catalog to drift.
+ *
+ *  - CATEGORY_ORDER     — the ordered list of category display names (display order only).
+ *  - TOOL_CATEGORIES    — categoryName → ordered list of tool names within that category
+ *                         (intra-category order). The ONLY place a tool is mapped to a
+ *                         category; the tool's name + description still come from
+ *                         AIDIS_TOOL_DEFINITIONS (never re-typed here).
+ *
+ * INVARIANT, enforced fail-fast at import time by assertCategoryCoverage() below
+ * (same spirit as attachOutputSchemas): every tool in AIDIS_TOOL_DEFINITIONS is mapped
+ * to EXACTLY ONE category, and TOOL_CATEGORIES references no tool that doesn't exist.
+ * So a newly-added tool that isn't categorized crashes the server on boot (and reddens
+ * the helpCatalog contract test) — it can never silently fall out of mandrel_help.
+ */
+export const CATEGORY_ORDER = [
+  'System Health',
+  'Navigation',
+  'Context Management',
+  'Project Management',
+  'Technical Decisions',
+  'Task Management',
+  'Smart Search & AI',
+  'Linking & Graph',
+] as const;
+
+export type ToolCategory = (typeof CATEGORY_ORDER)[number];
+
+export const TOOL_CATEGORIES: Record<ToolCategory, string[]> = {
+  'System Health': ['mandrel_ping', 'mandrel_status'],
+  'Navigation': ['mandrel_help', 'mandrel_explain', 'mandrel_examples'],
+  'Context Management': [
+    'context_store',
+    'context_search',
+    'context_get_recent',
+    'context_update',
+    'context_stats',
+    'context_delete',
+    'context_restore',
+  ],
+  'Project Management': [
+    'project_list',
+    'project_create',
+    'project_update',
+    'project_delete',
+    'project_switch',
+    'project_current',
+    'project_info',
+    'project_insights',
+  ],
+  'Technical Decisions': [
+    'decision_record',
+    'decision_search',
+    'decision_get',
+    'decision_update',
+    'decision_stats',
+    'decision_delete',
+    'decision_restore',
+  ],
+  'Task Management': [
+    'task_create',
+    'task_list',
+    'task_update',
+    'task_details',
+    'task_bulk_update',
+    'task_progress_summary',
+    'task_delete',
+    'task_restore',
+  ],
+  'Smart Search & AI': ['smart_search', 'get_recommendations'],
+  'Linking & Graph': [
+    'link',
+    'unlink',
+    'get_links',
+    'recall_thread',
+    'thread_set',
+    'thread_current',
+    'thread_clear',
+  ],
+};
+
+/**
+ * Resolve the single-source category for a tool name (the same source mandrel_help and
+ * mandrel_explain read). Returns undefined for an unknown tool.
+ */
+export function categoryForTool(toolName: string): ToolCategory | undefined {
+  for (const category of CATEGORY_ORDER) {
+    if (TOOL_CATEGORIES[category].includes(toolName)) {
+      return category;
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Fail-fast coverage guard (mirrors attachOutputSchemas). Asserts the category map and
+ * the tool definitions describe EXACTLY the same set, each tool categorized once. Throws
+ * at import time so a drift can never reach a running server or a green build.
+ */
+function assertCategoryCoverage(defs: ToolDefinition[]): void {
+  // 1. CATEGORY_ORDER and TOOL_CATEGORIES keys agree (no category without a slot / order).
+  const orderSet = new Set<string>(CATEGORY_ORDER);
+  for (const key of Object.keys(TOOL_CATEGORIES)) {
+    if (!orderSet.has(key)) {
+      throw new Error(
+        `[toolDefinitions] category '${key}' is in TOOL_CATEGORIES but missing from ` +
+          `CATEGORY_ORDER — add it to the display order (single source).`
+      );
+    }
+  }
+
+  // 2. Each tool appears in exactly one category, and no category lists a phantom tool.
+  const defNames = new Set(defs.map((d) => d.name));
+  const seen = new Map<string, string>(); // toolName -> category it was found in
+  for (const category of CATEGORY_ORDER) {
+    for (const toolName of TOOL_CATEGORIES[category]) {
+      if (!defNames.has(toolName)) {
+        throw new Error(
+          `[toolDefinitions] category '${category}' lists tool '${toolName}' which is ` +
+            `not in AIDIS_TOOL_DEFINITIONS — remove it or fix the name (single source).`
+        );
+      }
+      const prior = seen.get(toolName);
+      if (prior) {
+        throw new Error(
+          `[toolDefinitions] tool '${toolName}' is categorized twice ('${prior}' and ` +
+            `'${category}') — each tool must map to EXACTLY ONE category.`
+        );
+      }
+      seen.set(toolName, category);
+    }
+  }
+
+  // 3. Every defined tool is categorized (no tool silently falling out of mandrel_help).
+  const uncategorized = defs.filter((d) => !seen.has(d.name)).map((d) => d.name);
+  if (uncategorized.length > 0) {
+    throw new Error(
+      `[toolDefinitions] these tools have NO category in TOOL_CATEGORIES and would ` +
+        `vanish from mandrel_help: ${uncategorized.join(', ')}. Add each to exactly ` +
+        `one category in TOOL_CATEGORIES (the single source of catalog truth).`
+    );
+  }
+}
+
+assertCategoryCoverage(AIDIS_TOOL_DEFINITIONS);
+
