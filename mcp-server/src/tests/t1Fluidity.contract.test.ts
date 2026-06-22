@@ -282,6 +282,60 @@ describe('T1 fluidity via public tools (real DB)', () => {
     expect(t.tags).toEqual(['phase-9', 'edited']);
   });
 
+  // task 66c60b41: prove the full retag contract on task_update — REPLACE / OMIT / CLEAR / REJECT.
+  test('item5: task_update with tags REPLACES the existing tag set (retag path)', async () => {
+    const taskId = parseId(await routeExecutor(
+      'task_create', { title: 'retag-replace', type: 'feature', tags: ['old-a', 'old-b'] },
+      { connectionId: CONN }
+    ));
+    await routeExecutor(
+      'task_update', { taskId, tags: ['new-x', 'new-y', 'new-z'] }, { connectionId: CONN }
+    );
+    const t = sc(await routeExecutor('task_details', { taskId }, { connectionId: CONN })).task;
+    // SET semantics: the new array wholly replaces the old (no union/merge).
+    expect(t.tags).toEqual(['new-x', 'new-y', 'new-z']);
+    // And the new tags resolve the task via tag filter; the old ones no longer do.
+    const byNew = sc(await routeExecutor('task_list', { tags: ['new-x'] }, { connectionId: CONN })).results;
+    expect(byNew.map((x: any) => x.id)).toContain(taskId);
+    const byOld = sc(await routeExecutor('task_list', { tags: ['old-a'] }, { connectionId: CONN })).results;
+    expect(byOld.map((x: any) => x.id)).not.toContain(taskId);
+  });
+
+  test('item5: task_update with tags OMITTED leaves existing tags unchanged (backward-compatible)', async () => {
+    const taskId = parseId(await routeExecutor(
+      'task_create', { title: 'retag-omit', type: 'feature', tags: ['keep-me', 'and-me'] },
+      { connectionId: CONN }
+    ));
+    // A pre-tags caller updates only status — tags must be untouched (no silent wipe).
+    await routeExecutor('task_update', { taskId, status: 'in_progress' }, { connectionId: CONN });
+    const t = sc(await routeExecutor('task_details', { taskId }, { connectionId: CONN })).task;
+    expect(t.status).toBe('in_progress');
+    expect(t.tags).toEqual(['keep-me', 'and-me']);
+  });
+
+  test('item5: task_update with an explicit EMPTY array CLEARS the tags', async () => {
+    const taskId = parseId(await routeExecutor(
+      'task_create', { title: 'retag-clear', type: 'feature', tags: ['will', 'be', 'gone'] },
+      { connectionId: CONN }
+    ));
+    await routeExecutor('task_update', { taskId, tags: [] }, { connectionId: CONN });
+    const t = sc(await routeExecutor('task_details', { taskId }, { connectionId: CONN })).task;
+    expect(t.tags).toEqual([]);
+  });
+
+  test('item5 adversarial: task_update rejects invalid tags at validation (same rules as task_create)', async () => {
+    const { validateToolArguments } = await import('../middleware/validation.js');
+    const taskId = 'deadbeefdeadbeefdeadbeefdeadbeef'; // shape-valid id; never reached — rejected first.
+    // A non-string element.
+    expect(() => validateToolArguments('task_update', { taskId, tags: [123] as any })).toThrow();
+    // A tag longer than the per-tag max (baseTags: max 50 chars).
+    expect(() => validateToolArguments('task_update', { taskId, tags: ['x'.repeat(51)] })).toThrow();
+    // More tags than the array max (baseTags: max 20).
+    expect(() => validateToolArguments('task_update', { taskId, tags: Array(21).fill('t') })).toThrow();
+    // Sanity: task_create rejects the SAME invalid tag → the two share baseTags (no drift).
+    expect(() => validateToolArguments('task_create', { title: 'x', tags: ['x'.repeat(51)] })).toThrow();
+  });
+
   test("item5: decision_update edits a decision's tags + title", async () => {
     const decId = parseId(await routeExecutor(
       'decision_record',
