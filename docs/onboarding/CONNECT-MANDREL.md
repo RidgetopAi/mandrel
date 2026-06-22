@@ -113,17 +113,23 @@ You have Mandrel tools connected. Use them on your own initiative, without being
 - Start each session by RECALLING: run `context_get_recent`, and `context_search "<topic>"`
   for anything relevant — continue, don't start cold. Confirm the right project with
   `project_current` (use `project_switch` if needed) so memory lands in the right place.
+  To read yourself back in on a piece of work, run `recall_thread` — it walks the linked
+  decisions, tasks, and notes in order and tells you what's trustworthy.
+- Set the thread once, then forget about linking: run `thread_set` with the task or
+  decision you're working on. After that, everything you save auto-connects to it — you
+  build a linked history for free, with no manual tagging to remember.
 - Save the SIGNAL as it happens (don't wait to be told):
   • a decision → `decision_record` (always include the WHY + alternatives)
   • a bug fix  → `context_store(type:"error")` with the symptom AND the fix
   • finished work / a milestone → `context_store(type:"completion"|"milestone")`
   • end of session → `context_store(type:"handoff")` so the next session picks up clean
-- SEARCH before re-solving: check `context_search` before re-deriving something.
+- SEARCH before re-solving: check `context_search` before re-deriving something. Results
+  carry a trust signal now — lean on what's proven, be wary of what's stale or superseded.
 - Track work with `task_create` / `task_update`.
 Store signal, not noise. Run `mandrel_help` once to see the full toolset.
 ```
 
-That's the whole thing — adjust to taste, but resist adding noise. The agents that get the most out of Mandrel treat it like a teammate's memory: recall first, save the *why*, search before redoing.
+That's the whole thing — adjust to taste, but resist adding noise. The agents that get the most out of Mandrel treat it like a teammate's memory: set the thread, recall first, save the *why*, search before redoing.
 
 ---
 
