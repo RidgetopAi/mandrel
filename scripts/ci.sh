@@ -33,7 +33,8 @@ REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 MCP_DIR="$REPO_DIR/mcp-server"
 BACKEND_DIR="$REPO_DIR/mandrel-command/backend"
 FRONTEND_DIR="$REPO_DIR/mandrel-command/frontend"
-EXT_SQL="$MCP_DIR/database/init/00-extensions.sql"
+# NOTE: the extensions SQL (00-extensions.sql) + the create/migrate sequence now
+# live in scripts/provision-test-db.sh (single source — see STAGE 0+0b below).
 PGSUPER="sudo -u postgres"
 
 # --- Disposable DB identity (unique per run) ---------------------------------
@@ -370,13 +371,24 @@ else
 fi
 
 # =============================================================================
-hdr "STAGE 0: provision disposable Postgres"
+hdr "STAGE 0+0b: provision + migrate disposable Postgres (one helper)"
+# SINGLE SOURCE (Mandrel task 68595a81): the create-role -> create-db -> run the
+# extensions SQL (00-extensions.sql) -> migrate.ts sequence lives in ONE place,
+# scripts/provision-test-db.sh, so ad-hoc throwaway DBs and CI cannot drift (the
+# footgun was ad-hoc DBs replicating createdb+migrate but SKIPPING extensions ->
+# similarity()/uuid() tests fail confusingly). ci.sh CALLS that helper instead of
+# duplicating the steps. We pass our own throwaway password + host/port so the
+# shared db_env() below (used by every later DB stage) stays consistent, and the
+# EXIT-trap cleanup() still owns teardown for the whole run.
 echo "DB=$DBNAME  ROLE=$DBUSER  HOST=$DBHOST:$DBPORT"
-$PGSUPER psql -q -c "DROP ROLE IF EXISTS \"$DBUSER\";" >/dev/null 2>&1 || true
-$PGSUPER psql -q -c "CREATE ROLE \"$DBUSER\" LOGIN PASSWORD '$DBPASS';" >/dev/null
-$PGSUPER createdb -O "$DBUSER" "$DBNAME" >/dev/null
-$PGSUPER psql -d "$DBNAME" -q -f "$EXT_SQL" >/dev/null
-echo "Provisioned + extensions installed."
+MIG_LOG="/tmp/ci_migrate_${SFX}.log"
+PROVISION_OK=0
+if TEST_DB_HOST="$DBHOST" TEST_DB_PORT="$DBPORT" TEST_DB_PASS="$DBPASS" \
+     PG_SUPERCMD="$PGSUPER" \
+     bash "$REPO_DIR/scripts/provision-test-db.sh" "$DBNAME" >"$MIG_LOG" 2>&1; then
+  PROVISION_OK=1
+  echo "${GRN}Provisioned + extensions installed + migrated.${RST}"
+fi
 
 # Shared DB env for every stage that talks to Postgres. Uses `env` so that any
 # extra KEY=VAL args passed by the caller (e.g. NODE_ENV=test) are applied to the
@@ -392,13 +404,12 @@ db_env() {
 }
 
 # =============================================================================
-hdr "STAGE 0b: migrate disposable DB with real migrate.ts"
-MIG_LOG="/tmp/ci_migrate_${SFX}.log"
-if ( cd "$MCP_DIR" && db_env NODE_ENV="development" npx tsx scripts/migrate.ts ) \
-      >"$MIG_LOG" 2>&1; then
-  echo "${GRN}Migration OK${RST} ($(grep -c 'Total migrations applied' "$MIG_LOG" >/dev/null 2>&1 && grep 'Total migrations applied' "$MIG_LOG" | tail -1 || echo 'applied'))"
+hdr "STAGE 0b: verify provision+migrate succeeded"
+if [[ "$PROVISION_OK" == "1" ]]; then
+  echo "${GRN}Migration OK${RST} (helper)"
+  record "0b. migrate disposable DB" "PASS"
 else
-  echo "${RED}Migration FAILED${RST} — gate cannot proceed. Log tail:"
+  echo "${RED}Provision/Migration FAILED${RST} — gate cannot proceed. Log tail:"
   tail -25 "$MIG_LOG"
   record "0b. migrate disposable DB" "FAIL"
   # No point running the DB-dependent stages; jump to summary.
