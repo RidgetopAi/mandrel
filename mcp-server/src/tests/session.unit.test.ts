@@ -36,6 +36,11 @@ const mockDb = db as any;
 describe('SessionTracker Unit Tests', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // clearAllMocks() clears call history but NOT the queued *Once implementations
+    // (mockResolvedValueOnce/mockReturnValueOnce). An unconsumed once-value would leak
+    // into the next test under shuffle (order-dependent flake). Reset the db.query mock
+    // to also drain its once-queue + impl, leaving the vi.mock module factory intact.
+    (db as any).query.mockReset?.();
     // Clear active-session state. The session refactor moved the active-session
     // pointer OFF `SessionTracker.activeSessionId` (now a dead no-op) into the
     // connection-scoped `ActiveSessionStore` module Map. Resetting the real store is
@@ -102,32 +107,35 @@ describe('SessionTracker Unit Tests', () => {
   });
 
   // getActiveSession was deliberately changed by the session isolation + dangling-FK
-  // refactor, so these cases assert the CURRENT contract (not the removed pre-refactor
-  // behavior):
-  //   - a cached id is VALIDATED against the DB (SessionRepo.exists) before being
-  //     trusted — the dangling-FK guard — and self-heals (clears) on a miss;
+  // refactor and again by SR-1 (per-connection re-attach), so these cases assert the
+  // CURRENT contract (not the removed pre-refactor behavior):
+  //   - a cached id is VALIDATED as STILL OPEN in the DB (SessionRepo.existsActive —
+  //     SR-1's stale-but-ended fix; ended/reaped rows no longer count as valid) before
+  //     being trusted, and self-heals (clears) on a miss;
   //   - a cache MISS is connection-scoped: it returns null and does NOT implicitly hunt
   //     for "the last session anywhere" unless the caller opts in with
   //     { allowGlobalFallback: true }, which then consults SessionRepo.getLastActive().
+  //     (Re-attach-on-restart needs a real connection id, so the default-connection
+  //     misses below never trigger it — they exercise the validate/fallback paths.)
   // We assert at the SessionRepo collaborator boundary (the stable seam) rather than on
   // raw db.query SQL, so internal query changes don't make this test brittle.
   describe('getActiveSession', () => {
-    it('should return the cached active session after validating it still exists in the DB', async () => {
+    it('should return the cached active session after validating it is still OPEN in the DB', async () => {
       const cachedSessionId = 'cached-session-123';
       ActiveSessionStore.set(cachedSessionId); // default connection
-      vi.spyOn(SessionRepo, 'exists').mockResolvedValueOnce(true);
+      vi.spyOn(SessionRepo, 'existsActive').mockResolvedValueOnce(true);
 
       const activeId = await SessionTracker.getActiveSession();
 
       expect(activeId).toBe(cachedSessionId);
-      // The dangling-FK guard MUST validate the cached id against the DB.
-      expect(SessionRepo.exists).toHaveBeenCalledWith(cachedSessionId);
+      // SR-1 stale-but-ended guard MUST validate the cached id is still OPEN.
+      expect(SessionRepo.existsActive).toHaveBeenCalledWith(cachedSessionId);
     });
 
-    it('should self-heal (clear) a cached id whose DB row no longer exists', async () => {
+    it('should self-heal (clear) a cached id whose DB row is no longer OPEN', async () => {
       const staleSessionId = 'stale-session-999';
       ActiveSessionStore.set(staleSessionId);
-      vi.spyOn(SessionRepo, 'exists').mockResolvedValueOnce(false); // row gone
+      vi.spyOn(SessionRepo, 'existsActive').mockResolvedValueOnce(false); // ended/reaped
 
       const activeId = await SessionTracker.getActiveSession();
 
@@ -430,6 +438,11 @@ describe('SessionTracker Unit Tests', () => {
 describe('SessionManagementHandler Unit Tests', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // clearAllMocks() clears call history but NOT the queued *Once implementations
+    // (mockResolvedValueOnce/mockReturnValueOnce). An unconsumed once-value would leak
+    // into the next test under shuffle (order-dependent flake). Reset the db.query mock
+    // to also drain its once-queue + impl, leaving the vi.mock module factory intact.
+    (db as any).query.mockReset?.();
     // See note above: reset the real connection-scoped store, not the dead field.
     ActiveSessionStore.clearAll();
   });
@@ -587,6 +600,11 @@ describe('SessionManagementHandler Unit Tests', () => {
 describe('Utility Functions Unit Tests', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // clearAllMocks() clears call history but NOT the queued *Once implementations
+    // (mockResolvedValueOnce/mockReturnValueOnce). An unconsumed once-value would leak
+    // into the next test under shuffle (order-dependent flake). Reset the db.query mock
+    // to also drain its once-queue + impl, leaving the vi.mock module factory intact.
+    (db as any).query.mockReset?.();
     // See note above: reset the real connection-scoped store, not the dead field.
     ActiveSessionStore.clearAll();
   });

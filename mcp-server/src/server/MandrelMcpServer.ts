@@ -455,22 +455,22 @@ export default class MandrelMcpServer {
           logger.warn('⚠️  Failed to flush session data', { metadata: { error } });
         }
 
-        // End current session if active.
-        // Lazy-create model: the stdio connection's session (if one was ever
-        // created by a real action) lives under the 'stdio' connection key.
-        // Connection-scoped lookup — do NOT adopt some other connection's session
-        // at shutdown.
-        logger.info('📋 Ending active session...');
+        // SR-1: Park ALL active sessions as 'interrupted' (resumable) on shutdown.
+        //
+        // REPLACES the old stdio-only endSession (ctx 81901e32): shutdown used to end
+        // ONLY the 'stdio' connection's session, leaving every bridge/http/remote
+        // session 'active' with ended_at NULL forever (they accumulated, and a restart
+        // minted duplicates because the RAM map was empty). Now we mark them ALL
+        // 'interrupted' (ended_at left NULL = resumable): the next action on each
+        // connection within the re-attach window resumes the SAME session, and the
+        // idle reaper terminalizes any that never resume. DB-only flip — full finalize
+        // happens only on explicit/manual session_end.
+        logger.info('📋 Marking active sessions interrupted (resumable)...');
         try {
-          const activeSessionId = await SessionTracker.getActiveSession('stdio');
-          if (activeSessionId) {
-            await SessionTracker.endSession(activeSessionId);
-            logger.info('✅ Session ended gracefully');
-          } else {
-            logger.info('ℹ️  No active session to end');
-          }
+          const interrupted = await SessionTracker.markAllInterrupted();
+          logger.info(`✅ ${interrupted} session(s) marked interrupted for clean restart`);
         } catch (error) {
-          logger.warn('⚠️  Failed to end session', { metadata: { error } });
+          logger.warn('⚠️  Failed to mark sessions interrupted', { metadata: { error } });
         }
       }
 

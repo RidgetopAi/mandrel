@@ -10,6 +10,7 @@ import { TokenTracker, OperationTracker } from '../tracking/index.js';
 import { calculateBasicProductivity } from '../productivity/index.js';
 import { resolveProjectForSession } from './projectResolution.js';
 import { logger } from '../../../../utils/logger.js';
+import { SESSION_CONFIG } from '../../../../config/sessionConfig.js';
 import type { SessionData } from '../../types.js';
 
 export interface StartSessionOptions {
@@ -62,6 +63,9 @@ export const SessionLifecycleService = {
         aiModel: options.aiModel,
         activeBranch: gitInfo.branch,
         workingCommitSha: gitInfo.commitSha,
+        // SR-1: persist the stable connection identity so a server restart
+        // re-attaches to this session instead of minting a new one.
+        connectionId: options.connectionId ?? null,
         metadata: {
           start_time: startTime.toISOString(),
           created_by: 'mandrel-session-tracker',
@@ -210,36 +214,57 @@ export const SessionLifecycleService = {
     opts: { allowGlobalFallback?: boolean } = {}
   ): Promise<string | null> {
     try {
-      // Check in-memory first (connection-scoped).
+      // 1. RAM HIT (connection-scoped), VALIDATED against the DB as STILL OPEN.
       //
-      // ROOT-CAUSE GUARD (dangling-FK fix): the in-memory store can hold a session
-      // id whose DB row no longer exists — e.g. the session was ended+pruned, the
-      // process retained the cache across a row deletion, or a prior global-fallback
-      // read cached a `getLastActive` id that was later removed. If we returned that
-      // stale id, ensureActiveSession() would treat the connection as "already has a
-      // session" and SKIP startSession()/SessionRepo.create(), and the subsequent
-      // contexts INSERT would violate contexts_session_id_fkey. So we VALIDATE the
-      // cached id against the DB (the source of truth) and self-heal on a miss:
-      // clear the stale entry and fall through, so the caller lazily re-creates a
-      // real, DB-backed session.
+      // STALE-BUT-ENDED FIX (SR-1, ctx 81901e32): the in-RAM store can hold a session
+      // id whose row is no longer alive — it was reaped (status=inactive + ended_at),
+      // pruned, or shut-down-and-not-resumed. The OLD code validated with exists(),
+      // which returns true even for an ENDED row, so it kept returning a DEAD id and
+      // every write silently no-op'd (touchActivity is WHERE status='active'). We now
+      // validate with existsActive() (ended_at NULL AND status active|interrupted). On
+      // a miss we evict the stale entry and fall through to re-attach/mint a real,
+      // live session.
       const memorySession = ActiveSessionStore.get(connectionId);
       if (memorySession) {
-        const stillExists = await SessionRepo.exists(memorySession);
-        if (stillExists) {
+        const stillOpen = await SessionRepo.existsActive(memorySession);
+        if (stillOpen) {
           return memorySession;
         }
         logger.warn(
-          `⚠️  Active session ${memorySession.substring(0, 8)}... is cached in memory but ` +
-          `missing from the database${connectionId ? ` (connection: ${connectionId})` : ''}; ` +
-          `clearing stale entry so a fresh session is created.`
+          `⚠️  Cached session ${memorySession.substring(0, 8)}... is no longer OPEN in the ` +
+          `database${connectionId ? ` (connection: ${connectionId})` : ''}; ` +
+          `evicting stale entry so we re-attach or create a live session.`
         );
         ActiveSessionStore.clear(connectionId);
         // fall through — treat as a miss
       }
 
-      // Global "last active anywhere" lookup ONLY when a caller explicitly opts in.
-      // This is intentionally NOT gated on `!connectionId` anymore: a missing
-      // connectionId no longer implies "go find some other session".
+      // 2. RE-ATTACH-ON-RESTART (the core random-spawning fix, SR-1): with no valid
+      // in-RAM session, look up the newest OPEN session for THIS connection id within
+      // the re-attach window and RE-ATTACH to it (don't mint). This is what makes a
+      // SERVER RESTART (which wipes the RAM map) re-bind the same live bridge
+      // connection to its existing session instead of spawning a duplicate. A session
+      // parked 'interrupted' by a graceful shutdown is reactivated here. NULL
+      // connectionId never re-attaches (findReattachable requires a real id).
+      if (connectionId) {
+        const reattachId = await SessionRepo.findReattachable(
+          connectionId,
+          SESSION_CONFIG.reattachWindowSec
+        );
+        if (reattachId) {
+          await SessionRepo.reactivate(reattachId);
+          ActiveSessionStore.set(reattachId, connectionId);
+          logger.info(
+            `🔁 Re-attached connection ${connectionId} to existing session ` +
+            `${reattachId.substring(0, 8)}... (no new session minted).`
+          );
+          return reattachId;
+        }
+      }
+
+      // 3. Global "last active anywhere" lookup ONLY when a caller explicitly opts in
+      // (legacy/dashboard readers with no connection of their own). Restricted to
+      // genuinely OPEN sessions so it never resurrects an ended one.
       if (opts.allowGlobalFallback) {
         const dbSession = await SessionRepo.getLastActive();
         if (dbSession) {
@@ -287,5 +312,37 @@ export const SessionLifecycleService = {
    */
   async updateSessionActivity(sessionId: string): Promise<void> {
     await SessionRepo.touchActivity(sessionId);
+  },
+
+  /**
+   * SR-1: Graceful-shutdown close — mark ALL open active sessions 'interrupted'
+   * (resumable; ended_at left NULL) and evict their in-RAM entries.
+   *
+   * REPLACES the old stdio-only special case (ctx 81901e32): previously shutdown
+   * ended ONLY the 'stdio' connection's session, so every bridge/http/remote session
+   * was left 'active' with ended_at NULL forever — they accumulated and, on restart,
+   * the RAM map was empty so a duplicate was minted. Now shutdown parks them ALL as
+   * 'interrupted': the next action on each connection within the re-attach window
+   * resumes the SAME session (interrupted→active), and the 1h reaper terminalizes
+   * any that never resume. This is a DB-only flip (no endSession finalize) — full
+   * finalize happens only on explicit/manual session_end (Brian Q5).
+   *
+   * @returns the count of sessions marked interrupted.
+   */
+  async markAllInterrupted(): Promise<number> {
+    try {
+      const connIds = await SessionRepo.markInterrupted();
+      // Evict every in-RAM entry — the map is rebuilt by re-attach on the next action
+      // for each connection (this also drops the stop-cleanup timer when empty).
+      ActiveSessionStore.clearAll();
+      logger.info(
+        `📋 Graceful shutdown: marked ${connIds.length} active session(s) → interrupted ` +
+        `(resumable within the re-attach window) and cleared the in-RAM session map.`
+      );
+      return connIds.length;
+    } catch (error) {
+      logger.error('❌ Failed to mark sessions interrupted on shutdown', error as Error);
+      return 0;
+    }
   }
 };

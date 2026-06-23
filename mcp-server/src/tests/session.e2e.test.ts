@@ -9,7 +9,7 @@
  * - Error handling and edge cases
  */
 
-import { describe, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import { describe, expect, beforeAll, afterAll, beforeEach, vi } from 'vitest';
 import { db } from '../config/database.js';
 import { SessionTracker } from '../services/sessionTracker.js';
 import { projectHandler } from '../handlers/project.js';
@@ -332,13 +332,26 @@ describe('Session Management E2E Tests', () => {
   });
 
   test('session status returns error when no active session', async () => {
-    // Ensure no active session
-    (SessionTracker as any).activeSessionId = null;
-    
-    const status = await SessionManagementHandler.getSessionStatus();
-    
-    expect(status.success).toBeFalsy();
-    expect(status.message).toBe('No active session found');
+    // SELF-ISOLATE: getSessionStatus() reads the "current session" via
+    // getActiveSession(undefined, { allowGlobalFallback: true }), which — on a cache
+    // miss for the default connection — falls back to SessionRepo.getLastActive()
+    // (ANY open `ended_at IS NULL` row). In the shared single-fork CI DB, another test
+    // file may legitimately leave an open session row, so relying on global DB/RAM
+    // state makes this assertion order-dependent. The old `(SessionTracker as any)
+    // .activeSessionId = null` was a no-op (the field was removed in the session
+    // refactor). Stub the active-session seam to deterministically present "no active
+    // session" for THIS assertion only, and restore it after.
+    const spy = vi
+      .spyOn(SessionTracker, 'getActiveSession')
+      .mockResolvedValue(null);
+    try {
+      const status = await SessionManagementHandler.getSessionStatus();
+
+      expect(status.success).toBeFalsy();
+      expect(status.message).toBe('No active session found');
+    } finally {
+      spy.mockRestore();
+    }
   });
 
   test('session statistics calculation is accurate', async () => {

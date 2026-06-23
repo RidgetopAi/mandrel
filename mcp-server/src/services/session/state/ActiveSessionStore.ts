@@ -126,6 +126,28 @@ export const ActiveSessionStore = {
   },
 
   /**
+   * SR-1: Evict in-RAM entries whose cached sessionId is in `sessionIds`.
+   *
+   * The idle reaper terminalizes sessions in the DB; without this the RAM map would
+   * still route their connection to the now-DEAD session id, and the next action's
+   * getActiveSession would (pre-fix) return it and write no-ops. The reaper calls
+   * this with the ids it just closed so the connection falls through to re-attach /
+   * mint a fresh session. Returns the number of entries evicted (for logging).
+   */
+  evictBySessionIds(sessionIds: string[]): number {
+    if (!sessionIds || sessionIds.length === 0) return 0;
+    const dead = new Set(sessionIds);
+    let evicted = 0;
+    for (const [connId, entry] of sessionsByConnection.entries()) {
+      if (dead.has(entry.sessionId)) {
+        sessionsByConnection.delete(connId);
+        evicted++;
+      }
+    }
+    return evicted;
+  },
+
+  /**
    * Clear all sessions (for testing/shutdown)
    */
   clearAll(): void {

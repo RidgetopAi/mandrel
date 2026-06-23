@@ -1,19 +1,24 @@
 /**
- * Session Timeout Service
- * TS004-1: Automatic 2-hour timeout for inactive sessions
+ * Session Timeout Service (idle reaper)
+ * SR-1: Automatic 1-hour (configurable) timeout for idle sessions.
  *
- * Runs periodic checks to identify and mark sessions that have been
- * inactive for 2+ hours as 'inactive'. Uses database function for
- * efficient bulk timeout processing.
+ * Runs periodic checks to identify and CLOSE sessions idle past the window
+ * (status active OR interrupted → inactive, ended_at stamped) via the
+ * timeout_inactive_sessions DB function, AND evicts the matching in-RAM entries
+ * so a now-dead session id is never returned again (the stale-but-ended fix,
+ * ctx 81901e32). The window is read from SESSION_CONFIG (configs-not-hardcoded,
+ * default 1h) and passed to the DB function as an interval — the duration is
+ * never hardcoded in SQL.
  */
 
 import { db } from '../config/database.js';
 import { logger } from '../utils/logger.js';
+import { SESSION_CONFIG, idleTimeoutInterval } from '../config/sessionConfig.js';
+import { ActiveSessionStore } from './session/state/ActiveSessionStore.js';
 
 export class SessionTimeoutService {
   private static intervalId: NodeJS.Timeout | null = null;
   private static readonly CHECK_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
-  private static readonly TIMEOUT_THRESHOLD_HOURS = 2;
   private static isRunning = false;
 
   /**
@@ -28,7 +33,7 @@ export class SessionTimeoutService {
 
     logger.info(`🕐 Starting session timeout service...`);
     logger.info(`   Check interval: ${this.CHECK_INTERVAL_MS / 1000}s`);
-    logger.info(`   Timeout threshold: ${this.TIMEOUT_THRESHOLD_HOURS}h`);
+    logger.info(`   Idle timeout: ${SESSION_CONFIG.idleTimeoutSec}s (${idleTimeoutInterval()})`);
 
     // Run initial check immediately
     this.checkTimeouts().catch(error => {
@@ -72,17 +77,22 @@ export class SessionTimeoutService {
     try {
       const startTime = Date.now();
 
-      // Call database function to timeout sessions
+      // Call database function to timeout sessions (sweeps active AND interrupted
+      // past the configured window). Window comes from SESSION_CONFIG, not hardcoded.
       const result = await db.query(
         `SELECT * FROM timeout_inactive_sessions($1::INTERVAL)`,
-        [`${this.TIMEOUT_THRESHOLD_HOURS} hours`]
+        [idleTimeoutInterval()]
       );
 
       const timedOutCount = result.rows.length;
       const duration = Date.now() - startTime;
 
       if (timedOutCount > 0) {
-        logger.info(`⏱️  Timed out ${timedOutCount} inactive session(s) (${duration}ms)`);
+        // SR-1: EVICT the in-RAM entries for every reaped session so a now-dead id
+        // is never routed/returned again (the stale-but-ended fix).
+        const reapedIds = result.rows.map((r: any) => r.session_id);
+        const evicted = ActiveSessionStore.evictBySessionIds(reapedIds);
+        logger.info(`⏱️  Timed out ${timedOutCount} idle session(s); evicted ${evicted} RAM entr(ies) (${duration}ms)`);
         result.rows.forEach((row: any) => {
           logger.info(`   - ${row.session_id.substring(0, 8)}...`);
         });
@@ -107,28 +117,34 @@ export class SessionTimeoutService {
   static getStatus(): {
     isRunning: boolean;
     checkIntervalMs: number;
-    timeoutThresholdHours: number;
+    idleTimeoutSec: number;
     checksPerformed: number;
   } {
     return {
       isRunning: this.isRunning,
       checkIntervalMs: this.CHECK_INTERVAL_MS,
-      timeoutThresholdHours: this.TIMEOUT_THRESHOLD_HOURS,
+      idleTimeoutSec: SESSION_CONFIG.idleTimeoutSec,
       checksPerformed: this.checkCount
     };
   }
 
   /**
-   * Manually trigger a timeout check (for testing/debugging)
+   * Manually trigger a timeout check (for testing/debugging). Same code path as the
+   * periodic check: reaps idle sessions (active + interrupted) past the configured
+   * window AND evicts their in-RAM entries. Returns the count reaped.
    */
   static async manualCheck(): Promise<number> {
     logger.info('🔍 Running manual timeout check...');
     const result = await db.query(
       `SELECT * FROM timeout_inactive_sessions($1::INTERVAL)`,
-      [`${this.TIMEOUT_THRESHOLD_HOURS} hours`]
+      [idleTimeoutInterval()]
     );
 
     const timedOutCount = result.rows.length;
+    if (timedOutCount > 0) {
+      const reapedIds = result.rows.map((r: any) => r.session_id);
+      ActiveSessionStore.evictBySessionIds(reapedIds);
+    }
     logger.info(`   Timed out ${timedOutCount} session(s)`);
 
     return timedOutCount;
@@ -147,7 +163,7 @@ export class SessionTimeoutService {
   }>> {
     const result = await db.query(
       `SELECT * FROM find_timed_out_sessions($1::INTERVAL)`,
-      [`${this.TIMEOUT_THRESHOLD_HOURS} hours`]
+      [idleTimeoutInterval()]
     );
 
     return result.rows;

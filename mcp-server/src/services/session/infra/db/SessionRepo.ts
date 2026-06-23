@@ -19,6 +19,12 @@ export interface CreateSessionParams {
   activeBranch?: string | null;
   workingCommitSha?: string | null;
   metadata?: Record<string, any>;
+  /**
+   * SR-1: the stable per-connection identity (X-Connection-ID). Persisted so a
+   * server restart re-attaches to the open session for this connection instead of
+   * minting a new one. NULL/undefined = a session that never re-attaches (safe).
+   */
+  connectionId?: string | null;
 }
 
 export interface EndSessionParams {
@@ -45,8 +51,9 @@ export const SessionRepo = {
       const sql = `
         INSERT INTO sessions (
           id, project_id, agent_type, started_at, last_activity_at, title, description,
-          session_goal, tags, ai_model, active_branch, working_commit_sha, metadata
-        ) VALUES ($1, $2, $3, $4, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+          session_goal, tags, ai_model, active_branch, working_commit_sha, metadata,
+          connection_id
+        ) VALUES ($1, $2, $3, $4, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
         RETURNING id, started_at
       `;
 
@@ -62,7 +69,8 @@ export const SessionRepo = {
         params.aiModel || null,
         params.activeBranch || null,
         params.workingCommitSha || null,
-        JSON.stringify(params.metadata || {})
+        JSON.stringify(params.metadata || {}),
+        params.connectionId || null
       ]);
 
       return result.rows[0] || null;
@@ -166,6 +174,146 @@ export const SessionRepo = {
         metadata: { sessionId }
       });
       return false;
+    }
+  },
+
+  /**
+   * SR-1: Check whether a session row exists AND is still OPEN (re-attachable).
+   *
+   * Unlike exists() (true even for an ended/terminalized row), this returns true
+   * only for a session that is still alive — status active|interrupted AND ended_at
+   * NULL. This is the source-of-truth check getActiveSession uses to validate an
+   * in-RAM cached id: a cached id whose row has since been reaped/ended is treated
+   * as a MISS so the caller re-attaches or mints a real session, instead of writing
+   * no-ops against a dead session (the "stale-but-ended" bug, ctx 81901e32). Fails
+   * safe: returns false (never throws) on a DB error.
+   */
+  async existsActive(sessionId: string): Promise<boolean> {
+    try {
+      const result = await db.query(
+        `SELECT 1 FROM sessions
+         WHERE id = $1
+           AND ended_at IS NULL
+           AND status::text IN ('active', 'interrupted')`,
+        [sessionId]
+      );
+      return result.rows.length > 0;
+    } catch (error) {
+      logger.error('Failed to check active session existence', error instanceof Error ? error : new Error('Unknown error'), {
+        component: 'SessionRepo',
+        operation: 'existsActive',
+        metadata: { sessionId }
+      });
+      return false;
+    }
+  },
+
+  /**
+   * SR-1: Find the newest OPEN session for a connection id within the re-attach
+   * window — the core of the random-spawning fix.
+   *
+   * "Open" = ended_at NULL AND status active|interrupted (interrupted = a session a
+   * graceful shutdown parked as resumable). "Within window" = last_activity_at (or
+   * started_at if never touched) newer than now - windowSec. The newest such row is
+   * the one to re-attach to instead of minting a new session. A NULL connectionId
+   * NEVER matches (we require a real connection identity to re-attach) — so the
+   * header-less/legacy NULL rows are safely non-re-attachable.
+   *
+   * @returns the session id to re-attach to, or null if none qualifies.
+   */
+  async findReattachable(connectionId: string, windowSec: number): Promise<string | null> {
+    try {
+      if (!connectionId) return null;
+      const result = await db.query(
+        `SELECT id
+         FROM sessions
+         WHERE connection_id = $1
+           AND ended_at IS NULL
+           AND status::text IN ('active', 'interrupted')
+           AND COALESCE(last_activity_at, started_at) > (CURRENT_TIMESTAMP - ($2 || ' seconds')::interval)
+         ORDER BY COALESCE(last_activity_at, started_at) DESC
+         LIMIT 1`,
+        [connectionId, String(windowSec)]
+      );
+      return result.rows[0]?.id || null;
+    } catch (error) {
+      logger.error('Failed to find reattachable session', error instanceof Error ? error : new Error('Unknown error'), {
+        component: 'SessionRepo',
+        operation: 'findReattachable',
+        metadata: { connectionId, windowSec }
+      });
+      return null;
+    }
+  },
+
+  /**
+   * SR-1: Re-activate an open session (status → active, refresh last_activity_at).
+   *
+   * Called when an action re-attaches to a session that was parked 'interrupted' by
+   * a graceful shutdown (or to keep an already-active one fresh). Only flips OPEN
+   * rows (ended_at NULL) so it can never resurrect a terminalized session. Returns
+   * true iff a row was updated.
+   */
+  async reactivate(sessionId: string): Promise<boolean> {
+    try {
+      const result = await db.query(
+        `UPDATE sessions
+         SET status = 'active', last_activity_at = CURRENT_TIMESTAMP
+         WHERE id = $1 AND ended_at IS NULL
+         RETURNING id`,
+        [sessionId]
+      );
+      return result.rows.length > 0;
+    } catch (error) {
+      logger.error('Failed to reactivate session', error instanceof Error ? error : new Error('Unknown error'), {
+        component: 'SessionRepo',
+        operation: 'reactivate',
+        metadata: { sessionId }
+      });
+      return false;
+    }
+  },
+
+  /**
+   * SR-1: Mark sessions 'interrupted' (resumable) — used by graceful shutdown.
+   *
+   * Only OPEN active sessions are affected (ended_at NULL AND status='active'); we
+   * deliberately leave ended_at NULL so the session stays re-attachable within the
+   * window (next action resumes it) and the reaper terminalizes it later if it never
+   * resumes. Returns the connection ids of the rows it interrupted so the caller can
+   * evict the matching in-RAM entries. Idempotent and safe on an empty set.
+   */
+  async markInterrupted(sessionIds?: string[]): Promise<string[]> {
+    try {
+      let result;
+      if (sessionIds && sessionIds.length > 0) {
+        result = await db.query(
+          `UPDATE sessions
+           SET status = 'interrupted'
+           WHERE id = ANY($1::uuid[])
+             AND ended_at IS NULL
+             AND status::text = 'active'
+           RETURNING id, connection_id`,
+          [sessionIds]
+        );
+      } else {
+        // No ids given → mark ALL currently-open active sessions interrupted
+        // (graceful shutdown closes the whole fleet of live connections).
+        result = await db.query(
+          `UPDATE sessions
+           SET status = 'interrupted'
+           WHERE ended_at IS NULL
+             AND status::text = 'active'
+           RETURNING id, connection_id`
+        );
+      }
+      return result.rows.map((r: any) => r.connection_id).filter((c: any): c is string => !!c);
+    } catch (error) {
+      logger.error('Failed to mark sessions interrupted', error instanceof Error ? error : new Error('Unknown error'), {
+        component: 'SessionRepo',
+        operation: 'markInterrupted'
+      });
+      return [];
     }
   },
 

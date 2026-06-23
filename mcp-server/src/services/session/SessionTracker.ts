@@ -106,6 +106,16 @@ export class SessionTracker {
   }
 
   /**
+   * SR-1: Graceful-shutdown close — mark ALL active sessions 'interrupted'
+   * (resumable, ended_at NULL) and evict the in-RAM map. See
+   * SessionLifecycleService.markAllInterrupted.
+   * @returns the count of sessions marked interrupted.
+   */
+  static async markAllInterrupted(): Promise<number> {
+    return SessionLifecycleService.markAllInterrupted();
+  }
+
+  /**
    * Record an operation within a session
    */
   static async recordOperation(sessionId: string, operationType: string): Promise<void> {

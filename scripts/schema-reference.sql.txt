@@ -579,6 +579,7 @@ COLUMN sessions.agent_display_name | character varying(100) | null=YES | default
 COLUMN sessions.agent_type | character varying(50) | null=NO | default=
 COLUMN sessions.ai_model | text | null=YES | default=
 COLUMN sessions.commits_contributed | integer | null=YES | default=0
+COLUMN sessions.connection_id | text | null=YES | default=
 COLUMN sessions.context_summary | text | null=YES | default=
 COLUMN sessions.contexts_created | integer | null=NO | default=0
 COLUMN sessions.decisions_created | integer | null=NO | default=0
@@ -981,7 +982,7 @@ CONSTRAINT session_project_mappings PRIMARY_KEY session_project_mappings_pkey ::
 CONSTRAINT session_project_mappings UNIQUE unique_session_mapping :: UNIQUEsession_id
 CONSTRAINT sessions CHECK reasonable_session_duration :: CHECKended_atISNULLORended_at>=started_at
 CONSTRAINT sessions CHECK reasonable_title_length :: CHECKtitleISNULLORlengthtitle>=1ANDlengthtitle<=255
-CONSTRAINT sessions CHECK sessions_status_check :: CHECKstatus=ANYARRAY'active','inactive','disconnected'
+CONSTRAINT sessions CHECK sessions_status_check :: CHECKstatus=ANYARRAY'active','inactive','disconnected','interrupted'
 CONSTRAINT sessions FOREIGN_KEY sessions_project_id_fkey :: FOREIGNKEYproject_idREFERENCESprojectsidONDELETECASCADE
 CONSTRAINT sessions FOREIGN_KEY sessions_user_id_fkey :: FOREIGNKEYuser_idREFERENCESadmin_usersidONDELETESETNULL
 CONSTRAINT sessions PRIMARY_KEY sessions_pkey :: PRIMARYKEYid
@@ -1302,6 +1303,7 @@ INDEX sessions.idx_sessions_activity_summary :: CREATE INDEX idx_sessions_activi
 INDEX sessions.idx_sessions_agent_display_name :: CREATE INDEX idx_sessions_agent_display_name ON sessions USING btree (agent_display_name) WHERE (agent_display_name IS NOT NULL)
 INDEX sessions.idx_sessions_agent_type :: CREATE INDEX idx_sessions_agent_type ON sessions USING btree (agent_type)
 INDEX sessions.idx_sessions_ai_model :: CREATE INDEX idx_sessions_ai_model ON sessions USING btree (ai_model) WHERE (ai_model IS NOT NULL)
+INDEX sessions.idx_sessions_connection_reattach :: CREATE INDEX idx_sessions_connection_reattach ON sessions USING btree (connection_id, last_activity_at DESC) WHERE ((connection_id IS NOT NULL) AND (ended_at IS NULL) AND ((status)::text = ANY (ARRAY['active'::text, 'interrupted'::text])))
 INDEX sessions.idx_sessions_contexts_created :: CREATE INDEX idx_sessions_contexts_created ON sessions USING btree (contexts_created) WHERE (contexts_created > 0)
 INDEX sessions.idx_sessions_display_id :: CREATE UNIQUE INDEX idx_sessions_display_id ON sessions USING btree (display_id)
 INDEX sessions.idx_sessions_display_id_search :: CREATE INDEX idx_sessions_display_id_search ON sessions USING btree (display_id text_pattern_ops)
@@ -1320,6 +1322,7 @@ INDEX sessions.idx_sessions_title :: CREATE INDEX idx_sessions_title ON sessions
 INDEX sessions.idx_sessions_total_tokens :: CREATE INDEX idx_sessions_total_tokens ON sessions USING btree (total_tokens)
 INDEX sessions.sessions_display_id_key :: CREATE UNIQUE INDEX sessions_display_id_key ON sessions USING btree (display_id)
 INDEX sessions.sessions_pkey :: CREATE UNIQUE INDEX sessions_pkey ON sessions USING btree (id)
+INDEX sessions.uq_sessions_open_per_connection :: CREATE UNIQUE INDEX uq_sessions_open_per_connection ON sessions USING btree (connection_id) WHERE ((connection_id IS NOT NULL) AND (ended_at IS NULL) AND ((status)::text = ANY (ARRAY['active'::text, 'interrupted'::text])))
 INDEX sessions_shadow.idx_sessions_shadow_agent_type :: CREATE INDEX idx_sessions_shadow_agent_type ON sessions_shadow USING btree (agent_type)
 INDEX sessions_shadow.idx_sessions_shadow_project_agent :: CREATE INDEX idx_sessions_shadow_project_agent ON sessions_shadow USING btree (project_id, agent_type)
 INDEX sessions_shadow.idx_sessions_shadow_project_id :: CREATE INDEX idx_sessions_shadow_project_id ON sessions_shadow USING btree (project_id)
