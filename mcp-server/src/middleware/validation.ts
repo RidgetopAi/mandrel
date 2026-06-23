@@ -151,6 +151,24 @@ const mandrelSystemSchemas = {
 // Legacy alias for backward compatibility
 const aidisSystemSchemas = mandrelSystemSchemas;
 
+// Session Lifecycle Schemas (session-rework SR-2, task af51c035)
+// Explicit user-controlled lifecycle. session_start accepts optional title/goal/project
+// stamped onto the session row (session_goal → Session View). session_end/session_status
+// take no params — they operate on THIS connection's current session (resolved from the
+// same X-Connection-ID the route layer threads everywhere). Bounds mirror the existing
+// session metadata limits (SessionManagementHandler.validateSessionParams: goal ≤ 1000).
+const sessionLifecycleSchemas = {
+  start: z.object({
+    title: z.string().min(1).max(255).optional(),
+    goal: z.string().max(1000).optional(),
+    project: z.string().min(1).max(255).optional()
+  }),
+
+  end: z.object({}),
+
+  status: z.object({})
+};
+
 // Context Management Schemas
 const contextSchemas = {
   store: z.object({
@@ -879,7 +897,13 @@ export const validationSchemas = {
   aidis_help: aidisSystemSchemas.help,
   aidis_explain: aidisSystemSchemas.explain,
   aidis_examples: aidisSystemSchemas.explain,
-  
+
+  // Session Lifecycle (session-rework SR-2, task af51c035) — explicit user-controlled
+  // start/end/status; connection-scoped via the route layer's X-Connection-ID.
+  session_start: sessionLifecycleSchemas.start,
+  session_end: sessionLifecycleSchemas.end,
+  session_status: sessionLifecycleSchemas.status,
+
   // Context Management
   context_store: contextSchemas.store,
   context_search: contextSchemas.search,

@@ -19,6 +19,7 @@ import { searchRoutes } from './search.routes.js';
 import { linksRoutes } from './links.routes.js';
 import { recallRoutes } from './recall.routes.js';
 import { threadRoutes } from './thread.routes.js';
+import { sessionRoutes } from './session.routes.js';
 
 /**
  * Execution context passed through route handlers
@@ -245,9 +246,21 @@ async function routeExecutorInner(toolName: string, args: any, context?: RouteCo
       case 'task_restore':
         return await tasksRoutes.handleRestore(args, context);
 
-      // Session Management (5 tools) - DELETED (2025-10-24)
-      // Sessions auto-manage via SessionTracker service
-      // REST API endpoints at /api/v2/sessions/* handle UI analytics
+      // Session Lifecycle (session-rework SR-2, task af51c035) — explicit user-controlled
+      // start/end/status. PASSIVE w.r.t. the action gate: session_start runs its OWN
+      // end-then-open lifecycle, so it must NOT be in ACTION_TOOLS (that would lazily
+      // spawn a session BEFORE the handler, double-creating). All three resolve "the
+      // current session" from context.connectionId (the SR-1 per-connection key).
+      //
+      // (The old 5 auto-management session MCP tools were deleted 2025-10-24; analytics
+      //  remain on the REST API at /api/v2/sessions/*. This is the deliberate
+      //  re-introduction of the user-facing lifecycle per Brian's current direction.)
+      case 'session_start':
+        return await sessionRoutes.handleStart(args, context);
+      case 'session_end':
+        return await sessionRoutes.handleEnd(args, context);
+      case 'session_status':
+        return await sessionRoutes.handleStatus(args, context);
 
       // Smart Search & AI (3 tools) - pass context for session isolation
       case 'smart_search':

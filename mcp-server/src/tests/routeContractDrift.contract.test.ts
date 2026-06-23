@@ -90,6 +90,10 @@ const TOOL_TO_HANDLER: Record<string, { file: string; method: string }> = {
   // (per-connection in-memory state read by connectionId), like the system tools — so
   // they're excluded here exactly as the param-less system tools are.
   thread_set:           { file: 'thread.routes.ts',   method: 'handleSet' },
+  // Session lifecycle (SR-2, task af51c035). session_start forwards title/goal/project;
+  // session_end/session_status take NO params (operate on the connection's current
+  // session), so they're excluded here exactly like the param-less system/thread tools.
+  session_start:        { file: 'session.routes.ts',  method: 'handleStart' },
 };
 
 /**

@@ -135,6 +135,29 @@ export const AIDIS_TOOL_DEFINITIONS: ToolDefinition[] = [
               toolName: 'Name of the tool to get examples for (e.g., "context_search", "project_create")'
             }),
           },
+          // Session Lifecycle (session-rework SR-2, task af51c035) — explicit
+          // user-controlled start/stop of the connection's work session. Re-introduces the
+          // lifecycle the old "Phase 6" removed; thin orchestration over the SR-1
+          // per-connection model (one active session per connection).
+          {
+            name: 'session_start',
+            description: 'Start a NEW work session for this connection. Finalizes the connection\'s current active session first (full productivity/analytics flush), then opens a fresh one. Optional title, goal, and project are stamped onto the session (the goal populates the Session View "Session Goal" field). Enforces one active session per connection.',
+            inputSchema: buildInputSchema('session_start', {
+              title: 'Optional short title for the new session',
+              goal: 'Optional session goal (≤1000 chars) — populates the Session View "Session Goal" field',
+              project: 'Optional project name (or id) to attach the session to; defaults to the connection\'s current project'
+            }),
+          },
+          {
+            name: 'session_end',
+            description: 'End (finalize) this connection\'s current active session — runs the full close path (file sync, productivity, token/activity flush, analytics). Safe no-op if no session is active. The next content-producing action auto-starts a fresh session.',
+            inputSchema: buildInputSchema('session_end'),
+          },
+          {
+            name: 'session_status',
+            description: 'Show this connection\'s current active session (read-only): id, title, goal, project, counts, and duration. Returns a clean "no active session" state if none exists yet.',
+            inputSchema: buildInputSchema('session_status'),
+          },
           {
             // SCHEMA-DRIFT CLASS FIX (tool-native linking, task 49ad7b4d): context_store
             // previously HARD-CODED its inputSchema to only content/type/tags, hiding
@@ -711,6 +734,7 @@ attachOutputSchemas(AIDIS_TOOL_DEFINITIONS);
 export const CATEGORY_ORDER = [
   'System Health',
   'Navigation',
+  'Session Management',
   'Context Management',
   'Project Management',
   'Technical Decisions',
@@ -724,6 +748,9 @@ export type ToolCategory = (typeof CATEGORY_ORDER)[number];
 export const TOOL_CATEGORIES: Record<ToolCategory, string[]> = {
   'System Health': ['mandrel_ping', 'mandrel_status'],
   'Navigation': ['mandrel_help', 'mandrel_explain', 'mandrel_examples'],
+  // Session Lifecycle (session-rework SR-2, task af51c035) — explicit user-controlled
+  // start/end/status of the per-connection work session.
+  'Session Management': ['session_start', 'session_end', 'session_status'],
   'Context Management': [
     'context_store',
     'context_search',

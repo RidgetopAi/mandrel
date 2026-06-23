@@ -322,6 +322,13 @@ export const outputZodSchemas = {
   mandrel_explain: statusShape,
   mandrel_examples: statusShape,
 
+  // Session Lifecycle (session-rework SR-2, task af51c035) — status payloads carrying
+  // ok + an action/active flag + the session summary record (free-form; statusShape's
+  // passthrough keeps the rich session object without re-typing every field here).
+  session_start: statusShape,
+  session_end: statusShape,
+  session_status: statusShape,
+
   // Context.
   context_store: mutateShape('context', contextRecord),
   context_search: listShape(contextRecord),

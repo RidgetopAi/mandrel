@@ -431,6 +431,12 @@ export class SessionManagementHandler {
           project_id: session.project_id,
           project_name: session.project_name || 'No project assigned',
           context_summary: session.context_summary,
+          // SR-2 (task af51c035): the query already selects session_goal + tags but the
+          // mapped object dropped them, so session_status / the Session View "Session
+          // Goal" field never saw the goal a user set via session_start. Surface them
+          // (no extra query — these columns are already fetched above).
+          session_goal: session.session_goal,
+          tags: session.tags,
           duration_minutes: Math.round(duration / 60000),
           contexts_created: parseInt(session.contexts_count),
           decisions_created: parseInt(session.decisions_count),
