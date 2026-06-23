@@ -305,12 +305,16 @@ const SessionDetail: React.FC = () => {
           </Col>
           <Col xs={24} sm={12} md={6}>
             <Card size="small">
+              {/* Activity Score: a work/effort score that GROWS with the amount of
+                  work done (contexts, decisions, tasks completed, time, tokens).
+                  Deliberately NO "/100" — it has no ceiling, so a busier session
+                  simply scores higher. Higher is always better, so it's always shown
+                  in the positive (green) tone rather than the old <70 "warning" gate. */}
               <Statistic
-                title="Productivity Score"
+                title="Activity Score"
                 value={session.productivity_score || 0}
-                suffix="/100"
                 prefix={<LineChartOutlined />}
-                valueStyle={{ color: (session.productivity_score || 0) >= 70 ? '#52c41a' : '#faad14' }}
+                valueStyle={{ color: '#52c41a' }}
               />
             </Card>
           </Col>

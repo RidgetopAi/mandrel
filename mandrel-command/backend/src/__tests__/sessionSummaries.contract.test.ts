@@ -51,15 +51,46 @@ describe('getSessionSummaries against real migrated schema (contract)', () => {
           [projectId, `sum-test-${projectId.slice(0, 8)}`, 'session summaries contract test project']
         );
 
-        // A real session row in the (single, consolidated) sessions table, with
-        // the denormalized counters the summary query reads.
+        // A real session row in the (single, consolidated) sessions table.
+        // NOTE: getSessionSummaries now counts LIVE (off session_id), NOT the
+        // denormalized counter columns (which are stale/0 on prod — decisions_created
+        // was 0 on every prod row, which under-scored the list vs the detail view).
+        // So we insert the denormalized counters DELIBERATELY WRONG (all 0) and then
+        // insert the REAL linked rows below; the summary must report the live counts,
+        // proving it no longer trusts the stale columns.
         await client.query(
           `INSERT INTO sessions
              (id, project_id, agent_type, started_at, ended_at,
               total_tokens, contexts_created, decisions_created, tasks_created)
            VALUES ($1, $2, 'claude-code', NOW() - INTERVAL '30 minutes', NOW(),
-                   1234, 3, 2, 1)`,
+                   1234, 0, 0, 0)`,
           [sessionId, projectId]
+        );
+
+        // 3 real contexts, 2 real decisions, 1 real task — all linked by session_id.
+        for (let i = 0; i < 3; i++) {
+          await client.query(
+            `INSERT INTO contexts (id, project_id, session_id, context_type, content, created_at)
+             VALUES ($1, $2, $3, 'code', 'summaries contract context', NOW())`,
+            [uuidv4(), projectId, sessionId]
+          );
+        }
+        for (let i = 0; i < 2; i++) {
+          await client.query(
+            `INSERT INTO technical_decisions
+               (id, project_id, session_id, decision_type, title, description, rationale,
+                impact_level, status, decision_date)
+             VALUES ($1, $2, $3, 'architecture', 'summaries contract decision',
+                     'desc', 'rationale', 'medium', 'active', NOW())`,
+            [uuidv4(), projectId, sessionId]
+          );
+        }
+        await client.query(
+          `INSERT INTO tasks
+             (id, project_id, session_id, title, type, status, priority, created_at, completed_at)
+           VALUES ($1, $2, $3, 'summaries contract task', 'feature', 'completed', 'medium',
+                   NOW() - INTERVAL '10 minutes', NOW())`,
+          [uuidv4(), projectId, sessionId]
         );
       } finally {
         client.release();
@@ -73,6 +104,9 @@ describe('getSessionSummaries against real migrated schema (contract)', () => {
     if (dbAvailable) {
       const client = await pool.connect();
       try {
+        await client.query(`DELETE FROM contexts WHERE session_id = $1`, [sessionId]);
+        await client.query(`DELETE FROM technical_decisions WHERE session_id = $1`, [sessionId]);
+        await client.query(`DELETE FROM tasks WHERE session_id = $1`, [sessionId]);
         await client.query(`DELETE FROM sessions WHERE id = $1`, [sessionId]);
         await client.query(`DELETE FROM projects WHERE id = $1`, [projectId]);
       } catch {
@@ -97,11 +131,13 @@ describe('getSessionSummaries against real migrated schema (contract)', () => {
     expect(Array.isArray(summaries)).toBe(true);
     const ours = summaries.find((s) => s.id === sessionId);
     expect(ours).toBeDefined();
-    // Counters come straight off the sessions row.
+    // Tokens come straight off the sessions row.
     expect(ours!.total_tokens).toBe(1234);
+    // Counts are now LIVE (off session_id), NOT the denormalized columns (which we
+    // set to 0 on the row above). This proves the list path counts real activity.
     expect(ours!.contexts_created).toBe(3);
-    expect(ours!.decisions_created).toBe(2);
-    expect(ours!.tasks_created).toBe(1);
+    expect(ours!.decisions_created).toBe(2); // live decisions — the prod bug was 0 here
+    expect(ours!.tasks_completed).toBe(1);   // live completed task via session_id
     expect(ours!.session_type).toBe('claude-code');
   });
 

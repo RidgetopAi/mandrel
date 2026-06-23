@@ -1,6 +1,7 @@
 import { db as pool } from '../database/connection';
 import { GitService } from './gitService';
 import { logger } from '../config/logger';
+import { calculateActivityScore } from './sessionScore';
 
 export interface SessionDetail {
   id: string;
@@ -253,14 +254,19 @@ export class SessionDetailService {
         ? commitsResult.rows.reduce((sum, commit) => sum + commit.confidence_score, 0) / commitsResult.rows.length
         : 0;
       
-      // Calculate productivity score
-      const productivityScore = calculateProductivityScore(
-        session.duration_minutes,
-        contextsResult.rows.length,
-        decisionsResult.rows.length,
-        tasksResult.rows.filter(t => t.status === 'completed').length,
-        session.total_tokens || 0
-      );
+      // Activity (work) score — computed from LIVE counts via the SHARED calculator
+      // so the detail view and the list view (getSessionSummaries) return the SAME
+      // number for the same session. (Previously the list read denormalized counters
+      // — decisions_created = 0 on every prod row — and under-scored vs this path.)
+      const activityScore = calculateActivityScore({
+        contexts: contextsResult.rows.length,
+        decisions: decisionsResult.rows.length,
+        tasksCompleted: tasksResult.rows.filter(t => t.status === 'completed').length,
+        // pg returns NUMERIC/BIGINT as strings — parse so the score gets real numbers
+        // (the calculator also coerces defensively, but parse at the boundary too).
+        durationMinutes: parseFloat(session.duration_minutes) || 0,
+        totalTokens: parseInt(session.total_tokens, 10) || 0,
+      });
       
       return {
         id: session.id,
@@ -302,7 +308,11 @@ export class SessionDetailService {
         git_correlation_confidence: Math.round(avgConfidence * 100) / 100,
 
         context_summary: session.context_summary,
-        productivity_score: session.productivity_score || productivityScore,
+        // Always use the freshly-computed live score (NOT the stored
+        // session.productivity_score column) so detail == list deterministically.
+        // The stored column is a denormalized snapshot that can be stale/0 and was
+        // the source of the divergence.
+        productivity_score: activityScore,
 
         // Phase 1 enhancement fields from sessions table
         files_modified_count: session.files_modified_count || 0,
@@ -337,74 +347,76 @@ export class SessionDetailService {
 
       // NOTE: there is exactly ONE sessions table in the schema (`sessions`).
       // The legacy separate `user_sessions` (web sessions) table was consolidated
-      // into `sessions` and no longer exists in any tenant DB — querying it threw
-      // 'relation "user_sessions" does not exist' on every call. The denormalized
-      // counters (contexts_created/decisions_created/tasks_created) live on the
-      // `sessions` row; we COALESCE to the legacy `tokens_used` for old rows where
-      // `total_tokens` was not yet populated.
+      // into `sessions` and no longer exists in any tenant DB.
+      //
+      // The Activity Score is computed from LIVE counts (counted off the session_id
+      // linkage), NOT the denormalized counter columns — `decisions_created` is 0 on
+      // every prod row, so the old SQL formula that read it under-scored every session
+      // vs the detail view. We surface the same live signals the detail path uses
+      // (contexts/decisions/tasks_completed via session_id) and feed them to the
+      // SHARED calculateActivityScore() in TS so list == detail. The scoring math no
+      // longer lives inline in SQL (configs-not-hardcoded: weights are in config).
       const query = `
-        WITH session_activity AS (
-          SELECT
-            s.id,
-            s.project_id,
-            p.name as project_name,
-            s.started_at,
-            s.ended_at,
-            COALESCE(s.total_tokens, s.tokens_used, 0) as total_tokens,
-            COALESCE(s.contexts_created, 0) as contexts_created,
-            COALESCE(s.decisions_created, 0) as decisions_created,
-            COALESCE(s.tasks_created, 0) as tasks_created,
-            EXTRACT(EPOCH FROM (COALESCE(s.ended_at, CURRENT_TIMESTAMP) - s.started_at)) / 60 as duration_minutes,
-            COALESCE(s.agent_type, 'web') as session_type,
-            (
-              SELECT COUNT(*)
-              FROM tasks t
-              WHERE t.project_id = s.project_id
-                AND t.status = 'completed'
-                AND t.updated_at BETWEEN s.started_at AND COALESCE(s.ended_at, CURRENT_TIMESTAMP)
-            ) as tasks_completed
-          FROM sessions s
-          LEFT JOIN projects p ON s.project_id = p.id
-          ${whereClause}
-        )
         SELECT
-          id,
-          project_name,
-          started_at,
-          duration_minutes,
-          session_type,
-          COALESCE(total_tokens, 0) as total_tokens,
-          COALESCE(contexts_created, 0) as contexts_created,
-          COALESCE(decisions_created, 0) as decisions_created,
-          COALESCE(tasks_created, 0) as tasks_created,
-          COALESCE(tasks_completed, 0) as tasks_completed,
-          -- Calculate productivity score
-          (COALESCE(contexts_created, 0) * 2.0 + 
-           COALESCE(decisions_created, 0) * 3.0 +
-           COALESCE(tasks_completed, 0) * 4.0 +
-           LEAST(duration_minutes / 60, 8) * 1.5 +
-           LEAST(COALESCE(total_tokens, 0) / 1000.0, 10) * 0.5) as productivity_score
-        FROM session_activity
-        ORDER BY started_at DESC
+          s.id,
+          p.name as project_name,
+          s.started_at,
+          s.ended_at,
+          COALESCE(s.total_tokens, s.tokens_used, 0) as total_tokens,
+          COALESCE(s.tasks_created, 0) as tasks_created,
+          EXTRACT(EPOCH FROM (COALESCE(s.ended_at, CURRENT_TIMESTAMP) - s.started_at)) / 60 as duration_minutes,
+          COALESCE(s.agent_type, 'web') as session_type,
+          (
+            SELECT COUNT(*) FROM contexts c
+            WHERE c.session_id = s.id
+          ) as contexts_created,
+          (
+            SELECT COUNT(*) FROM technical_decisions d
+            WHERE d.session_id = s.id
+          ) as decisions_created,
+          (
+            SELECT COUNT(*) FROM tasks t
+            WHERE t.session_id = s.id
+              AND t.status = 'completed'
+          ) as tasks_completed
+        FROM sessions s
+        LEFT JOIN projects p ON s.project_id = p.id
+        ${whereClause}
+        ORDER BY s.started_at DESC
         LIMIT $1 OFFSET $2
       `;
-      
+
       const result = await pool.query(query, params);
-      
-      return result.rows.map(row => ({
-        id: row.id,
-        project_name: row.project_name,
-        started_at: row.started_at,
-        duration_minutes: Math.round(parseFloat(row.duration_minutes) || 0),
-        session_type: row.session_type,
-        total_tokens: parseInt(row.total_tokens) || 0,
-        contexts_created: parseInt(row.contexts_created) || 0,
-        decisions_created: parseInt(row.decisions_created) || 0,
-        tasks_created: parseInt(row.tasks_created) || 0,
-        tasks_completed: parseInt(row.tasks_completed) || 0,
-        productivity_score: Math.round(parseFloat(row.productivity_score) * 10) / 10,
-        commits_contributed: 0 // Will be populated when git correlation is implemented
-      }));
+
+      return result.rows.map(row => {
+        const contexts = parseInt(row.contexts_created) || 0;
+        const decisions = parseInt(row.decisions_created) || 0;
+        const tasksCompleted = parseInt(row.tasks_completed) || 0;
+        const durationMinutes = parseFloat(row.duration_minutes) || 0;
+        const totalTokens = parseInt(row.total_tokens) || 0;
+
+        return {
+          id: row.id,
+          project_name: row.project_name,
+          started_at: row.started_at,
+          duration_minutes: Math.round(durationMinutes),
+          session_type: row.session_type,
+          total_tokens: totalTokens,
+          contexts_created: contexts,
+          decisions_created: decisions,
+          tasks_created: parseInt(row.tasks_created) || 0,
+          tasks_completed: tasksCompleted,
+          // Shared calculator on live counts — identical to getSessionDetail.
+          productivity_score: calculateActivityScore({
+            contexts,
+            decisions,
+            tasksCompleted,
+            durationMinutes,
+            totalTokens,
+          }),
+          commits_contributed: 0 // Will be populated when git correlation is implemented
+        };
+      });
     } catch (error) {
       logger.error('Get session summaries error', { error });
       throw new Error('Failed to get session summaries');
@@ -556,30 +568,8 @@ export class SessionDetailService {
 }
 
 // Helper functions
-function calculateProductivityScore(
-  durationMinutes: number,
-  contextsCount: number,
-  decisionsCount: number,
-  tasksCompleted: number,
-  tokensUsed: number
-): number {
-  // Weighted scoring:
-  // - Contexts: 2 points each
-  // - Decisions: 3 points each
-  // - Tasks completed: 4 points each
-  // - Duration: 1.5 points per hour (max 8 hours)
-  // - Tokens: 0.5 points per 1000 tokens (max 10k)
-  
-  const contextScore = contextsCount * 2.0;
-  const decisionScore = decisionsCount * 3.0;
-  const taskScore = tasksCompleted * 4.0;
-  const durationScore = Math.min(durationMinutes / 60, 8) * 1.5;
-  const tokenScore = Math.min(tokensUsed / 1000, 10) * 0.5;
-  
-  const totalScore = contextScore + decisionScore + taskScore + durationScore + tokenScore;
-  
-  return Math.round(totalScore * 10) / 10;
-}
+// (The activity/work score now lives in the shared calculateActivityScore() in
+//  ./sessionScore so the list + detail surfaces compute it identically.)
 
 function mapContext(row: any): SessionContext {
   return {

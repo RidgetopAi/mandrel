@@ -238,7 +238,7 @@ const SessionDetail: React.FC<SessionDetailProps> = ({ sessionId }) => {
                 {formatDuration(session.duration_minutes)}
               </Tag>
               <Tag icon={<TrophyOutlined />} color="green">
-                Score: {session.productivity_score}
+                Activity Score: {session.productivity_score}
               </Tag>
             </Space>
           </Col>

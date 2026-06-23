@@ -51,10 +51,23 @@ export class SessionAnalyticsService {
     try {
       const whereClause = projectId ? 'WHERE s.project_id = $1' : '';
       const params = projectId ? [projectId] : [];
-      
+
+      // Context counting rules (both must hold):
+      //  1) GLOBAL total (no project filter): count EVERY context linked to a session
+      //     by session_id — the work-unit linkage. We must NOT also force
+      //     c.project_id = s.project_id, because pre-SR-1 long-running sessions did
+      //     mid-session project_switches; that filter dropped ~1700 legitimately-
+      //     session-linked contexts and made Total Contexts under-report (3858 vs 5561
+      //     on prod).
+      //  2) PROJECT-FILTERED total: a context only counts for project P if the
+      //     CONTEXT itself belongs to P (c.project_id = $1). This preserves the
+      //     cross-project isolation contract (a mid-switch session bound to project A
+      //     must not attribute its project-B contexts to A). When unfiltered, the JOIN
+      //     condition collapses to session_id only.
+      const contextProjectJoin = projectId ? 'AND c.project_id = $1' : '';
       const query = `
         WITH session_stats AS (
-          SELECT 
+          SELECT
             s.id,
             s.project_id,
             s.started_at,
@@ -63,7 +76,7 @@ export class SessionAnalyticsService {
             EXTRACT(EPOCH FROM (COALESCE(s.ended_at, CURRENT_TIMESTAMP) - s.started_at)) / 60 as duration_minutes,
             COUNT(c.id) as context_count
           FROM sessions s
-          LEFT JOIN contexts c ON s.id = c.session_id AND c.project_id = s.project_id
+          LEFT JOIN contexts c ON s.id = c.session_id ${contextProjectJoin}
           ${whereClause}
           GROUP BY s.id, s.project_id, s.started_at, s.ended_at, tokens_used
         )
@@ -109,7 +122,19 @@ export class SessionAnalyticsService {
     try {
       const whereClause = projectId ? 'AND s.project_id = $1::uuid' : '';
       const params = projectId ? [projectId] : [];
-      
+
+      // Per-session context counting rules (mirror getSessionAnalytics):
+      //  - count contexts via session_id (work-unit linkage), NOT a project-equality
+      //    JOIN, so mid-session project_switch contexts are not dropped;
+      //  - when project-filtered, only count contexts whose own project = the filter
+      //    (isolation contract).
+      // Critically, the per-session context count is computed in a SCALAR SUBQUERY,
+      // NOT a JOIN. The previous JOIN fanned each session row out once per context,
+      // which multiplied SUM(total_tokens)/SUM(duration) by the context count and
+      // badly INFLATED the daily token + duration trend (e.g. 26.1M vs the correct
+      // 3.53M tokens on 30 days of prod data). The subquery keeps session-level sums
+      // counted exactly once.
+      const contextProjectFilter = projectId ? 'AND c.project_id = $1::uuid' : '';
       const query = `
       WITH date_series AS (
       SELECT generate_series(
@@ -124,10 +149,12 @@ export class SessionAnalyticsService {
       COUNT(*) as session_count,
       SUM(EXTRACT(EPOCH FROM (COALESCE(s.ended_at, CURRENT_TIMESTAMP) - s.started_at)) / 60) as total_duration_minutes,
       SUM(COALESCE(s.total_tokens, 0)) as total_tokens_used,
-      COUNT(c.id) as total_contexts,
+      SUM(
+        (SELECT COUNT(*) FROM contexts c
+          WHERE c.session_id = s.id ${contextProjectFilter})
+      ) as total_contexts,
       COALESCE(SUM(s.tasks_created), 0) as total_tasks_created
       FROM sessions s
-      LEFT JOIN contexts c ON s.id = c.session_id AND c.project_id = s.project_id
       WHERE s.started_at >= CURRENT_DATE - INTERVAL '${days} days'
       ${whereClause}
           GROUP BY DATE(s.started_at)

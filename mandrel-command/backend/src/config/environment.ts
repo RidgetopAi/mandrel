@@ -112,6 +112,27 @@ export const config = {
     name: 'Mandrel Command Backend',
     version: process.env.npm_package_version || '1.0.0',
     description: 'REST API server for Mandrel database administration',
+  },
+
+  // Activity (work) score weights — the single, named home for the scoring formula
+  // so the numbers are NOT hardcoded inline in the SQL/service logic (configs-not-
+  // hardcoded). This is a "work/activity" score that GROWS with effort: it reflects
+  // how much work a session did (contexts written, decisions recorded, tasks
+  // completed, time spent, tokens used). It is intentionally UNbounded on the high
+  // end — there is no /100 ceiling; a busier session simply scores higher.
+  //
+  // Substance is unchanged from the original formula (do not invent a new one):
+  //   contexts*2 + decisions*3 + tasksCompleted*4 + min(hours,8)*1.5 + min(tokens/1k,10)*0.5
+  // Overridable via env for tuning without a code change; defaults preserve the
+  // historical formula exactly.
+  activityScore: {
+    perContext: parseFloat(process.env.SCORE_PER_CONTEXT || '2.0'),
+    perDecision: parseFloat(process.env.SCORE_PER_DECISION || '3.0'),
+    perTaskCompleted: parseFloat(process.env.SCORE_PER_TASK_COMPLETED || '4.0'),
+    perHour: parseFloat(process.env.SCORE_PER_HOUR || '1.5'),
+    maxHours: parseFloat(process.env.SCORE_MAX_HOURS || '8'),
+    perThousandTokens: parseFloat(process.env.SCORE_PER_1K_TOKENS || '0.5'),
+    maxThousandTokens: parseFloat(process.env.SCORE_MAX_1K_TOKENS || '10'),
   }
 };
 

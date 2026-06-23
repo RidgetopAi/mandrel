@@ -293,7 +293,7 @@ const TaskAnalytics: React.FC<TaskAnalyticsProps> = ({
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '12px' }}>
               <span><strong>Last Updated:</strong> {dayjs().format('HH:mm:ss')}</span>
               {sessionAnalytics && (
-                <span><strong>Productivity:</strong> {fmt(sessionAnalytics?.productivity_score)}/100</span>
+                <span><strong>Activity Score:</strong> {fmt(sessionAnalytics?.productivity_score)}</span>
               )}
             </div>
           </Card>
