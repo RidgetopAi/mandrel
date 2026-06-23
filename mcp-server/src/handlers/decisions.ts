@@ -25,6 +25,7 @@ import { projectHandler } from './project.js';
 import { logDecisionEvent, logEvent } from '../middleware/eventLogger.js';
 import { logger } from '../utils/logger.js';
 import { metadataMergeSql } from '../utils/metadataMerge.js';
+import { buildSearchMatchPredicate, capSearchLimit } from '../utils/idResolver.js';
 
 /**
  * Build the hybrid embedding text for a decision, mirroring how context_store
@@ -609,6 +610,39 @@ class DecisionsHandler {
         }
       }
 
+      // ID-PREFIX + PARTIAL-TAG MATCH (task f29bbd44 — the part-2 class-fix).
+      // The Command UI Decisions box (and the MCP tool) sends typed text as `query`. A
+      // bare id (full UUID or hex prefix) or a partial tag (`ref:`) used to match NOTHING
+      // here — search only looked at prose, and tag matching was the EXACT `tags && [..]`
+      // (request.tags) path, never the free-text query. buildSearchMatchPredicate
+      // (centralized in utils/idResolver — REUSES the resolver's normalizeShortId + the
+      // SAME parameterized `id::text LIKE prefix||'%'` contract; NO second id-resolver)
+      // returns the ADDITIVE OR-predicate, or null for an empty / `*` query so the
+      // non-query path is byte-for-byte unchanged (no regression). Built at the LIVE
+      // paramIndex so its $n placeholders + appended params line up exactly. The same
+      // fragment is woven into the score (exact id/tag -> rank #1) AND the signal gate
+      // (admit a bare-id query that has zero prose overlap). SECURITY: every value is a
+      // BOUND parameter — nothing is concatenated into SQL.
+      const idTagMatch = isSemantic
+        ? buildSearchMatchPredicate(request.query, paramIndex, { idColumn: 'id', tagsColumn: 'tags' })
+        : null;
+      if (idTagMatch) {
+        params.push(...idTagMatch.params);
+        paramIndex = idTagMatch.nextParamIndex;
+        // Boost an exact id/tag hit ABOVE any semantic/text score (both live in [0,1]) so a
+        // bare-id query surfaces the EXACT decision as result #1, without disturbing the
+        // ranking of ordinary text queries. Folded INTO the existing search_score column so
+        // the OUTPUT SHAPE (search_score -> similarity) stays unchanged.
+        if (scoreSelect) {
+          scoreSelect = scoreSelect.replace(
+            / AS search_score$/,
+            ` + (CASE WHEN ${idTagMatch.sql} THEN 1 ELSE 0 END) AS search_score`,
+          );
+        } else {
+          scoreSelect = `, (CASE WHEN ${idTagMatch.sql} THEN 1 ELSE 0 END) AS search_score`;
+        }
+      }
+
       let sql = `
         SELECT *${scoreSelect} FROM technical_decisions
         WHERE project_id = $1
@@ -664,6 +698,13 @@ class DecisionsHandler {
         // Keep ONLY rows with a real signal: an embedding (semantic candidate) OR a
         // text/trigram overlap. Mirrors the old ILIKE gate but additionally admits
         // semantic-only matches that share no literal substring.
+        //
+        // ID/TAG ADMIT (task f29bbd44): OR in the id-prefix + partial-tag match so a
+        // bare-id or partial-tag query — which need NOT share any prose overlap, and may
+        // hit an un-embedded legacy row — is admitted by the gate. The match fragment was
+        // already bound above (idTagMatch.params pushed), so we only reference its $n here;
+        // no new params for it on this line.
+        const idTagAdmit = idTagMatch ? `\n          OR ${idTagMatch.sql}` : '';
         sql += ` AND (
           embedding IS NOT NULL OR
           title ILIKE $${paramIndex} OR
@@ -672,7 +713,7 @@ class DecisionsHandler {
           problem_statement ILIKE $${paramIndex} OR
           word_similarity($${queryParamIdx},
             coalesce(title,'') || ' ' || coalesce(description,'') || ' ' ||
-            coalesce(rationale,'') || ' ' || coalesce(problem_statement,'')) > 0.1
+            coalesce(rationale,'') || ' ' || coalesce(problem_statement,'')) > 0.1${idTagAdmit}
         )`;
         params.push(`%${request.query!.trim()}%`);
         paramIndex++;
@@ -696,7 +737,11 @@ class DecisionsHandler {
       } else {
         sql += ` ORDER BY decision_date DESC LIMIT $${paramIndex}`;
       }
-      params.push(request.limit || 20);
+      // AMBIGUITY CAP (task f29bbd44): an ambiguous (non-full-UUID) id-prefix query can
+      // admit many rows via the id-prefix OR-clause; cap its page at SEARCH_ID_MAX_CANDIDATES
+      // (mirrors the resolver's LIMIT 25 guard) so an absurdly short prefix can't pull
+      // unbounded rows. A full-UUID or non-id query keeps the caller's requested limit.
+      params.push(capSearchLimit(request.query, request.limit || 20));
 
       const result = await db.query(sql, params);
       const decisions = result.rows.map(row => {

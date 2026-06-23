@@ -29,6 +29,10 @@
 
 import type { Pool } from 'pg';
 import { db } from '../config/database.js';
+import {
+  SEARCH_ID_PREFIX_MIN_LENGTH,
+  SEARCH_ID_MAX_CANDIDATES,
+} from '../config/searchConfig.js';
 
 /**
  * Minimum length of a short id we will resolve. A UUID's leading hex is highly
@@ -64,8 +68,15 @@ export function isUuidOrShortId(value: string): boolean {
   return hexOnly.length >= MIN_SHORT_ID_LENGTH && /^[0-9a-f]+$/i.test(hexOnly);
 }
 
-/** Normalize a short id for the prefix match: lower-case, strip hyphens. */
-function normalizeShortId(value: string): string {
+/**
+ * Normalize a short id for the prefix match: lower-case, strip hyphens.
+ *
+ * EXPORTED (task f29bbd44) so the SEARCH id-prefix predicate reuses the SAME
+ * normalization the resolver uses (no second, drifting copy — lesson 011). A user
+ * pasting a dashed partial (`0f3906cd-db79`) and a bare hex prefix (`0f3906cddb79`)
+ * must normalize identically on BOTH the resolve path and the search path.
+ */
+export function normalizeShortId(value: string): string {
   return value.replace(/-/g, '').toLowerCase();
 }
 
@@ -242,4 +253,132 @@ export function idErrorResponse(
     };
   }
   return null;
+}
+
+/**
+ * SEARCH id-prefix + partial-tag matching (task f29bbd44 — the part-2 class-fix).
+ *
+ * THE CLASS THIS FIXES: a search box (the Command UI Decisions view → decision_search,
+ * and the MCP tool itself) sends the typed text as the free-text `query`. Before this,
+ * a query that is a bare id (full UUID or hex prefix) matched nothing — search only
+ * looked at prose — and a partial tag like `ref:` missed because tag filtering used an
+ * EXACT `tags && [..]` / `= ANY` match. This helper builds the additive predicate that
+ * makes a bare-id query reach the EXACT record and a partial tag match by substring.
+ *
+ * It is the SEARCH sibling of resolveEntityId: same id contract (full UUID short-circuit;
+ * else a PARAMETERIZED prefix match against the dash-stripped `id::text`), same
+ * normalization (normalizeShortId, reused — not re-implemented), same floor/cap config
+ * (config/searchConfig). The difference: search ADMITS many matches and returns a result
+ * set; the resolver demands exactly one. There is no second id-resolver here — this reuses
+ * the in-package primitives (lesson 011: centralize, don't drift N copies).
+ *
+ * SECURITY: every value is a BOUND parameter. The id prefix and the tag substring are
+ * pushed as params ($n); nothing is concatenated into SQL. LIKE metacharacters can't be
+ * injected via the id path (the prefix is normalized to hex only); the tag substring is a
+ * plain ILIKE pattern with its own bound value.
+ */
+
+/** A hex id-prefix the user typed: hex + optional dashes (a pasted partial UUID). */
+const HEX_PREFIX_RE = /^[0-9a-f-]+$/i;
+
+/**
+ * Does this query look like an id-prefix lookup (full UUID, or a long-enough hex prefix)?
+ * Length is measured on the DASH-STRIPPED hex so a dashed partial is judged by its real
+ * hex length against SEARCH_ID_PREFIX_MIN_LENGTH.
+ */
+export function queryLooksLikeId(query: string): boolean {
+  const q = query.trim();
+  if (isFullUuid(q)) return true;
+  if (!HEX_PREFIX_RE.test(q)) return false;
+  return normalizeShortId(q).length >= SEARCH_ID_PREFIX_MIN_LENGTH;
+}
+
+/**
+ * Is this query a bare hex PREFIX (not a full UUID) long enough to be an id-lookup? Such a
+ * query is "ambiguous" by nature (it can match many ids) so callers cap its page at
+ * SEARCH_ID_MAX_CANDIDATES via capSearchLimit.
+ */
+export function queryIsAmbiguousIdPrefix(query: string): boolean {
+  const q = query.trim();
+  return (
+    !isFullUuid(q) &&
+    HEX_PREFIX_RE.test(q) &&
+    normalizeShortId(q).length >= SEARCH_ID_PREFIX_MIN_LENGTH
+  );
+}
+
+/**
+ * Cap the effective page limit for an ambiguous id-prefix query so an absurdly short
+ * prefix can never pull unbounded rows. Non-id-prefix queries keep the requested limit.
+ */
+export function capSearchLimit(query: string | undefined, requestedLimit: number): number {
+  if (query && queryIsAmbiguousIdPrefix(query)) {
+    return Math.min(requestedLimit, SEARCH_ID_MAX_CANDIDATES);
+  }
+  return requestedLimit;
+}
+
+/** A built OR-predicate fragment + its bound params + the next free $n index. */
+export interface SearchMatchClause {
+  /** SQL fragment, parenthesized, WITHOUT a leading AND/OR — e.g. "(a OR b)". */
+  sql: string;
+  /** Parameters to push in order, matching the $n placeholders in `sql`. */
+  params: any[];
+  /** Next free $n parameter index after this clause's placeholders. */
+  nextParamIndex: number;
+}
+
+export interface BuildSearchMatchOptions {
+  /** The row id column expression (e.g. "id"). */
+  idColumn: string;
+  /** The text[] tags column expression (e.g. "tags"). */
+  tagsColumn: string;
+}
+
+/**
+ * Build the ADDITIVE id-prefix + partial-tag OR-predicate for a free-text `query`.
+ *
+ * Returns null when the query is empty / a wildcard (`*`) — the caller keeps its existing
+ * behavior untouched (no regression). Otherwise returns an OR of:
+ *   - id-lookup (ONLY when queryLooksLikeId): parameterized prefix match against the
+ *     dash-stripped `id::text` — `REPLACE(<id>::text,'-','') LIKE $n || '%'`, $n bound to
+ *     the normalized prefix. A full UUID is just the maximal prefix → exact match.
+ *   - partial-tag: case-insensitive SUBSTRING against any element of the tags[] array.
+ *
+ * @param query       the raw user search string
+ * @param startIndex  the next free $n parameter index in the caller's query
+ * @param opts        column wiring
+ */
+export function buildSearchMatchPredicate(
+  query: string | undefined,
+  startIndex: number,
+  opts: BuildSearchMatchOptions,
+): SearchMatchClause | null {
+  const q = (query ?? '').trim();
+  if (!q || q === '*') return null;
+
+  const ors: string[] = [];
+  const params: any[] = [];
+  let i = startIndex;
+
+  // id-lookup — only when the query plausibly IS an id (full UUID or long-enough hex
+  // prefix). Parameterized prefix match against the dash-stripped text form of the id,
+  // exactly like resolveEntityId. $n is BOUND, never concatenated.
+  if (queryLooksLikeId(q)) {
+    const idx = i++;
+    ors.push(`REPLACE(${opts.idColumn}::text, '-', '') LIKE $${idx} || '%'`);
+    params.push(normalizeShortId(q));
+  }
+
+  // partial-tag — case-insensitive substring against any tag element. Replaces the old
+  // exact `tags && [..]` so a partial tag (`ref:`, `bucket`) matches a tag CONTAINING it.
+  {
+    const idx = i++;
+    ors.push(
+      `EXISTS (SELECT 1 FROM unnest(${opts.tagsColumn}) AS _tag WHERE _tag ILIKE $${idx})`,
+    );
+    params.push(`%${q}%`);
+  }
+
+  return { sql: `(${ors.join(' OR ')})`, params, nextParamIndex: i };
 }
