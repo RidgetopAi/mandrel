@@ -55,9 +55,13 @@ export class SessionsService {
     public static getSessions({
         projectId,
         status,
+        limit,
+        offset,
     }: {
         projectId?: string,
         status?: string,
+        limit?: number,
+        offset?: number,
     }): CancelablePromise<(ApiSuccessResponse & {
         data?: SessionListResponse;
     })> {
@@ -67,6 +71,8 @@ export class SessionsService {
             query: {
                 'project_id': projectId,
                 'status': status,
+                'limit': limit,
+                'offset': offset,
             },
         });
     }

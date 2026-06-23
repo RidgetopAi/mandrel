@@ -181,6 +181,24 @@ const Sessions: React.FC = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Only on mount - manual refresh after operations
 
+  // Refetch on session lifecycle changes (start AND end), including out-of-band ones
+  // (e.g. an MCP agent starting/ending a session). The SSE layer invalidates the
+  // ['sessions'] React Query cache (refreshing the table) and fires 'aidis:session-update';
+  // we listen for that to also refresh the imperatively-fetched active-session list, so a
+  // freshly spawned/ended session never shows a stale frame. Mirrors the Tasks page pattern.
+  useEffect(() => {
+    const handleSessionUpdate = () => {
+      logger.log('SSE session update event received, refreshing sessions + active list...');
+      refetch();
+      fetchActiveSessions();
+    };
+
+    window.addEventListener('aidis:session-update', handleSessionUpdate);
+    return () => {
+      window.removeEventListener('aidis:session-update', handleSessionUpdate);
+    };
+  }, [refetch, fetchActiveSessions]);
+
   // Handle start session
   const handleStartSession = () => {
     setStartModalVisible(true);

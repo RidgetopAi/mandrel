@@ -81,6 +81,16 @@ router.get('/stats', SessionController.getSessionStats);
  *         name: status
  *         schema:
  *           type: string
+ *       - in: query
+ *         name: limit
+ *         description: Max number of sessions to return (end-to-end pagination)
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: offset
+ *         description: Number of sessions to skip
+ *         schema:
+ *           type: integer
  *     responses:
  *       200:
  *         description: Sessions returned

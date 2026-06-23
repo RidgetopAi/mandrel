@@ -384,7 +384,11 @@ export class SessionController {
         limit?: number;
         offset?: number;
       } = {
-        limit: typeof limit === 'string' ? parseInt(limit) : 50,
+        // Default to the same generous cap the service uses (1000) so omitting `limit`
+        // does NOT silently truncate the list. The previous default of 50 capped the
+        // Sessions list at 50 rows whenever the client didn't pass a limit (which it
+        // couldn't, because the generated OpenAPI client dropped limit/offset).
+        limit: typeof limit === 'string' ? parseInt(limit) : 1000,
         offset: typeof offset === 'string' ? parseInt(offset) : 0,
       };
       

@@ -276,7 +276,12 @@ export const useSessionsList = (options?: {
       ...(options?.limit !== undefined ? { limit: options.limit } : {}),
       ...(options?.offset !== undefined ? { offset: options.offset } : {}),
     }),
-    staleTime: 1000 * 60 * 5, // 5 minutes
+    // Short staleTime so revisiting/mounting the Sessions page shows fresh data rather
+    // than a frame up to 5 minutes stale. While the page is open, the SSE layer
+    // invalidates ['sessions'] on any session change for instant updates; this covers
+    // the mount/revisit case where a session was started or ended in the interim.
+    staleTime: 1000 * 30, // 30 seconds
+    refetchOnMount: true,
     select: (response) => ({
       sessions: response.data?.sessions ?? [],
       total: response.data?.total ?? 0,

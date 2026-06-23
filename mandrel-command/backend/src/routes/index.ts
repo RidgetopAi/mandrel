@@ -18,6 +18,7 @@ import embeddingRoutes from './embedding';
 import eventsRoutes from './events';
 import gitRoutes from './git';
 import feedbackRoutes from './feedback';
+import { SessionController } from '../controllers/session';
 import { authenticateToken } from '../middleware/auth';
 import { validateUUIDParam } from '../middleware/validation';
 import { logger } from '../config/logger';
@@ -58,6 +59,21 @@ const MCP_BASE =
 if (process.env.AIDIS_MCP_PORT && !process.env.MANDREL_MCP_PORT) {
   logger.warn('⚠️  AIDIS_MCP_PORT is deprecated. Please use MANDREL_MCP_PORT instead.');
 }
+
+/**
+ * GET /api/v2/sessions/current - current active session.
+ *
+ * Route-prefix fix: the rest of the browser session control surface lives under the
+ * `/api/v2/sessions/*` family (start, end, active, list, files), but the current-session
+ * endpoint was only mounted at `/api/sessions/current` (legacy controller route). Any
+ * caller that reached for the consistent v2 path got a 404. We delegate to the SAME
+ * controller here so `/api/v2/sessions/current` resolves; the legacy `/api/sessions/current`
+ * route remains for backward compatibility (the generated OpenAPI client uses it).
+ *
+ * Declared BEFORE the parameterized `/v2/sessions/:sessionId/*` proxies so "current" is
+ * matched as a literal segment and never captured as a :sessionId.
+ */
+router.get('/v2/sessions/current', SessionController.getCurrentSession);
 
 /**
  * Proxy GET /api/v2/sessions/:sessionId/files to MCP server

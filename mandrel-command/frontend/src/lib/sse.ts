@@ -145,10 +145,19 @@ function invalidateCachesForEvent(evt: AidisDbEvent, queryClient: QueryClient) {
       break;
 
     case 'sessions':
-      // Invalidate session queries
-      queryClient.invalidateQueries({ 
+      // Invalidate session queries (covers React Query consumers like useSessionsList
+      // ['sessions','list',...] and useAllSessions ['sessions','all']).
+      queryClient.invalidateQueries({
         queryKey: ['sessions']
       });
+      // Also fire a window event so imperative (non-React-Query) consumers can react —
+      // notably the Sessions page's active-session list, which is fetched directly via
+      // sessionsClient.getAllActiveSessions() and would otherwise show a stale frame
+      // when a session is started/ended out-of-band (e.g. by an MCP agent). Mirrors the
+      // 'aidis:task-update' pattern used by the Tasks page.
+      window.dispatchEvent(new CustomEvent('aidis:session-update', { detail: evt }));
+      // Keep dashboard session counters fresh too.
+      queryClient.invalidateQueries({ queryKey: ['dashboardStats'] });
       break;
 
     default:

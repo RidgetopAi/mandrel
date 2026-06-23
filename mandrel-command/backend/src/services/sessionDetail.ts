@@ -9,6 +9,15 @@ export interface SessionDetail {
   session_type?: string;
   started_at: string;
   ended_at?: string;
+  // created_at: alias of started_at (sessions are write-once at INSERT; there is no
+  // separate created_at column). The SessionDetail UI reads `created_at`, so expose it
+  // explicitly rather than leaving it undefined (which rendered "Created: Invalid Date").
+  created_at: string;
+  // last_activity_at / last_context_at: surfaced so the detail page's "Last Activity"
+  // resolves instead of falling back to "No activity". last_context_at is an alias of
+  // last_activity_at for the unified sessions model.
+  last_activity_at?: string;
+  last_context_at?: string;
   duration_minutes: number;
 
   // Token metrics
@@ -260,6 +269,14 @@ export class SessionDetailService {
         session_type: session.agent_type || session.session_type,
         started_at: session.started_at,
         ended_at: session.ended_at,
+        // created_at mirrors started_at (no separate created_at column on sessions).
+        // Fixes "Created: Invalid Date" on the SessionDetail page, which reads created_at.
+        created_at: session.started_at,
+        // last_activity_at / last_context_at drive the detail page's "Last Activity".
+        // Fall back to ended_at then started_at so the field is always a real timestamp
+        // (the page showed "No activity" because the endpoint never returned these).
+        last_activity_at: session.last_activity_at || session.ended_at || session.started_at,
+        last_context_at: session.last_activity_at || session.ended_at || session.started_at,
         duration_minutes: Math.round(session.duration_minutes),
 
         // Token metrics - sessions table uses input_tokens/output_tokens
