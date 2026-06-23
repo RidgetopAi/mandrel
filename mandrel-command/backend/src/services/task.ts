@@ -1,5 +1,6 @@
 import { db as pool } from '../database/connection';
 import { logger } from '../config/logger';
+import { buildSearchPredicate } from '../utils/searchPredicates';
 
 // Define Task interface locally since shared types are not in rootDir
 interface Task {
@@ -160,9 +161,17 @@ export class TaskService {
       }
 
       if (filter.search) {
-        query += ` AND (t.title ILIKE $${paramIndex++} OR t.description ILIKE $${paramIndex++})`;
-        const searchTerm = `%${filter.search}%`;
-        params.push(searchTerm, searchTerm);
+        // Search matches title/description, id (full UUID or hex prefix), and
+        // partial tags — all OR'd, via the shared predicate builder (mirrors
+        // mcp-server idResolver; see utils/searchPredicates.ts).
+        const clause = buildSearchPredicate(filter.search, paramIndex, {
+          textColumns: ['t.title', 't.description'],
+          idColumn: 't.id',
+          tagsColumn: 't.tags',
+        });
+        query += ` AND ${clause.sql}`;
+        params.push(...clause.params);
+        paramIndex = clause.nextParamIndex;
       }
 
       query += ` ORDER BY 

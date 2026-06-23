@@ -1,5 +1,6 @@
 import { db as pool } from '../database/connection';
 import { logger } from '../config/logger';
+import { buildSearchPredicate, capLimitForQuery } from '../utils/searchPredicates';
 
 export interface Context {
   id: string;
@@ -84,11 +85,14 @@ export class ContextService {
       tags,
       date_from,
       date_to,
-      limit = 20,
+      limit: requestedLimit = 20,
       offset = 0,
       sort_by = 'created_at',
       sort_order = 'desc'
     } = params;
+
+    // Cap the page for ambiguous id-prefix queries (config: idMaxCandidates).
+    const limit = capLimitForQuery(query, requestedLimit);
 
     let sql = `
       SELECT 
@@ -104,15 +108,25 @@ export class ContextService {
     const sqlParams: any[] = [];
     let paramIndex = 1;
 
-    // Text search: matches content, tags, or context type
+    // Text search: matches content, exact context type, id (full UUID or hex
+    // prefix), and partial tags — all OR'd, via the shared predicate builder
+    // (mirrors mcp-server idResolver; see utils/searchPredicates.ts).
     if (query) {
-      const likeParam = `%${query}%`;
-      sql += ` AND (
-        c.content ILIKE $${paramIndex++}
-        OR $${paramIndex++} = ANY(c.tags)
-        OR LOWER(c.context_type) = LOWER($${paramIndex++})
-      )`;
-      sqlParams.push(likeParam, query, query);
+      const clause = buildSearchPredicate(query, paramIndex, {
+        textColumns: ['c.content'],
+        idColumn: 'c.id',
+        tagsColumn: 'c.tags',
+        extraOrClauses: [
+          {
+            // Preserve the original exact context_type match (no regression).
+            template: (idx) => ({ sql: `LOWER(c.context_type) = LOWER($${idx})`, consumed: 1 }),
+            params: [query],
+          },
+        ],
+      });
+      sql += ` AND ${clause.sql}`;
+      sqlParams.push(...clause.params);
+      paramIndex = clause.nextParamIndex;
     }
 
     if (project_id) {
