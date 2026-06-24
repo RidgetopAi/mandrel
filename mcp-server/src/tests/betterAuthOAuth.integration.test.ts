@@ -2,8 +2,10 @@
  * BA-1 integration test: better-auth OAuth 2.1 authorization-server on the mcp-server.
  *
  * Boots the real HealthServer Express app with OAuth ENABLED + a real RemoteMcpTransport
- * + a real better-auth instance against the SCRATCH DB (ci_better_auth_ba1), and proves
- * the five required behaviors WITHOUT a browser:
+ * + a real better-auth instance against the disposable, fully-migrated CI DB (the same
+ * DB ci.sh provisions + migrates and exports as DATABASE_* — the better-auth OAuth schema
+ * is migration 052, so it is present after the standard migrate), and proves the five
+ * required behaviors WITHOUT a browser:
  *
  *   (a) REGRESSION / BACKWARD-COMPAT GATE: no token → 401; valid MCP_AUTH_TOKEN → /mcp
  *       authorizes exactly as today (the existing static-bearer path is byte-for-byte intact).
@@ -24,9 +26,18 @@ import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import { AddressInfo } from 'node:net';
 
 // ---- Env MUST be set before importing any server/auth/config module (module-eval reads it).
-const SCRATCH_DB = process.env.BA1_DB_NAME || 'ci_better_auth_ba1';
-const SCRATCH_USER = process.env.BA1_DB_USER || 'ci_role_better_auth_ba1';
-const SCRATCH_PASS = process.env.BA1_DB_PASS || 'throwaway_7320f4cd5b6e1346';
+// CI-PORTABLE DB SELECTION (configs-not-hardcoded): point the test at the DB ci.sh
+// provisions + migrates and exports as DATABASE_* (the better-auth OAuth schema is
+// migration 052, so it's present after the standard migrate). Precedence:
+//   1. BA1_DB_* explicit override (a manual run can pin a specific scratch DB)
+//   2. the ambient DATABASE_* exported by ci.sh / provision-test-db.sh
+//   3. a last-resort local default (ci_better_auth_ba1) so a bare `vitest` run
+//      against a hand-provisioned DB still works exactly as before.
+// No hardcoded scratch DB is forced over the CI-provided one — that was the
+// non-portability bug (the DB only existed because a human created it).
+const SCRATCH_DB = process.env.BA1_DB_NAME || process.env.DATABASE_NAME || 'ci_better_auth_ba1';
+const SCRATCH_USER = process.env.BA1_DB_USER || process.env.DATABASE_USER || 'ci_role_better_auth_ba1';
+const SCRATCH_PASS = process.env.BA1_DB_PASS || process.env.DATABASE_PASSWORD || 'throwaway_7320f4cd5b6e1346';
 // 19097: deliberately OUTSIDE the live fleet's docker-proxy port ranges (13xxx/15xxx/
 // 16xxx/18080-18099 are bound by running tenant containers — do NOT collide with them).
 const TEST_PORT = 19097;

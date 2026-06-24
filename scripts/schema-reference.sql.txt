@@ -9,6 +9,19 @@ COLUMN _aidis_migrations.checksum | character varying(64) | null=YES | default=
 COLUMN _aidis_migrations.filename | character varying(255) | null=NO | default=
 COLUMN _aidis_migrations.id | integer | null=NO | default=nextval('_aidis_migrations_id_seq')
 COLUMN _aidis_migrations.migration_number | integer | null=NO | default=
+COLUMN account.accessToken | text | null=YES | default=
+COLUMN account.accessTokenExpiresAt | timestamp with time zone | null=YES | default=
+COLUMN account.accountId | text | null=NO | default=
+COLUMN account.createdAt | timestamp with time zone | null=NO | default=CURRENT_TIMESTAMP
+COLUMN account.id | text | null=NO | default=
+COLUMN account.idToken | text | null=YES | default=
+COLUMN account.password | text | null=YES | default=
+COLUMN account.providerId | text | null=NO | default=
+COLUMN account.refreshToken | text | null=YES | default=
+COLUMN account.refreshTokenExpiresAt | timestamp with time zone | null=YES | default=
+COLUMN account.scope | text | null=YES | default=
+COLUMN account.updatedAt | timestamp with time zone | null=NO | default=
+COLUMN account.userId | text | null=NO | default=
 COLUMN admin_users.created_at | timestamp without time zone | null=YES | default=CURRENT_TIMESTAMP
 COLUMN admin_users.email | character varying(100) | null=NO | default=
 COLUMN admin_users.id | uuid | null=NO | default=gen_random_uuid()
@@ -499,6 +512,11 @@ COLUMN git_file_changes.new_file_mode | character varying(10) | null=YES | defau
 COLUMN git_file_changes.old_file_mode | character varying(10) | null=YES | default=
 COLUMN git_file_changes.old_file_path | text | null=YES | default=
 COLUMN git_file_changes.project_id | uuid | null=NO | default=
+COLUMN jwks.createdAt | timestamp with time zone | null=NO | default=
+COLUMN jwks.expiresAt | timestamp with time zone | null=YES | default=
+COLUMN jwks.id | text | null=NO | default=
+COLUMN jwks.privateKey | text | null=NO | default=
+COLUMN jwks.publicKey | text | null=NO | default=
 COLUMN links.created_at | timestamp with time zone | null=NO | default=now()
 COLUMN links.created_by | text | null=YES | default=
 COLUMN links.edge_type | text | null=NO | default=
@@ -509,6 +527,64 @@ COLUMN links.metadata | jsonb | null=NO | default='{}'
 COLUMN links.project_id | uuid | null=YES | default=
 COLUMN links.to_id | uuid | null=NO | default=
 COLUMN links.to_type | text | null=NO | default=
+COLUMN oauthAccessToken.clientId | text | null=NO | default=
+COLUMN oauthAccessToken.createdAt | timestamp with time zone | null=NO | default=
+COLUMN oauthAccessToken.expiresAt | timestamp with time zone | null=NO | default=
+COLUMN oauthAccessToken.id | text | null=NO | default=
+COLUMN oauthAccessToken.referenceId | text | null=YES | default=
+COLUMN oauthAccessToken.refreshId | text | null=YES | default=
+COLUMN oauthAccessToken.scopes | jsonb | null=NO | default=
+COLUMN oauthAccessToken.sessionId | text | null=YES | default=
+COLUMN oauthAccessToken.token | text | null=NO | default=
+COLUMN oauthAccessToken.userId | text | null=YES | default=
+COLUMN oauthClient.clientId | text | null=NO | default=
+COLUMN oauthClient.clientSecret | text | null=YES | default=
+COLUMN oauthClient.contacts | jsonb | null=YES | default=
+COLUMN oauthClient.createdAt | timestamp with time zone | null=YES | default=
+COLUMN oauthClient.disabled | boolean | null=YES | default=
+COLUMN oauthClient.enableEndSession | boolean | null=YES | default=
+COLUMN oauthClient.grantTypes | jsonb | null=YES | default=
+COLUMN oauthClient.icon | text | null=YES | default=
+COLUMN oauthClient.id | text | null=NO | default=
+COLUMN oauthClient.metadata | jsonb | null=YES | default=
+COLUMN oauthClient.name | text | null=YES | default=
+COLUMN oauthClient.policy | text | null=YES | default=
+COLUMN oauthClient.postLogoutRedirectUris | jsonb | null=YES | default=
+COLUMN oauthClient.public | boolean | null=YES | default=
+COLUMN oauthClient.redirectUris | jsonb | null=NO | default=
+COLUMN oauthClient.referenceId | text | null=YES | default=
+COLUMN oauthClient.requirePKCE | boolean | null=YES | default=
+COLUMN oauthClient.responseTypes | jsonb | null=YES | default=
+COLUMN oauthClient.scopes | jsonb | null=YES | default=
+COLUMN oauthClient.skipConsent | boolean | null=YES | default=
+COLUMN oauthClient.softwareId | text | null=YES | default=
+COLUMN oauthClient.softwareStatement | text | null=YES | default=
+COLUMN oauthClient.softwareVersion | text | null=YES | default=
+COLUMN oauthClient.subjectType | text | null=YES | default=
+COLUMN oauthClient.tokenEndpointAuthMethod | text | null=YES | default=
+COLUMN oauthClient.tos | text | null=YES | default=
+COLUMN oauthClient.type | text | null=YES | default=
+COLUMN oauthClient.updatedAt | timestamp with time zone | null=YES | default=
+COLUMN oauthClient.uri | text | null=YES | default=
+COLUMN oauthClient.userId | text | null=YES | default=
+COLUMN oauthConsent.clientId | text | null=NO | default=
+COLUMN oauthConsent.createdAt | timestamp with time zone | null=NO | default=
+COLUMN oauthConsent.id | text | null=NO | default=
+COLUMN oauthConsent.referenceId | text | null=YES | default=
+COLUMN oauthConsent.scopes | jsonb | null=NO | default=
+COLUMN oauthConsent.updatedAt | timestamp with time zone | null=NO | default=
+COLUMN oauthConsent.userId | text | null=YES | default=
+COLUMN oauthRefreshToken.authTime | timestamp with time zone | null=YES | default=
+COLUMN oauthRefreshToken.clientId | text | null=NO | default=
+COLUMN oauthRefreshToken.createdAt | timestamp with time zone | null=NO | default=
+COLUMN oauthRefreshToken.expiresAt | timestamp with time zone | null=NO | default=
+COLUMN oauthRefreshToken.id | text | null=NO | default=
+COLUMN oauthRefreshToken.referenceId | text | null=YES | default=
+COLUMN oauthRefreshToken.revoked | timestamp with time zone | null=YES | default=
+COLUMN oauthRefreshToken.scopes | jsonb | null=NO | default=
+COLUMN oauthRefreshToken.sessionId | text | null=YES | default=
+COLUMN oauthRefreshToken.token | text | null=NO | default=
+COLUMN oauthRefreshToken.userId | text | null=NO | default=
 COLUMN productivity_config.config_name | text | null=NO | default=
 COLUMN productivity_config.created_at | timestamp with time zone | null=YES | default=now()
 COLUMN productivity_config.formula_weights | jsonb | null=NO | default=
@@ -553,6 +629,14 @@ COLUMN reasoning_patterns.start_pos | integer | null=NO | default=
 COLUMN schema_migrations.applied_at | timestamp with time zone | null=YES | default=CURRENT_TIMESTAMP
 COLUMN schema_migrations.description | text | null=YES | default=
 COLUMN schema_migrations.version | character varying(255) | null=NO | default=
+COLUMN session.createdAt | timestamp with time zone | null=NO | default=CURRENT_TIMESTAMP
+COLUMN session.expiresAt | timestamp with time zone | null=NO | default=
+COLUMN session.id | text | null=NO | default=
+COLUMN session.ipAddress | text | null=YES | default=
+COLUMN session.token | text | null=NO | default=
+COLUMN session.updatedAt | timestamp with time zone | null=NO | default=
+COLUMN session.userAgent | text | null=YES | default=
+COLUMN session.userId | text | null=NO | default=
 COLUMN session_activities.activity_data | jsonb | null=YES | default='{}'
 COLUMN session_activities.activity_type | text | null=NO | default=
 COLUMN session_activities.created_at | timestamp with time zone | null=YES | default=now()
@@ -777,8 +861,23 @@ COLUMN traffic_routing_config.table_name | character varying(100) | null=NO | de
 COLUMN traffic_routing_config.updated_at | timestamp with time zone | null=NO | default=CURRENT_TIMESTAMP
 COLUMN traffic_routing_config.updated_by | character varying(100) | null=YES | default='system'
 COLUMN traffic_routing_config.write_shadow_enabled | boolean | null=NO | default=false
+COLUMN user.createdAt | timestamp with time zone | null=NO | default=CURRENT_TIMESTAMP
+COLUMN user.email | text | null=NO | default=
+COLUMN user.emailVerified | boolean | null=NO | default=
+COLUMN user.id | text | null=NO | default=
+COLUMN user.image | text | null=YES | default=
+COLUMN user.name | text | null=NO | default=
+COLUMN user.updatedAt | timestamp with time zone | null=NO | default=CURRENT_TIMESTAMP
+COLUMN verification.createdAt | timestamp with time zone | null=NO | default=CURRENT_TIMESTAMP
+COLUMN verification.expiresAt | timestamp with time zone | null=NO | default=
+COLUMN verification.id | text | null=NO | default=
+COLUMN verification.identifier | text | null=NO | default=
+COLUMN verification.updatedAt | timestamp with time zone | null=NO | default=CURRENT_TIMESTAMP
+COLUMN verification.value | text | null=NO | default=
 CONSTRAINT _aidis_migrations PRIMARY_KEY _aidis_migrations_pkey :: PRIMARYKEYid
 CONSTRAINT _aidis_migrations UNIQUE _aidis_migrations_filename_key :: UNIQUEfilename
+CONSTRAINT account FOREIGN_KEY account_userId_fkey :: FOREIGNKEY"userId"REFERENCES"user"idONDELETECASCADE
+CONSTRAINT account PRIMARY_KEY account_pkey :: PRIMARYKEYid
 CONSTRAINT admin_users CHECK admin_users_theme_check :: CHECKtheme=ANYARRAY'light','dark'
 CONSTRAINT admin_users PRIMARY_KEY admin_users_pkey :: PRIMARYKEYid
 CONSTRAINT admin_users UNIQUE admin_users_email_key :: UNIQUEemail
@@ -945,12 +1044,30 @@ CONSTRAINT git_file_changes CHECK git_file_changes_lines_removed_check :: CHECKl
 CONSTRAINT git_file_changes FOREIGN_KEY git_file_changes_commit_id_fkey :: FOREIGNKEYcommit_idREFERENCESgit_commitsidONDELETECASCADE
 CONSTRAINT git_file_changes FOREIGN_KEY git_file_changes_project_id_fkey :: FOREIGNKEYproject_idREFERENCESprojectsidONDELETECASCADE
 CONSTRAINT git_file_changes PRIMARY_KEY git_file_changes_pkey :: PRIMARYKEYid
+CONSTRAINT jwks PRIMARY_KEY jwks_pkey :: PRIMARYKEYid
 CONSTRAINT links CHECK links_edge_type_check :: CHECKedge_type=ANYARRAY'decided_by','caused','built_by','supersedes','learned_from','proposed_by','informs','produced_outcome'
 CONSTRAINT links CHECK links_from_type_check :: CHECKfrom_type=ANYARRAY'context','decision','task'
 CONSTRAINT links CHECK links_to_type_check :: CHECKto_type=ANYARRAY'context','decision','task'
 CONSTRAINT links FOREIGN_KEY links_project_id_fkey :: FOREIGNKEYproject_idREFERENCESprojectsidONDELETECASCADE
 CONSTRAINT links PRIMARY_KEY links_pkey :: PRIMARYKEYid
 CONSTRAINT links UNIQUE links_from_to_edge_uniq :: UNIQUEfrom_id,to_id,edge_type
+CONSTRAINT oauthAccessToken FOREIGN_KEY oauthAccessToken_clientId_fkey :: FOREIGNKEY"clientId"REFERENCES"oauthClient""clientId"ONDELETECASCADE
+CONSTRAINT oauthAccessToken FOREIGN_KEY oauthAccessToken_refreshId_fkey :: FOREIGNKEY"refreshId"REFERENCES"oauthRefreshToken"idONDELETECASCADE
+CONSTRAINT oauthAccessToken FOREIGN_KEY oauthAccessToken_sessionId_fkey :: FOREIGNKEY"sessionId"REFERENCESsessionidONDELETESETNULL
+CONSTRAINT oauthAccessToken FOREIGN_KEY oauthAccessToken_userId_fkey :: FOREIGNKEY"userId"REFERENCES"user"idONDELETECASCADE
+CONSTRAINT oauthAccessToken PRIMARY_KEY oauthAccessToken_pkey :: PRIMARYKEYid
+CONSTRAINT oauthAccessToken UNIQUE oauthAccessToken_token_key :: UNIQUEtoken
+CONSTRAINT oauthClient FOREIGN_KEY oauthClient_userId_fkey :: FOREIGNKEY"userId"REFERENCES"user"idONDELETECASCADE
+CONSTRAINT oauthClient PRIMARY_KEY oauthClient_pkey :: PRIMARYKEYid
+CONSTRAINT oauthClient UNIQUE oauthClient_clientId_key :: UNIQUE"clientId"
+CONSTRAINT oauthConsent FOREIGN_KEY oauthConsent_clientId_fkey :: FOREIGNKEY"clientId"REFERENCES"oauthClient""clientId"ONDELETECASCADE
+CONSTRAINT oauthConsent FOREIGN_KEY oauthConsent_userId_fkey :: FOREIGNKEY"userId"REFERENCES"user"idONDELETECASCADE
+CONSTRAINT oauthConsent PRIMARY_KEY oauthConsent_pkey :: PRIMARYKEYid
+CONSTRAINT oauthRefreshToken FOREIGN_KEY oauthRefreshToken_clientId_fkey :: FOREIGNKEY"clientId"REFERENCES"oauthClient""clientId"ONDELETECASCADE
+CONSTRAINT oauthRefreshToken FOREIGN_KEY oauthRefreshToken_sessionId_fkey :: FOREIGNKEY"sessionId"REFERENCESsessionidONDELETESETNULL
+CONSTRAINT oauthRefreshToken FOREIGN_KEY oauthRefreshToken_userId_fkey :: FOREIGNKEY"userId"REFERENCES"user"idONDELETECASCADE
+CONSTRAINT oauthRefreshToken PRIMARY_KEY oauthRefreshToken_pkey :: PRIMARYKEYid
+CONSTRAINT oauthRefreshToken UNIQUE oauthRefreshToken_token_key :: UNIQUEtoken
 CONSTRAINT productivity_config CHECK valid_config_name :: CHECKlengthconfig_name>0
 CONSTRAINT productivity_config PRIMARY_KEY productivity_config_pkey :: PRIMARYKEYid
 CONSTRAINT productivity_config UNIQUE productivity_config_config_name_key :: UNIQUEconfig_name
@@ -971,6 +1088,9 @@ CONSTRAINT reasoning_patterns CHECK reasoning_patterns_start_pos_check :: CHECKs
 CONSTRAINT reasoning_patterns FOREIGN_KEY reasoning_patterns_spindle_id_fkey :: FOREIGNKEYspindle_idREFERENCESspindlesidONDELETECASCADE
 CONSTRAINT reasoning_patterns PRIMARY_KEY reasoning_patterns_pkey :: PRIMARYKEYid
 CONSTRAINT schema_migrations PRIMARY_KEY schema_migrations_pkey :: PRIMARYKEYversion
+CONSTRAINT session FOREIGN_KEY session_userId_fkey :: FOREIGNKEY"userId"REFERENCES"user"idONDELETECASCADE
+CONSTRAINT session PRIMARY_KEY session_pkey :: PRIMARYKEYid
+CONSTRAINT session UNIQUE session_token_key :: UNIQUEtoken
 CONSTRAINT session_activities FOREIGN_KEY fk_session_activities_session :: FOREIGNKEYsession_idREFERENCESsessionsidONDELETECASCADE
 CONSTRAINT session_activities PRIMARY_KEY session_activities_pkey :: PRIMARYKEYid
 CONSTRAINT session_files CHECK valid_file_source :: CHECKsource=ANYARRAY'tool','git','manual'
@@ -1027,12 +1147,17 @@ CONSTRAINT technical_decisions PRIMARY_KEY technical_decisions_pkey :: PRIMARYKE
 CONSTRAINT traffic_routing_config CHECK traffic_routing_config_health_status_check :: CHECKhealth_status=ANYARRAY'healthy','warning','error','emergency_stop'
 CONSTRAINT traffic_routing_config CHECK traffic_routing_config_read_percentage_check :: CHECKread_percentage>=0ANDread_percentage<=100
 CONSTRAINT traffic_routing_config PRIMARY_KEY traffic_routing_config_pkey :: PRIMARYKEYtable_name
+CONSTRAINT user PRIMARY_KEY user_pkey :: PRIMARYKEYid
+CONSTRAINT user UNIQUE user_email_key :: UNIQUEemail
+CONSTRAINT verification PRIMARY_KEY verification_pkey :: PRIMARYKEYid
 ENUM cutover_stage = disabled,dual_write,test_1,test_10,half_50,full_100,completed,rolled_back
 ENUM shadow_sync_status = pending,synced,conflict,migrated,validated
 ENUM task_type_enum = feature,bug,bugfix,refactor,test,review,docs,documentation,devops,general
 INDEX _aidis_migrations._aidis_migrations_filename_key :: CREATE UNIQUE INDEX _aidis_migrations_filename_key ON _aidis_migrations USING btree (filename)
 INDEX _aidis_migrations._aidis_migrations_pkey :: CREATE UNIQUE INDEX _aidis_migrations_pkey ON _aidis_migrations USING btree (id)
 INDEX _aidis_migrations.idx_migrations_number :: CREATE INDEX idx_migrations_number ON _aidis_migrations USING btree (migration_number)
+INDEX account.account_pkey :: CREATE UNIQUE INDEX account_pkey ON account USING btree (id)
+INDEX account.account_userId_idx :: CREATE INDEX "account_userId_idx" ON account USING btree ("userId")
 INDEX admin_users.admin_users_email_key :: CREATE UNIQUE INDEX admin_users_email_key ON admin_users USING btree (email)
 INDEX admin_users.admin_users_pkey :: CREATE UNIQUE INDEX admin_users_pkey ON admin_users USING btree (id)
 INDEX admin_users.admin_users_username_key :: CREATE UNIQUE INDEX admin_users_username_key ON admin_users USING btree (username)
@@ -1255,11 +1380,29 @@ INDEX git_file_changes.idx_git_file_changes_complexity :: CREATE INDEX idx_git_f
 INDEX git_file_changes.idx_git_file_changes_file_type :: CREATE INDEX idx_git_file_changes_file_type ON git_file_changes USING btree (file_type, project_id) WHERE (file_type IS NOT NULL)
 INDEX git_file_changes.idx_git_file_changes_path_pattern :: CREATE INDEX idx_git_file_changes_path_pattern ON git_file_changes USING gin (to_tsvector('english'::regconfig, file_path))
 INDEX git_file_changes.idx_git_file_changes_project_path :: CREATE INDEX idx_git_file_changes_project_path ON git_file_changes USING btree (project_id, file_path, created_at DESC)
+INDEX jwks.jwks_pkey :: CREATE UNIQUE INDEX jwks_pkey ON jwks USING btree (id)
 INDEX links.idx_links_from :: CREATE INDEX idx_links_from ON links USING btree (from_id, edge_type)
 INDEX links.idx_links_project :: CREATE INDEX idx_links_project ON links USING btree (project_id)
 INDEX links.idx_links_to :: CREATE INDEX idx_links_to ON links USING btree (to_id, edge_type)
 INDEX links.links_from_to_edge_uniq :: CREATE UNIQUE INDEX links_from_to_edge_uniq ON links USING btree (from_id, to_id, edge_type)
 INDEX links.links_pkey :: CREATE UNIQUE INDEX links_pkey ON links USING btree (id)
+INDEX oauthAccessToken.oauthAccessToken_clientId_idx :: CREATE INDEX "oauthAccessToken_clientId_idx" ON "oauthAccessToken" USING btree ("clientId")
+INDEX oauthAccessToken.oauthAccessToken_pkey :: CREATE UNIQUE INDEX "oauthAccessToken_pkey" ON "oauthAccessToken" USING btree (id)
+INDEX oauthAccessToken.oauthAccessToken_refreshId_idx :: CREATE INDEX "oauthAccessToken_refreshId_idx" ON "oauthAccessToken" USING btree ("refreshId")
+INDEX oauthAccessToken.oauthAccessToken_sessionId_idx :: CREATE INDEX "oauthAccessToken_sessionId_idx" ON "oauthAccessToken" USING btree ("sessionId")
+INDEX oauthAccessToken.oauthAccessToken_token_key :: CREATE UNIQUE INDEX "oauthAccessToken_token_key" ON "oauthAccessToken" USING btree (token)
+INDEX oauthAccessToken.oauthAccessToken_userId_idx :: CREATE INDEX "oauthAccessToken_userId_idx" ON "oauthAccessToken" USING btree ("userId")
+INDEX oauthClient.oauthClient_clientId_key :: CREATE UNIQUE INDEX "oauthClient_clientId_key" ON "oauthClient" USING btree ("clientId")
+INDEX oauthClient.oauthClient_pkey :: CREATE UNIQUE INDEX "oauthClient_pkey" ON "oauthClient" USING btree (id)
+INDEX oauthClient.oauthClient_userId_idx :: CREATE INDEX "oauthClient_userId_idx" ON "oauthClient" USING btree ("userId")
+INDEX oauthConsent.oauthConsent_clientId_idx :: CREATE INDEX "oauthConsent_clientId_idx" ON "oauthConsent" USING btree ("clientId")
+INDEX oauthConsent.oauthConsent_pkey :: CREATE UNIQUE INDEX "oauthConsent_pkey" ON "oauthConsent" USING btree (id)
+INDEX oauthConsent.oauthConsent_userId_idx :: CREATE INDEX "oauthConsent_userId_idx" ON "oauthConsent" USING btree ("userId")
+INDEX oauthRefreshToken.oauthRefreshToken_clientId_idx :: CREATE INDEX "oauthRefreshToken_clientId_idx" ON "oauthRefreshToken" USING btree ("clientId")
+INDEX oauthRefreshToken.oauthRefreshToken_pkey :: CREATE UNIQUE INDEX "oauthRefreshToken_pkey" ON "oauthRefreshToken" USING btree (id)
+INDEX oauthRefreshToken.oauthRefreshToken_sessionId_idx :: CREATE INDEX "oauthRefreshToken_sessionId_idx" ON "oauthRefreshToken" USING btree ("sessionId")
+INDEX oauthRefreshToken.oauthRefreshToken_token_key :: CREATE UNIQUE INDEX "oauthRefreshToken_token_key" ON "oauthRefreshToken" USING btree (token)
+INDEX oauthRefreshToken.oauthRefreshToken_userId_idx :: CREATE INDEX "oauthRefreshToken_userId_idx" ON "oauthRefreshToken" USING btree ("userId")
 INDEX productivity_config.productivity_config_config_name_key :: CREATE UNIQUE INDEX productivity_config_config_name_key ON productivity_config USING btree (config_name)
 INDEX productivity_config.productivity_config_pkey :: CREATE UNIQUE INDEX productivity_config_pkey ON productivity_config USING btree (id)
 INDEX projects.idx_projects_created_at :: CREATE INDEX idx_projects_created_at ON projects USING btree (created_at)
@@ -1283,6 +1426,9 @@ INDEX reasoning_patterns.idx_patterns_unique :: CREATE UNIQUE INDEX idx_patterns
 INDEX reasoning_patterns.idx_patterns_version :: CREATE INDEX idx_patterns_version ON reasoning_patterns USING btree (analyzer_version)
 INDEX reasoning_patterns.reasoning_patterns_pkey :: CREATE UNIQUE INDEX reasoning_patterns_pkey ON reasoning_patterns USING btree (id)
 INDEX schema_migrations.schema_migrations_pkey :: CREATE UNIQUE INDEX schema_migrations_pkey ON schema_migrations USING btree (version)
+INDEX session.session_pkey :: CREATE UNIQUE INDEX session_pkey ON session USING btree (id)
+INDEX session.session_token_key :: CREATE UNIQUE INDEX session_token_key ON session USING btree (token)
+INDEX session.session_userId_idx :: CREATE INDEX "session_userId_idx" ON session USING btree ("userId")
 INDEX session_activities.idx_session_activities_data :: CREATE INDEX idx_session_activities_data ON session_activities USING gin (activity_data)
 INDEX session_activities.idx_session_activities_occurred :: CREATE INDEX idx_session_activities_occurred ON session_activities USING btree (occurred_at)
 INDEX session_activities.idx_session_activities_session_occurred :: CREATE INDEX idx_session_activities_session_occurred ON session_activities USING btree (session_id, occurred_at DESC)
@@ -1379,6 +1525,10 @@ INDEX traffic_routing_config.idx_traffic_routing_cutover_stage :: CREATE INDEX i
 INDEX traffic_routing_config.idx_traffic_routing_health_status :: CREATE INDEX idx_traffic_routing_health_status ON traffic_routing_config USING btree (health_status)
 INDEX traffic_routing_config.idx_traffic_routing_stage_started :: CREATE INDEX idx_traffic_routing_stage_started ON traffic_routing_config USING btree (stage_started_at)
 INDEX traffic_routing_config.traffic_routing_config_pkey :: CREATE UNIQUE INDEX traffic_routing_config_pkey ON traffic_routing_config USING btree (table_name)
+INDEX user.user_email_key :: CREATE UNIQUE INDEX user_email_key ON "user" USING btree (email)
+INDEX user.user_pkey :: CREATE UNIQUE INDEX user_pkey ON "user" USING btree (id)
+INDEX verification.verification_identifier_idx :: CREATE INDEX verification_identifier_idx ON verification USING btree (identifier)
+INDEX verification.verification_pkey :: CREATE UNIQUE INDEX verification_pkey ON verification USING btree (id)
 SEQUENCE _aidis_migrations_id_seq
 SEQUENCE productivity_config_id_seq
 SEQUENCE session_activities_id_seq
