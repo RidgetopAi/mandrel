@@ -21,12 +21,20 @@ import type { Request, Response } from 'express';
 import { randomUUID } from 'node:crypto';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
-import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js';
+import { isInitializeRequest, LATEST_PROTOCOL_VERSION } from '@modelcontextprotocol/sdk/types.js';
 import { logger } from '../utils/logger.js';
 import { MANDREL_VERSION } from '../version.js';
 import { registerMcpHandlers, type McpHandlerDeps } from './registerMcpHandlers.js';
 
 const MCP_SESSION_HEADER = 'mcp-session-id';
+// The stable per-connection identity the bridge / remote client sends (SR-1, migration
+// 050). It is the KEY for connection→session→project recovery: an mcp-session-id is
+// ephemeral (re-minted every initialize / lost on restart), but X-Connection-ID is stable
+// across a restart, so dispatching tools under it lets SessionTracker's SR-1 re-attach
+// recover the SAME session row — and therefore the SAME project — from the DB after a
+// restart. We prefer it for dispatch when present and fall back to the mcp-session-id
+// (preserving the original per-session isolation for clients that don't send it).
+const CONNECTION_ID_HEADER = 'x-connection-id';
 const JSONRPC_INVALID_REQUEST = -32600;
 // Session-expired (idle-evicted) is distinct from a malformed/no-session request: it is
 // a recoverable state where the client should RE-INITIALIZE. We use a dedicated code in
@@ -40,10 +48,32 @@ const JSONRPC_SESSION_EXPIRED = -32002;
 // live sessions and evict idle ones, so memory stays bounded on the public endpoint.
 const DEFAULT_MAX_SESSIONS = 100;
 // Idle TTL before a session is evicted. Tuned so a working dev rarely hits idle-expiry:
-// 4 hours comfortably spans normal work gaps (meetings, lunch, context-switching) while
-// staying BOUNDED for memory/security (not unbounded). Override with MCP_SESSION_IDLE_MS
-// (milliseconds) without a code change.
-const DEFAULT_SESSION_IDLE_MS = 4 * 60 * 60 * 1000; // 4 hours
+// 24 hours comfortably spans an overnight gap or a long weekend break while staying
+// BOUNDED for memory/security (not unbounded). Raised from 4h → 24h (task 41751115) as a
+// cheap complement to rehydrate-on-miss: fewer sessions ever go idle, so fewer
+// rehydrations are needed. Override with MCP_SESSION_IDLE_MS (milliseconds), no code change.
+const DEFAULT_SESSION_IDLE_MS = 24 * 60 * 60 * 1000; // 24 hours
+
+// Rehydration rate limit (rehydrate-on-miss, task 41751115). Even an AUTHENTICATED caller
+// must not be able to spam unknown session ids to force unbounded session re-creation, so
+// we cap rehydrations per (principal+connection) within a rolling window. A legitimate
+// client only rehydrates ONCE after a restart/idle-expiry per connection, then keeps using
+// the revived session — so a small budget never bites a real user. Tunable without a code
+// change via MCP_REHYDRATE_MAX_PER_WINDOW / MCP_REHYDRATE_WINDOW_MS.
+const DEFAULT_REHYDRATE_MAX_PER_WINDOW = 10;
+const DEFAULT_REHYDRATE_WINDOW_MS = 60 * 1000; // 1 minute
+
+// Our session ids are RFC-4122 v4 UUIDs (randomUUID()). Rehydration ONLY accepts an
+// incoming id matching this exact format; anything else is treated as a garbage/forged id
+// and gets the normal 404 (never rehydrated), so an attacker cannot spawn arbitrary
+// sessions by sending made-up ids.
+const UUID_V4_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+// Protocol version advertised on the synthetic rehydration initialize. Taken from the
+// installed SDK's LATEST_PROTOCOL_VERSION (not hardcoded) so it can never drift from what
+// the transport actually negotiates; the synthetic init is internal and immediately
+// discarded, so the exact value only needs to be SDK-accepted.
+const SYNTHETIC_INIT_PROTOCOL_VERSION = LATEST_PROTOCOL_VERSION;
 
 function resolveMaxSessions(): number {
   const raw = process.env.MCP_MAX_SESSIONS;
@@ -57,11 +87,25 @@ function resolveSessionIdleMs(): number {
   return Number.isFinite(n) && n > 0 ? Math.floor(n) : DEFAULT_SESSION_IDLE_MS;
 }
 
+function resolvePositiveIntEnv(name: string, fallback: number): number {
+  const raw = process.env[name];
+  const n = raw ? Number(raw) : NaN;
+  return Number.isFinite(n) && n > 0 ? Math.floor(n) : fallback;
+}
+
 interface SessionEntry {
   transport: StreamableHTTPServerTransport;
   server: Server;
   /** Epoch ms of the last request seen on this session; drives idle eviction + LRU. */
   lastActivity: number;
+  /**
+   * The connection identity to use for TOOL DISPATCH (project isolation key), updated on
+   * every request from the X-Connection-ID header (falling back to the mcp-session-id).
+   * The per-session SDK handlers read this at call time so a stable X-Connection-ID drives
+   * SR-1 DB re-attach (→ correct project) while clients without the header keep the
+   * original per-session isolation. See dispatchConnectionId().
+   */
+  dispatchConnId?: string;
 }
 
 /**
@@ -89,15 +133,70 @@ export class RemoteMcpTransport {
   private readonly allowedHosts: string[];
   private readonly maxSessions: number;
   private readonly sessionIdleMs: number;
+  private readonly rehydrateMaxPerWindow: number;
+  private readonly rehydrateWindowMs: number;
+  // Per-(principal+connection) sliding-window timestamps of recent rehydrations, for the
+  // rehydration rate limit. Pruned opportunistically; bounded by the number of distinct
+  // authenticated principals/connections that have rehydrated within the window.
+  private rehydrateHits = new Map<string, number[]>();
 
   constructor(private readonly deps: McpHandlerDeps) {
     this.allowedHosts = resolveAllowedHosts();
     this.maxSessions = resolveMaxSessions();
     this.sessionIdleMs = resolveSessionIdleMs();
+    this.rehydrateMaxPerWindow = resolvePositiveIntEnv(
+      'MCP_REHYDRATE_MAX_PER_WINDOW', DEFAULT_REHYDRATE_MAX_PER_WINDOW
+    );
+    this.rehydrateWindowMs = resolvePositiveIntEnv(
+      'MCP_REHYDRATE_WINDOW_MS', DEFAULT_REHYDRATE_WINDOW_MS
+    );
     logger.info(
       `🌐 Remote MCP transport configured (DNS-rebinding protection on; allowedHosts=${this.allowedHosts.join(',')}; ` +
-      `maxSessions=${this.maxSessions}; sessionIdleMs=${this.sessionIdleMs})`
+      `maxSessions=${this.maxSessions}; sessionIdleMs=${this.sessionIdleMs}; ` +
+      `rehydrate=${this.rehydrateMaxPerWindow}/${this.rehydrateWindowMs}ms)`
     );
+  }
+
+  /**
+   * The connection identity used for TOOL DISPATCH (project isolation key). Prefer the
+   * stable X-Connection-ID header — it survives a server restart, so SR-1's DB re-attach
+   * (SessionTracker.getActiveSession → SessionRepo.findReattachable) can recover the same
+   * session row and therefore the same PROJECT after a restart/rehydration. Fall back to
+   * the (ephemeral) mcp-session-id when the client does not send X-Connection-ID, which
+   * preserves the original per-session isolation for those clients.
+   */
+  private dispatchConnectionId(req: Request, sessionId: string | undefined): string | undefined {
+    const conn = req.header(CONNECTION_ID_HEADER);
+    if (conn && conn.trim() !== '') return conn.trim();
+    return sessionId;
+  }
+
+  /**
+   * A stable principal key for the rehydration rate limit. OAuth callers are keyed by
+   * their verified `sub`; static-token tenants share one key (the container IS the tenant).
+   * Combined with the connection so one noisy connection can't exhaust another's budget.
+   */
+  private rehydratePrincipalKey(req: Request, oldSessionId: string): string {
+    const sub = (req as { oauthSubject?: { sub?: string } }).oauthSubject?.sub ?? 'static-tenant';
+    const conn = req.header(CONNECTION_ID_HEADER)?.trim() || oldSessionId;
+    return `${sub}::${conn}`;
+  }
+
+  /**
+   * Sliding-window rate-limit check for rehydration. Returns true if a rehydration is
+   * ALLOWED for this principal (and records it), false if the budget is exhausted.
+   */
+  private allowRehydration(principalKey: string): boolean {
+    const now = Date.now();
+    const cutoff = now - this.rehydrateWindowMs;
+    const hits = (this.rehydrateHits.get(principalKey) ?? []).filter(ts => ts > cutoff);
+    if (hits.length >= this.rehydrateMaxPerWindow) {
+      this.rehydrateHits.set(principalKey, hits); // keep the pruned list
+      return false;
+    }
+    hits.push(now);
+    this.rehydrateHits.set(principalKey, hits);
+    return true;
   }
 
   /** Number of live HTTP MCP sessions (for diagnostics/tests). */
@@ -175,6 +274,9 @@ export class RemoteMcpTransport {
       if (sessionId && this.sessions.has(sessionId)) {
         const entry = this.sessions.get(sessionId)!;
         this.touch(sessionId);
+        // Refresh the dispatch connection id from THIS request's X-Connection-ID so the
+        // isolation key tracks the (stable) connection, not the ephemeral session id.
+        entry.dispatchConnId = this.dispatchConnectionId(req, sessionId);
         await entry.transport.handleRequest(req, res, req.body);
         return;
       }
@@ -185,31 +287,18 @@ export class RemoteMcpTransport {
         return;
       }
 
-      // A session id WAS supplied but is not (or no longer) in our map. The common cause
-      // is idle eviction: the session expired after inactivity. This is RECOVERABLE — the
-      // bearer token is still valid (auth ran before us); the client just needs to
-      // re-initialize. Return a clear, self-healing error so the agent/user re-connects
-      // instead of reading a cryptic "no valid session" as an outage.
+      // A session id WAS supplied but is not (or no longer) in our map. The common causes
+      // are (1) idle eviction, (2) a SERVER RESTART / DEPLOY that wiped the in-RAM map —
+      // the worst case, which kicks EVERY connected client — and (3) LRU eviction. All are
+      // RECOVERABLE: auth already passed (the bearer/OAuth token is still valid), so the
+      // session id is the client's only lost state. Rather than return a 404 that every
+      // real MCP client (Amp, Claude Code, Codex, …) IGNORES — silently bricking the
+      // connection — we REHYDRATE: transparently re-create a valid session bound to that
+      // exact id and handle the request, so the client never sees the drop (task 41751115,
+      // "rehydrate-on-miss"). Guarded: id-format validation + per-principal rate limit
+      // below; rehydration runs ONLY here, AFTER the auth middleware.
       if (sessionId) {
-        logger.info(
-          `MCP POST: unknown/expired session ${sessionId.substring(0, 8)}… → asking client to re-initialize`
-        );
-        res.status(404).json({
-          jsonrpc: '2.0',
-          error: {
-            code: JSONRPC_SESSION_EXPIRED,
-            message:
-              'MCP session expired after inactivity. Re-initialize the connection ' +
-              '(reconnect / restart your MCP client) to start a new session, then retry. ' +
-              'Your credentials are still valid — this is not an auth failure.',
-            data: {
-              reason: 'session_expired',
-              action: 'reinitialize',
-              retryable: true,
-            },
-          },
-          id: (req.body && typeof req.body === 'object' && 'id' in req.body) ? req.body.id : null,
-        });
+        await this.rehydrateAndHandle(sessionId, req, res);
         return;
       }
 
@@ -262,11 +351,14 @@ export class RemoteMcpTransport {
   };
 
   /**
-   * Create a new stateful session: build a per-session transport + SDK Server,
-   * register the shared handlers (keyed by session id for isolation), connect, and
-   * let the transport handle the initialize request.
+   * Build a fully-wired per-session SDK Server + Streamable HTTP transport, identical for
+   * a fresh `initialize` AND for rehydration (so a rehydrated session is byte-for-byte the
+   * same as a normal one — same tool dispatch, same isolation). `autoRegister` controls
+   * whether `onsessioninitialized` inserts the SDK-minted id into the map: TRUE for a normal
+   * new session, FALSE for rehydration (where WE register under the OLD id, not the throwaway
+   * id the synthetic init mints).
    */
-  private async createSession(req: Request, res: Response): Promise<void> {
+  private buildSession(autoRegister: boolean): { server: Server; transport: StreamableHTTPServerTransport } {
     // A per-session SDK Server with the SAME capabilities as stdio.
     const server = new Server(
       { name: 'aidis-mcp-server', version: MANDREL_VERSION }, // single source of truth — CUSTOMER-VISIBLE (remote HTTP transport)
@@ -278,6 +370,7 @@ export class RemoteMcpTransport {
       enableDnsRebindingProtection: true,
       allowedHosts: this.allowedHosts,
       onsessioninitialized: (sid: string) => {
+        if (!autoRegister) return; // rehydration registers under the OLD id itself
         // Bound the map BEFORE inserting: evict idle/LRU sessions so an authenticated
         // caller spamming `initialize` cannot grow memory without limit.
         this.enforceSessionCap();
@@ -290,10 +383,15 @@ export class RemoteMcpTransport {
       },
     });
 
-    // The connectionId for tool dispatch is the session id once assigned. We bind it
-    // lazily: the transport assigns transport.sessionId during handleRequest(init),
-    // so we register handlers that read it at call time.
-    registerMcpHandlersWithDynamicConnectionId(server, this.deps, () => transport.sessionId);
+    // The connectionId for tool dispatch is resolved at CALL time: prefer the live
+    // dispatchConnId stored on the session entry (set per-request from X-Connection-ID),
+    // falling back to the transport's session id. transport.sessionId is only assigned
+    // during handleRequest(init), so reading it lazily is correct for both paths.
+    registerMcpHandlersWithDynamicConnectionId(server, this.deps, () => {
+      const sid = transport.sessionId;
+      const entry = sid ? this.sessions.get(sid) : undefined;
+      return entry?.dispatchConnId ?? sid;
+    });
 
     // Clean up map entry when transport closes for any reason.
     transport.onclose = () => {
@@ -301,8 +399,192 @@ export class RemoteMcpTransport {
       if (sid) this.cleanupSession(sid);
     };
 
+    return { server, transport };
+  }
+
+  /**
+   * Create a new stateful session: build a per-session transport + SDK Server,
+   * register the shared handlers (keyed by session id for isolation), connect, and
+   * let the transport handle the initialize request.
+   */
+  private async createSession(req: Request, res: Response): Promise<void> {
+    const { server, transport } = this.buildSession(/* autoRegister */ true);
     await server.connect(transport);
     await transport.handleRequest(req, res, req.body);
+    // Stamp the dispatch connection id on the freshly-created entry so the FIRST
+    // post-initialize tool call already routes by X-Connection-ID (the entry is inserted
+    // synchronously during the init handleRequest above, via onsessioninitialized).
+    const sid = transport.sessionId;
+    const entry = sid ? this.sessions.get(sid) : undefined;
+    if (entry) entry.dispatchConnId = this.dispatchConnectionId(req, sid);
+  }
+
+  /**
+   * REHYDRATE-ON-MISS (task 41751115). An authenticated request arrived carrying a
+   * Mcp-Session-Id we no longer hold (idle-evicted, LRU-evicted, or — the big one —
+   * wiped by a server restart/deploy). Transparently re-create a valid session bound to
+   * that EXACT id and handle the request, so the client never sees a 404 it would ignore.
+   *
+   * Mechanism (verified against @modelcontextprotocol/sdk 1.29.0 internals — see the
+   * sdkCoupling guard test): the SDK exposes no public "mark initialized" API. So we:
+   *   1. Build a fresh server+transport with the SAME wiring a normal session uses
+   *      (buildSession, autoRegister=false so the synthetic init's throwaway id is NOT
+   *      registered).
+   *   2. Drive ONE synthetic `initialize` through the transport's underlying web-standard
+   *      transport (the same inner surface the Express wrapper delegates to), passing the
+   *      init body as parsedBody. This flips the private `_initialized` flag to true and
+   *      mints a throwaway session id; we capture + discard the Response.
+   *   3. Overwrite the inner transport's `sessionId` with the incoming OLD id and register
+   *      the entry in the Map under that OLD id, so validateSession (sessionId === old) now
+   *      passes for the original request.
+   *   4. Hand the ORIGINAL request to transport.handleRequest(req, res, req.body) — the
+   *      exact Express 3-arg shape this file already uses everywhere.
+   *
+   * GUARDS (all BEFORE re-creating anything): runs only post-auth (the auth middleware
+   * already ran); the old id must match OUR uuid format (else normal 404 — no forging);
+   * and a per-principal sliding-window rate limit (else 429). Project isolation is restored
+   * because tools dispatch under the stable X-Connection-ID (dispatchConnId), so SR-1's DB
+   * re-attach recovers the prior session row + project.
+   */
+  private async rehydrateAndHandle(oldSessionId: string, req: Request, res: Response): Promise<void> {
+    // GUARD 1 — id format. A garbage / forged id is NOT rehydrated: fall back to the
+    // original self-healing 404 so an attacker can't spawn arbitrary sessions by id.
+    if (!UUID_V4_RE.test(oldSessionId)) {
+      this.respondSessionExpired(oldSessionId, req, res);
+      return;
+    }
+
+    // GUARD 2 — rate limit per (principal+connection). A legit client rehydrates once per
+    // restart then reuses the revived session, so this only bites abusive spam.
+    const principalKey = this.rehydratePrincipalKey(req, oldSessionId);
+    if (!this.allowRehydration(principalKey)) {
+      logger.warn(`MCP rehydrate rate-limited for ${principalKey.substring(0, 24)}…`);
+      res.status(429).json({
+        jsonrpc: '2.0',
+        error: {
+          code: JSONRPC_SESSION_EXPIRED,
+          message:
+            'Too many session rehydrations in a short window. Wait a moment and retry, ' +
+            'or re-initialize the connection. Your credentials are still valid.',
+          data: { reason: 'rehydrate_rate_limited', action: 'retry', retryable: true },
+        },
+        id: (req.body && typeof req.body === 'object' && 'id' in req.body) ? req.body.id : null,
+      });
+      return;
+    }
+
+    logger.info(
+      `♻️  Rehydrating MCP session ${oldSessionId.substring(0, 8)}… ` +
+      `(unknown id post-auth → transparent revive instead of 404)`
+    );
+
+    const { server, transport } = this.buildSession(/* autoRegister */ false);
+    await server.connect(transport);
+
+    // Drive ONE synthetic initialize through the inner web-standard transport so the SDK
+    // flips `_initialized` true. We pass the init JSON-RPC body as parsedBody (no stream),
+    // and supply a minimal Web Request with an allowed Host so DNS-rebinding validation
+    // passes. The Response is captured + DISCARDED.
+    await this.driveSyntheticInitialize(transport);
+
+    // Stamp the OLD id onto the inner transport so validateSession accepts the original
+    // request (sessionId === transport.sessionId). The public wrapper's sessionId is a
+    // read-only getter delegating to the inner transport, so we set it on the inner one.
+    const inner = (transport as unknown as { _webStandardTransport: { sessionId?: string } })._webStandardTransport;
+    inner.sessionId = oldSessionId;
+
+    // Register under the OLD id (autoRegister was false, so nothing is in the map yet).
+    this.enforceSessionCap();
+    this.sessions.set(oldSessionId, {
+      transport,
+      server,
+      lastActivity: Date.now(),
+      dispatchConnId: this.dispatchConnectionId(req, oldSessionId),
+    });
+    logger.info(
+      `✅ Rehydrated session ${oldSessionId.substring(0, 8)}… ` +
+      `(connId=${(this.dispatchConnectionId(req, oldSessionId) ?? '∅').substring(0, 16)}; live=${this.sessions.size})`
+    );
+
+    // Now handle the ORIGINAL request on the revived session — the exact Express 3-arg
+    // shape used everywhere else in this file.
+    await transport.handleRequest(req, res, req.body);
+  }
+
+  /**
+   * Drive a single synthetic `initialize` through the transport's inner web-standard
+   * transport to flip its private `_initialized` flag. Returns nothing — the synthetic
+   * Response (and the throwaway session id it mints) is discarded; the caller then
+   * overwrites the session id with the real OLD one.
+   *
+   * This is the SDK-coupling point: it reaches the inner `_webStandardTransport` (the same
+   * surface the public wrapper delegates to internally) and passes the init body as
+   * `parsedBody`. The sdkCoupling guard test exercises THIS method end-to-end so any future
+   * SDK change to these internals fails loudly.
+   */
+  private async driveSyntheticInitialize(transport: StreamableHTTPServerTransport): Promise<void> {
+    const initBody = {
+      jsonrpc: '2.0',
+      id: 'rehydrate-synthetic-init',
+      method: 'initialize',
+      params: {
+        protocolVersion: SYNTHETIC_INIT_PROTOCOL_VERSION,
+        capabilities: {},
+        clientInfo: { name: 'mandrel-rehydrate', version: MANDREL_VERSION },
+      },
+    };
+    // A minimal Web-standard POST Request whose Host is in allowedHosts so the SDK's
+    // DNS-rebinding validation passes for the synthetic init.
+    const syntheticHost = this.allowedHosts[0] ?? 'localhost';
+    // Use the global (Web-standard) Request/Response, NOT the Express Request type imported
+    // at the top of this file — the SDK's inner transport speaks the Fetch API surface.
+    const WebRequest = globalThis.Request;
+    const webReq = new WebRequest(`http://${syntheticHost}/mcp`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        accept: 'application/json, text/event-stream',
+        host: syntheticHost,
+      },
+      body: JSON.stringify(initBody),
+    });
+    const inner = (transport as unknown as {
+      _webStandardTransport: {
+        handleRequest: (
+          req: globalThis.Request,
+          opts: { parsedBody?: unknown }
+        ) => Promise<globalThis.Response>;
+      };
+    })._webStandardTransport;
+    // Capture + discard the synthetic Response (and consume its body so no stream leaks).
+    const resp = await inner.handleRequest(webReq, { parsedBody: initBody });
+    try { await resp?.text?.(); } catch { /* nothing to drain */ }
+  }
+
+  /**
+   * The original self-healing 404 (kept for the BAD-id path: an unknown id that is NOT in
+   * our uuid format is not rehydrated, it gets this actionable re-initialize error).
+   */
+  private respondSessionExpired(sessionId: string, req: Request, res: Response): void {
+    logger.info(
+      `MCP POST: unknown session ${sessionId.substring(0, 8)}… with non-conforming id → asking client to re-initialize`
+    );
+    res.status(404).json({
+      jsonrpc: '2.0',
+      error: {
+        code: JSONRPC_SESSION_EXPIRED,
+        message:
+          'MCP session not found and could not be restored. Re-initialize the connection ' +
+          '(reconnect / restart your MCP client) to start a new session, then retry. ' +
+          'Your credentials are still valid — this is not an auth failure.',
+        data: {
+          reason: 'session_expired',
+          action: 'reinitialize',
+          retryable: true,
+        },
+      },
+      id: (req.body && typeof req.body === 'object' && 'id' in req.body) ? req.body.id : null,
+    });
   }
 
   private cleanupSession(sessionId: string): void {
