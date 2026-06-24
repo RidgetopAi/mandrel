@@ -117,16 +117,28 @@ export function renderSignInPage(query: Record<string, string>): string {
 }
 
 /**
- * Consent page. The AS redirects here with `client_id`, `scope`, and `code` query
- * params (per the oauth-provider consentPage contract). Approving POSTs to
- * `<basePath>/oauth2/consent` with `{ accept: true }`, which completes the authorization
- * and returns the client to its redirect_uri with the code.
+ * Consent page. The AS (better-auth oauth-provider) redirects here via
+ * `redirectWithPromptCode(..., "consent")` → `signParams()`, which appends the FULL
+ * original authorize query to the consent page URL as a SIGNED query string (all the
+ * authorize params + `exp` + `signed_at` + a `sig` HMAC over the canonicalized params).
+ *
+ * To approve, we must hand that exact signed query back to better-auth so it can rebuild
+ * the original OAuth request. better-auth's consent endpoint (`<basePath>/oauth2/consent`)
+ * reconstructs the request from `oAuthState`, which is populated by a `before` hook keyed
+ * on a body field **`oauth_query`** ("The redirected page's query parameters"): the hook
+ * runs `verifyOAuthQueryParams(oauth_query, secret)` then `oAuthState.set({ query })`. In
+ * Claude.ai's cross-site flow the oAuthState COOKIE isn't present on the POST, so without
+ * `oauth_query` the endpoint throws "missing oauth query" → 400 ("Consent failed (400)").
+ *
+ * Fix: forward `oauth_query` = this consent page's own incoming query string verbatim
+ * (`window.location.search` minus the leading `?`) — that IS the signed string better-auth
+ * produced, so the signature verifies and the flow proceeds. We send `{ accept, oauth_query }`.
+ * (The old `code` field was not in the consent endpoint's body schema and was stripped.)
  */
 export function renderConsentPage(query: Record<string, string>): string {
   const basePath = BETTER_AUTH_CONFIG.basePath;
   const clientId = esc(query.client_id);
   const scope = esc(query.scope);
-  const code = esc(query.code);
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -146,19 +158,26 @@ export function renderConsentPage(query: Record<string, string>): string {
   <div class="msg" id="msg"></div>
   <script>
     const basePath = ${JSON.stringify(basePath)};
-    const code = ${JSON.stringify(code)};
     const msg = document.getElementById('msg');
     async function consent(accept) {
       msg.style.color = '#b91c1c'; msg.textContent = '';
+      // Forward this page's own (signed) query string back to better-auth's consent
+      // endpoint so it can rebuild the original OAuth request (cross-site: the
+      // oAuthState cookie is absent on this POST). See renderConsentPage() doc above.
+      const oauthQuery = window.location.search.replace(/^\\?/, '');
       const r = await fetch(basePath + '/oauth2/consent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ accept: accept, code: code }),
+        body: JSON.stringify({ accept: accept, oauth_query: oauthQuery }),
       });
       if (r.ok) {
         const data = await r.json().catch(() => ({}));
-        if (data && data.redirectURI) { window.location.href = data.redirectURI; return; }
+        // better-auth's handleRedirect() for a browser-fetch POST returns
+        // { redirect: true, url } (it sets accept:application/json before authorizing),
+        // so the redirect target is the url field. Fall back to redirectURI/redirect_uri.
+        const target = (data && (data.url || data.redirectURI || data.redirect_uri)) || '';
+        if (target) { window.location.href = target; return; }
         msg.style.color = '#16a34a'; msg.textContent = accept ? 'Approved.' : 'Denied.';
       } else {
         msg.textContent = 'Consent failed (' + r.status + ').';
