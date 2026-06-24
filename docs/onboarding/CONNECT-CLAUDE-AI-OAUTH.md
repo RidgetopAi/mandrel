@@ -18,6 +18,10 @@
   labels. The OAuth edge routing is **Traefik router labels**, NOT a dedicated nginx vhost.
 - **Identities live in the tenant's own Postgres** (better-auth tables, migration `052`). No
   hosted IdP — "your data never leaves your box" stays literally true.
+- **⚠️ better-auth MUST mount OFF `/api/auth`** — the Command UI dashboard already owns
+  `/api/auth/{login,logout,profile,refresh,register}`. Use `MANDREL_OAUTH_BASE_PATH=/api/oauth`.
+  If you leave the default `/api/auth`, the OAuth Traefik router steals the dashboard's login
+  → dashboard `Login failed: ApiError: Not Found` (404). (Hit live on the brian tenant 2026-06-24.)
 
 ## 1. ⚠️ Hardening gates — DO NOT skip for a real customer
 
@@ -62,11 +66,14 @@ cat >> "$ENV" <<EOF
 MANDREL_OAUTH_ENABLED=true
 MANDREL_OAUTH_ISSUER=https://<handle>.mandrel.ridgetopai.net
 MANDREL_OAUTH_RESOURCE=https://<handle>.mandrel.ridgetopai.net/mcp
+MANDREL_OAUTH_BASE_PATH=/api/oauth
 EOF
 printf 'MANDREL_OAUTH_SECRET=%s\n' "$(openssl rand -hex 32)" >> "$ENV"   # required in prod (fail-closed)
 ```
-Defaults that are already correct: `MANDREL_OAUTH_BASE_PATH=/api/auth`,
-`MANDREL_OAUTH_CORS_ORIGINS=https://claude.ai`. (Config contract: `mcp-server/src/config/betterAuthConfig.ts`.)
+> `MANDREL_OAUTH_BASE_PATH=/api/oauth` is **mandatory** — the default `/api/auth` collides with the
+> dashboard (see §0). The issuer becomes `https://<handle>.mandrel.ridgetopai.net/api/oauth`.
+> `MANDREL_OAUTH_CORS_ORIGINS` defaults to `https://claude.ai` (already correct). Config contract:
+> `mcp-server/src/config/betterAuthConfig.ts`.
 
 ## 5. Wire the compose: env refs + Traefik OAuth router
 
@@ -76,11 +83,13 @@ Edit `docker-compose.<handle>.yml` (back it up first). In the **mcp-server `envi
       MANDREL_OAUTH_ISSUER: "${MANDREL_OAUTH_ISSUER:-}"
       MANDREL_OAUTH_RESOURCE: "${MANDREL_OAUTH_RESOURCE:-}"
       MANDREL_OAUTH_SECRET: "${MANDREL_OAUTH_SECRET:-}"
+      MANDREL_OAUTH_BASE_PATH: "${MANDREL_OAUTH_BASE_PATH:-/api/auth}"
 ```
 In the **mcp-server `labels:`** block, add an OAuth router (mirrors the `<handle>-mcp` `/mcp` router;
-routes discovery + better-auth API + the sign-in/consent pages to the mcp-server):
+routes discovery + better-auth API + the sign-in/consent pages to the mcp-server). **Note `/api/oauth`,
+NOT `/api/auth`** (the dashboard owns `/api/auth`):
 ```yaml
-      - "traefik.http.routers.<handle>-oauth.rule=Host(`<handle>.mandrel.ridgetopai.net`) && (PathPrefix(`/.well-known/oauth`) || PathPrefix(`/.well-known/openid`) || PathPrefix(`/api/auth`) || PathPrefix(`/sign-in`) || PathPrefix(`/consent`))"
+      - "traefik.http.routers.<handle>-oauth.rule=Host(`<handle>.mandrel.ridgetopai.net`) && (PathPrefix(`/.well-known/oauth`) || PathPrefix(`/.well-known/openid`) || PathPrefix(`/api/oauth`) || PathPrefix(`/sign-in`) || PathPrefix(`/consent`))"
       - "traefik.http.routers.<handle>-oauth.entrypoints=web"
       - "traefik.http.routers.<handle>-oauth.priority=100"
       - "traefik.http.routers.<handle>-oauth.service=<handle>-mcp-svc"
