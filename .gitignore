@@ -252,9 +252,10 @@ docker-compose.ryushineo.yml
 # forward-migration runner (which scans migrations/ non-recursively) never auto-runs
 # them; they are documented code, not data dumps — keep them tracked.
 !mcp-server/database/migrations/rollback/*.sql
-# better-auth OAuth schema (BA-1): generated, additive CREATE-TABLE DDL — documented
-# code the per-tenant provisioner applies, NOT a data dump. Must ship + be tracked.
-!mcp-server/database/better-auth/*.sql
+# (The better-auth OAuth schema is now standard migration 052 under
+# mcp-server/database/migrations/, already un-ignored above by the migrations/*.sql
+# negation — no separate un-ignore needed. The old database/better-auth/ path was
+# removed when the schema was promoted into the migration runner.)
 # Operator runbook SQL (gated, Ridge-run): parameterized DDL/DML, no table dumps /
 # no app rows / no secrets — it's documented code that must ship (task bc819ae5).
 !scripts/purge-deploy-smoke-sessions.sql
