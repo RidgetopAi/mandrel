@@ -258,26 +258,64 @@ describe('Remote MCP transport — two-session isolation', () => {
   });
 });
 
-describe('Remote MCP transport — expired session returns an actionable, self-healing error', () => {
-  // The remote idle-session papercut (task 2ed788de): an idle-evicted session causes the
-  // client's NEXT tool call to arrive with a valid bearer token + a session id that is no
-  // longer in the map. That must NOT read as a cryptic outage. It must tell the agent the
-  // session EXPIRED and to RE-INITIALIZE, with a recognizable error code — and it must NOT
-  // be shaped like an auth failure (the token is still valid).
+describe('Remote MCP transport — unknown session id is REHYDRATED, not 404 (rehydrate-on-miss)', () => {
+  // Task 41751115 / branch:mcp-session-persistence (supersedes the old 2ed788de papercut):
+  // a lost session (idle-evicted, LRU-evicted, or — the big one — wiped by a server
+  // restart/deploy) causes the client's NEXT tool call to arrive with a valid bearer token
+  // + a session id no longer in the map. Real MCP clients (Amp, Claude Code, Codex, …)
+  // IGNORE the spec-mandated re-initialize 404 and silently brick. So the server now
+  // transparently REHYDRATES a valid session bound to that exact id and handles the
+  // request — the client never sees a 404. A BADLY-FORMED (non-uuid) id is NOT rehydrated
+  // (an attacker can't spawn arbitrary sessions); it still gets the actionable 404.
   const SESSION_EXPIRED_CODE = -32002;
 
-  it('rejects a tools/call with a valid token but unknown/expired session id with the new error (not the old cryptic one)', async () => {
-    // A well-formed session id that the server has never issued exactly models an
-    // idle-evicted (expired) session: auth passes, but the session is gone from the map.
-    const expiredSessionId = '00000000-0000-4000-8000-000000000000';
+  it('THE KEY TEST: a tools/call with a valid token + a well-formed UNKNOWN session id is rehydrated → 200 + correct tool result', async () => {
+    // A well-formed (uuid-v4) session id the server has never issued exactly models a
+    // session lost to a restart/idle-eviction: auth passes, but it is gone from the map.
+    const lostSessionId = '00000000-0000-4000-8000-000000000000';
 
     const res = await fetch(`${baseUrl}/mcp`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Accept: 'application/json, text/event-stream',
-        Authorization: `Bearer ${TEST_TOKEN}`, // token is VALID — this is the expired-session path, not auth
-        'Mcp-Session-Id': expiredSessionId,
+        Authorization: `Bearer ${TEST_TOKEN}`, // token is VALID — rehydration only runs post-auth
+        'Mcp-Session-Id': lostSessionId,
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: 42,
+        method: 'tools/call',
+        params: { name: 'mandrel_ping', arguments: { message: 'after-restart' } },
+      }),
+    });
+
+    // Rehydrated → 200, NOT 404. The client never sees the drop.
+    expect(res.status).toBe(200);
+
+    // The tool actually ran on the revived session and returned the correct result.
+    const text = await res.text(); // may be SSE-framed; assert on the payload either way
+    expect(text).toContain('pong (stub)');
+
+    // The executor was invoked for the rehydrated request (proof the session is live).
+    const call = executorCalls.find(
+      c => c.tool === 'mandrel_ping' && c.args?.message === 'after-restart'
+    );
+    expect(call).toBeDefined();
+    // No X-Connection-ID header was sent → dispatch falls back to the (revived) session id.
+    expect(call?.connectionId).toBe(lostSessionId);
+  });
+
+  it('does NOT rehydrate a BADLY-FORMED (non-uuid) unknown id — still the actionable 404', async () => {
+    const garbageSessionId = 'not-a-uuid-12345';
+
+    const res = await fetch(`${baseUrl}/mcp`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json, text/event-stream',
+        Authorization: `Bearer ${TEST_TOKEN}`,
+        'Mcp-Session-Id': garbageSessionId,
       },
       body: JSON.stringify({
         jsonrpc: '2.0',
@@ -287,34 +325,21 @@ describe('Remote MCP transport — expired session returns an actionable, self-h
       }),
     });
 
-    // Not 401 (that's auth) and not the old generic 400 "no valid session" shape.
+    // A forged / malformed id is NEVER rehydrated → the self-healing 404, not 200.
     expect(res.status).toBe(404);
     const body = await res.json();
     expect(body.jsonrpc).toBe('2.0');
-    expect(body.error).toBeDefined();
-
-    // Recognizable, dedicated "re-initialize needed" code in the implementation range.
     expect(body.error.code).toBe(SESSION_EXPIRED_CODE);
 
-    // The message must be ACTIONABLE: say it expired and to re-initialize/reconnect.
     const msg: string = body.error.message;
-    expect(msg.toLowerCase()).toContain('expired');
     expect(msg.toLowerCase()).toContain('re-initialize');
-
-    // It must NOT misrepresent itself as an auth failure (constraint: don't claim auth).
+    // Must NOT misrepresent itself as an auth failure (the token is still valid).
     expect(msg.toLowerCase()).not.toContain('unauthorized');
     expect(msg.toLowerCase()).not.toContain('invalid bearer');
-
-    // Machine-readable hint for well-behaved clients to self-heal.
     expect(body.error.data?.reason).toBe('session_expired');
     expect(body.error.data?.action).toBe('reinitialize');
     expect(body.error.data?.retryable).toBe(true);
-
-    // The id from the request is echoed back (proper JSON-RPC correlation).
     expect(body.id).toBe(42);
-
-    // The old cryptic message must be gone.
-    expect(msg).not.toBe('Bad Request: no valid session ID provided for non-initialize request.');
   });
 
   it('still returns the protocol error (-32600) when NO session id is sent on a non-initialize request', async () => {
@@ -341,16 +366,17 @@ describe('Remote MCP transport — expired session returns an actionable, self-h
   });
 });
 
-describe('Remote MCP transport — idle timeout is env-configurable (default raised to a few hours)', () => {
-  it('defaults to 4 hours and honors MCP_SESSION_IDLE_MS override', async () => {
+describe('Remote MCP transport — idle timeout is env-configurable (default raised to 24h)', () => {
+  it('defaults to 24 hours and honors MCP_SESSION_IDLE_MS override', async () => {
     const { RemoteMcpTransport } = await import('../server/remoteMcpTransport.js');
 
-    // Default (env unset): bounded, multi-hour idle window so a working dev rarely expires.
+    // Default (env unset): bounded 24h idle window (raised from 4h, task 41751115) so a
+    // working dev — even across an overnight gap — rarely expires; rehydration covers the rest.
     const savedIdle = process.env.MCP_SESSION_IDLE_MS;
     delete process.env.MCP_SESSION_IDLE_MS;
     try {
       const dflt = new RemoteMcpTransport(deps);
-      expect((dflt as any).sessionIdleMs).toBe(4 * 60 * 60 * 1000);
+      expect((dflt as any).sessionIdleMs).toBe(24 * 60 * 60 * 1000);
 
       // Override is read from env at construction (tunable without a code change).
       process.env.MCP_SESSION_IDLE_MS = String(2 * 60 * 60 * 1000); // 2 hours
@@ -360,15 +386,202 @@ describe('Remote MCP transport — idle timeout is env-configurable (default rai
       // Invalid / non-positive values fall back to the safe default (never unbounded).
       process.env.MCP_SESSION_IDLE_MS = 'not-a-number';
       const bad = new RemoteMcpTransport(deps);
-      expect((bad as any).sessionIdleMs).toBe(4 * 60 * 60 * 1000);
+      expect((bad as any).sessionIdleMs).toBe(24 * 60 * 60 * 1000);
 
       process.env.MCP_SESSION_IDLE_MS = '0';
       const zero = new RemoteMcpTransport(deps);
-      expect((zero as any).sessionIdleMs).toBe(4 * 60 * 60 * 1000);
+      expect((zero as any).sessionIdleMs).toBe(24 * 60 * 60 * 1000);
     } finally {
       if (savedIdle === undefined) delete process.env.MCP_SESSION_IDLE_MS;
       else process.env.MCP_SESSION_IDLE_MS = savedIdle;
     }
+  });
+});
+
+describe('Remote MCP transport — rehydration restores project isolation via X-Connection-ID (SR-1)', () => {
+  // On a server restart the in-RAM map is wiped, but the DB still holds the session row
+  // keyed by the STABLE X-Connection-ID (SR-1, migration 050) carrying its project_id.
+  // The rehydrated session must dispatch tools under that X-Connection-ID — NOT the
+  // ephemeral mcp-session-id — so SessionTracker's SR-1 re-attach recovers the SAME
+  // session row and therefore the SAME project. We assert the connectionId handed to the
+  // executor on the rehydrated call IS the X-Connection-ID (the SR-1 recovery key), which
+  // is exactly what makes the user land back in their correct project.
+  it('a rehydrated tools/call dispatches under the X-Connection-ID, not the session id (the SR-1 recovery key)', async () => {
+    const lostSessionId = '11111111-1111-4111-8111-111111111111';
+    const stableConnId = 'bridge-itest-conn-7';
+
+    const res = await fetch(`${baseUrl}/mcp`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json, text/event-stream',
+        Authorization: `Bearer ${TEST_TOKEN}`,
+        'Mcp-Session-Id': lostSessionId,
+        'X-Connection-ID': stableConnId, // the stable per-connection identity SR-1 keys on
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: 99,
+        method: 'tools/call',
+        params: { name: 'mandrel_ping', arguments: { message: 'isolation-probe' } },
+      }),
+    });
+
+    expect(res.status).toBe(200);
+    const text = await res.text();
+    expect(text).toContain('pong (stub)');
+
+    // The dispatched connectionId is the STABLE X-Connection-ID (the SR-1 key that recovers
+    // project from the DB), NOT the lost mcp-session-id. This is what restores the user's
+    // correct project across the restart.
+    const call = executorCalls.find(
+      c => c.tool === 'mandrel_ping' && c.args?.message === 'isolation-probe'
+    );
+    expect(call).toBeDefined();
+    expect(call?.connectionId).toBe(stableConnId);
+    expect(call?.connectionId).not.toBe(lostSessionId);
+  });
+});
+
+describe('Remote MCP transport — rehydration is post-auth only (auth preserved)', () => {
+  it('an unknown session id with NO token is 401 (rehydration never runs pre-auth)', async () => {
+    const res = await fetch(`${baseUrl}/mcp`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json, text/event-stream',
+        // No Authorization header.
+        'Mcp-Session-Id': '22222222-2222-4222-8222-222222222222',
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'tools/call',
+        params: { name: 'mandrel_ping', arguments: { message: 'should-never-run' } },
+      }),
+    });
+    // Auth middleware rejects BEFORE handlePost → never rehydrated.
+    expect(res.status).toBe(401);
+    // And the tool must NOT have executed.
+    const ran = executorCalls.find(c => c.args?.message === 'should-never-run');
+    expect(ran).toBeUndefined();
+  });
+
+  it('an unknown session id with a WRONG token is 401 (not rehydrated)', async () => {
+    const res = await fetch(`${baseUrl}/mcp`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json, text/event-stream',
+        Authorization: 'Bearer not-the-real-token',
+        'Mcp-Session-Id': '33333333-3333-4333-8333-333333333333',
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'tools/call',
+        params: { name: 'mandrel_ping', arguments: { message: 'wrong-token-probe' } },
+      }),
+    });
+    expect(res.status).toBe(401);
+    const ran = executorCalls.find(c => c.args?.message === 'wrong-token-probe');
+    expect(ran).toBeUndefined();
+  });
+});
+
+describe('Remote MCP transport — SDK-coupling guard for rehydration (fails loudly on an SDK internals change)', () => {
+  // Rehydration depends on UNDOCUMENTED @modelcontextprotocol/sdk internals (the private
+  // `_initialized` flag + the writable inner `_webStandardTransport.sessionId`). A future
+  // SDK bump that renames/relocates these would SILENTLY brick rehydration (back to 404s
+  // for every customer after a deploy). This guard asserts the mechanism against the
+  // INSTALLED SDK so such a bump fails CI loudly. The SDK is pinned to 1.29.x; if this
+  // test goes red after a bump, re-verify driveSyntheticInitialize + the sessionId stamp.
+  it('drives a synthetic initialize on the installed SDK transport: _initialized flips and the inner sessionId is writable', async () => {
+    const { Server } = await import('@modelcontextprotocol/sdk/server/index.js');
+    const { StreamableHTTPServerTransport } = await import(
+      '@modelcontextprotocol/sdk/server/streamableHttp.js'
+    );
+    const { randomUUID } = await import('node:crypto');
+    const { LATEST_PROTOCOL_VERSION } = await import('@modelcontextprotocol/sdk/types.js');
+
+    const server = new Server(
+      { name: 'sdk-guard', version: '1.0.0' },
+      { capabilities: { tools: {}, resources: {} } }
+    );
+    const transport = new StreamableHTTPServerTransport({
+      sessionIdGenerator: () => randomUUID(),
+      enableDnsRebindingProtection: true,
+      allowedHosts: ['localhost'],
+    });
+    await server.connect(transport);
+
+    // The private surface rehydration relies on MUST exist on the installed SDK.
+    const inner = (transport as any)._webStandardTransport;
+    expect(inner).toBeDefined();
+    // Before init: not initialized.
+    expect(inner._initialized).toBe(false);
+
+    // Drive ONE synthetic initialize through the inner transport (same path as
+    // RemoteMcpTransport.driveSyntheticInitialize) and assert the private flag flips.
+    const initBody = {
+      jsonrpc: '2.0',
+      id: 'sdk-guard-init',
+      method: 'initialize',
+      params: {
+        protocolVersion: LATEST_PROTOCOL_VERSION,
+        capabilities: {},
+        clientInfo: { name: 'sdk-guard', version: '1.0.0' },
+      },
+    };
+    const webReq = new Request('http://localhost/mcp', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        accept: 'application/json, text/event-stream',
+        host: 'localhost',
+      },
+      body: JSON.stringify(initBody),
+    });
+    const resp = await inner.handleRequest(webReq, { parsedBody: initBody });
+    try { await resp?.text?.(); } catch { /* drained */ }
+
+    // _initialized flipped true and a session id was minted (the two facts rehydration needs).
+    expect(inner._initialized).toBe(true);
+    expect(typeof inner.sessionId).toBe('string');
+
+    // The inner sessionId is WRITABLE (rehydration stamps the OLD id onto it). The public
+    // wrapper exposes sessionId as a read-only getter delegating to the inner one.
+    const stamped = '44444444-4444-4444-8444-444444444444';
+    inner.sessionId = stamped;
+    expect(inner.sessionId).toBe(stamped);
+    expect((transport as any).sessionId).toBe(stamped); // wrapper getter reflects the inner id
+
+    await transport.close();
+  });
+
+  it('the installed @modelcontextprotocol/sdk is pinned to 1.29.x (rehydration is verified against this internals contract)', async () => {
+    // Read the SDK's own installed package.json version straight off disk. A major/minor
+    // bump must be a DELIBERATE change that re-runs the guard above, not an unnoticed
+    // drift that silently bricks rehydration.
+    const { readFileSync } = await import('node:fs');
+    const { fileURLToPath } = await import('node:url');
+    const path = await import('node:path');
+    const here = path.dirname(fileURLToPath(import.meta.url));
+    // src/tests → mcp-server root → node_modules/@modelcontextprotocol/sdk/package.json
+    const sdkPkgPath = path.resolve(
+      here, '..', '..', 'node_modules', '@modelcontextprotocol', 'sdk', 'package.json'
+    );
+    const sdkPkg = JSON.parse(readFileSync(sdkPkgPath, 'utf8')) as { version: string };
+    expect(sdkPkg.version).toMatch(/^1\.29\./);
+
+    // And the declared pin in mcp-server/package.json is exact-1.29.x (no caret/range that
+    // could silently float the SDK past the verified internals contract).
+    const projPkgPath = path.resolve(here, '..', '..', 'package.json');
+    const projPkg = JSON.parse(readFileSync(projPkgPath, 'utf8')) as {
+      dependencies?: Record<string, string>;
+    };
+    const declared = projPkg.dependencies?.['@modelcontextprotocol/sdk'];
+    expect(declared).toMatch(/^1\.29\./);
   });
 });
 
