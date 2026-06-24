@@ -45,7 +45,7 @@ COPY scripts/retry_net.sh /usr/local/bin/retry_net
 RUN chmod +x /usr/local/bin/retry_net && /usr/local/bin/retry_net true
 
 # Copy package files for dependency resolution
-COPY package*.json ./
+COPY package*.json .npmrc ./
 # Install only production dependencies. --ignore-scripts is kept for safety, but
 # sharp (transitive via @xenova/transformers) needs its native binary installed,
 # which its install script normally fetches. Run that script explicitly afterward.
@@ -76,7 +76,7 @@ COPY scripts/retry_net.sh /usr/local/bin/retry_net
 RUN chmod +x /usr/local/bin/retry_net && /usr/local/bin/retry_net true
 
 # Copy package files
-COPY package*.json ./
+COPY package*.json .npmrc ./
 # Install all dependencies for validation/type checking (retried for resilience).
 RUN retry_net npm ci --ignore-scripts
 
