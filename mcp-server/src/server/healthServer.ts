@@ -12,7 +12,9 @@ import { dbPool, poolHealthCheck } from '../services/databasePool.js';
 import { AIDIS_TOOL_DEFINITIONS } from '../config/toolDefinitions.js';
 import { ProjectController } from '../api/controllers/projectController.js';
 import createSessionRouter from '../api/v2/sessionRoutes.js';
-import { bearerAuth } from '../middleware/bearerAuth.js';
+import { bearerAuth, dualBearerAuth } from '../middleware/bearerAuth.js';
+import { mountOAuthRoutes } from './oauthRoutes.js';
+import { BETTER_AUTH_CONFIG } from '../config/betterAuthConfig.js';
 import type { RemoteMcpTransport } from './remoteMcpTransport.js';
 
 /**
@@ -73,7 +75,15 @@ export class HealthServer {
       next();
     });
 
-    // JSON body parsing
+    // OAuth authorization-server surface (better-auth) — MOUNTED BEFORE express.json().
+    // The better-auth handler reads the raw request body itself; applying express.json()
+    // first would consume the stream and hang the handler. mountOAuthRoutes is a no-op
+    // (returns null) when MANDREL_OAUTH_ENABLED!=true, so the default static-bearer-only
+    // deployment is unaffected. The auth routes are scoped to <basePath> + the explicit
+    // .well-known + /sign-in + /consent paths and never intercept /mcp or /mcp/tools/*.
+    mountOAuthRoutes(this.app);
+
+    // JSON body parsing (for the health/bridge/REST routes below — NOT the auth routes).
     this.app.use(express.json({ limit: '10mb' }));
     this.app.use(express.urlencoded({ extended: true }));
   }
@@ -100,11 +110,20 @@ export class HealthServer {
     // Mounted on EXACT path '/mcp' so it does NOT intercept the unauthenticated
     // on-box bridge at '/mcp/tools/*' below.
     if (this.remoteMcp) {
-      const auth = bearerAuth();
+      // Auth guard for /mcp:
+      //   - OAuth ENABLED  → dualBearerAuth(): static MCP_AUTH_TOKEN (UNCHANGED backward-
+      //     compatible path) OR a valid better-auth OAuth JWT (RFC 8707 audience-bound),
+      //     else 401 + WWW-Authenticate discovery hint.
+      //   - OAuth DISABLED → bearerAuth(): the pre-existing static-only guard, byte-for-byte
+      //     (incl. the 503 fail-closed when MCP_AUTH_TOKEN is unset).
+      const auth = BETTER_AUTH_CONFIG.enabled ? dualBearerAuth() : bearerAuth();
       this.app.post('/mcp', auth, this.remoteMcp.handlePost);
       this.app.get('/mcp', auth, this.remoteMcp.handleSessionRequest);
       this.app.delete('/mcp', auth, this.remoteMcp.handleSessionRequest);
-      logger.info('🌐 Remote MCP transport mounted: POST/GET/DELETE /mcp (Bearer-auth required)');
+      logger.info(
+        `🌐 Remote MCP transport mounted: POST/GET/DELETE /mcp ` +
+        `(${BETTER_AUTH_CONFIG.enabled ? 'dual static+OAuth auth' : 'static Bearer-auth'} required)`
+      );
     }
 
     // MCP tool endpoints (on-box bridge — intentionally UNAUTHENTICATED for local agents)
