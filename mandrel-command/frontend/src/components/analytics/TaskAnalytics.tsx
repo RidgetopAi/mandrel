@@ -14,6 +14,7 @@ import {
 import { apiService } from '../../services/api';
 import dayjs from 'dayjs';
 import { logger } from '../../utils/logger';
+import { useTheme } from '../../contexts/ThemeContext';
 
 /**
  * TaskAnalytics Component
@@ -59,6 +60,13 @@ const TaskAnalytics: React.FC<TaskAnalyticsProps> = ({
   const [loading, setLoading] = useState(true);
   const [selectedDateRange, setSelectedDateRange] = useState<[Date, Date]>(dateRange);
   const [viewMode, setViewMode] = useState<'basic' | 'advanced'>('advanced');
+  const { themeMode } = useTheme();
+  const isDark = themeMode === 'dark';
+  // Theme-aware chart text color so legend/axis/label text is readable in BOTH
+  // light and dark mode (G2 v5 renders to canvas — it can't inherit CSS color,
+  // so the fill must be set explicitly per theme).
+  const chartTextColor = isDark ? 'rgba(255, 255, 255, 0.85)' : 'rgba(0, 0, 0, 0.85)';
+  const chartTheme = isDark ? 'classicDark' : 'classic';
 
   // Defensive formatter utility for safe .toFixed() calls
   const fmt = (num: number | null | undefined, digits: number = 1): string => {
@@ -194,56 +202,94 @@ const TaskAnalytics: React.FC<TaskAnalyticsProps> = ({
     'LOW': '#52c41a'
   };
 
-  // Pie chart config for status distribution
+  const total = statusData.reduce((sum, d) => sum + d.value, 0) || 1;
+
+  // Pie chart config for status distribution (G2 v5 / @ant-design/plots v2 API).
+  // - `label.text` is the accessor (v2 replaced v1's `content`, which is why the
+  //   slice labels read "undefined"); we render the real status name + percentage.
+  // - colors come from `scale.color.range` (v2 replaced the v1 `color` array).
+  // - legend/label text fill is theme-aware so it's readable in dark mode.
   const statusPieConfig = {
     data: statusData,
     angleField: 'value',
     colorField: 'type',
-    color: statusData.map(d => statusColors[d.type as keyof typeof statusColors] || '#8c8c8c'),
     radius: 0.8,
+    theme: chartTheme,
+    scale: {
+      color: {
+        range: statusData.map(
+          d => statusColors[d.type as keyof typeof statusColors] || '#8c8c8c'
+        ),
+      },
+    },
     label: {
       position: 'outside' as const,
-      content: ({ percent }: any) => `${(percent * 100).toFixed(0)}%`,
+      text: (d: { type: string; value: number }) =>
+        `${d.type} (${((d.value / total) * 100).toFixed(0)}%)`,
       style: {
         fontSize: 12,
         fontWeight: 'bold',
+        fill: chartTextColor,
       },
     },
     legend: {
-      position: 'bottom' as const,
+      color: {
+        position: 'bottom' as const,
+        itemLabelFill: chartTextColor,
+      },
     },
     interactions: [{ type: 'element-active' }],
   };
 
-  // Bar chart config for priority distribution  
+  // Bar chart config for priority distribution (G2 v5 API)
   const priorityBarConfig = {
     data: priorityData,
     xField: 'count',
     yField: 'priority',
-    color: priorityData.map(d => priorityColors[d.priority as keyof typeof priorityColors] || '#8c8c8c'),
+    theme: chartTheme,
+    scale: {
+      color: {
+        range: priorityData.map(
+          d => priorityColors[d.priority as keyof typeof priorityColors] || '#8c8c8c'
+        ),
+      },
+    },
     label: {
       position: 'right' as const,
+      text: 'count',
       style: {
-        fill: '#fff',
-        fontWeight: 'bold'
-      }
+        fill: chartTextColor,
+        fontWeight: 'bold',
+      },
     },
+    axis: {
+      x: { labelFill: chartTextColor, titleFill: chartTextColor },
+      y: { labelFill: chartTextColor, titleFill: chartTextColor },
+    },
+    legend: false as const,
     interactions: [{ type: 'element-active' }],
   };
 
-  // Column chart config for task types
+  // Column chart config for task types (G2 v5 API)
   const typeColumnConfig = {
     data: typeData,
     xField: 'type',
     yField: 'count',
-    color: '#1890ff',
+    theme: chartTheme,
+    style: { fill: '#1890ff' },
     label: {
       position: 'top' as const,
+      text: 'count',
       style: {
-        fill: '#333',
-        fontWeight: 'bold'
-      }
+        fill: chartTextColor,
+        fontWeight: 'bold',
+      },
     },
+    axis: {
+      x: { labelFill: chartTextColor, titleFill: chartTextColor },
+      y: { labelFill: chartTextColor, titleFill: chartTextColor },
+    },
+    legend: false as const,
     interactions: [{ type: 'element-active' }],
   };
 
