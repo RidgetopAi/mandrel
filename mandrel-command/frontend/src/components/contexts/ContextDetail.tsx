@@ -320,7 +320,7 @@ const ContextDetail: React.FC<ContextDetailProps> = ({
             )}
 
             {/* Editable Content - Larger viewing area */}
-            <Card title="Content" size="small" style={{ flex: 1 }}>
+            <Card title="Content" size="small" style={{ flex: 1, width: '100%', minWidth: 0 }}>
               {isEditing ? (
                 <Form form={form} layout="vertical">
                   <Form.Item
@@ -337,6 +337,16 @@ const ContextDetail: React.FC<ContextDetailProps> = ({
                 <Paragraph
                   style={{
                     whiteSpace: 'pre-wrap',
+                    // Break long unbroken tokens (URLs, hashes, no-space titles)
+                    // so they wrap normally instead of one-char-per-line on a
+                    // narrow (mobile) viewport.
+                    overflowWrap: 'anywhere',
+                    wordBreak: 'break-word',
+                    // minWidth:0 stops the flex (antd Space) chain from collapsing
+                    // this column to min-content (the single-char width that caused
+                    // the vertical wrap).
+                    width: '100%',
+                    minWidth: 0,
                     maxHeight: 'calc(100vh - 380px)',
                     minHeight: '300px',
                     overflowY: 'auto'
