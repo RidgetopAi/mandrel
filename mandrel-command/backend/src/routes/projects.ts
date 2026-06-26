@@ -153,6 +153,21 @@ router.get('/stats', ProjectController.getProjectStats);
  *   get:
  *     summary: Get all sessions across projects
  *     tags: [Projects]
+ *     parameters:
+ *       - in: query
+ *         name: project_id
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         required: false
+ *         description: Filter sessions to a single project (UUID). Ignored if not a valid UUID.
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *         required: false
+ *         description: Maximum number of sessions to return (most recent first).
  *     responses:
  *       200:
  *         description: Sessions retrieved successfully

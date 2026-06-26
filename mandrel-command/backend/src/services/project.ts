@@ -327,10 +327,33 @@ export class ProjectService {
   /**
    * Get all sessions across all projects (unified from sessions table)
    */
-  static async getAllSessions(): Promise<Session[]> {
+  static async getAllSessions(
+    options: { projectId?: string; limit?: number } = {}
+  ): Promise<Session[]> {
     try {
+      // Honor the optional filters the dashboard widget passes
+      // (`project_id`, `limit`). Previously these were ignored, so the UI
+      // believed it was filtering by project but received every session.
+      const { projectId, limit } = options;
+
+      const conditions: string[] = [];
+      const params: unknown[] = [];
+
+      if (projectId) {
+        params.push(projectId);
+        conditions.push(`s.project_id = $${params.length}`);
+      }
+
+      const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+
+      let limitClause = '';
+      if (typeof limit === 'number' && Number.isFinite(limit) && limit > 0) {
+        params.push(Math.floor(limit));
+        limitClause = `LIMIT $${params.length}`;
+      }
+
       const result = await pool.query(`
-        SELECT 
+        SELECT
           s.id,
           s.project_id,
           p.name as project_name,
@@ -340,8 +363,10 @@ export class ProjectService {
           COALESCE(s.last_activity_at, s.ended_at, s.started_at) as last_context_at
         FROM sessions s
         LEFT JOIN projects p ON s.project_id = p.id
+        ${whereClause}
         ORDER BY s.started_at DESC
-      `);
+        ${limitClause}
+      `, params);
 
       return result.rows.map(row => ({
         id: row.id,

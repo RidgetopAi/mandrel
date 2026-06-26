@@ -4,33 +4,35 @@ import { AuthenticationService } from '../api/generated/services/AuthenticationS
 import { LoginRequest } from '../api/generated/models/LoginRequest';
 import { User } from '../api/generated/models/User';
 import { useAuthStore } from '../stores/authStore';
-import { OpenAPI } from '../api/generated/core/OpenAPI';
 import { logger } from '../utils/logger';
 
-// Configure OpenAPI base settings
-if (process.env.REACT_APP_API_URL) {
-  OpenAPI.BASE = process.env.REACT_APP_API_URL;
-}
-
-// Helper to set auth token in OpenAPI client
-const setAuthToken = (token: string | null) => {
+// SINGLE SOURCE OF TRUTH for the auth token: localStorage 'aidis_token', read
+// FRESH on every request by the function-based OpenAPI.TOKEN resolver installed
+// in api/client.ts (imported at app startup in index.tsx). We deliberately do
+// NOT also pin a STATIC token/headers onto the global OpenAPI config here.
+//
+// THE BUG THIS REMOVES (stale-token logout loop, task 10669bdd):
+//   This module used to call setAuthToken() at module-load and on every login,
+//   which set `OpenAPI.TOKEN = <captured string>` and
+//   `OpenAPI.HEADERS = { Authorization: 'Bearer <captured string>' }`.
+//   Those STATIC values raced with — and clobbered — client.ts's fresh
+//   function resolver. After a stale token had been captured (e.g. an old
+//   value left in localStorage, or login firing while module-load already
+//   captured the previous token), some parallel authed calls would send the
+//   STALE token (→ 401) while siblings sent the fresh one. A single such 401
+//   then tripped the global axios interceptor's force-logout → logout loop.
+//
+// The fix: writing localStorage is the ONLY thing that updates the token; every
+// reader (client.ts resolver, services/api.ts, sessionsClient, etc.) reads that
+// same key fresh, so it is impossible for one call to carry a stale token while
+// a sibling carries the fresh one.
+const setStoredToken = (token: string | null) => {
   if (token) {
-    OpenAPI.TOKEN = token;
-    // Set headers using a simple object
-    OpenAPI.HEADERS = {
-      Authorization: `Bearer ${token}`,
-    };
+    localStorage.setItem('aidis_token', token);
   } else {
-    OpenAPI.TOKEN = undefined;
-    OpenAPI.HEADERS = undefined;
+    localStorage.removeItem('aidis_token');
   }
 };
-
-// Initialize token from localStorage if exists (use consistent key)
-const storedToken = localStorage.getItem('aidis_token');
-if (storedToken) {
-  setAuthToken(storedToken);
-}
 
 export const useLogin = () => {
   const queryClient = useQueryClient();
@@ -43,9 +45,11 @@ export const useLogin = () => {
       return response;
     },
     onSuccess: (data) => {
-      // Store token and user (use consistent key)
-      localStorage.setItem('aidis_token', data.token);
-      setAuthToken(data.token);
+      // Store the fresh token in the single source of truth (localStorage).
+      // The function-based OpenAPI.TOKEN resolver (api/client.ts) and every
+      // other reader pick it up fresh on their next request — no static copy
+      // is pinned onto the OpenAPI config, so no stale token can race.
+      setStoredToken(data.token);
 
       // Update auth store
       useAuthStore.getState().setUser(data.user as User, data.token);
@@ -76,8 +80,7 @@ export const useLogout = () => {
     },
     onSettled: () => {
       // Always clear local state regardless of server response
-      localStorage.removeItem('aidis_token');
-      setAuthToken(null);
+      setStoredToken(null);
 
       // Clear auth store
       useAuthStore.getState().logout();
@@ -125,10 +128,12 @@ export const useAuthCheck = () => {
 
         throw new Error('Invalid profile response');
       } catch (error: any) {
-        // If unauthorized, clear auth state
+        // The profile check IS an auth-critical call: a 401 here means the
+        // stored token is genuinely dead, so clearing auth state is correct.
+        // (Contrast with non-critical widget calls — those must NOT force a
+        // logout; see services/api.ts response interceptor.)
         if (error.status === 401) {
-          localStorage.removeItem('aidis_token');
-          setAuthToken(null);
+          setStoredToken(null);
           useAuthStore.getState().logout();
         }
         throw error;

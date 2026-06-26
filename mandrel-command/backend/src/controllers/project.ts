@@ -4,6 +4,7 @@ import { McpService } from '../services/mcp';
 import { ProjectInsightsService } from '../services/projectInsights';
 import { db } from '../database/connection';
 import { logger } from '../config/logger';
+import { isValidUuid } from '../utils/uuid';
 
 export class ProjectController {
   /**
@@ -218,9 +219,24 @@ export class ProjectController {
   /**
    * GET /projects/sessions/all - Get all sessions across projects
    */
-  static async getAllSessions(_req: Request, res: Response): Promise<void> {
+  static async getAllSessions(req: Request, res: Response): Promise<void> {
     try {
-      const sessions = await ProjectService.getAllSessions();
+      // Honor the query filters the dashboard widget sends. Previously these
+      // were ignored (the param was `_req`), so the UI thought it was filtering
+      // by project/limit but always received every session.
+      const rawProjectId = req.query.project_id;
+      const projectId =
+        typeof rawProjectId === 'string' && isValidUuid(rawProjectId)
+          ? rawProjectId
+          : undefined;
+
+      const rawLimit = req.query.limit;
+      const parsedLimit =
+        typeof rawLimit === 'string' ? Number.parseInt(rawLimit, 10) : NaN;
+      const limit =
+        Number.isFinite(parsedLimit) && parsedLimit > 0 ? parsedLimit : undefined;
+
+      const sessions = await ProjectService.getAllSessions({ projectId, limit });
 
       res.json({
         success: true,

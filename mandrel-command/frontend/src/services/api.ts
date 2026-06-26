@@ -10,6 +10,36 @@ export interface ApiError {
   details?: any;
 }
 
+/**
+ * Auth-critical endpoints (task 10669bdd).
+ *
+ * Only a 401 from one of THESE means the session itself is dead and a
+ * force-logout is the correct response. A 401 from any OTHER (non-critical)
+ * call — e.g. the `/projects/sessions/all` dashboard widget — must NOT destroy
+ * the whole session: it fails that widget gracefully and the user stays logged
+ * in. This is the bug that turned a transient stale-token blip on one widget
+ * call into a full logout loop.
+ *
+ * Matching is path-suffix based and case-insensitive so it works regardless of
+ * the configured baseURL (`/api`, absolute origin, etc.).
+ */
+const AUTH_CRITICAL_PATHS = [
+  '/auth/login',
+  '/auth/logout',
+  '/auth/profile',
+  '/auth/refresh',
+  '/auth/me',
+] as const;
+
+export const isAuthCriticalUrl = (url?: string): boolean => {
+  if (!url) {
+    return false;
+  }
+  // Strip query string, then normalise to lowercase for the suffix check.
+  const path = url.split('?')[0].toLowerCase();
+  return AUTH_CRITICAL_PATHS.some((critical) => path.endsWith(critical));
+};
+
 class ApiClient {
   private _instance: AxiosInstance;
   
@@ -77,14 +107,25 @@ class ApiClient {
       (response) => response,
       (error) => {
         logger.error('API Response Error:', error.response?.data || error.message);
-        
-        if (error.response?.status === 401) {
-          // Token expired or invalid
+
+        // DISCRIMINATING 401 HANDLING (task 10669bdd):
+        // Force a logout ONLY when an AUTH-CRITICAL call 401s (the token is
+        // genuinely dead). A 401 from a non-critical call (a dashboard widget,
+        // etc.) must NOT nuke the session — that single call fails gracefully
+        // and is rejected to its own caller, but the user stays logged in.
+        // Previously ANY 401 cleared the token and hard-redirected to /login,
+        // so one stale-token blip on the `/projects/sessions/all` widget call
+        // produced a logout loop.
+        if (
+          error.response?.status === 401 &&
+          isAuthCriticalUrl(error.config?.url)
+        ) {
+          // Token expired or invalid on an auth-critical request.
           localStorage.removeItem('aidis_token');
           localStorage.removeItem('aidis_user');
           window.location.href = '/login';
         }
-        
+
         return Promise.reject({
           message: error.response?.data?.message || error.message,
           code: error.response?.data?.code,
