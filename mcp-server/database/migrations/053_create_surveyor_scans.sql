@@ -35,69 +35,70 @@
 -- alongside the extracted columns so surveyor_get_graph can return faithful nodes/edges
 -- while filters/joins use the typed columns.
 --
--- ADDITIVE / IDEMPOTENT / BACKWARD-COMPATIBLE:
---   * CREATE TABLE IF NOT EXISTS + CREATE INDEX IF NOT EXISTS — safe to re-run.
---   * Brand-new tables; nothing existing is altered or dropped.
+-- ADDITIVE / IDEMPOTENT / SHAPE-GUARDED:
+--   * CREATE TABLE IF NOT EXISTS + CREATE INDEX IF NOT EXISTS — the create half is safe to re-run.
 --   * ON DELETE CASCADE from projects → scans → children, so deleting a project (or a scan)
 --     reaps its whole subtree with no orphans.
+--   * The ONLY destructive action is dropping the DEAD LEGACY surveyor schema, and it fires
+--     ONLY when the legacy shape is positively detected (see guard below) — so a re-run on the
+--     new normalized schema (or a fresh DB) does NOTHING destructive and CANNOT lose P4b data.
 --
 -- This migration number (053) is ABOVE BASELINE_THROUGH (42), so it runs normally on BOTH
 -- fresh builds (after the 000 baseline) and existing/already-baselined instances. The
 -- schema-contract reference (scripts/schema-reference.sql.txt) is regenerated to include
 -- these tables so the CI drift gate (ci.sh stage 0c) stays GREEN and honest.
 --
--- ⚠️  REBUILD — SUPERSEDES A DEAD LEGACY SURVEYOR SCHEMA. The 000 baseline carries an
--- EARLIER, abandoned Surveyor iteration: a denormalized single-table `surveyor_scans` (with
--- nodes/connections/clusters as jsonb columns + summary_l0/l1/l2), a `surveyor_warnings`
--- table, and a `v_surveyor_scan_summaries` view. A repo-wide search (handlers/services/
--- routes/command-ui) found ZERO code referencing any of them — they are orphaned schema, and
--- nothing writes to them. The locked P4b architecture (decision 8f330f96) is a NORMALIZED
--- design (separate nodes/connections/warnings/function_summaries tables), so this rebuild
--- REPLACES the dead schema under the same natural names rather than leaving two surveyor
--- schemas to drift.
+-- ⚠️  REBUILD — SUPERSEDES + DROPS A DEAD LEGACY SURVEYOR SCHEMA (Brian-approved, 2026-06-27).
+-- The 000 baseline carries an EARLIER, abandoned Surveyor iteration: a denormalized single-table
+-- `surveyor_scans` (with nodes/connections/clusters as jsonb columns + summary_l0/l1/l2), a
+-- `surveyor_warnings` table, and a `v_surveyor_scan_summaries` view. A repo-wide search
+-- (handlers/services/routes/command-ui) found ZERO code referencing any of them — they are
+-- orphaned schema, and nothing reads/writes them. Production was verified to hold ONLY legacy
+-- junk in these tables (surveyor_scans=72, surveyor_warnings=7077 rows of the abandoned
+-- denormalized format). Brian's DECISION: DROP it — it is junk, superseded by the locked P4b
+-- NORMALIZED design (decision 8f330f96: separate nodes/connections/warnings/function_summaries
+-- tables). So this rebuild DROPS the legacy schema REGARDLESS of row count and replaces it under
+-- the same natural names rather than leaving two surveyor schemas to drift.
 --
--- SURFACE-DON'T-CLOBBER: we DROP the legacy tables only after a FAIL-CLOSED guard proves
--- they are EMPTY. If either legacy table has ANY rows (i.e. some environment did write real
--- data), the migration RAISES and aborts — we never silently destroy data; a human
--- investigates first. (NOTHING deploys from this branch; Ridge/Inspector review this drop,
--- and prod is CN1-gated.)
+-- SHAPE-GUARDED DROP (idempotent + can NEVER destroy real NEW P4b data): we drop the legacy
+-- tables/view ONLY when they are the LEGACY shape, detected by a legacy-ONLY signature —
+-- `surveyor_scans` carrying a `clusters` or `summary_l0` column, or the legacy view
+-- `v_surveyor_scan_summaries` existing. The new normalized `surveyor_scans` has NONE of those,
+-- so if the new schema is already present (or the DB is fresh) the guard detects NO legacy shape
+-- and performs NO destructive action — the create-IF-NOT-EXISTS half then no-ops and existing
+-- normalized rows are preserved. (NOTHING deploys from this branch; Ridge/Inspector review this
+-- drop, and prod is CN1-gated.)
 
--- ── FAIL-CLOSED guard: refuse to drop a populated legacy table ───────────────────────────
+-- ── SHAPE-GUARDED drop of the dead legacy schema (Brian-approved; drops junk regardless of rows) ──
 DO $$
 DECLARE
-  scan_rows BIGINT := 0;
-  warn_rows BIGINT := 0;
+  has_legacy_view BOOLEAN;
+  has_legacy_cols BOOLEAN;
 BEGIN
-  IF to_regclass('public.surveyor_scans') IS NOT NULL THEN
-    EXECUTE 'SELECT count(*) FROM public.surveyor_scans' INTO scan_rows;
-  END IF;
-  IF to_regclass('public.surveyor_warnings') IS NOT NULL THEN
-    EXECUTE 'SELECT count(*) FROM public.surveyor_warnings' INTO warn_rows;
-  END IF;
-  -- A populated legacy table on the OLD schema (no source_scan_id column) means real data
-  -- exists — abort rather than clobber. (Once this migration has applied, the table is the
-  -- NEW schema; this guard then protects real P4b data from a re-run too.)
-  IF (scan_rows > 0 OR warn_rows > 0)
-     AND to_regclass('public.surveyor_scans') IS NOT NULL
-     AND NOT EXISTS (
-       SELECT 1 FROM information_schema.columns
-       WHERE table_schema = 'public' AND table_name = 'surveyor_scans'
-         AND column_name = 'source_scan_id'
-     )
-  THEN
-    RAISE EXCEPTION
-      'Refusing to drop the LEGACY surveyor schema: surveyor_scans=% rows, surveyor_warnings=% rows. '
-      'The P4b rebuild expects the abandoned legacy tables to be empty/unused. Investigate this data before migrating.',
-      scan_rows, warn_rows;
+  -- Legacy-ONLY signatures. The normalized P4b surveyor_scans has neither `clusters` nor
+  -- `summary_l0`, and the v_surveyor_scan_summaries view belongs solely to the legacy schema.
+  has_legacy_view := to_regclass('public.v_surveyor_scan_summaries') IS NOT NULL;
+  has_legacy_cols := EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'surveyor_scans'
+      AND column_name IN ('clusters', 'summary_l0')
+  );
+
+  IF has_legacy_view OR has_legacy_cols THEN
+    -- LEGACY shape detected → drop the abandoned junk (Brian-approved), regardless of row
+    -- count. View first (it depends on the legacy table), then the tables (CASCADE mops up
+    -- any leftover dependents such as the legacy warnings FK + indexes).
+    RAISE NOTICE 'Surveyor 053: LEGACY denormalized schema detected — dropping dead junk (Brian-approved): v_surveyor_scan_summaries, surveyor_warnings, surveyor_scans.';
+    DROP VIEW  IF EXISTS public.v_surveyor_scan_summaries;
+    DROP TABLE IF EXISTS public.surveyor_warnings CASCADE;
+    DROP TABLE IF EXISTS public.surveyor_scans    CASCADE;
+  ELSE
+    -- No legacy shape: either the NEW normalized schema is already present (re-run) or the DB
+    -- is fresh. Do NOTHING destructive — the create-IF-NOT-EXISTS half below is a safe no-op
+    -- and any existing normalized P4b data is preserved.
+    RAISE NOTICE 'Surveyor 053: no legacy schema present (new normalized schema or fresh DB) — no destructive action taken.';
   END IF;
 END $$;
-
--- The view depends on the legacy surveyor_scans; drop it first, then the legacy tables
--- (CASCADE mops up any leftover dependents). IF EXISTS keeps this safe on a DB that never
--- had the legacy schema.
-DROP VIEW  IF EXISTS public.v_surveyor_scan_summaries;
-DROP TABLE IF EXISTS public.surveyor_warnings CASCADE;
-DROP TABLE IF EXISTS public.surveyor_scans    CASCADE;
 
 -- ── The scan record ─────────────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS surveyor_scans (
