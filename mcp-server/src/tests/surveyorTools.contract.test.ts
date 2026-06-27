@@ -16,7 +16,7 @@ import { db } from '../config/database.js';
 import { routeExecutor } from '../routes/index.js';
 import { validateToolArguments } from '../middleware/validation.js';
 import { surveyorRoutes } from '../routes/surveyor.routes.js';
-import { FakeSurveyorClient, makeScanResult } from './surveyorFixtures.js';
+import { FakeSurveyorClient, makeScanResult, makeFindingsScanResult } from './surveyorFixtures.js';
 import { SurveyorClientError, type ISurveyorClient } from '../services/surveyorClient.js';
 
 const STAMP = Date.now();
@@ -139,5 +139,78 @@ describe('surveyor_scan / surveyor_get_graph (P4b tools)', () => {
     const graph = await viaTool('surveyor_get_graph', {});
     // Latest scan is the re-scan.
     expect(graph.structuredContent.scan.projectName).toBe('demo-rescan');
+  });
+
+  test('surveyor_get_file reads a file card back (imports/exports/functions[+summary]/classes)', async () => {
+    surveyorRoutes.setClient(new FakeSurveyorClient(makeScanResult({ id: 'tools-file' })));
+    await viaTool('surveyor_scan', { path: '/srv/code/demo' });
+
+    const resp = await viaTool('surveyor_get_file', { file: 'src/app.ts' });
+    expect(resp.isError).not.toBe(true);
+    const sc = resp.structuredContent;
+    expect(sc.ok).toBe(true);
+    expect(sc.found).toBe(true);
+    expect(sc.file.node.key).toBe('file:src/app.ts');
+    expect(sc.file.functions.length).toBe(2);
+    expect(sc.file.classes.length).toBe(1);
+    const handle = sc.file.functions.find((f: any) => f.key === 'fn:handleRequest');
+    expect(handle.summary.source).toBe('ai');
+    expect(responseText(resp)).toContain('Surveyor file');
+
+    // The file argument also accepts the node key.
+    const byKey = await viaTool('surveyor_get_file', { file: 'file:src/app.ts' });
+    expect(byKey.structuredContent.file.node.key).toBe('file:src/app.ts');
+  });
+
+  test('surveyor_get_file: a non-existent file → found:false (not an error)', async () => {
+    const resp = await viaTool('surveyor_get_file', { file: 'src/nope.ts' });
+    expect(resp.isError).not.toBe(true);
+    expect(resp.structuredContent.ok).toBe(true);
+    expect(resp.structuredContent.found).toBe(false);
+    expect(responseText(resp)).toContain('No file matching');
+  });
+
+  test('surveyor_get_file on a project with no scan → found:false', async () => {
+    await routeExecutor('project_switch', { project: emptyProjectId }, { connectionId: CONN });
+    const resp = await viaTool('surveyor_get_file', { file: 'src/app.ts' });
+    expect(resp.structuredContent.found).toBe(false);
+    expect(responseText(resp)).toContain('No stored Surveyor scan');
+    await routeExecutor('project_switch', { project: projectId }, { connectionId: CONN });
+  });
+
+  test('surveyor_findings reads warnings back, severity-ordered, with confidence + category filters', async () => {
+    surveyorRoutes.setClient(new FakeSurveyorClient(makeFindingsScanResult()));
+    await viaTool('surveyor_scan', { path: '/srv/code/demo' });
+
+    const all = await viaTool('surveyor_findings', {});
+    expect(all.isError).not.toBe(true);
+    const sc = all.structuredContent;
+    expect(sc.ok).toBe(true);
+    expect(sc.found).toBe(true);
+    expect(sc.totalInScan).toBe(3);
+    expect(sc.warnings.map((w: any) => w.level)).toEqual(['error', 'warning', 'info']);
+    expect(responseText(all)).toContain('Surveyor findings');
+
+    // minConfidence floor.
+    const high = await viaTool('surveyor_findings', { minConfidence: 0.5 });
+    expect(high.structuredContent.warnings.map((w: any) => w.key)).toEqual(['w-large']);
+    expect(high.structuredContent.filtered).toBe(true);
+
+    // category filter.
+    const cat = await viaTool('surveyor_findings', { category: 'orphan' });
+    expect(cat.structuredContent.warnings.map((w: any) => w.key)).toEqual(['w-orphan']);
+
+    // bridge string coercion: minConfidence "0.5" and limit "1" arrive as strings.
+    const coerced = await viaTool('surveyor_findings', { minConfidence: '0.5', limit: '1' });
+    expect(coerced.structuredContent.warnings).toHaveLength(1);
+  });
+
+  test('surveyor_findings on a project with no scan → found:false', async () => {
+    await routeExecutor('project_switch', { project: emptyProjectId }, { connectionId: CONN });
+    const resp = await viaTool('surveyor_findings', {});
+    expect(resp.structuredContent.ok).toBe(true);
+    expect(resp.structuredContent.found).toBe(false);
+    expect(responseText(resp)).toContain('No stored Surveyor scan');
+    await routeExecutor('project_switch', { project: projectId }, { connectionId: CONN });
   });
 });

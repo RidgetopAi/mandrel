@@ -11,6 +11,9 @@
  *                       + warnings + per-function summaries) under a Mandrel project.
  *   - getStoredGraph()— read a project's latest (or a specific) stored scan back as a graph
  *                       (scan summary + nodes + connections), optionally filtered.
+ *   - getStoredFile() — read ONE file's card (the file node + imports/exports + its functions
+ *                       [each with its behavioral summary] + classes) from a stored scan.
+ *   - getStoredFindings()— read a project's stored warnings, filterable by confidence/category.
  *
  * SECURITY: every query binds user-derived values as PARAMETERS — never string-built. Bulk
  * inserts use unnest($n::type[]) so an N-row insert is still ONE parameterized statement.
@@ -18,6 +21,7 @@
 
 import type { Pool, PoolClient } from 'pg';
 import { db } from '../config/database.js';
+import { SURVEYOR_CONFIG } from '../config/surveyorConfig.js';
 import { logger } from '../utils/logger.js';
 import type {
   SurveyorScanResult,
@@ -101,6 +105,87 @@ export interface GetGraphOptions {
   /** Restrict returned nodes to these node types (e.g. ['function','class']). */
   nodeTypes?: string[];
   /** Cap the number of nodes returned (connections are scoped to the returned nodes). */
+  limit?: number;
+}
+
+/** A per-function behavioral/AI summary read back from surveyor_function_summaries. */
+export interface StoredFunctionSummary {
+  summary: string;
+  /** BehavioralSummary.source: 'docstring' | 'ai' | 'manual'. */
+  source: string | null;
+  flags: Record<string, unknown>;
+  analyzedAt: string | null;
+}
+
+/** A function member of a file, with its behavioral summary attached when one exists. */
+export interface StoredFunctionMember extends StoredNode {
+  summary: StoredFunctionSummary | null;
+}
+
+/** A single file's CARD: the file node + its imports/exports + its functions and classes. */
+export interface StoredFile {
+  /** The file node itself (extracted columns + full original FileNode payload in `data`). */
+  node: StoredNode;
+  /** The file's imports (raw FileNode.imports payload; [] when absent). */
+  imports: unknown[];
+  /** The file's exports (raw FileNode.exports payload; [] when absent). */
+  exports: unknown[];
+  /** The functions declared in this file (each with its behavioral summary when present). */
+  functions: StoredFunctionMember[];
+  /** The classes declared in this file. */
+  classes: StoredNode[];
+}
+
+export interface StoredFileResult {
+  /** The resolved scan header. */
+  scan: StoredScanHeader;
+  /** The file card, or null when the scan exists but no node matches the file reference. */
+  file: StoredFile | null;
+}
+
+export interface GetFileOptions {
+  /** Read from a specific stored scan (must belong to the project). Default: the latest. */
+  scanId?: string;
+}
+
+/** A warning/finding read back from surveyor_warnings. */
+export interface StoredWarning {
+  key: string;
+  category: string;
+  /** WarningLevel: info | warning | error. */
+  level: string;
+  title: string;
+  description: string | null;
+  /** The node keys this warning is about (Warning.affectedNodes). */
+  affectedNodes: string[];
+  /** The optional structured fix suggestion (Warning.suggestion), or null. */
+  suggestion: unknown;
+  /** WarningSource: surveyor | knip | dependency-cruiser | … */
+  source: string | null;
+  confidence: number | null;
+  dismissible: boolean;
+  detectedAt: string | null;
+}
+
+export interface StoredFindings {
+  /** The resolved scan header. */
+  scan: StoredScanHeader;
+  /** The warnings matching the filters, severity-ordered (error → warning → info). */
+  warnings: StoredWarning[];
+  /** Total warnings in the scan before any filter/limit (so callers know if it was narrowed). */
+  totalInScan: number;
+  /** True when a filter and/or the limit narrowed the result below the scan's total. */
+  filtered: boolean;
+}
+
+export interface GetFindingsOptions {
+  /** Read from a specific stored scan (must belong to the project). Default: the latest. */
+  scanId?: string;
+  /** Confidence floor in (0,1]; warnings below it (and unscored) are excluded. 0/undefined => no floor. */
+  minConfidence?: number;
+  /** Restrict to a single WarningCategory (exact match). */
+  category?: string;
+  /** Cap the number of warnings returned (clamped to the configured max). */
   limit?: number;
 }
 
@@ -283,6 +368,68 @@ export async function persistScan(
 }
 
 /**
+ * Resolve a project's stored scan ROW (project-scoped) — a specific scanId, or the latest.
+ * A scanId may be a full UUID OR an 8+-hex prefix (the house id8 style); match exact-or-prefix
+ * on the text form so both work, newest-first on an ambiguous prefix. Returns null when the
+ * project has no stored scan (or the requested scanId doesn't belong to it). ONE definition so
+ * every read tool (graph / file / findings) resolves the scan identically (Lesson 011).
+ */
+async function resolveScanRow(
+  projectId: string,
+  scanId: string | undefined,
+  pool: Pool,
+): Promise<any | null> {
+  const scanSql = scanId
+    ? `SELECT * FROM surveyor_scans
+       WHERE project_id = $2 AND (id::text = $1 OR id::text LIKE $1 || '%')
+       ORDER BY created_at DESC LIMIT 1`
+    : `SELECT * FROM surveyor_scans WHERE project_id = $1 ORDER BY created_at DESC LIMIT 1`;
+  const params = scanId ? [scanId, projectId] : [projectId];
+  const res = await pool.query(scanSql, params);
+  return res.rows[0] ?? null;
+}
+
+/** Map a surveyor_scans row to the StoredScanHeader shape (shared by every read tool). */
+function mapScanHeader(s: any): StoredScanHeader {
+  return {
+    scanId: s.id,
+    projectId: s.project_id,
+    projectName: s.project_name,
+    projectPath: s.project_path,
+    status: s.status,
+    sourceScanId: s.source_scan_id,
+    stats: typeof s.stats === 'string' ? JSON.parse(s.stats) : (s.stats ?? {}),
+    totals: {
+      files: count(s.total_files),
+      functions: count(s.total_functions),
+      classes: count(s.total_classes),
+      connections: count(s.total_connections),
+      warnings: count(s.total_warnings),
+    },
+    createdAt: s.created_at,
+    completedAt: s.completed_at,
+  };
+}
+
+/** Map a surveyor_nodes row to the StoredNode shape (shared by every read tool). */
+function mapNodeRow(r: any): StoredNode {
+  return {
+    key: r.node_key,
+    type: r.node_type,
+    name: r.name,
+    filePath: r.file_path,
+    line: r.line,
+    endLine: r.end_line,
+    data: typeof r.data === 'string' ? JSON.parse(r.data) : (r.data ?? {}),
+  };
+}
+
+/** Coerce a possibly-string JSONB column into a JS value (node-pg parses jsonb, but be safe). */
+function parseJson(v: unknown): unknown {
+  return typeof v === 'string' ? JSON.parse(v) : v;
+}
+
+/**
  * READ a stored graph for a project. Resolves the scan (a specific scanId scoped to the
  * project, or the project's latest), then returns the scan header + its nodes + connections,
  * optionally filtered by node type and capped by limit. Returns null if the project has no
@@ -293,18 +440,9 @@ export async function getStoredGraph(
   opts: GetGraphOptions = {},
   pool: Pool = db,
 ): Promise<StoredGraph | null> {
-  // 1) Resolve the scan row (project-scoped). A scanId may be a full UUID or an 8+-hex
-  //    prefix (the house id8 style); match exact-or-prefix on the text form so both work,
-  //    newest-first on an ambiguous prefix.
-  const scanSql = opts.scanId
-    ? `SELECT * FROM surveyor_scans
-       WHERE project_id = $2 AND (id::text = $1 OR id::text LIKE $1 || '%')
-       ORDER BY created_at DESC LIMIT 1`
-    : `SELECT * FROM surveyor_scans WHERE project_id = $1 ORDER BY created_at DESC LIMIT 1`;
-  const scanParams = opts.scanId ? [opts.scanId, projectId] : [projectId];
-  const scanRes = await pool.query(scanSql, scanParams);
-  if (scanRes.rows.length === 0) return null;
-  const s = scanRes.rows[0];
+  // 1) Resolve the scan row (project-scoped, exact-or-prefix scanId, else latest).
+  const s = await resolveScanRow(projectId, opts.scanId, pool);
+  if (!s) return null;
   const scanId: string = s.id;
 
   // 2) Nodes (optionally filtered by type, capped by limit).
@@ -326,15 +464,7 @@ export async function getStoredGraph(
      ORDER BY node_type, name${nodeLimit}`,
     nodeParams,
   );
-  const nodes: StoredNode[] = nodeRes.rows.map((r) => ({
-    key: r.node_key,
-    type: r.node_type,
-    name: r.name,
-    filePath: r.file_path,
-    line: r.line,
-    endLine: r.end_line,
-    data: typeof r.data === 'string' ? JSON.parse(r.data) : (r.data ?? {}),
-  }));
+  const nodes: StoredNode[] = nodeRes.rows.map(mapNodeRow);
 
   // 3) Connections. If nodes are filtered/limited, scope edges to the returned node set so
   //    the graph is internally consistent; otherwise return all edges for the scan.
@@ -375,26 +505,162 @@ export async function getStoredGraph(
   const truncated = Boolean(filtered) && nodes.length < totalNodesInScan;
 
   return {
-    scan: {
-      scanId,
-      projectId: s.project_id,
-      projectName: s.project_name,
-      projectPath: s.project_path,
-      status: s.status,
-      sourceScanId: s.source_scan_id,
-      stats: typeof s.stats === 'string' ? JSON.parse(s.stats) : (s.stats ?? {}),
-      totals: {
-        files: count(s.total_files),
-        functions: count(s.total_functions),
-        classes: count(s.total_classes),
-        connections: count(s.total_connections),
-        warnings: count(s.total_warnings),
-      },
-      createdAt: s.created_at,
-      completedAt: s.completed_at,
-    },
+    scan: mapScanHeader(s),
     nodes,
     connections,
     truncated,
   };
+}
+
+/**
+ * READ a single file's CARD from a project's stored scan. Resolves the scan (specific scanId or
+ * latest), finds the file node by its node_key OR its file_path (`fileRef` accepts either), then
+ * gathers the file's imports/exports (from the FileNode payload) plus its functions and classes
+ * (the nodes sharing the file's path), attaching each function's behavioral/AI summary when one
+ * was stored. Returns null when the project has no stored scan; { scan, file:null } when the
+ * scan exists but no node matches the reference. All values bound as PARAMETERS (Lesson 011).
+ */
+export async function getStoredFile(
+  projectId: string,
+  fileRef: string,
+  opts: GetFileOptions = {},
+  pool: Pool = db,
+): Promise<StoredFileResult | null> {
+  const s = await resolveScanRow(projectId, opts.scanId, pool);
+  if (!s) return null;
+  const scanId: string = s.id;
+  const scan = mapScanHeader(s);
+
+  // 1) The file node — matched by its node key OR its file path (either identifier works).
+  const fileRes = await pool.query(
+    `SELECT node_key, node_type, name, file_path, line, end_line, data
+     FROM surveyor_nodes
+     WHERE scan_id = $1 AND node_type = 'file' AND (node_key = $2 OR file_path = $2)
+     ORDER BY name
+     LIMIT 1`,
+    [scanId, fileRef],
+  );
+  if (fileRes.rows.length === 0) return { scan, file: null };
+  const fileNode = mapNodeRow(fileRes.rows[0]);
+
+  // 2) The file's members — functions + classes declared in the same file (by file path).
+  const memberRes = await pool.query(
+    `SELECT node_key, node_type, name, file_path, line, end_line, data
+     FROM surveyor_nodes
+     WHERE scan_id = $1 AND node_type IN ('function', 'class') AND file_path = $2
+     ORDER BY node_type, line NULLS LAST, name`,
+    [scanId, fileNode.filePath],
+  );
+  const members = memberRes.rows.map(mapNodeRow);
+  const functionNodes = members.filter((n) => n.type === 'function');
+  const classes = members.filter((n) => n.type === 'class');
+
+  // 3) Per-function behavioral/AI summaries for those functions (attached to each).
+  const fnKeys = functionNodes.map((n) => n.key);
+  const summaryByKey = new Map<string, StoredFunctionSummary>();
+  if (fnKeys.length > 0) {
+    const sumRes = await pool.query(
+      `SELECT node_key, summary, summary_source, flags, analyzed_at
+       FROM surveyor_function_summaries
+       WHERE scan_id = $1 AND node_key = ANY($2)`,
+      [scanId, fnKeys],
+    );
+    for (const r of sumRes.rows) {
+      summaryByKey.set(r.node_key, {
+        summary: r.summary,
+        source: r.summary_source ?? null,
+        flags: (parseJson(r.flags) as Record<string, unknown>) ?? {},
+        analyzedAt: r.analyzed_at ?? null,
+      });
+    }
+  }
+  const functions: StoredFunctionMember[] = functionNodes.map((n) => ({
+    ...n,
+    summary: summaryByKey.get(n.key) ?? null,
+  }));
+
+  // 4) Imports/exports come straight off the FileNode payload (tolerated when absent).
+  const fileData = fileNode.data as Record<string, unknown>;
+  const imports = Array.isArray(fileData.imports) ? (fileData.imports as unknown[]) : [];
+  const exports = Array.isArray(fileData.exports) ? (fileData.exports as unknown[]) : [];
+
+  return {
+    scan,
+    file: { node: fileNode, imports, exports, functions, classes },
+  };
+}
+
+/**
+ * READ a project's stored findings (warnings) from its scan. Resolves the scan (specific scanId
+ * or latest), then returns the warnings — optionally filtered by a confidence floor and/or a
+ * single category, severity-ordered (error → warning → info, then by confidence). Filter
+ * DEFAULTS + the result cap come from SURVEYOR_CONFIG.findings (configs-not-hardcoded). Returns
+ * null when the project has no stored scan. All filters bound as PARAMETERS.
+ */
+export async function getStoredFindings(
+  projectId: string,
+  opts: GetFindingsOptions = {},
+  pool: Pool = db,
+): Promise<StoredFindings | null> {
+  const s = await resolveScanRow(projectId, opts.scanId, pool);
+  if (!s) return null;
+  const scan = mapScanHeader(s);
+  const scanId: string = s.id;
+
+  const cfg = SURVEYOR_CONFIG.findings;
+  const minConfidence =
+    typeof opts.minConfidence === 'number' && Number.isFinite(opts.minConfidence)
+      ? opts.minConfidence
+      : cfg.defaultMinConfidence;
+  const category = opts.category;
+  const requestedLimit =
+    typeof opts.limit === 'number' && Number.isFinite(opts.limit) && opts.limit > 0
+      ? Math.trunc(opts.limit)
+      : cfg.defaultLimit;
+  const limit = Math.min(requestedLimit, cfg.maxLimit);
+
+  const params: any[] = [scanId];
+  const clauses: string[] = ['scan_id = $1'];
+  // A confidence floor > 0 filters to warnings AT OR ABOVE it (unscored/null excluded). A floor
+  // of 0 (the default) adds no clause, so unscored warnings are returned too.
+  if (minConfidence > 0) {
+    params.push(minConfidence);
+    clauses.push(`confidence >= $${params.length}`);
+  }
+  if (category) {
+    params.push(category);
+    clauses.push(`category = $${params.length}`);
+  }
+  params.push(limit);
+  const limitPos = params.length;
+
+  const res = await pool.query(
+    `SELECT warning_key, category, level, title, description, affected_nodes,
+            suggestion, source, confidence, dismissible, detected_at
+     FROM surveyor_warnings
+     WHERE ${clauses.join(' AND ')}
+     ORDER BY CASE level WHEN 'error' THEN 0 WHEN 'warning' THEN 1 WHEN 'info' THEN 2 ELSE 3 END,
+              confidence DESC NULLS LAST, category, warning_key
+     LIMIT $${limitPos}`,
+    params,
+  );
+
+  const warnings: StoredWarning[] = res.rows.map((r) => ({
+    key: r.warning_key,
+    category: r.category,
+    level: r.level,
+    title: r.title,
+    description: r.description ?? null,
+    affectedNodes: (parseJson(r.affected_nodes) as string[]) ?? [],
+    suggestion: r.suggestion == null ? null : parseJson(r.suggestion),
+    source: r.source ?? null,
+    confidence: r.confidence == null ? null : Number(r.confidence),
+    dismissible: Boolean(r.dismissible),
+    detectedAt: r.detected_at ?? null,
+  }));
+
+  const totalInScan = count(s.total_warnings);
+  const filtered = minConfidence > 0 || !!category || warnings.length < totalInScan;
+
+  return { scan, warnings, totalInScan, filtered };
 }

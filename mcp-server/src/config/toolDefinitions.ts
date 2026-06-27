@@ -673,6 +673,28 @@ export const AIDIS_TOOL_DEFINITIONS: ToolDefinition[] = [
               limit: 'Optional cap on the number of nodes returned',
             }),
           },
+          {
+            name: 'surveyor_get_file',
+            description:
+              "Read a single file's CARD from a project's stored Surveyor scan: the file node plus its imports, exports, functions (each with its behavioral/AI summary when one was analyzed), and classes. The file argument matches the node key (e.g. \"file:src/app.ts\") OR the file path (\"src/app.ts\"). Defaults to the LATEST scan, or a specific scanId. Read-only, project-scoped.",
+            inputSchema: buildInputSchema('surveyor_get_file', {
+              projectId: 'Project to read from (defaults to the current project)',
+              scanId: 'A specific stored scan (full UUID or 8+-hex prefix); defaults to the latest',
+              file: 'The file to read — its node key (e.g. "file:src/app.ts") or its file path ("src/app.ts")',
+            }),
+          },
+          {
+            name: 'surveyor_findings',
+            description:
+              "Read a project's stored Surveyor findings (warnings) back from Postgres: category, level/severity, source, confidence, dismissible, affected nodes, suggestion, and title/description — severity-ordered (error → warning → info). Optional minConfidence floor and category filter (defaults from config). Defaults to the LATEST scan, or a specific scanId. Read-only, project-scoped.",
+            inputSchema: buildInputSchema('surveyor_findings', {
+              projectId: 'Project to read from (defaults to the current project)',
+              scanId: 'A specific stored scan (full UUID or 8+-hex prefix); defaults to the latest',
+              minConfidence: 'Optional confidence floor in [0,1]; warnings below it (and unscored) are excluded',
+              category: 'Optional single WarningCategory to filter to (exact match)',
+              limit: 'Optional cap on the number of warnings returned (clamped to the configured max)',
+            }),
+          },
 
         // Session Management Tools - DELETED (2025-10-24)
         // The following 5 MCP tools were removed because sessions auto-manage themselves:
@@ -822,7 +844,7 @@ export const TOOL_CATEGORIES: Record<ToolCategory, string[]> = {
     'thread_current',
     'thread_clear',
   ],
-  'Surveyor': ['surveyor_scan', 'surveyor_get_graph'],
+  'Surveyor': ['surveyor_scan', 'surveyor_get_graph', 'surveyor_get_file', 'surveyor_findings'],
 };
 
 /**

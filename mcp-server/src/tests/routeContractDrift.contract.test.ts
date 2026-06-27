@@ -97,6 +97,8 @@ const TOOL_TO_HANDLER: Record<string, { file: string; method: string }> = {
   // Surveyor Integration (P4b, task 8ed9e216)
   surveyor_scan:        { file: 'surveyor.routes.ts', method: 'handleScan' },
   surveyor_get_graph:   { file: 'surveyor.routes.ts', method: 'handleGetGraph' },
+  surveyor_get_file:    { file: 'surveyor.routes.ts', method: 'handleGetFile' },
+  surveyor_findings:    { file: 'surveyor.routes.ts', method: 'handleFindings' },
 };
 
 /**

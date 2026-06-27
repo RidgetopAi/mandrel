@@ -155,6 +155,41 @@ export function makeScanResult(overrides: Partial<SurveyorScanResult> = {}): Sur
   };
 }
 
+/**
+ * A ScanResult carrying THREE warnings of varied level/category/confidence (one unscored) so
+ * the findings read tool's severity ordering + confidence/category filters are exercised
+ * end-to-end. Shared by the store + tools suites (one fixture, no drift). The stats' totalWarnings
+ * is set to 3 so the persisted denormalized count matches.
+ */
+export function makeFindingsScanResult(overrides: Partial<SurveyorScanResult> = {}): SurveyorScanResult {
+  const base = makeScanResult();
+  return makeScanResult({
+    id: 'findings-fixture-0001',
+    stats: { ...base.stats, totalWarnings: 3, warningsByLevel: { info: 1, warning: 1, error: 1 } },
+    warnings: [
+      {
+        id: 'w-large', category: 'large_file', level: 'warning', title: 'Large file',
+        description: 'app.ts is large', affectedNodes: ['file:src/app.ts'],
+        suggestion: { summary: 'Split it', autoFixable: false }, source: 'surveyor',
+        confidence: 0.9, dismissible: true, detectedAt: '2026-06-27T00:00:00.000Z',
+      },
+      {
+        id: 'w-circular', category: 'circular_dependency', level: 'error', title: 'Circular dep',
+        description: 'cycle', affectedNodes: ['fn:helper', 'fn:handleRequest'],
+        source: 'dependency-cruiser', confidence: 0.4, dismissible: false,
+        detectedAt: '2026-06-27T00:00:01.000Z',
+      },
+      {
+        id: 'w-orphan', category: 'orphan', level: 'info', title: 'Orphaned export',
+        description: 'unused', affectedNodes: [], source: 'knip', dismissible: true,
+        detectedAt: '2026-06-27T00:00:02.000Z',
+        // no confidence → unscored
+      },
+    ],
+    ...overrides,
+  });
+}
+
 /** A JSON Response with a given status (uses the global undici Response). */
 function jsonResponse(body: unknown, status: number): Response {
   return new Response(JSON.stringify(body), {

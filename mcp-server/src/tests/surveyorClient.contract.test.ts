@@ -26,6 +26,7 @@ const baseConfig: SurveyorConfig = {
   pollIntervalMs: 1,
   pollTimeoutMs: 10_000,
   requestTimeoutMs: 5_000,
+  findings: { defaultMinConfidence: 0, defaultLimit: 500, maxLimit: 5000 },
 };
 
 const noSleep = async () => {};

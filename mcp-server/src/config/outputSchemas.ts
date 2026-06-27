@@ -358,6 +358,47 @@ const surveyorGraphShape = z
   })
   .passthrough();
 
+// surveyor_get_file returns a single file's CARD (file node + imports/exports + functions
+// [each with its behavioral summary] + classes). REQUIRED = `ok` only; the rich `file`
+// payload is free-form/passthrough so the full card is carried without re-typing every field.
+const surveyorFileShape = z
+  .object({
+    ok,
+    found: z.boolean().optional(),
+    scan: z.record(z.any()).optional(),
+    file: z.record(z.any()).nullable().optional(),
+  })
+  .passthrough();
+
+// A single warning/finding record (the persisted Warning, read back). passthrough so an
+// additive service field rides along untyped.
+const surveyorWarningRecord = z
+  .object({
+    key: z.string(),
+    category: z.string(),
+    level: z.string(),
+    title: z.string(),
+    description: z.string().nullable().optional(),
+    affectedNodes: z.array(z.string()).optional(),
+    suggestion: z.any().optional(),
+    source: z.string().nullable().optional(),
+    confidence: z.number().nullable().optional(),
+    dismissible: z.boolean().optional(),
+    detectedAt: z.string().nullable().optional(),
+  })
+  .passthrough();
+
+const surveyorFindingsShape = z
+  .object({
+    ok,
+    found: z.boolean().optional(),
+    filtered: z.boolean().optional(),
+    totalInScan: z.number().optional(),
+    scan: z.record(z.any()).optional(),
+    warnings: z.array(surveyorWarningRecord).optional(),
+  })
+  .passthrough();
+
 // ─────────────────────────────────────────────────────────────────────────────
 // THE REGISTRY — every public tool → its zod output schema.
 // Tools of the same response kind REUSE the shared shapes above.
@@ -438,9 +479,12 @@ export const outputZodSchemas = {
   thread_current: threadAnchorShape,
   thread_clear: threadAnchorShape,
 
-  // Surveyor Integration (P4b) — scan returns a counts summary; get_graph returns the graph.
+  // Surveyor Integration (P4b) — scan returns a counts summary; get_graph returns the graph;
+  // get_file returns a file card; findings returns the warnings.
   surveyor_scan: surveyorScanShape,
   surveyor_get_graph: surveyorGraphShape,
+  surveyor_get_file: surveyorFileShape,
+  surveyor_findings: surveyorFindingsShape,
 } as const;
 
 export type OutputSchemaToolName = keyof typeof outputZodSchemas;

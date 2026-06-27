@@ -297,6 +297,10 @@ async function routeExecutorInner(toolName: string, args: any, context?: RouteCo
         return await surveyorRoutes.handleScan(args, context);
       case 'surveyor_get_graph':
         return await surveyorRoutes.handleGetGraph(args, context);
+      case 'surveyor_get_file':
+        return await surveyorRoutes.handleGetFile(args, context);
+      case 'surveyor_findings':
+        return await surveyorRoutes.handleFindings(args, context);
 
       // Unknown tool
       default:

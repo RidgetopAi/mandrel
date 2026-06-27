@@ -13,8 +13,13 @@
 
 import { describe, test, expect, beforeAll, afterAll } from 'vitest';
 import { db } from '../config/database.js';
-import { persistScan, getStoredGraph } from '../services/surveyorStore.js';
-import { makeScanResult } from './surveyorFixtures.js';
+import {
+  persistScan,
+  getStoredGraph,
+  getStoredFile,
+  getStoredFindings,
+} from '../services/surveyorStore.js';
+import { makeScanResult, makeFindingsScanResult } from './surveyorFixtures.js';
 
 const STAMP = Date.now();
 const PROJ_NAME = `surveyor-store-P-${STAMP}`;
@@ -142,6 +147,105 @@ describe('surveyorStore persistence (P4b)', () => {
     const otherSummary = await persistScan(otherProjectId, makeScanResult({ id: 'other-scan' }));
     const cross = await getStoredGraph(projectId, { scanId: otherSummary.scanId });
     expect(cross).toBeNull();
+  });
+
+  test('getStoredFile returns a file card (imports/exports/functions[+summary]/classes), by path AND by key', async () => {
+    const scan = await persistScan(projectId, makeScanResult({ id: 'file-card-scan' }));
+
+    // Resolve the file by its PATH.
+    const byPath = await getStoredFile(projectId, 'src/app.ts', { scanId: scan.scanId });
+    expect(byPath).not.toBeNull();
+    expect(byPath!.file).not.toBeNull();
+    const card = byPath!.file!;
+
+    expect(card.node.type).toBe('file');
+    expect(card.node.filePath).toBe('src/app.ts');
+    expect(card.node.key).toBe('file:src/app.ts');
+    // imports/exports come off the FileNode payload (the fixture's are []).
+    expect(Array.isArray(card.imports)).toBe(true);
+    expect(Array.isArray(card.exports)).toBe(true);
+
+    // Functions + classes declared in the file.
+    expect(card.functions.map((f) => f.key).sort()).toEqual(['fn:handleRequest', 'fn:helper']);
+    expect(card.classes.map((c) => c.key)).toEqual(['cls:Server']);
+
+    // handleRequest carries its behavioral/AI summary; helper does NOT.
+    const handle = card.functions.find((f) => f.key === 'fn:handleRequest')!;
+    expect(handle.summary).not.toBeNull();
+    expect(handle.summary!.source).toBe('ai');
+    expect(handle.summary!.flags.databaseWrite).toBe(true);
+    const helper = card.functions.find((f) => f.key === 'fn:helper')!;
+    expect(helper.summary).toBeNull();
+
+    // Resolving by the NODE KEY returns the same file.
+    const byKey = await getStoredFile(projectId, 'file:src/app.ts', { scanId: scan.scanId });
+    expect(byKey!.file!.node.key).toBe('file:src/app.ts');
+  });
+
+  test('getStoredFile: scan exists but no matching file → { scan, file:null }; no scan → null', async () => {
+    const scan = await persistScan(projectId, makeScanResult({ id: 'file-miss-scan' }));
+    const miss = await getStoredFile(projectId, 'src/does-not-exist.ts', { scanId: scan.scanId });
+    expect(miss).not.toBeNull();
+    expect(miss!.scan.scanId).toBe(scan.scanId);
+    expect(miss!.file).toBeNull();
+
+    const noProject = (
+      await db.query(`INSERT INTO projects (name) VALUES ($1) RETURNING id`, [`surveyor-file-noscan-${STAMP}`])
+    ).rows[0].id;
+    const none = await getStoredFile(noProject, 'src/app.ts');
+    expect(none).toBeNull();
+    await db.query('DELETE FROM projects WHERE id=$1', [noProject]);
+  });
+
+  test('getStoredFindings returns warnings with the right fields, severity-ordered, and filters', async () => {
+    const scan = await persistScan(projectId, makeFindingsScanResult({ id: 'findings-scan' }));
+
+    // No filters: all 3, severity-ordered error → warning → info.
+    const all = await getStoredFindings(projectId, { scanId: scan.scanId });
+    expect(all).not.toBeNull();
+    expect(all!.totalInScan).toBe(3);
+    expect(all!.filtered).toBe(false);
+    expect(all!.warnings.map((w) => w.level)).toEqual(['error', 'warning', 'info']);
+
+    // Field fidelity on the error finding.
+    const circ = all!.warnings.find((w) => w.key === 'w-circular')!;
+    expect(circ.category).toBe('circular_dependency');
+    expect(circ.source).toBe('dependency-cruiser');
+    expect(circ.confidence).toBe(0.4);
+    expect(circ.dismissible).toBe(false);
+    expect(circ.affectedNodes).toEqual(['fn:helper', 'fn:handleRequest']);
+
+    // The unscored finding reads back confidence:null and is INCLUDED with no floor.
+    const orphan = all!.warnings.find((w) => w.key === 'w-orphan')!;
+    expect(orphan.confidence).toBeNull();
+
+    // The structured suggestion round-trips.
+    const large = all!.warnings.find((w) => w.key === 'w-large')!;
+    expect((large.suggestion as any).summary).toBe('Split it');
+
+    // minConfidence floor of 0.5 keeps only the 0.9 warning (0.4 + unscored excluded).
+    const highConf = await getStoredFindings(projectId, { scanId: scan.scanId, minConfidence: 0.5 });
+    expect(highConf!.warnings.map((w) => w.key)).toEqual(['w-large']);
+    expect(highConf!.filtered).toBe(true);
+
+    // category filter narrows to the one match.
+    const cat = await getStoredFindings(projectId, { scanId: scan.scanId, category: 'orphan' });
+    expect(cat!.warnings.map((w) => w.key)).toEqual(['w-orphan']);
+    expect(cat!.filtered).toBe(true);
+
+    // limit caps the returned set.
+    const limited = await getStoredFindings(projectId, { scanId: scan.scanId, limit: 1 });
+    expect(limited!.warnings).toHaveLength(1);
+    expect(limited!.filtered).toBe(true);
+  });
+
+  test('getStoredFindings on a project with no scan → null', async () => {
+    const empty = (
+      await db.query(`INSERT INTO projects (name) VALUES ($1) RETURNING id`, [`surveyor-findings-noscan-${STAMP}`])
+    ).rows[0].id;
+    const none = await getStoredFindings(empty);
+    expect(none).toBeNull();
+    await db.query('DELETE FROM projects WHERE id=$1', [empty]);
   });
 
   test('deleting the project CASCADEs the scan subtree (no orphans)', async () => {

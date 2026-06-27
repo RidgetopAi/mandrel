@@ -7,12 +7,19 @@ import {
   SurveyorClientError,
   type ISurveyorClient,
 } from '../services/surveyorClient.js';
-import { persistScan, getStoredGraph } from '../services/surveyorStore.js';
+import {
+  persistScan,
+  getStoredGraph,
+  getStoredFile,
+  getStoredFindings,
+} from '../services/surveyorStore.js';
 
 /**
  * Surveyor Integration Routes (Surveyor P4b, Mandrel task 8ed9e216, decision 8f330f96).
  * Handles: surveyor_scan (call the shared service → persist the ScanResult into the tenant
- * Postgres), surveyor_get_graph (read a stored project graph back).
+ * Postgres), surveyor_get_graph (read a stored project graph back), surveyor_get_file (read
+ * one file's card: imports/exports/functions [+summaries]/classes), surveyor_findings (read
+ * the stored warnings, filterable by confidence/category).
  *
  * Mandrel is the SYSTEM OF RECORD: surveyor_scan delegates the actual scanning to the shared
  * Surveyor service (P4a) via surveyorClient, then PERSISTS the graph + warnings + summaries
@@ -212,6 +219,183 @@ class SurveyorRoutes {
       };
     } catch (error) {
       return formatMcpError(error as Error, 'surveyor_get_graph');
+    }
+  }
+
+  /**
+   * surveyor_get_file — read a single file's CARD from a project's stored Surveyor scan back
+   * from Postgres. The `file` argument matches the file's node key OR its file path. Returns
+   * the file node + its imports/exports + its functions (each with its behavioral/AI summary
+   * when one was stored) + its classes. Defaults to the project's LATEST scan; a scanId reads
+   * that scan. Read-only, project-scoped.
+   */
+  async handleGetFile(args: any, context?: RouteContext): Promise<McpResponse> {
+    try {
+      const projectId = await this.resolveProjectId(args.projectId, context);
+      if (!projectId) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: '❌ No project selected. Use project_switch to choose a project (or pass projectId).',
+            },
+          ],
+          isError: true,
+          structuredContent: { ok: false, found: false },
+        };
+      }
+
+      const result = await getStoredFile(projectId, args.file, { scanId: args.scanId });
+
+      if (!result) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: args.scanId
+                ? `🛰️  No stored Surveyor scan ${args.scanId} found in this project.`
+                : '🛰️  No stored Surveyor scan for this project yet. Run surveyor_scan first.',
+            },
+          ],
+          structuredContent: { ok: true, found: false },
+        };
+      }
+
+      const { scan, file } = result;
+      if (!file) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `🛰️  No file matching "${args.file}" in Surveyor scan ${scan.scanId}.`,
+            },
+          ],
+          structuredContent: {
+            ok: true,
+            found: false,
+            scan: {
+              scanId: scan.scanId,
+              projectId: scan.projectId,
+              projectName: scan.projectName,
+              projectPath: scan.projectPath,
+            },
+          },
+        };
+      }
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text:
+              `🛰️  Surveyor file ${file.node.filePath ?? file.node.name} (scan ${scan.scanId})\n` +
+              `   ${file.functions.length} function(s) · ${file.classes.length} class(es)\n` +
+              `   ${file.imports.length} import(s) · ${file.exports.length} export(s)`,
+          },
+        ],
+        structuredContent: {
+          ok: true,
+          found: true,
+          scan: {
+            scanId: scan.scanId,
+            projectId: scan.projectId,
+            projectName: scan.projectName,
+            projectPath: scan.projectPath,
+            status: scan.status,
+            sourceScanId: scan.sourceScanId,
+            createdAt: scan.createdAt,
+            completedAt: scan.completedAt,
+          },
+          file: {
+            node: file.node,
+            imports: file.imports,
+            exports: file.exports,
+            functions: file.functions,
+            classes: file.classes,
+          },
+        },
+      };
+    } catch (error) {
+      return formatMcpError(error as Error, 'surveyor_get_file');
+    }
+  }
+
+  /**
+   * surveyor_findings — read a project's stored Surveyor findings (warnings) back from Postgres:
+   * category, level/severity, source, confidence, dismissible, affected nodes, suggestion,
+   * title/description. Optional minConfidence floor + category filter (defaults from
+   * SURVEYOR_CONFIG.findings). Defaults to the project's LATEST scan; a scanId reads that scan.
+   * Read-only, project-scoped.
+   */
+  async handleFindings(args: any, context?: RouteContext): Promise<McpResponse> {
+    try {
+      const projectId = await this.resolveProjectId(args.projectId, context);
+      if (!projectId) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: '❌ No project selected. Use project_switch to choose a project (or pass projectId).',
+            },
+          ],
+          isError: true,
+          structuredContent: { ok: false, found: false },
+        };
+      }
+
+      const result = await getStoredFindings(projectId, {
+        scanId: args.scanId,
+        minConfidence: args.minConfidence,
+        category: args.category,
+        limit: args.limit,
+      });
+
+      if (!result) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: args.scanId
+                ? `🛰️  No stored Surveyor scan ${args.scanId} found in this project.`
+                : '🛰️  No stored Surveyor scan for this project yet. Run surveyor_scan first.',
+            },
+          ],
+          structuredContent: { ok: true, found: false },
+        };
+      }
+
+      const { scan, warnings, totalInScan, filtered } = result;
+      return {
+        content: [
+          {
+            type: 'text',
+            text:
+              `🛰️  Surveyor findings (scan ${scan.scanId})\n` +
+              `   ${warnings.length} of ${totalInScan} warning(s)` +
+              (filtered ? ' (filtered)' : '') +
+              `\n   Project path: ${scan.projectPath}`,
+          },
+        ],
+        structuredContent: {
+          ok: true,
+          found: true,
+          filtered,
+          totalInScan,
+          scan: {
+            scanId: scan.scanId,
+            projectId: scan.projectId,
+            projectName: scan.projectName,
+            projectPath: scan.projectPath,
+            status: scan.status,
+            sourceScanId: scan.sourceScanId,
+            createdAt: scan.createdAt,
+            completedAt: scan.completedAt,
+          },
+          warnings,
+        },
+      };
+    } catch (error) {
+      return formatMcpError(error as Error, 'surveyor_findings');
     }
   }
 }

@@ -32,6 +32,39 @@ function envStr(name: string, fallback: string): string {
   return raw.trim();
 }
 
+/** Read a non-negative float env var, falling back to `fallback` on missing/garbage. */
+function envFloat(name: string, fallback: number): number {
+  const raw = process.env[name];
+  if (raw === undefined || raw.trim() === '') return fallback;
+  const v = Number(raw);
+  return Number.isFinite(v) && v >= 0 ? v : fallback;
+}
+
+/**
+ * surveyor_findings READ-tool tunables (P4b read tools). The findings tool exposes optional
+ * min-confidence + category filters; their DEFAULTS live here (NO hardcoded literals in the
+ * store/route — Brian's standing rule). Every one is env-overridable.
+ */
+export interface SurveyorFindingsConfig {
+  /**
+   * default_min_confidence — the confidence FLOOR applied when the caller passes none.
+   * 0 => NO floor (unscored/null-confidence warnings are still included). A value in (0,1]
+   * filters to warnings whose confidence is >= it (unscored excluded). Env:
+   * SURVEYOR_FINDINGS_MIN_CONFIDENCE. Default 0 (return everything).
+   */
+  defaultMinConfidence: number;
+  /**
+   * default_limit — max warnings returned when the caller doesn't specify a limit. Env:
+   * SURVEYOR_FINDINGS_DEFAULT_LIMIT. Default 500.
+   */
+  defaultLimit: number;
+  /**
+   * max_limit — the HARD ceiling on a single findings read (a caller limit is clamped to it).
+   * Env: SURVEYOR_FINDINGS_MAX_LIMIT. Default 5000.
+   */
+  maxLimit: number;
+}
+
 export interface SurveyorConfig {
   /**
    * base_url — the Surveyor shared service origin Mandrel calls (the P4a @surveyor/server).
@@ -64,6 +97,8 @@ export interface SurveyorConfig {
    * SURVEYOR_REQUEST_TIMEOUT_MS. Default 30000 (30s).
    */
   requestTimeoutMs: number;
+  /** Read-tool tunables for surveyor_findings (filter defaults + caps). */
+  findings: SurveyorFindingsConfig;
 }
 
 /**
@@ -76,4 +111,9 @@ export const SURVEYOR_CONFIG: SurveyorConfig = {
   pollIntervalMs: envInt('SURVEYOR_POLL_INTERVAL_MS', 1000),
   pollTimeoutMs: envInt('SURVEYOR_POLL_TIMEOUT_MS', 10 * 60 * 1000),
   requestTimeoutMs: envInt('SURVEYOR_REQUEST_TIMEOUT_MS', 30 * 1000),
+  findings: {
+    defaultMinConfidence: envFloat('SURVEYOR_FINDINGS_MIN_CONFIDENCE', 0),
+    defaultLimit: envInt('SURVEYOR_FINDINGS_DEFAULT_LIMIT', 500),
+    maxLimit: envInt('SURVEYOR_FINDINGS_MAX_LIMIT', 5000),
+  },
 };
