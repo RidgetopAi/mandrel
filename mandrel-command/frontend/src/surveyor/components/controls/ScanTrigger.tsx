@@ -22,10 +22,25 @@ interface ScanTriggerProps {
   onScanned: () => void;
 }
 
-/** Pull the actionable message out of an axios-style error from the scan POST. */
+/**
+ * Pull the actionable message out of a scan-POST error. The shared apiClient
+ * interceptor reshapes rejections to `ApiError { message, code, details }`, where
+ * `details` is the backend body (`{ success:false, error }`). So the backend's
+ * actionable text lives at `details.error` — prefer it over the generic axios
+ * `message` ("Request failed with status code 502").
+ */
 function scanErrorMessage(err: unknown): string {
-  const anyErr = err as { response?: { data?: { error?: string } }; message?: string };
-  return anyErr?.response?.data?.error || anyErr?.message || 'Scan failed.';
+  const anyErr = err as {
+    details?: { error?: string };
+    response?: { data?: { error?: string } };
+    message?: string;
+  };
+  return (
+    anyErr?.details?.error ||
+    anyErr?.response?.data?.error ||
+    anyErr?.message ||
+    'Scan failed.'
+  );
 }
 
 export function ScanTrigger({ projectId, onScanned }: ScanTriggerProps) {
