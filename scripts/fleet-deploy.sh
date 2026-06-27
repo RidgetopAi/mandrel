@@ -853,7 +853,9 @@ fi
 # fails fast instead of after rolling the whole fleet.
 hdr "PRE-FLIGHT: ORIGIN-REF GATE"
 if preflight_origin_ref; then
-  ORIGIN_GATE_RESULT="PASS"
+  # Distinguish a real pass from a --skip-prod skip (don't report PASS for a gate
+  # that never ran — honest output).
+  ORIGIN_GATE_RESULT="$( [[ $DEPLOY_PROD -eq 1 ]] && echo "PASS" || echo "SKIP" )"
 else
   ORIGIN_GATE_RESULT="FAIL"
   if [[ $DRY_RUN -eq 1 ]]; then
@@ -867,8 +869,12 @@ fi
 
 if [[ $DRY_RUN -eq 1 ]]; then
   hdr "DRY-RUN — no changes made"
-  echo "  Disk gate:      $DISK_GATE_RESULT (would-${DISK_GATE_RESULT,,})"
-  echo "  Origin-ref gate: $ORIGIN_GATE_RESULT (would-${ORIGIN_GATE_RESULT,,})"
+  echo "  Disk gate:       $DISK_GATE_RESULT (would-${DISK_GATE_RESULT,,})"
+  if [[ "$ORIGIN_GATE_RESULT" == "SKIP" ]]; then
+    echo "  Origin-ref gate: SKIP (no prod in plan)"
+  else
+    echo "  Origin-ref gate: $ORIGIN_GATE_RESULT (would-${ORIGIN_GATE_RESULT,,})"
+  fi
   exit 0
 fi
 
