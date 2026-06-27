@@ -300,9 +300,14 @@ hdr "STAGE 0a: toolchain integrity (pinned TypeScript resolves locally)"
 ts_pin_major() {  # ts_pin_major <pkg_dir> -> major int, or "" if not declared
   node -e "try{const p=require('$1/package.json');const d=(p.devDependencies||{}).typescript||(p.dependencies||{}).typescript||'';const m=String(d).match(/(\d+)\./);process.stdout.write(m?m[1]:'')}catch(e){process.stdout.write('')}"
 }
-# Read the version actually installed under <pkg_dir>/node_modules/typescript.
-ts_installed_major() {  # ts_installed_major <pkg_dir> -> major int, or "" if absent
-  node -e "try{process.stdout.write(String(require('$1/node_modules/typescript/package.json').version).split('.')[0])}catch(e){process.stdout.write('')}"
+# Read the major of the typescript that RESOLVES from <pkg_dir> — the same way
+# tsc/node resolve it: walk up from <pkg_dir>/node_modules to the workspace-root
+# (hoisted) copy. A direct <pkg_dir>/node_modules/typescript check is WRONG for an
+# npm workspace — TS legitimately hoists to mandrel-command/node_modules, where
+# Stages 2/3's `tsc --noEmit` (run from the member dir) find it fine. (2026-06-27:
+# the member-dir check false-RED'd a deploy when TS hoisted to root.)
+ts_installed_major() {  # ts_installed_major <pkg_dir> -> major int, or "" if unresolvable
+  node -e "try{const p=require.resolve('typescript/package.json',{paths:['$1']});process.stdout.write(String(require(p).version).split('.')[0])}catch(e){process.stdout.write('')}"
 }
 TOOLCHAIN_OK=1
 for PKG in "$MCP_DIR" "$BACKEND_DIR"; do
