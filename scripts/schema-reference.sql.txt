@@ -756,40 +756,58 @@ COLUMN spindles.raw_metadata | jsonb | null=YES | default=
 COLUMN spindles.session_id | uuid | null=YES | default=
 COLUMN spindles.thinking_duration_ms | integer | null=YES | default=
 COLUMN spindles.updated_at | timestamp with time zone | null=YES | default=now()
-COLUMN surveyor_scans.analyzed_count | integer | null=YES | default=0
-COLUMN surveyor_scans.clusters | jsonb | null=YES | default='[]'
+COLUMN surveyor_connections.connection_key | text | null=NO | default=
+COLUMN surveyor_connections.connection_type | text | null=NO | default=
+COLUMN surveyor_connections.id | uuid | null=NO | default=gen_random_uuid()
+COLUMN surveyor_connections.metadata | jsonb | null=NO | default='{}'
+COLUMN surveyor_connections.scan_id | uuid | null=NO | default=
+COLUMN surveyor_connections.source_key | text | null=NO | default=
+COLUMN surveyor_connections.target_key | text | null=NO | default=
+COLUMN surveyor_connections.weight | double precision | null=NO | default=1
+COLUMN surveyor_function_summaries.analyzed_at | timestamp with time zone | null=YES | default=
+COLUMN surveyor_function_summaries.flags | jsonb | null=NO | default='{}'
+COLUMN surveyor_function_summaries.id | uuid | null=NO | default=gen_random_uuid()
+COLUMN surveyor_function_summaries.node_key | text | null=NO | default=
+COLUMN surveyor_function_summaries.scan_id | uuid | null=NO | default=
+COLUMN surveyor_function_summaries.summary | text | null=NO | default=
+COLUMN surveyor_function_summaries.summary_source | text | null=YES | default=
+COLUMN surveyor_nodes.data | jsonb | null=NO | default='{}'
+COLUMN surveyor_nodes.end_line | integer | null=YES | default=
+COLUMN surveyor_nodes.file_path | text | null=YES | default=
+COLUMN surveyor_nodes.id | uuid | null=NO | default=gen_random_uuid()
+COLUMN surveyor_nodes.line | integer | null=YES | default=
+COLUMN surveyor_nodes.name | text | null=NO | default=
+COLUMN surveyor_nodes.node_key | text | null=NO | default=
+COLUMN surveyor_nodes.node_type | text | null=NO | default=
+COLUMN surveyor_nodes.scan_id | uuid | null=NO | default=
 COLUMN surveyor_scans.completed_at | timestamp with time zone | null=YES | default=
-COLUMN surveyor_scans.connections | jsonb | null=YES | default='[]'
-COLUMN surveyor_scans.created_at | timestamp with time zone | null=YES | default=CURRENT_TIMESTAMP
-COLUMN surveyor_scans.errors | jsonb | null=YES | default='[]'
-COLUMN surveyor_scans.health_score | integer | null=YES | default=
+COLUMN surveyor_scans.created_at | timestamp with time zone | null=NO | default=now()
 COLUMN surveyor_scans.id | uuid | null=NO | default=gen_random_uuid()
-COLUMN surveyor_scans.nodes | jsonb | null=YES | default='{}'
-COLUMN surveyor_scans.nodes_by_type | jsonb | null=YES | default='{"file": 0, "class": 0, "cluster": 0, "function": 0}'
-COLUMN surveyor_scans.pending_analysis | integer | null=YES | default=0
+COLUMN surveyor_scans.metadata | jsonb | null=NO | default='{}'
 COLUMN surveyor_scans.project_id | uuid | null=NO | default=
-COLUMN surveyor_scans.project_name | text | null=NO | default=
+COLUMN surveyor_scans.project_name | text | null=YES | default=
 COLUMN surveyor_scans.project_path | text | null=NO | default=
-COLUMN surveyor_scans.status | character varying(20) | null=NO | default='pending'
-COLUMN surveyor_scans.summary_l0 | text | null=YES | default=
-COLUMN surveyor_scans.summary_l1 | text | null=YES | default=
-COLUMN surveyor_scans.summary_l2 | text | null=YES | default=
-COLUMN surveyor_scans.total_classes | integer | null=YES | default=0
-COLUMN surveyor_scans.total_connections | integer | null=YES | default=0
-COLUMN surveyor_scans.total_files | integer | null=YES | default=0
-COLUMN surveyor_scans.total_functions | integer | null=YES | default=0
-COLUMN surveyor_scans.total_warnings | integer | null=YES | default=0
-COLUMN surveyor_scans.warnings_by_level | jsonb | null=YES | default='{"info": 0, "error": 0, "warning": 0}'
-COLUMN surveyor_warnings.affected_nodes | jsonb | null=YES | default='[]'
-COLUMN surveyor_warnings.category | character varying(50) | null=NO | default=
+COLUMN surveyor_scans.source_scan_id | text | null=YES | default=
+COLUMN surveyor_scans.stats | jsonb | null=NO | default='{}'
+COLUMN surveyor_scans.status | text | null=NO | default='complete'
+COLUMN surveyor_scans.total_classes | integer | null=NO | default=0
+COLUMN surveyor_scans.total_connections | integer | null=NO | default=0
+COLUMN surveyor_scans.total_files | integer | null=NO | default=0
+COLUMN surveyor_scans.total_functions | integer | null=NO | default=0
+COLUMN surveyor_scans.total_warnings | integer | null=NO | default=0
+COLUMN surveyor_warnings.affected_nodes | jsonb | null=NO | default='[]'
+COLUMN surveyor_warnings.category | text | null=NO | default=
+COLUMN surveyor_warnings.confidence | double precision | null=YES | default=
 COLUMN surveyor_warnings.description | text | null=YES | default=
-COLUMN surveyor_warnings.detected_at | timestamp with time zone | null=YES | default=CURRENT_TIMESTAMP
-COLUMN surveyor_warnings.file_path | text | null=YES | default=
+COLUMN surveyor_warnings.detected_at | timestamp with time zone | null=YES | default=
+COLUMN surveyor_warnings.dismissible | boolean | null=NO | default=false
 COLUMN surveyor_warnings.id | uuid | null=NO | default=gen_random_uuid()
-COLUMN surveyor_warnings.level | character varying(20) | null=NO | default=
+COLUMN surveyor_warnings.level | text | null=NO | default=
 COLUMN surveyor_warnings.scan_id | uuid | null=NO | default=
+COLUMN surveyor_warnings.source | text | null=YES | default=
 COLUMN surveyor_warnings.suggestion | jsonb | null=YES | default=
 COLUMN surveyor_warnings.title | text | null=NO | default=
+COLUMN surveyor_warnings.warning_key | text | null=NO | default=
 COLUMN tasks.archived_at | timestamp with time zone | null=YES | default=
 COLUMN tasks.assigned_to | character varying(200) | null=YES | default=
 COLUMN tasks.completed_at | timestamp with time zone | null=YES | default=
@@ -1122,14 +1140,20 @@ CONSTRAINT sessions_shadow PRIMARY_KEY sessions_shadow_pkey :: PRIMARYKEYid
 CONSTRAINT spindles CHECK spindles_processing_status_check :: CHECKprocessing_status=ANYARRAY'pending','running','done','error'
 CONSTRAINT spindles FOREIGN_KEY spindles_session_id_fkey :: FOREIGNKEYsession_idREFERENCESsessionsid
 CONSTRAINT spindles PRIMARY_KEY spindles_pkey :: PRIMARYKEYid
-CONSTRAINT surveyor_scans CHECK surveyor_scans_health_score_check :: CHECKhealth_score>=0ANDhealth_score<=100
-CONSTRAINT surveyor_scans CHECK surveyor_scans_status_check :: CHECKstatus=ANYARRAY'pending','parsing','analyzing','complete','failed'
+CONSTRAINT surveyor_connections FOREIGN_KEY surveyor_connections_scan_id_fkey :: FOREIGNKEYscan_idREFERENCESsurveyor_scansidONDELETECASCADE
+CONSTRAINT surveyor_connections PRIMARY_KEY surveyor_connections_pkey :: PRIMARYKEYid
+CONSTRAINT surveyor_connections UNIQUE surveyor_connections_scan_key_uniq :: UNIQUEscan_id,connection_key
+CONSTRAINT surveyor_function_summaries FOREIGN_KEY surveyor_function_summaries_scan_id_fkey :: FOREIGNKEYscan_idREFERENCESsurveyor_scansidONDELETECASCADE
+CONSTRAINT surveyor_function_summaries PRIMARY_KEY surveyor_function_summaries_pkey :: PRIMARYKEYid
+CONSTRAINT surveyor_function_summaries UNIQUE surveyor_function_summaries_scan_key_uniq :: UNIQUEscan_id,node_key
+CONSTRAINT surveyor_nodes FOREIGN_KEY surveyor_nodes_scan_id_fkey :: FOREIGNKEYscan_idREFERENCESsurveyor_scansidONDELETECASCADE
+CONSTRAINT surveyor_nodes PRIMARY_KEY surveyor_nodes_pkey :: PRIMARYKEYid
+CONSTRAINT surveyor_nodes UNIQUE surveyor_nodes_scan_key_uniq :: UNIQUEscan_id,node_key
 CONSTRAINT surveyor_scans FOREIGN_KEY surveyor_scans_project_id_fkey :: FOREIGNKEYproject_idREFERENCESprojectsidONDELETECASCADE
 CONSTRAINT surveyor_scans PRIMARY_KEY surveyor_scans_pkey :: PRIMARYKEYid
-CONSTRAINT surveyor_warnings CHECK surveyor_warnings_category_check :: CHECKcategory=ANYARRAY'circular_dependency','orphaned_code','duplicate_code','large_file','deep_nesting','missing_types','unused_export','security_concern'
-CONSTRAINT surveyor_warnings CHECK surveyor_warnings_level_check :: CHECKlevel=ANYARRAY'info','warning','error'
 CONSTRAINT surveyor_warnings FOREIGN_KEY surveyor_warnings_scan_id_fkey :: FOREIGNKEYscan_idREFERENCESsurveyor_scansidONDELETECASCADE
 CONSTRAINT surveyor_warnings PRIMARY_KEY surveyor_warnings_pkey :: PRIMARYKEYid
+CONSTRAINT surveyor_warnings UNIQUE surveyor_warnings_scan_key_uniq :: UNIQUEscan_id,warning_key
 CONSTRAINT tasks CHECK tasks_progress_check :: CHECKprogress>=0ANDprogress<=100
 CONSTRAINT tasks FOREIGN_KEY fk_tasks_project :: FOREIGNKEYproject_idREFERENCESprojectsidONDELETECASCADE
 CONSTRAINT tasks FOREIGN_KEY fk_tasks_session_id :: FOREIGNKEYsession_idREFERENCESsessionsidONDELETESETNULL
@@ -1483,16 +1507,24 @@ INDEX spindles.idx_spindles_model :: CREATE INDEX idx_spindles_model ON spindles
 INDEX spindles.idx_spindles_pending :: CREATE INDEX idx_spindles_pending ON spindles USING btree (processing_status) WHERE (processing_status = ANY (ARRAY['pending'::text, 'error'::text]))
 INDEX spindles.idx_spindles_session_captured :: CREATE INDEX idx_spindles_session_captured ON spindles USING btree (session_id, captured_at DESC)
 INDEX spindles.spindles_pkey :: CREATE UNIQUE INDEX spindles_pkey ON spindles USING btree (id)
-INDEX surveyor_scans.idx_surveyor_scans_created :: CREATE INDEX idx_surveyor_scans_created ON surveyor_scans USING btree (created_at DESC)
-INDEX surveyor_scans.idx_surveyor_scans_nodes :: CREATE INDEX idx_surveyor_scans_nodes ON surveyor_scans USING gin (nodes)
-INDEX surveyor_scans.idx_surveyor_scans_project :: CREATE INDEX idx_surveyor_scans_project ON surveyor_scans USING btree (project_id)
-INDEX surveyor_scans.idx_surveyor_scans_status :: CREATE INDEX idx_surveyor_scans_status ON surveyor_scans USING btree (status)
+INDEX surveyor_connections.idx_surveyor_connections_scan :: CREATE INDEX idx_surveyor_connections_scan ON surveyor_connections USING btree (scan_id)
+INDEX surveyor_connections.idx_surveyor_connections_scan_source :: CREATE INDEX idx_surveyor_connections_scan_source ON surveyor_connections USING btree (scan_id, source_key)
+INDEX surveyor_connections.idx_surveyor_connections_scan_target :: CREATE INDEX idx_surveyor_connections_scan_target ON surveyor_connections USING btree (scan_id, target_key)
+INDEX surveyor_connections.surveyor_connections_pkey :: CREATE UNIQUE INDEX surveyor_connections_pkey ON surveyor_connections USING btree (id)
+INDEX surveyor_connections.surveyor_connections_scan_key_uniq :: CREATE UNIQUE INDEX surveyor_connections_scan_key_uniq ON surveyor_connections USING btree (scan_id, connection_key)
+INDEX surveyor_function_summaries.idx_surveyor_function_summaries_scan :: CREATE INDEX idx_surveyor_function_summaries_scan ON surveyor_function_summaries USING btree (scan_id)
+INDEX surveyor_function_summaries.surveyor_function_summaries_pkey :: CREATE UNIQUE INDEX surveyor_function_summaries_pkey ON surveyor_function_summaries USING btree (id)
+INDEX surveyor_function_summaries.surveyor_function_summaries_scan_key_uniq :: CREATE UNIQUE INDEX surveyor_function_summaries_scan_key_uniq ON surveyor_function_summaries USING btree (scan_id, node_key)
+INDEX surveyor_nodes.idx_surveyor_nodes_scan :: CREATE INDEX idx_surveyor_nodes_scan ON surveyor_nodes USING btree (scan_id)
+INDEX surveyor_nodes.idx_surveyor_nodes_scan_type :: CREATE INDEX idx_surveyor_nodes_scan_type ON surveyor_nodes USING btree (scan_id, node_type)
+INDEX surveyor_nodes.surveyor_nodes_pkey :: CREATE UNIQUE INDEX surveyor_nodes_pkey ON surveyor_nodes USING btree (id)
+INDEX surveyor_nodes.surveyor_nodes_scan_key_uniq :: CREATE UNIQUE INDEX surveyor_nodes_scan_key_uniq ON surveyor_nodes USING btree (scan_id, node_key)
+INDEX surveyor_scans.idx_surveyor_scans_project_created :: CREATE INDEX idx_surveyor_scans_project_created ON surveyor_scans USING btree (project_id, created_at DESC)
 INDEX surveyor_scans.surveyor_scans_pkey :: CREATE UNIQUE INDEX surveyor_scans_pkey ON surveyor_scans USING btree (id)
-INDEX surveyor_warnings.idx_surveyor_warnings_category :: CREATE INDEX idx_surveyor_warnings_category ON surveyor_warnings USING btree (category)
-INDEX surveyor_warnings.idx_surveyor_warnings_file :: CREATE INDEX idx_surveyor_warnings_file ON surveyor_warnings USING btree (file_path)
-INDEX surveyor_warnings.idx_surveyor_warnings_level :: CREATE INDEX idx_surveyor_warnings_level ON surveyor_warnings USING btree (level)
 INDEX surveyor_warnings.idx_surveyor_warnings_scan :: CREATE INDEX idx_surveyor_warnings_scan ON surveyor_warnings USING btree (scan_id)
+INDEX surveyor_warnings.idx_surveyor_warnings_scan_level :: CREATE INDEX idx_surveyor_warnings_scan_level ON surveyor_warnings USING btree (scan_id, level)
 INDEX surveyor_warnings.surveyor_warnings_pkey :: CREATE UNIQUE INDEX surveyor_warnings_pkey ON surveyor_warnings USING btree (id)
+INDEX surveyor_warnings.surveyor_warnings_scan_key_uniq :: CREATE UNIQUE INDEX surveyor_warnings_scan_key_uniq ON surveyor_warnings USING btree (scan_id, warning_key)
 INDEX tasks.idx_tasks_active :: CREATE INDEX idx_tasks_active ON tasks USING btree (project_id, status) WHERE ((status)::text <> ALL (ARRAY[('completed'::character varying)::text, ('cancelled'::character varying)::text]))
 INDEX tasks.idx_tasks_assigned_to :: CREATE INDEX idx_tasks_assigned_to ON tasks USING btree (assigned_to)
 INDEX tasks.idx_tasks_compound_filter :: CREATE INDEX idx_tasks_compound_filter ON tasks USING btree (project_id, status, priority, type) WHERE ((status)::text <> 'cancelled'::text)
@@ -1543,5 +1575,4 @@ VIEW project_decision_health :: SELECT id AS project_id, name AS project_name, c
 VIEW project_git_activity :: SELECT id AS project_id, name AS project_name, count(DISTINCT id) AS total_commits, count(DISTINCT author_email) AS contributors, count(DISTINCT id) AS total_branches, max(author_date) AS last_commit_date, count(DISTINCT id) FILTER (WHERE (author_date >= (now() - '7 days'))) AS commits_last_week, count(DISTINCT id) FILTER (WHERE (author_date >= (now() - '30 days'))) AS commits_last_month FROM ((projects p LEFT JOIN git_commits gc ON ((id = project_id))) LEFT JOIN git_branches gb ON ((id = project_id))) GROUP BY id, name;
 VIEW v_consolidation_candidates :: SELECT session_id, display_id, project_id, name AS project_name, context_type, count(*) AS context_count, array_agg(id ORDER BY created_at) AS source_context_ids, string_agg("left"(content, 200), ' --- ') AS aggregated_content, sum(length(content)) AS total_chars, avg(relevance_score) AS avg_importance, min(created_at) AS earliest, max(created_at) AS latest, (((((count(*))* 0.4))+ (avg(relevance_score) * (0.3))) + (((EXTRACT(epoch FROM (now() - max(created_at))) / (3600)) * 0.3))) AS consolidation_priority FROM ((contexts c JOIN sessions s ON ((session_id = id))) JOIN projects p ON ((project_id = id))) WHERE (((EXTRACT(epoch FROM (now() - created_at)) / (3600)) >= (2)) AND ((EXTRACT(epoch FROM (now() - created_at)) / (3600)) <= (24)) AND ((context_type)= ANY (ARRAY[('planning'), ('code'), ('discussion')))) GROUP BY session_id, display_id, project_id, name, context_type HAVING (count(*) >= 3);
 VIEW v_session_summaries :: SELECT id, display_id, project_id, name AS project_name, agent_type, started_at, ended_at, (EXTRACT(epoch FROM (COALESCE(ended_at, now()) - started_at)) / (60)) AS duration_minutes, status, title, description, NULL, NULL, NULL, tasks_created, tasks_completed, CASE WHEN (tasks_created > 0) THEN round((((tasks_completed)/ (tasks_created)) * (100)), 2) ELSE (0), contexts_created, 0 AS lines_added, 0 AS lines_deleted, 0 AS lines_net, 0 AS files_modified_count, 0 AS activity_count, input_tokens, output_tokens, total_tokens, NULL, last_activity_at, metadata FROM (sessions s LEFT JOIN projects p ON ((project_id = id))) WHERE ((agent_type)'deploy-smoke');
-VIEW v_surveyor_scan_summaries :: SELECT id, project_id, name AS project_name, project_path, status, created_at, completed_at, total_files, total_functions, total_classes, total_warnings, health_score, warnings_by_level, summary_l0, EXTRACT(epoch FROM (completed_at - created_at)) AS scan_duration_seconds FROM (surveyor_scans s LEFT JOIN projects p ON ((project_id = id))) ORDER BY created_at DESC;
 VIEW v_working_memory_classification :: SELECT id, project_id, session_id, context_type, content, created_at, relevance_score, tags, metadata, related_commit_sha, commit_context_type, pattern_session_id, related_insights, pattern_relevance_score, embedding_384_backup, embedding, embedding_migrated, display_id AS session_display, (EXTRACT(epoch FROM (now() - created_at)) / (3600)) AS age_hours, CASE WHEN ((EXTRACT(epoch FROM (now() - created_at)) / (3600)) < (2)) THEN 'working'((EXTRACT(epoch FROM (now() - created_at)) / (3600)) < (48)) THEN 'session''project', ((((exp(((- EXTRACT(epoch FROM (now() - created_at))) / (24.0 * (3600)))))+ (COALESCE(relevance_score, (5.0)) / (10.0))) + ( CASE context_type WHEN 'milestone''decision''completion''reflections''planning''code')) / (3.0)) AS combined_score FROM (contexts c JOIN sessions s ON ((session_id = id))) WHERE ((status)= 'active');

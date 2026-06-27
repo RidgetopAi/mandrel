@@ -18,6 +18,7 @@ import embeddingRoutes from './embedding';
 import eventsRoutes from './events';
 import gitRoutes from './git';
 import feedbackRoutes from './feedback';
+import surveyorRoutes from './surveyor';
 import { SessionController } from '../controllers/session';
 import { authenticateToken } from '../middleware/auth';
 import { validateUUIDParam } from '../middleware/validation';
@@ -45,6 +46,7 @@ router.use('/embedding', embeddingRoutes);
 router.use('/', eventsRoutes);
 router.use('/git', gitRoutes);
 router.use('/feedback', feedbackRoutes);
+router.use('/surveyor', surveyorRoutes);
 
 // MCP Proxy Routes - Forward session file endpoints to MCP server
 // This eliminates hard-coded localhost:8080 in frontend for OSS deployment

@@ -84,6 +84,21 @@ const coercedInt = (inner: z.ZodTypeAny) =>
     return v; // number passes through; non-integer string left for z.number() to reject
   }, inner);
 
+/**
+ * Coerce a string-from-the-bridge decimal into a real number BEFORE validation — the float
+ * sibling of coercedInt(). Same root cause: a numeric param (e.g. a confidence floor) can
+ * arrive as the STRING "0.5" rather than 0.5. Conservative: only a clean decimal/integer
+ * string is converted; anything else is left for the inner z.number() to reject.
+ */
+const coercedFloat = (inner: z.ZodTypeAny) =>
+  z.preprocess((v) => {
+    if (typeof v === 'string') {
+      const s = v.trim();
+      if (/^-?\d+(\.\d+)?$/.test(s)) return parseFloat(s);
+    }
+    return v; // number passes through; garbage left for z.number() to reject
+  }, inner);
+
 // Base validation schemas
 const baseMetadata = z.record(z.any()).optional();
 // RECALL payload control (T1 item 1): the read tools accept response_format to choose
@@ -876,6 +891,53 @@ const threadSchemas = {
   thread_clear: z.object({})
 };
 
+// Surveyor Integration Schemas (Surveyor P4b, task 8ed9e216, decision 8f330f96).
+// surveyor_scan calls the shared Surveyor service to scan a codebase PATH, then persists the
+// result under the current/target project. surveyor_get_graph reads a stored project graph
+// back (latest scan by default, or a specific scanId; optional node-type filter + limit).
+// scanId accepts a full UUID OR an 8+-hex prefix (uuidOrShortId), like every id-taking tool.
+const surveyorSchemas = {
+  surveyor_scan: z.object({
+    // The codebase path the shared Surveyor service should scan (absolute path on the box
+    // the service can read). Bounded to a sane max path length.
+    path: z.string().min(1).max(4096),
+    // Optional explicit project to store the scan under; defaults to the current project.
+    projectId: z.string().optional(),
+  }),
+  surveyor_get_graph: z.object({
+    // Optional explicit project; defaults to the current project.
+    projectId: z.string().optional(),
+    // Optional specific stored scan (full UUID or 8+-hex prefix); defaults to the latest scan.
+    scanId: uuidOrShortId().optional(),
+    // Optional node-type filter (e.g. ['function','class']); validated as strings.
+    nodeTypes: z.array(z.string().max(50)).max(10).optional(),
+    // Optional cap on returned nodes (connections scope to the returned node set). coercedInt
+    // for the HTTP bridge (string "500" → 500).
+    limit: coercedInt(z.number().int().min(1).max(10000)).optional(),
+  }),
+  surveyor_get_file: z.object({
+    // Optional explicit project; defaults to the current project.
+    projectId: z.string().optional(),
+    // Optional specific stored scan (full UUID or 8+-hex prefix); defaults to the latest scan.
+    scanId: uuidOrShortId().optional(),
+    // The file to read: its node key (e.g. 'file:src/app.ts') OR its file path ('src/app.ts').
+    file: z.string().min(1).max(4096),
+  }),
+  surveyor_findings: z.object({
+    // Optional explicit project; defaults to the current project.
+    projectId: z.string().optional(),
+    // Optional specific stored scan (full UUID or 8+-hex prefix); defaults to the latest scan.
+    scanId: uuidOrShortId().optional(),
+    // Optional confidence floor in [0,1]; warnings below it (and unscored) are excluded.
+    // coercedFloat for the HTTP bridge (string "0.5" → 0.5). Default comes from config.
+    minConfidence: coercedFloat(z.number().min(0).max(1)).optional(),
+    // Optional single-category filter (exact WarningCategory match).
+    category: z.string().max(100).optional(),
+    // Optional cap on returned warnings (clamped to the configured max). coercedInt for the bridge.
+    limit: coercedInt(z.number().int().min(1).max(100000)).optional(),
+  }),
+};
+
 // Session Management Schemas - DELETED (2025-10-24)
 // Session MCP tools removed - sessions now auto-manage via SessionTracker service
 // REST API endpoints at /api/v2/sessions/* handle UI analytics needs
@@ -990,7 +1052,13 @@ export const validationSchemas = {
   // auto-threading layer's set/read/clear control surface.
   thread_set: threadSchemas.thread_set,
   thread_current: threadSchemas.thread_current,
-  thread_clear: threadSchemas.thread_clear
+  thread_clear: threadSchemas.thread_clear,
+
+  // Surveyor Integration (P4b) — call the shared Surveyor service + persist/read the graph.
+  surveyor_scan: surveyorSchemas.surveyor_scan,
+  surveyor_get_graph: surveyorSchemas.surveyor_get_graph,
+  surveyor_get_file: surveyorSchemas.surveyor_get_file,
+  surveyor_findings: surveyorSchemas.surveyor_findings
 
   // Git Integration Tools - DELETED (C4, 2026-06-09)
   // 3 dormant git MCP tools (git_session_commits, git_commit_sessions,

@@ -310,6 +310,96 @@ const mutateShape = <T extends z.ZodTypeAny>(recordKey: string, item: T) =>
 const statusShape = z.object({ ok }).passthrough();
 
 // ─────────────────────────────────────────────────────────────────────────────
+// SURVEYOR shapes (P4b). surveyor_scan returns a counts summary; surveyor_get_graph
+// returns the stored graph (scan header + nodes + connections). REQUIRED = `ok` ONLY
+// (error/not-configured/empty paths omit the descriptive fields), passthrough on the
+// records so the full raw payload is carried without re-typing every field.
+// ─────────────────────────────────────────────────────────────────────────────
+const surveyorScanShape = z
+  .object({
+    ok,
+    action: z.string().optional(),
+    errorKind: z.string().optional(),
+    scan: z.record(z.any()).optional(),
+  })
+  .passthrough();
+
+const surveyorNodeRecord = z
+  .object({
+    key: z.string(),
+    type: z.string(),
+    name: z.string(),
+    filePath: z.string().nullable().optional(),
+    line: z.number().nullable().optional(),
+    endLine: z.number().nullable().optional(),
+    data: z.record(z.any()).optional(),
+  })
+  .passthrough();
+
+const surveyorConnectionRecord = z
+  .object({
+    key: z.string(),
+    sourceKey: z.string(),
+    targetKey: z.string(),
+    type: z.string(),
+    weight: z.number().optional(),
+    metadata: z.record(z.any()).optional(),
+  })
+  .passthrough();
+
+const surveyorGraphShape = z
+  .object({
+    ok,
+    found: z.boolean().optional(),
+    truncated: z.boolean().optional(),
+    scan: z.record(z.any()).optional(),
+    nodes: z.array(surveyorNodeRecord).optional(),
+    connections: z.array(surveyorConnectionRecord).optional(),
+  })
+  .passthrough();
+
+// surveyor_get_file returns a single file's CARD (file node + imports/exports + functions
+// [each with its behavioral summary] + classes). REQUIRED = `ok` only; the rich `file`
+// payload is free-form/passthrough so the full card is carried without re-typing every field.
+const surveyorFileShape = z
+  .object({
+    ok,
+    found: z.boolean().optional(),
+    scan: z.record(z.any()).optional(),
+    file: z.record(z.any()).nullable().optional(),
+  })
+  .passthrough();
+
+// A single warning/finding record (the persisted Warning, read back). passthrough so an
+// additive service field rides along untyped.
+const surveyorWarningRecord = z
+  .object({
+    key: z.string(),
+    category: z.string(),
+    level: z.string(),
+    title: z.string(),
+    description: z.string().nullable().optional(),
+    affectedNodes: z.array(z.string()).optional(),
+    suggestion: z.any().optional(),
+    source: z.string().nullable().optional(),
+    confidence: z.number().nullable().optional(),
+    dismissible: z.boolean().optional(),
+    detectedAt: z.string().nullable().optional(),
+  })
+  .passthrough();
+
+const surveyorFindingsShape = z
+  .object({
+    ok,
+    found: z.boolean().optional(),
+    filtered: z.boolean().optional(),
+    totalInScan: z.number().optional(),
+    scan: z.record(z.any()).optional(),
+    warnings: z.array(surveyorWarningRecord).optional(),
+  })
+  .passthrough();
+
+// ─────────────────────────────────────────────────────────────────────────────
 // THE REGISTRY — every public tool → its zod output schema.
 // Tools of the same response kind REUSE the shared shapes above.
 // ─────────────────────────────────────────────────────────────────────────────
@@ -388,6 +478,13 @@ export const outputZodSchemas = {
   thread_set: threadAnchorShape,
   thread_current: threadAnchorShape,
   thread_clear: threadAnchorShape,
+
+  // Surveyor Integration (P4b) — scan returns a counts summary; get_graph returns the graph;
+  // get_file returns a file card; findings returns the warnings.
+  surveyor_scan: surveyorScanShape,
+  surveyor_get_graph: surveyorGraphShape,
+  surveyor_get_file: surveyorFileShape,
+  surveyor_findings: surveyorFindingsShape,
 } as const;
 
 export type OutputSchemaToolName = keyof typeof outputZodSchemas;
