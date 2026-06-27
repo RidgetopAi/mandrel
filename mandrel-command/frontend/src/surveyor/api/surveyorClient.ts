@@ -14,6 +14,7 @@
  */
 
 import { apiClient } from '../../services/api';
+import { SURVEYOR_REQUEST } from '../config/request.config';
 
 /** Scan header returned with every read (mirrors backend StoredScanHeader). */
 export interface ScanHeaderDto {
@@ -178,9 +179,11 @@ export const surveyorClient = {
   },
 
   async scan(projectId: string, path: string, scanId?: string): Promise<ScanSummaryDto> {
+    // The scan is synchronous + slow → override the client's default 10s timeout.
     const res = await apiClient.post<Envelope<{ scan: ScanSummaryDto }>>(
       `${base(projectId)}/scan`,
       { path, scanId },
+      { timeout: SURVEYOR_REQUEST.scanTimeoutMs },
     );
     return res.data.scan;
   },

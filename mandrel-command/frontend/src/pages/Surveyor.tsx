@@ -34,6 +34,7 @@ import { Canvas } from '../surveyor/components/canvas/Canvas';
 import { ViewToggle } from '../surveyor/components/controls/ViewToggle';
 import { NodeDetailPanel } from '../surveyor/components/panels/NodeDetailPanel';
 import { FindingsPanel } from '../surveyor/components/panels/FindingsPanel';
+import { ScanTrigger } from '../surveyor/components/controls/ScanTrigger';
 import { useScanStore } from '../surveyor/stores/scan-store';
 
 const { Title, Paragraph, Text } = Typography;
@@ -119,6 +120,7 @@ const Surveyor: React.FC = () => {
               optionFilterProp="label"
               options={allProjects.map((p) => ({ value: p.id, label: p.name }))}
             />
+            <ScanTrigger projectId={projectId} onScanned={refetchAll} />
           </Space>
 
           <Space wrap align="center">
