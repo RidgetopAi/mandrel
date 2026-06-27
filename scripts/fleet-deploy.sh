@@ -277,6 +277,41 @@ preflight_disk_gate() {
 }
 
 # =============================================================================
+# PRE-FLIGHT — origin has the target ref (fail-fast, BEFORE the customer roll)
+# =============================================================================
+# The 2026-06-26 incident: PROD_REF was merged to LOCAL main but never PUSHED to
+# origin. Customers build from the local working tree, so all 8 rolled GREEN — then
+# the PROD stage (which deploys from a CLEAN ORIGIN checkout) aborted with "target
+# ref not found after fetch". Failing-closed was correct, but it wasted the whole
+# customer roll AND (after a mid-deploy disconnect) left a half-deploy window.
+#
+# This gate predicts that prod-stage failure up front: when prod is in the plan,
+# fetch origin and confirm PROD_REF is reachable from a REMOTE ref. (A bare
+# `cat-file -e` in the deploy repo is NOT enough — the local repo always has its
+# own HEAD even when origin doesn't; we must check a remote-tracking ref.)
+# Only relevant when DEPLOY_PROD=1 (the customer roll itself builds from the local
+# tree and does not need origin).
+preflight_origin_ref() {
+  if [[ $DEPLOY_PROD -ne 1 ]]; then
+    ok "origin-ref PRE-FLIGHT GATE: skipped (no prod deploy in this plan)"
+    return 0
+  fi
+  info "origin-ref: confirming PROD_REF ${PROD_REF:0:12} is on origin (prod deploys from a clean origin checkout)"
+  if ! git -C "$REPO_DIR" fetch --quiet --force --tags origin; then
+    bad "origin-ref PRE-FLIGHT GATE: git fetch origin failed — cannot confirm the ref is pushed (network/auth?). Failing closed."
+    return 1
+  fi
+  if git -C "$REPO_DIR" branch -r --contains "$PROD_REF" 2>/dev/null | grep -q .; then
+    ok "origin-ref PRE-FLIGHT GATE: ${PROD_REF:0:12} is on origin (the PROD stage will find it)"
+    return 0
+  fi
+  bad "origin-ref PRE-FLIGHT GATE: PROD_REF ${PROD_REF:0:12} is NOT on origin."
+  info "origin-ref: prod deploys from origin, so this WOULD abort the PROD stage AFTER rolling the whole customer fleet."
+  info "origin-ref: REMEDY → push first:  git push origin ${EXPECTED_BRANCH}   (then re-run). Or --skip-prod to deploy customers only."
+  return 1
+}
+
+# =============================================================================
 # Per-instance deploy + health + smoke
 # =============================================================================
 # Returns 0 on full success, non-zero on any failure (with a printed reason).
@@ -811,9 +846,29 @@ else
   fi
 fi
 
+# =============================================================================
+# PRE-FLIGHT — origin has the target ref (Lesson: 2026-06-26 push-before-prod)
+# =============================================================================
+# Runs for --dry-run too, and BEFORE CI/staging/customer roll, so a missing push
+# fails fast instead of after rolling the whole fleet.
+hdr "PRE-FLIGHT: ORIGIN-REF GATE"
+if preflight_origin_ref; then
+  ORIGIN_GATE_RESULT="PASS"
+else
+  ORIGIN_GATE_RESULT="FAIL"
+  if [[ $DRY_RUN -eq 1 ]]; then
+    warn "origin-ref gate WOULD ABORT this deploy (dry-run — nothing was changed)."
+  else
+    bad "origin-ref gate ABORTED the deploy. No CI, no build, no instance was touched."
+    printf '\n%s##########  ABORTED: ORIGIN-REF GATE (push %s first)  ##########%s\n' "$RED" "$EXPECTED_BRANCH" "$RST"
+    exit 1
+  fi
+fi
+
 if [[ $DRY_RUN -eq 1 ]]; then
   hdr "DRY-RUN — no changes made"
   echo "  Disk gate:      $DISK_GATE_RESULT (would-${DISK_GATE_RESULT,,})"
+  echo "  Origin-ref gate: $ORIGIN_GATE_RESULT (would-${ORIGIN_GATE_RESULT,,})"
   exit 0
 fi
 
