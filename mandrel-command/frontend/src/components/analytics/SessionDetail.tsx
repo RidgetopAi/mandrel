@@ -24,6 +24,7 @@ import {
 import { apiService } from '../../services/api';
 import SessionInlineEdit from '../sessions/SessionInlineEdit';
 import { logger } from '../../utils/logger';
+import { markdownExcerpt } from '../common/MarkdownContent';
 
 const { Text } = Typography;
 const { TabPane } = Tabs;
@@ -328,9 +329,7 @@ const SessionDetail: React.FC<SessionDetailProps> = ({ sessionId }) => {
                       description={
                         <div>
                           <Text>
-                            {context.content.length > 200 
-                              ? `${context.content.substring(0, 200)}...` 
-                              : context.content}
+                            {markdownExcerpt(context.content, 200)}
                           </Text>
                           <br />
                           <Text type="secondary" style={{ fontSize: 12 }}>

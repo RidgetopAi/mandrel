@@ -26,20 +26,23 @@
     "react": "^18.2.0",
     "react-beautiful-dnd": "^13.1.1",
     "react-dom": "^18.2.0",
+    "react-markdown": "^9.1.0",
     "react-plotly.js": "^2.6.0",
     "react-router-dom": "^6.20.0",
     "react-scripts": "5.0.1",
     "reactflow": "^11.11.4",
     "recharts": "^2.15.4",
+    "rehype-sanitize": "^6.0.0",
+    "remark-gfm": "^4.0.1",
     "typescript": "^5.3.0",
     "zod": "^4.1.11",
     "zustand": "^5.0.8"
   },
   "devDependencies": {
     "@types/react-plotly.js": "^2.6.3",
-    "ajv": "^8.17.1",
     "@typescript-eslint/eslint-plugin": "^6.0.0",
     "@typescript-eslint/parser": "^6.0.0",
+    "ajv": "^8.17.1",
     "eslint": "^8.0.0",
     "eslint-plugin-react": "^7.33.0",
     "eslint-plugin-react-hooks": "^4.6.0",
@@ -62,6 +65,18 @@
       "react-app",
       "react-app/jest"
     ]
+  },
+  "jest": {
+    "transformIgnorePatterns": [
+      "node_modules/(?!(react-markdown|remark-.*|rehype-.*|unified|unist-util-.*|mdast-util-.*|micromark.*|hast-util-.*|vfile.*|property-information|space-separated-tokens|comma-separated-tokens|decode-named-character-reference|character-entities.*|character-reference-invalid|parse-entities|stringify-entities|html-entities|html-url-attributes|is-alphabetical|is-alphanumerical|is-decimal|is-hexadecimal|is-plain-obj|bail|trough|zwitch|ccount|devlop|longest-streak|markdown-table|trim-lines|estree-util-.*|escape-string-regexp)/)",
+      "^.+\\.module\\.(css|sass|scss)$"
+    ],
+    "moduleNameMapper": {
+      "^unist-util-visit-parents/do-not-use-color$": "<rootDir>/../node_modules/unist-util-visit-parents/lib/color.node.js",
+      "^#minpath$": "<rootDir>/../node_modules/vfile/lib/minpath.js",
+      "^#minproc$": "<rootDir>/../node_modules/vfile/lib/minproc.js",
+      "^#minurl$": "<rootDir>/../node_modules/vfile/lib/minurl.js"
+    }
   },
   "browserslist": {
     "production": [

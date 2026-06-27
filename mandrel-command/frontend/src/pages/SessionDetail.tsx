@@ -38,6 +38,7 @@ import { sessionsClient } from '../api/sessionsClient';
 import { SessionsService } from '../api/generated';
 import type { Context } from '../types/context';
 import { getTypeColor, getTypeDisplayName } from '../utils/contextHelpers';
+import MarkdownContent, { markdownExcerpt } from '../components/common/MarkdownContent';
 import { logger } from '../utils/logger';
 import { isValidUuid } from '../utils/uuid';
 
@@ -452,12 +453,16 @@ const SessionDetail: React.FC = () => {
                       }
                       description={
                         <div>
-                          <Paragraph 
-                            ellipsis={{ rows: 2, expandable: true, symbol: 'more' }}
-                            style={{ marginBottom: '8px' }}
-                          >
-                            {context.content}
-                          </Paragraph>
+                          <MarkdownContent
+                            content={context.content}
+                            style={{
+                              marginBottom: '8px',
+                              // Cap very long contexts (e.g. dense ★ handoffs) so a
+                              // single list item can't dominate the page; it scrolls.
+                              maxHeight: '360px',
+                              overflowY: 'auto'
+                            }}
+                          />
                           {context.tags && context.tags.length > 0 && (
                             <Space size={[0, 4]} wrap>
                               <TagsOutlined style={{ color: '#8c8c8c' }} />
@@ -810,11 +815,16 @@ const SessionDetail: React.FC = () => {
                             {getTypeDisplayName(context.type)}
                           </Tag>
                         </Space>
-                        <Paragraph 
+                        {/* Compact one-line activity timeline: a clean plain-text
+                            excerpt (markdown stripped) keeps each row scannable —
+                            rendering a full multi-block markdown doc per row would
+                            blow out the timeline. Full formatting lives in the
+                            Contexts tab above (MarkdownContent). */}
+                        <Paragraph
                           ellipsis={{ rows: 1, expandable: false }}
                           style={{ margin: 0, paddingLeft: '16px' }}
                         >
-                          {context.content}
+                          {markdownExcerpt(context.content, 240)}
                         </Paragraph>
                       </Space>
                     </List.Item>

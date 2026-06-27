@@ -11,8 +11,8 @@ import {
   getTypeColor,
   getTypeDisplayName,
   highlightSearchTermsAsNodes,
-  truncateContent,
 } from '../../utils/contextHelpers';
+import { markdownExcerpt } from '../common/MarkdownContent';
 import { contextHandleChip } from '../../utils/refHelpers';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
@@ -55,7 +55,10 @@ const ContextCard: React.FC<ContextCardProps> = ({
     onSelect?.(context.id, e.target.checked);
   };
 
-  const truncatedContent = truncateContent(context.content, 120);
+  // Clean plain-text excerpt (markdown syntax stripped) so the card preview never
+  // shows cut-off `**`/`#`/`![](` fragments; search highlighting then applies to
+  // the readable text.
+  const truncatedContent = markdownExcerpt(context.content, 120);
   const highlightedContent = highlightSearchTermsAsNodes(truncatedContent, searchTerm);
 
   // Copyable id / named-ref affordance on the COLLAPSED card. Previously the only

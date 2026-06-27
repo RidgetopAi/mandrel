@@ -8,6 +8,7 @@ import {
   useEmbeddingProjectionQuery,
 } from '../../hooks/useEmbeddings';
 import { useEmbeddingDatasetSelection } from '../../hooks/useEmbeddingDatasetSelection';
+import { markdownExcerpt } from '../common/MarkdownContent';
 
 const { Option } = Select;
 
@@ -74,7 +75,7 @@ const ScatterProjection: React.FC = () => {
       fields: ['label', 'content', 'x', 'y'],
       formatter: (datum: ProjectionPoint) => ({
         name: datum.label,
-        value: `${datum.content}\nCoords: (${datum.x.toFixed(3)}, ${datum.y.toFixed(3)})`,
+        value: `${markdownExcerpt(datum.content, 160)}\nCoords: (${datum.x.toFixed(3)}, ${datum.y.toFixed(3)})`,
       }),
     },
     interactions: [
@@ -290,7 +291,7 @@ const ScatterProjection: React.FC = () => {
               <Divider />
               <div>
                 <strong>Content Preview</strong>
-                <p style={{ marginTop: 8 }}>{selectedPoint.content}</p>
+                <p style={{ marginTop: 8 }}>{markdownExcerpt(selectedPoint.content, 400)}</p>
               </div>
               <Button onClick={() => setSelectedPoint(null)}>Clear Selection</Button>
             </Space>

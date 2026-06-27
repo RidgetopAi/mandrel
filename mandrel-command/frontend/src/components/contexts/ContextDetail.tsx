@@ -20,6 +20,7 @@ import {
   getTypeColor,
   getTypeDisplayName,
 } from '../../utils/contextHelpers';
+import MarkdownContent, { markdownExcerpt } from '../common/MarkdownContent';
 import { logger } from '../../utils/logger';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
@@ -334,26 +335,20 @@ const ContextDetail: React.FC<ContextDetailProps> = ({
                   </Form.Item>
                 </Form>
               ) : (
-                <Paragraph
+                <MarkdownContent
+                  content={context.content}
                   style={{
-                    whiteSpace: 'pre-wrap',
-                    // Break long unbroken tokens (URLs, hashes, no-space titles)
-                    // so they wrap normally instead of one-char-per-line on a
-                    // narrow (mobile) viewport.
-                    overflowWrap: 'anywhere',
-                    wordBreak: 'break-word',
                     // minWidth:0 stops the flex (antd Space) chain from collapsing
                     // this column to min-content (the single-char width that caused
-                    // the vertical wrap).
+                    // the vertical wrap). overflow-wrap is handled inside the
+                    // shared component's CSS.
                     width: '100%',
                     minWidth: 0,
                     maxHeight: 'calc(100vh - 380px)',
                     minHeight: '300px',
                     overflowY: 'auto'
                   }}
-                >
-                  {context.content}
-                </Paragraph>
+                />
               )}
             </Card>
 
@@ -459,7 +454,7 @@ const ContextDetail: React.FC<ContextDetailProps> = ({
                       description={
                         <div>
                           <Paragraph ellipsis={{ rows: 2 }}>
-                            {relatedContext.content}
+                            {markdownExcerpt(relatedContext.content, 200)}
                           </Paragraph>
                           <Text type="secondary" style={{ fontSize: '12px' }}>
                             {dayjs.utc(relatedContext.created_at).local().fromNow()}

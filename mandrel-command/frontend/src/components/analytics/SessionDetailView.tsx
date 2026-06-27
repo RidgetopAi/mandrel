@@ -21,6 +21,7 @@ import {
 } from '@ant-design/icons';
 import { apiService } from '../../services/api';
 import { logger } from '../../utils/logger';
+import { markdownExcerpt } from '../common/MarkdownContent';
 
 const { Title, Text } = Typography;
 const { TabPane } = Tabs;
@@ -234,9 +235,7 @@ const SessionDetailView: React.FC<SessionDetailViewProps> = ({ session }) => {
                       description={
                         <div>
                           <Text>
-                            {context.content.length > 300 
-                              ? `${context.content.substring(0, 300)}...` 
-                              : context.content}
+                            {markdownExcerpt(context.content, 300)}
                           </Text>
                           {context.tags && context.tags.length > 0 && (
                             <div style={{ marginTop: 8 }}>
