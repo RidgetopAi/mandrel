@@ -310,6 +310,55 @@ const mutateShape = <T extends z.ZodTypeAny>(recordKey: string, item: T) =>
 const statusShape = z.object({ ok }).passthrough();
 
 // ─────────────────────────────────────────────────────────────────────────────
+// SURVEYOR shapes (P4b). surveyor_scan returns a counts summary; surveyor_get_graph
+// returns the stored graph (scan header + nodes + connections). REQUIRED = `ok` ONLY
+// (error/not-configured/empty paths omit the descriptive fields), passthrough on the
+// records so the full raw payload is carried without re-typing every field.
+// ─────────────────────────────────────────────────────────────────────────────
+const surveyorScanShape = z
+  .object({
+    ok,
+    action: z.string().optional(),
+    errorKind: z.string().optional(),
+    scan: z.record(z.any()).optional(),
+  })
+  .passthrough();
+
+const surveyorNodeRecord = z
+  .object({
+    key: z.string(),
+    type: z.string(),
+    name: z.string(),
+    filePath: z.string().nullable().optional(),
+    line: z.number().nullable().optional(),
+    endLine: z.number().nullable().optional(),
+    data: z.record(z.any()).optional(),
+  })
+  .passthrough();
+
+const surveyorConnectionRecord = z
+  .object({
+    key: z.string(),
+    sourceKey: z.string(),
+    targetKey: z.string(),
+    type: z.string(),
+    weight: z.number().optional(),
+    metadata: z.record(z.any()).optional(),
+  })
+  .passthrough();
+
+const surveyorGraphShape = z
+  .object({
+    ok,
+    found: z.boolean().optional(),
+    truncated: z.boolean().optional(),
+    scan: z.record(z.any()).optional(),
+    nodes: z.array(surveyorNodeRecord).optional(),
+    connections: z.array(surveyorConnectionRecord).optional(),
+  })
+  .passthrough();
+
+// ─────────────────────────────────────────────────────────────────────────────
 // THE REGISTRY — every public tool → its zod output schema.
 // Tools of the same response kind REUSE the shared shapes above.
 // ─────────────────────────────────────────────────────────────────────────────
@@ -388,6 +437,10 @@ export const outputZodSchemas = {
   thread_set: threadAnchorShape,
   thread_current: threadAnchorShape,
   thread_clear: threadAnchorShape,
+
+  // Surveyor Integration (P4b) — scan returns a counts summary; get_graph returns the graph.
+  surveyor_scan: surveyorScanShape,
+  surveyor_get_graph: surveyorGraphShape,
 } as const;
 
 export type OutputSchemaToolName = keyof typeof outputZodSchemas;

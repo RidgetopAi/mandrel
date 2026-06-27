@@ -652,6 +652,28 @@ export const AIDIS_TOOL_DEFINITIONS: ToolDefinition[] = [
             inputSchema: buildInputSchema('thread_clear'),
           },
 
+          // ── Surveyor Integration (P4b — Mandrel calls the shared Surveyor service) ──────
+          {
+            name: 'surveyor_scan',
+            description:
+              'Scan a codebase with the shared Surveyor service and PERSIST the result (structure graph + warnings + per-function summaries) into the current project, then return a counts summary. Mandrel is the system of record; surveyor_get_graph reads it back. The path is scanned by the Surveyor service (must be readable by it).',
+            inputSchema: buildInputSchema('surveyor_scan', {
+              path: 'Absolute codebase path for the Surveyor service to scan',
+              projectId: 'Project to store the scan under (defaults to the current project)',
+            }),
+          },
+          {
+            name: 'surveyor_get_graph',
+            description:
+              'Read a stored Surveyor graph (nodes + connections) for a project back from Postgres — the LATEST scan by default, or a specific scanId. Optional nodeTypes filter (e.g. file/function/class) and limit; when filtered, connections are scoped to the returned nodes. Returns the scan header, nodes, and connections.',
+            inputSchema: buildInputSchema('surveyor_get_graph', {
+              projectId: 'Project to read from (defaults to the current project)',
+              scanId: 'A specific stored scan (full UUID or 8+-hex prefix); defaults to the latest',
+              nodeTypes: 'Optional list of node types to include (e.g. ["function","class"])',
+              limit: 'Optional cap on the number of nodes returned',
+            }),
+          },
+
         // Session Management Tools - DELETED (2025-10-24)
         // The following 5 MCP tools were removed because sessions auto-manage themselves:
         // - session_assign → Auto-tracking via ensureActiveSession()
@@ -741,6 +763,7 @@ export const CATEGORY_ORDER = [
   'Task Management',
   'Smart Search & AI',
   'Linking & Graph',
+  'Surveyor',
 ] as const;
 
 export type ToolCategory = (typeof CATEGORY_ORDER)[number];
@@ -799,6 +822,7 @@ export const TOOL_CATEGORIES: Record<ToolCategory, string[]> = {
     'thread_current',
     'thread_clear',
   ],
+  'Surveyor': ['surveyor_scan', 'surveyor_get_graph'],
 };
 
 /**

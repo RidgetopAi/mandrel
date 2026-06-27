@@ -94,6 +94,9 @@ const TOOL_TO_HANDLER: Record<string, { file: string; method: string }> = {
   // session_end/session_status take NO params (operate on the connection's current
   // session), so they're excluded here exactly like the param-less system/thread tools.
   session_start:        { file: 'session.routes.ts',  method: 'handleStart' },
+  // Surveyor Integration (P4b, task 8ed9e216)
+  surveyor_scan:        { file: 'surveyor.routes.ts', method: 'handleScan' },
+  surveyor_get_graph:   { file: 'surveyor.routes.ts', method: 'handleGetGraph' },
 };
 
 /**

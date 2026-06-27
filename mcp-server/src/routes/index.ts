@@ -20,6 +20,7 @@ import { linksRoutes } from './links.routes.js';
 import { recallRoutes } from './recall.routes.js';
 import { threadRoutes } from './thread.routes.js';
 import { sessionRoutes } from './session.routes.js';
+import { surveyorRoutes } from './surveyor.routes.js';
 
 /**
  * Execution context passed through route handlers
@@ -290,6 +291,12 @@ async function routeExecutorInner(toolName: string, args: any, context?: RouteCo
         return await threadRoutes.handleCurrent(args, context);
       case 'thread_clear':
         return await threadRoutes.handleClear(args, context);
+
+      // Surveyor Integration (P4b) — call the shared Surveyor service + persist/read the graph.
+      case 'surveyor_scan':
+        return await surveyorRoutes.handleScan(args, context);
+      case 'surveyor_get_graph':
+        return await surveyorRoutes.handleGetGraph(args, context);
 
       // Unknown tool
       default:
