@@ -9,6 +9,7 @@ import {
 } from '../../hooks/useEmbeddings';
 import { useEmbeddingDatasetSelection } from '../../hooks/useEmbeddingDatasetSelection';
 import { markdownExcerpt } from '../common/MarkdownContent';
+import { chartTheme } from '../../utils/chartTheme';
 
 const { Option } = Select;
 
@@ -25,6 +26,8 @@ const ScatterProjection: React.FC = () => {
   const { currentProject } = useProjectContext();
   const projectId = currentProject?.id;
   const { themeMode } = useTheme();
+  // Single source for the dark-mode chart tokens (utils/chartTheme).
+  const ct = chartTheme(themeMode);
 
   const [algorithm, setAlgorithm] = useState<string>('pca');
   const [sampleSize, setSampleSize] = useState<number>(500);
@@ -96,18 +99,18 @@ const ScatterProjection: React.FC = () => {
       title: {
         text: `PC1 ${fmtPercentage(projectionData?.varianceExplained?.[0])}`,
         style: {
-          fill: themeMode === 'dark' ? 'rgba(255, 255, 255, 0.85)' : '#000',
+          fill: ct.textColor,
         },
       },
       label: {
         style: {
-          fill: themeMode === 'dark' ? 'rgba(255, 255, 255, 0.65)' : '#666',
+          fill: ct.textColor,
         },
       },
       grid: {
         line: {
           style: {
-            stroke: themeMode === 'dark' ? '#434343' : '#f0f0f0',
+            stroke: ct.gridColor,
           },
         },
       },
@@ -116,25 +119,27 @@ const ScatterProjection: React.FC = () => {
       title: {
         text: `PC2 ${fmtPercentage(projectionData?.varianceExplained?.[1])}`,
         style: {
-          fill: themeMode === 'dark' ? 'rgba(255, 255, 255, 0.85)' : '#000',
+          fill: ct.textColor,
         },
       },
       label: {
         style: {
-          fill: themeMode === 'dark' ? 'rgba(255, 255, 255, 0.65)' : '#666',
+          fill: ct.textColor,
         },
       },
       grid: {
         line: {
           style: {
-            stroke: themeMode === 'dark' ? '#434343' : '#f0f0f0',
+            stroke: ct.gridColor,
           },
         },
       },
     },
     legend: false,
-    theme: themeMode === 'dark' ? 'dark' : 'light',
-  }), [projectionData, themeMode]);
+    // Dark-mode-aware theme (single source: utils/chartTheme). 'classicDark'
+    // is the valid G2 v5 key — the prior 'dark'/'light' were not registered.
+    theme: ct.theme,
+  }), [projectionData, ct.textColor, ct.gridColor, ct.theme]);
 
   if (!projectId) {
     return (

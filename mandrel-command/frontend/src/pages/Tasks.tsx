@@ -44,7 +44,8 @@ const Tasks: React.FC = () => {
   // Use the global project context instead of local state
   const { currentProject, allProjects } = useProjectContext();
   const [showCreateForm, setShowCreateForm] = useState(false);
-  const [activeTab, setActiveTab] = useState('list');
+  // Land on the Kanban board by default (key matches the "Kanban Board" TabPane).
+  const [activeTab, setActiveTab] = useState('kanban');
   
   const projectId = currentProject?.id;
 

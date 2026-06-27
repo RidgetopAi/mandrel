@@ -9,6 +9,12 @@
  */
 
 .markdown-content {
+  /* Explicit base size so context body text is comfortably readable. antd's
+     default body font-size is 14px and this block previously inherited it; we
+     set 16px (14 + 2) here so every em-relative child (headings, code, etc.)
+     scales up with it. This is the ONE place the context-text base size lives. */
+  font-size: 16px;
+
   /* Long unbroken tokens (UUIDs, hashes, URLs) wrap instead of forcing the
      container wide / one-char-per-line on mobile. */
   overflow-wrap: anywhere;

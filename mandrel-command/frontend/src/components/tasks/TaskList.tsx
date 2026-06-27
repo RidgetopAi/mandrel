@@ -4,6 +4,7 @@ import { EditOutlined, DeleteOutlined, EyeOutlined, UserOutlined, FolderOutlined
 import type { ColumnsType } from 'antd/es/table';
 import TaskForm from './TaskForm';
 import { logger } from '../../utils/logger';
+import { taskMatchesSearch } from '../../utils/taskSearch';
 
 const { Search } = Input;
 const { Option } = Select;
@@ -57,13 +58,9 @@ const TaskList: React.FC<TaskListProps> = ({
   React.useEffect(() => {
     let filtered = tasks;
 
-    // Apply search filter
+    // Apply search filter (shared predicate — matches id/title/description/tags)
     if (searchTerm) {
-      filtered = filtered.filter(task => 
-        task.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        task.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        task.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()))
-      );
+      filtered = filtered.filter(task => taskMatchesSearch(task, searchTerm));
     }
 
     // Apply status filter

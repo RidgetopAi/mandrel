@@ -2,6 +2,8 @@ import React, { useMemo, useState } from 'react';
 import { Card, Select, Button, Spin, Alert, Space, Statistic, Row, Col, Empty } from 'antd';
 import { Line } from '@ant-design/plots';
 import { usePerformanceTrendsQuery } from '../../hooks/useMonitoring';
+import { useTheme } from '../../contexts/ThemeContext';
+import { chartTheme } from '../../utils/chartTheme';
 
 const WINDOW_OPTIONS = [5, 15, 60] as const;
 
@@ -19,6 +21,8 @@ const MonitoringTrends: React.FC<MonitoringTrendsProps> = ({
   className,
 }) => {
   const [windowMinutes, setWindowMinutes] = useState<number>(initialWindow);
+  const { themeMode } = useTheme();
+  const ct = chartTheme(themeMode);
 
   const trendsQuery = usePerformanceTrendsQuery(windowMinutes, {
     refetchInterval: autoRefresh ? refreshInterval : false,
@@ -46,6 +50,12 @@ const MonitoringTrends: React.FC<MonitoringTrendsProps> = ({
     data: responseTimeData,
     xField: 'time',
     yField: 'value',
+    // Dark-mode-aware: classicDark makes axis/legend text legible on dark bg.
+    theme: ct.theme,
+    axis: {
+      x: { labelFill: ct.textColor, titleFill: ct.textColor },
+      y: { labelFill: ct.textColor, titleFill: ct.textColor },
+    },
     smooth: true as const,
     animation: false,
     point: {
@@ -54,7 +64,7 @@ const MonitoringTrends: React.FC<MonitoringTrendsProps> = ({
     tooltip: {
       showMarkers: false,
     },
-  }), [responseTimeData]);
+  }), [responseTimeData, ct.theme, ct.textColor]);
 
   if (isLoading && !trends) {
     return (

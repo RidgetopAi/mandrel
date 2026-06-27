@@ -4,12 +4,16 @@ import { Line, Column } from '@ant-design/plots';
 import { ReloadOutlined } from '@ant-design/icons';
 import { useProjectContext } from '../../contexts/ProjectContext';
 import { useEmbeddingUsagePatternsQuery } from '../../hooks/useEmbeddings';
+import { useTheme } from '../../contexts/ThemeContext';
+import { chartTheme } from '../../utils/chartTheme';
 
 const { Text, Title } = Typography;
 
 const UsagePatterns: React.FC = () => {
   const { currentProject } = useProjectContext();
   const projectId = currentProject?.id;
+  const { themeMode } = useTheme();
+  const ct = chartTheme(themeMode);
 
   const usageQuery = useEmbeddingUsagePatternsQuery(projectId, {
     enabled: Boolean(projectId),
@@ -31,6 +35,12 @@ const UsagePatterns: React.FC = () => {
     yField: 'contexts',
     height: 280,
     smooth: true,
+    // Dark-mode-aware: classicDark makes axis/legend text legible on dark bg.
+    theme: ct.theme,
+    axis: {
+      x: { labelFill: ct.textColor, titleFill: ct.textColor },
+      y: { labelFill: ct.textColor, titleFill: ct.textColor },
+    },
     meta: {
       date: { alias: 'Date' },
       contexts: { alias: 'Contexts' },
@@ -38,7 +48,7 @@ const UsagePatterns: React.FC = () => {
     yAxis: {
       min: 0,
     },
-  }), [usage?.dailyActivity]);
+  }), [usage?.dailyActivity, ct.theme, ct.textColor]);
 
   const hourlyConfig = useMemo(() => ({
     data: usage?.hourlyDistribution ?? [],
@@ -46,6 +56,12 @@ const UsagePatterns: React.FC = () => {
     yField: 'contexts',
     columnWidthRatio: 0.6,
     height: 280,
+    // Dark-mode-aware: classicDark makes axis/legend text legible on dark bg.
+    theme: ct.theme,
+    axis: {
+      x: { labelFill: ct.textColor, titleFill: ct.textColor },
+      y: { labelFill: ct.textColor, titleFill: ct.textColor },
+    },
     meta: {
       hour: { alias: 'Hour' },
       contexts: { alias: 'Contexts' },
@@ -53,7 +69,7 @@ const UsagePatterns: React.FC = () => {
     yAxis: {
       min: 0,
     },
-  }), [usage?.hourlyDistribution]);
+  }), [usage?.hourlyDistribution, ct.theme, ct.textColor]);
 
   const typeConfig = useMemo(() => ({
     data: usage?.contextsByType ?? [],
@@ -61,6 +77,12 @@ const UsagePatterns: React.FC = () => {
     yField: 'count',
     height: 280,
     columnWidthRatio: 0.6,
+    // Dark-mode-aware: classicDark makes axis/legend text legible on dark bg.
+    theme: ct.theme,
+    axis: {
+      x: { labelFill: ct.textColor, titleFill: ct.textColor },
+      y: { labelFill: ct.textColor, titleFill: ct.textColor },
+    },
     meta: {
       type: { alias: 'Type' },
       count: { alias: 'Contexts' },
@@ -68,7 +90,7 @@ const UsagePatterns: React.FC = () => {
     yAxis: {
       min: 0,
     },
-  }), [usage?.contextsByType]);
+  }), [usage?.contextsByType, ct.theme, ct.textColor]);
 
   if (!projectId) {
     return (

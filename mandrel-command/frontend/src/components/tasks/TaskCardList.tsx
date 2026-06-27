@@ -32,6 +32,7 @@ import {
   CopyOutlined
 } from '@ant-design/icons';
 import TaskForm from './TaskForm';
+import { taskMatchesSearch } from '../../utils/taskSearch';
 
 const { Search } = Input;
 const { Option } = Select;
@@ -80,13 +81,9 @@ const TaskCardList: React.FC<TaskCardListProps> = ({
   useEffect(() => {
     let filtered = tasks;
 
-    // Apply search filter
+    // Apply search filter (shared predicate — matches id/title/description/tags)
     if (searchTerm) {
-      filtered = filtered.filter(task => 
-        task.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        task.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        task.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()))
-      );
+      filtered = filtered.filter(task => taskMatchesSearch(task, searchTerm));
     }
 
     // Apply status filter

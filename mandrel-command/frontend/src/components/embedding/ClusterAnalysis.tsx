@@ -5,6 +5,8 @@ import { ReloadOutlined } from '@ant-design/icons';
 import { useProjectContext } from '../../contexts/ProjectContext';
 import { useEmbeddingDatasetSelection } from '../../hooks/useEmbeddingDatasetSelection';
 import { useEmbeddingClustersQuery } from '../../hooks/useEmbeddings';
+import { useTheme } from '../../contexts/ThemeContext';
+import { chartTheme } from '../../utils/chartTheme';
 
 const { Option } = Select;
 
@@ -15,6 +17,8 @@ const MAX_CLUSTER_COUNT = 15;
 const ClusterAnalysis: React.FC = () => {
   const { currentProject } = useProjectContext();
   const projectId = currentProject?.id;
+  const { themeMode } = useTheme();
+  const ct = chartTheme(themeMode);
 
   const {
     datasetsQuery,
@@ -85,6 +89,12 @@ const ClusterAnalysis: React.FC = () => {
     colorField: 'cluster',
     size: 4,
     shape: 'circle',
+    // Dark-mode-aware: classicDark makes axis/legend text legible on dark bg.
+    theme: ct.theme,
+    axis: {
+      x: { labelFill: ct.textColor, titleFill: ct.textColor },
+      y: { labelFill: ct.textColor, titleFill: ct.textColor },
+    },
     interactions: [
       { type: 'zoom-canvas', enable: true },
       { type: 'drag-canvas', enable: true },
@@ -101,12 +111,12 @@ const ClusterAnalysis: React.FC = () => {
       flipPage: true,
     },
     xAxis: {
-      grid: { line: { style: { stroke: '#f0f0f0' } } },
+      grid: { line: { style: { stroke: ct.gridColor } } },
     },
     yAxis: {
-      grid: { line: { style: { stroke: '#f0f0f0' } } },
+      grid: { line: { style: { stroke: ct.gridColor } } },
     },
-  }), [clusterResult]);
+  }), [clusterResult, ct.theme, ct.textColor, ct.gridColor]);
 
   const handleRefresh = () => {
     void clustersQuery.refetch();

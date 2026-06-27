@@ -15,6 +15,7 @@ import { apiService } from '../../services/api';
 import dayjs from 'dayjs';
 import { logger } from '../../utils/logger';
 import { useTheme } from '../../contexts/ThemeContext';
+import { chartTheme as chartThemeTokens } from '../../utils/chartTheme';
 
 /**
  * TaskAnalytics Component
@@ -61,12 +62,11 @@ const TaskAnalytics: React.FC<TaskAnalyticsProps> = ({
   const [selectedDateRange, setSelectedDateRange] = useState<[Date, Date]>(dateRange);
   const [viewMode, setViewMode] = useState<'basic' | 'advanced'>('advanced');
   const { themeMode } = useTheme();
-  const isDark = themeMode === 'dark';
-  // Theme-aware chart text color so legend/axis/label text is readable in BOTH
-  // light and dark mode (G2 v5 renders to canvas — it can't inherit CSS color,
-  // so the fill must be set explicitly per theme).
-  const chartTextColor = isDark ? 'rgba(255, 255, 255, 0.85)' : 'rgba(0, 0, 0, 0.85)';
-  const chartTheme = isDark ? 'classicDark' : 'classic';
+  // Theme-aware chart text color + theme name so legend/axis/label text is
+  // readable in BOTH light and dark mode (G2 v5 renders to canvas — it can't
+  // inherit CSS color, so the fill must be set explicitly per theme). Single
+  // source: utils/chartTheme.
+  const { theme: chartTheme, textColor: chartTextColor } = chartThemeTokens(themeMode);
 
   // Defensive formatter utility for safe .toFixed() calls
   const fmt = (num: number | null | undefined, digits: number = 1): string => {
