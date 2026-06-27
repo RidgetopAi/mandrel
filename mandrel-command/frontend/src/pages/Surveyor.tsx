@@ -32,6 +32,8 @@ import { surveyorClient } from '../surveyor/api/surveyorClient';
 import { storedGraphToScan } from '../surveyor/adapter/storedGraphToScan';
 import { Canvas } from '../surveyor/components/canvas/Canvas';
 import { ViewToggle } from '../surveyor/components/controls/ViewToggle';
+import { NodeDetailPanel } from '../surveyor/components/panels/NodeDetailPanel';
+import { FindingsPanel } from '../surveyor/components/panels/FindingsPanel';
 import { useScanStore } from '../surveyor/stores/scan-store';
 
 const { Title, Paragraph, Text } = Typography;
@@ -44,8 +46,10 @@ const surveyorKeys = {
 const Surveyor: React.FC = () => {
   const { allProjects, currentProject } = useProjectContext();
   const [projectId, setProjectId] = useState<string | null>(null);
+  const [findingsOpen, setFindingsOpen] = useState(false);
 
   const setScan = useScanStore((s) => s.setScan);
+  const selectedNodeId = useScanStore((s) => s.selectedNodeId);
 
   // Default the picker to the app's current project once projects are available.
   useEffect(() => {
@@ -86,6 +90,7 @@ const Surveyor: React.FC = () => {
   const hasScan = !!scan;
   const isLoading = graphQuery.isLoading || findingsQuery.isLoading;
   const error = graphQuery.error || findingsQuery.error;
+  const findingsCount = scan?.warnings.length ?? 0;
 
   return (
     <Space direction="vertical" size="large" style={{ width: '100%' }}>
@@ -118,6 +123,11 @@ const Surveyor: React.FC = () => {
 
           <Space wrap align="center">
             {hasScan && <ViewToggle />}
+            {hasScan && (
+              <Button onClick={() => setFindingsOpen(true)}>
+                Findings{findingsCount > 0 ? ` (${findingsCount})` : ''}
+              </Button>
+            )}
             <Tooltip title="Refresh">
               <Button
                 icon={<ReloadOutlined />}
@@ -139,32 +149,38 @@ const Surveyor: React.FC = () => {
         />
       )}
 
-      {/* Canvas */}
+      {/* Canvas + detail panel */}
       <Card styles={{ body: { padding: 0 } }} style={{ overflow: 'hidden' }}>
-        <div style={{ height: '70vh', minHeight: 480, position: 'relative' }}>
-          {isLoading ? (
-            <Centered>
-              <Spin tip="Loading scan…" size="large" />
-            </Centered>
-          ) : !projectId ? (
-            <Centered>
-              <Empty description="Pick a project to begin." />
-            </Centered>
-          ) : !hasScan ? (
-            <Centered>
-              <Empty
-                description={
-                  <Space direction="vertical">
-                    <Text>No scan stored for this project yet.</Text>
-                    <Text type="secondary">
-                      Run a scan with a server-side path to populate the graph.
-                    </Text>
-                  </Space>
-                }
-              />
-            </Centered>
-          ) : (
-            <Canvas scanData={scan} />
+        <div style={{ display: 'flex', height: '70vh', minHeight: 480 }}>
+          <div style={{ flex: 1, position: 'relative', minWidth: 0 }}>
+            {isLoading ? (
+              <Centered>
+                <Spin tip="Loading scan…" size="large" />
+              </Centered>
+            ) : !projectId ? (
+              <Centered>
+                <Empty description="Pick a project to begin." />
+              </Centered>
+            ) : !hasScan ? (
+              <Centered>
+                <Empty
+                  description={
+                    <Space direction="vertical">
+                      <Text>No scan stored for this project yet.</Text>
+                      <Text type="secondary">
+                        Run a scan with a server-side path to populate the graph.
+                      </Text>
+                    </Space>
+                  }
+                />
+              </Centered>
+            ) : (
+              <Canvas scanData={scan} />
+            )}
+          </div>
+
+          {hasScan && selectedNodeId && projectId && (
+            <NodeDetailPanel projectId={projectId} />
           )}
         </div>
       </Card>
@@ -174,6 +190,8 @@ const Surveyor: React.FC = () => {
           Graph truncated — showing a capped subset of nodes for this scan.
         </Tag>
       )}
+
+      <FindingsPanel isOpen={findingsOpen} onClose={() => setFindingsOpen(false)} />
     </Space>
   );
 };
