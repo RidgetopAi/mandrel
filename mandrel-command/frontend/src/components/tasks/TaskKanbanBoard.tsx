@@ -32,6 +32,7 @@ import {
 import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
 import TaskForm from './TaskForm';
 import { logger } from '../../utils/logger';
+import { taskMatchesSearch } from '../../utils/taskSearch';
 
 const { Text, Paragraph } = Typography;
 const { Search } = Input;
@@ -111,11 +112,7 @@ const TaskKanbanBoard: React.FC<TaskKanbanBoardProps> = ({
 
     // Apply search filter
     if (searchTerm) {
-      filtered = filtered.filter(task =>
-        task.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        task.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        task.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()))
-      );
+      filtered = filtered.filter(task => taskMatchesSearch(task, searchTerm));
     }
 
     // Group by status
@@ -553,7 +550,7 @@ const TaskKanbanBoard: React.FC<TaskKanbanBoardProps> = ({
       {/* Search Bar */}
       <div style={{ marginBottom: 16 }}>
         <Search
-          placeholder="Search tasks by title, description, or tags..."
+          placeholder="Search tasks by id, title, description, or tags..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           style={{ maxWidth: 400 }}
