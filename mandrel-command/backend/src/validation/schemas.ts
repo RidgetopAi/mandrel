@@ -217,6 +217,22 @@ export const RegisterNamingSchema = z.object({
 export type RegisterNamingData = z.infer<typeof RegisterNamingSchema>;
 
 // ================================
+// SURVEYOR VALIDATION SCHEMAS
+// ================================
+
+/**
+ * Body for POST /surveyor/projects/:projectId/scan — trigger a scan of a server-side path.
+ * `path` is the codebase path the shared Surveyor service (P4a) scans; `scanId` is an optional
+ * caller-supplied id to correlate the run. (The project is the :projectId route param.)
+ */
+export const SurveyorScanSchema = z.object({
+  path: requiredString('Scan path', 1, 4096),
+  scanId: optionalString(128),
+});
+
+export type SurveyorScanData = z.infer<typeof SurveyorScanSchema>;
+
+// ================================
 // VALIDATION ERROR FORMATTING
 // ================================
 
@@ -260,6 +276,9 @@ export const SchemaRegistry = {
 
   // Naming
   RegisterNaming: RegisterNamingSchema,
+
+  // Surveyor
+  SurveyorScan: SurveyorScanSchema,
 
   // Context bulk operations
   ContextBulkDelete: ContextBulkDeleteSchema,
